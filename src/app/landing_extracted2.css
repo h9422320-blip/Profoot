@@ -1,0 +1,59 @@
+"/* ============================================================================
+   PROFOOT LANDING PAGE — PREMIUM CSS v3.0
+   Inspired by Visifoot — Dark + Emerald + Stadium aesthetic
+   Mobile-first responsive design
+   ============================================================================ */
+
+/* ── BASE & RESETS ─────────────────────────────────────────────────────────── */
+.landing-root {
+  width: 100%;
+  min-height: 100vh;
+  background: #070e13;
+  color: #f8fafc;
+  overflow-x: hidden;
+}
+
+/* ── ANIMATIONS ────────────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+@keyframes slide-logos {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes bar-fill {
+  from { width: 0; }
+  to { width: 68%; }
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.fade-hidden { opacity: 0; transform: translateY(40px); }
+.fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
+
+/* ── NAVIGATION ────────────────────────────────────────────────────────────── */
+.landing-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  transition: all 0.3s ease;
+  padding: 0 16px;
+}
+.landing-nav::before {
+  content
+<truncated 26038 bytes>
