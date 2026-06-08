@@ -330,6 +330,9 @@ export default function AnalyzePage() {
           const existing = JSON.parse(localStorage.getItem("profoot_user_history_v1") || "[]");
           localStorage.setItem("profoot_user_history_v1", JSON.stringify([historyItem, ...existing]));
           console.log("[HISTORY] Analyse enregistrée avec succès dans l'historique personnel.");
+          
+          // Notifier la Sidebar pour mettre à jour le compteur
+          window.dispatchEvent(new Event("profoot-analysis-done"));
         } catch (e) {
           console.error("Erreur lors de l'enregistrement dans l'historique:", e);
         }

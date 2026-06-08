@@ -22,15 +22,41 @@ export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("Utilisateur");
+  const [todayCount, setTodayCount] = useState(0);
+
+  // Fonction pour compter les analyses du jour
+  function countTodayAnalyses() {
+    try {
+      const history = JSON.parse(localStorage.getItem("profoot_user_history_v1") || "[]");
+      const today = new Date().toDateString();
+      const count = history.filter((item: any) => {
+        const itemDate = new Date(item.date).toDateString();
+        return itemDate === today;
+      }).length;
+      setTodayCount(count);
+    } catch {
+      setTodayCount(0);
+    }
+  }
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) {
-        // Obtenir le nom avant le @ de l'email
         setUserEmail(user.email.split('@')[0]);
       }
     });
+
+    // Compter les analyses au chargement
+    countTodayAnalyses();
+
+    // Écouter l'événement custom émis quand une analyse est terminée
+    const handleNewAnalysis = () => countTodayAnalyses();
+    window.addEventListener("profoot-analysis-done", handleNewAnalysis);
+
+    return () => {
+      window.removeEventListener("profoot-analysis-done", handleNewAnalysis);
+    };
   }, []);
 
   const isActive = (href: string) =>
@@ -131,11 +157,11 @@ export function Sidebar() {
               <span className="text-xs font-semibold">Analyses du jour</span>
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black text-danger tracking-tight">0</span>
-              <span className="text-sm font-bold text-danger/50">/ 0</span>
+              <span className="text-2xl font-black text-primary tracking-tight">{todayCount}</span>
+              <span className="text-sm font-bold text-foreground/30">analyse{todayCount > 1 ? "s" : ""}</span>
             </div>
-            <div className="h-2 bg-danger/10 rounded-full overflow-hidden w-full">
-              <div className="h-full bg-gradient-to-r from-danger/50 to-danger w-full rounded-full" />
+            <div className="h-2 bg-primary/10 rounded-full overflow-hidden w-full">
+              <div className="h-full bg-gradient-to-r from-primary/50 to-primary rounded-full transition-all duration-700" style={{ width: `${Math.min(todayCount * 10, 100)}%` }} />
             </div>
           </div>
 
