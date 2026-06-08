@@ -507,37 +507,54 @@ export default function AnalyzePage() {
       {!analyzing && !result && (
         <>
           {/* MOBILE ONLY: Analyses d'aujourd'hui */}
-          <div className="space-y-2.5 block lg:hidden">
+          <div className="space-y-3 block lg:hidden">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 px-1">
-              {todayHistory.length > 0 ? `${todayHistory.length} match${todayHistory.length > 1 ? 's' : ''} analysé${todayHistory.length > 1 ? 's' : ''} aujourd'hui` : "Analyses d'aujourd'hui"}
+              Historique des analyses
             </h4>
             {todayHistory.length === 0 ? (
-              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 h-[56px] rounded-[18px] flex items-center justify-center px-4 shadow-sm">
-                <span className="text-[11px] font-semibold text-white/30">Aucune analyse aujourd'hui</span>
+              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[18px] p-5 text-center shadow-sm">
+                <span className="block text-sm font-bold text-white mb-2">Aucune analyse disponible pour le moment.</span>
+                <span className="block text-xs text-white/40">Analysez votre premier match pour commencer à construire votre historique.</span>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-3">
                 {todayHistory.map((item, idx) => {
-                  const hCl = getClub(item.team1);
-                  const aCl = getClub(item.team2);
+                  // Ensure we handle both string IDs and object structures from local storage safely
+                  const hCl = typeof item.team1 === 'string' ? getClub(item.team1) : item.team1;
+                  const aCl = typeof item.team2 === 'string' ? getClub(item.team2) : item.team2;
+                  
                   return (
                     <button 
                       key={idx}
-                      onClick={() => handleQuickMatchSelect(item.team1, item.team2)}
-                      className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 h-[56px] rounded-[18px] flex items-center px-4 shadow-sm transition-all group active:scale-[0.99]"
+                      onClick={() => handleQuickMatchSelect(hCl?.id || '', aCl?.id || '')}
+                      className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 rounded-[18px] flex flex-col p-4 shadow-sm transition-all group active:scale-[0.99] text-left"
                     >
-                      <div className="flex items-center flex-1 min-w-0">
-                        <span className="text-[11px] font-extrabold text-white/90 group-hover:text-primary transition-colors truncate flex-1 text-right pr-2">
-                          {hCl.name}
+                      <div className="flex items-center w-full mb-3">
+                        <span className="text-[13px] font-extrabold text-white/90 truncate flex-1 text-right pr-2">
+                          {hCl?.name || "Inconnu"}
                         </span>
-                        <img src={hCl.logo} className="w-5 h-5 object-contain shrink-0" alt="" />
-                        <span className="text-[9px] text-white/25 font-black mx-2 shrink-0">vs</span>
-                        <img src={aCl.logo} className="w-5 h-5 object-contain shrink-0" alt="" />
-                        <span className="text-[11px] font-extrabold text-white/90 truncate flex-1 text-left pl-2">
-                          {aCl.name}
+                        <img src={hCl?.logo} className="w-6 h-6 object-contain shrink-0" alt="" />
+                        <span className="text-[10px] text-white/25 font-black mx-2 shrink-0">vs</span>
+                        <img src={aCl?.logo} className="w-6 h-6 object-contain shrink-0" alt="" />
+                        <span className="text-[13px] font-extrabold text-white/90 truncate flex-1 text-left pl-2">
+                          {aCl?.name || "Inconnu"}
                         </span>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-white/15 group-hover:text-primary transition-colors shrink-0 ml-2" />
+                      <div className="flex flex-col gap-1 w-full bg-white/5 rounded-xl p-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] text-white/60 font-semibold">Score prédit :</span>
+                          <span className="text-[12px] text-[#10B981] font-black">{item.score}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] text-white/60 font-semibold">Fiabilité :</span>
+                          <span className="text-[11px] text-white font-bold">{item.confidence}%</span>
+                        </div>
+                      </div>
+                      {item.summary && (
+                        <p className="mt-3 text-[10px] text-white/40 leading-relaxed line-clamp-2">
+                          {item.summary}
+                        </p>
+                      )}
                     </button>
                   );
                 })}

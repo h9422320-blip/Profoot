@@ -21,6 +21,7 @@ const mainNav = [
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("Utilisateur");
   const [todayCount, setTodayCount] = useState(0);
 
@@ -43,7 +44,7 @@ export function Sidebar() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) {
-        setUserEmail(user.email.split('@')[0]);
+        setUserEmail(user.email);
       }
     });
 
@@ -78,13 +79,46 @@ export function Sidebar() {
           ========================================= */}
       
       {/* Top Header Mobile */}
-      <div className="lg:hidden fixed top-0 left-0 w-full h-20 bg-gradient-to-b from-[#0A1118] to-transparent z-40 flex items-start pt-6 px-6 pointer-events-none">
+      <div className="lg:hidden fixed top-0 left-0 w-full h-20 bg-gradient-to-b from-[#0A1118] to-transparent z-40 flex items-start justify-between pt-6 px-6 pointer-events-none">
         <Link href="/dashboard" className="flex items-center gap-2 pointer-events-auto">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 text-[#0A1118] flex items-center justify-center shadow-lg shadow-primary/20">
             <Brain className="w-4 h-4" />
           </div>
           <span className="font-black text-xl tracking-tight text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
         </Link>
+
+        <div className="pointer-events-auto relative">
+          <button 
+            onClick={() => setMobileUserMenuOpen(!mobileUserMenuOpen)}
+            className="w-10 h-10 rounded-full bg-[#111A24]/90 backdrop-blur-2xl border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/5 transition-all shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
+          >
+            <User className="w-5 h-5" />
+          </button>
+          
+          {mobileUserMenuOpen && (
+            <div className="absolute top-12 right-0 w-64 bg-[#111A24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-2 animate-fade-in mt-2 z-50">
+              <div className="px-4 py-3 border-b border-white/5">
+                <p className="text-sm font-bold text-white capitalize">{userEmail !== "Utilisateur" ? userEmail.split('@')[0].replace('.', ' ') : "Utilisateur"}</p>
+                <p className="text-xs text-white/50 truncate">{userEmail}</p>
+              </div>
+              <div className="py-2">
+                <Link href="/settings" onClick={() => setMobileUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors">
+                  <User className="w-4 h-4" /> Mon compte
+                </Link>
+                <Link href="/settings" onClick={() => setMobileUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors">
+                  <Settings className="w-4 h-4" /> Paramètres
+                </Link>
+              </div>
+              <div className="border-t border-white/5 pt-2">
+                <form action={logout}>
+                  <button type="submit" className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors">
+                    <LogOut className="w-4 h-4" /> Déconnexion
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom Nav Mobile */}
@@ -171,7 +205,7 @@ export function Sidebar() {
                 <User className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate">{userEmail}</p>
+                <p className="text-sm font-bold text-white truncate capitalize">{userEmail !== "Utilisateur" ? userEmail.split('@')[0].replace('.', ' ') : "Utilisateur"}</p>
                 <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Gratuit</p>
               </div>
             </div>
