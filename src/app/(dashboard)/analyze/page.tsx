@@ -509,12 +509,14 @@ export default function AnalyzePage() {
           {/* MOBILE ONLY: Analyses d'aujourd'hui */}
           <div className="space-y-3 block lg:hidden">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 px-1">
-              Historique des analyses
+              {todayHistory.length > 0 
+                ? `${todayHistory.length} match${todayHistory.length > 1 ? 's' : ''} analysé${todayHistory.length > 1 ? 's' : ''}` 
+                : "Historique des analyses"}
             </h4>
             {todayHistory.length === 0 ? (
               <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[18px] p-5 text-center shadow-sm">
-                <span className="block text-sm font-bold text-white mb-2">Aucune analyse disponible pour le moment.</span>
-                <span className="block text-xs text-white/40">Analysez votre premier match pour commencer à construire votre historique.</span>
+                <span className="block text-sm font-bold text-white mb-2">Aucun match analysé pour le moment</span>
+                <span className="block text-xs text-white/40">Analysez votre premier match pour commencer votre historique.</span>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3">
@@ -541,6 +543,11 @@ export default function AnalyzePage() {
                         </span>
                       </div>
                       <div className="flex flex-col gap-1 w-full bg-white/5 rounded-xl p-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] text-white/40 font-medium">
+                            {item.date ? new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Récemment"}
+                          </span>
+                        </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[11px] text-white/60 font-semibold">Score prédit :</span>
                           <span className="text-[12px] text-[#10B981] font-black">{item.score}</span>

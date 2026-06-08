@@ -21,8 +21,13 @@ import {
   Zap, 
   Target,
   Clock,
-  AlertCircle
+  AlertCircle,
+  User,
+  LogOut,
+  Settings
 } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
+import { logout } from "@/app/login/actions";
 
 interface HistoryItem {
   id: string;
@@ -43,6 +48,7 @@ interface HistoryItem {
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterComp, setFilterComp] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -50,6 +56,20 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Charger le profil utilisateur
+    const fetchUser = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserProfile(user);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchUser();
+
     // Charger l'historique depuis le localStorage
     const loadHistory = () => {
       try {
@@ -141,8 +161,77 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-24 px-4 md:px-0 animate-fade-in">
+    <div className="max-w-6xl mx-auto pb-24 px-4 md:px-0 animate-fade-in h-full">
       
+      {/* =========================================
+          📱 MOBILE APP EXPERIENCE (PROFILE VIEW)
+          ========================================= */}
+      <div className="block lg:hidden space-y-6 pt-6">
+        <h1 className="text-2xl font-black text-white tracking-tight" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Mon Profil</h1>
+        <div className="bg-[#111A24]/80 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-2xl">
+           
+           <div className="flex items-center gap-4 border-b border-white/5 pb-6 mb-6">
+              <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-[#10B981] to-[#059669] text-white flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                 <User className="w-8 h-8" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold text-white capitalize truncate">{userProfile?.email?.split('@')[0].replace('.', ' ') || "Utilisateur"}</h2>
+                <p className="text-xs text-white/50 truncate">{userProfile?.email}</p>
+              </div>
+           </div>
+           
+           <div className="grid grid-cols-2 gap-4 mb-6">
+             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+                <span className="text-2xl font-black text-white">{history.length}</span>
+                <span className="block text-[10px] text-white/40 uppercase tracking-widest mt-1">Analyses totales</span>
+             </div>
+             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+                <span className="text-2xl font-black text-[#10B981]">{history.filter(h => new Date(h.date).toDateString() === new Date().toDateString()).length}</span>
+                <span className="block text-[10px] text-white/40 uppercase tracking-widest mt-1">Aujourd'hui</span>
+             </div>
+           </div>
+           
+           <div className="space-y-2 mb-6">
+             <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5">
+                <span className="text-xs text-white/60 font-semibold">Date d'inscription</span>
+                <span className="text-xs font-bold text-white">{userProfile?.created_at ? new Date(userProfile.created_at).toLocaleDateString('fr-FR') : "Inconnue"}</span>
+             </div>
+             <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5">
+                <span className="text-xs text-white/60 font-semibold">Dernière connexion</span>
+                <span className="text-xs font-bold text-[#10B981]">{userProfile?.last_sign_in_at ? new Date(userProfile.last_sign_in_at).toLocaleDateString('fr-FR') : "Inconnue"}</span>
+             </div>
+           </div>
+
+           <div className="space-y-3">
+             <Link href="/settings" className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-[20px] transition-colors border border-white/5">
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-white/60" />
+                  <span className="text-sm font-bold text-white">Modifier le profil</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/30" />
+             </Link>
+             <Link href="/settings" className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-[20px] transition-colors border border-white/5">
+                <div className="flex items-center gap-3">
+                  <Lock className="w-5 h-5 text-white/60" />
+                  <span className="text-sm font-bold text-white">Modifier le mot de passe</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/30" />
+             </Link>
+             
+             <form action={logout}>
+                <button type="submit" className="w-full mt-4 flex items-center justify-center gap-2 p-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-[20px] transition-colors font-bold shadow-lg shadow-red-500/10">
+                  <LogOut className="w-5 h-5" />
+                  <span className="text-sm font-bold">Déconnexion</span>
+                </button>
+             </form>
+           </div>
+        </div>
+      </div>
+
+      {/* =========================================
+          💻 DESKTOP EXPERIENCE (HISTORY VIEW)
+          ========================================= */}
+      <div className="hidden lg:block space-y-8 pt-4">
       {/* 1. HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div>
@@ -504,6 +593,7 @@ export default function HistoryPage() {
           </div>
         </div>
       )}
+      </div>
 
     </div>
   );
