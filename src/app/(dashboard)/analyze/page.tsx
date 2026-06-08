@@ -237,6 +237,7 @@ export default function AnalyzePage() {
   const [analyzingStep, setAnalyzingStep] = useState(0);
   const [showGlobalForm, setShowGlobalForm] = useState(false);
   const [pickerOpen, setPickerOpen] = useState<1 | 2 | null>(null);
+  const [todayHistory, setTodayHistory] = useState<any[]>([]);
 
   const steps = [
     "🔍 Recherche des statistiques en temps réel...",
@@ -245,6 +246,20 @@ export default function AnalyzePage() {
     "📊 Calcul des probabilités et xG...",
     "🏆 Finalisation du rapport d'expert..."
   ];
+
+  useEffect(() => {
+    const updateHistory = () => {
+      try {
+        const history = JSON.parse(localStorage.getItem("profoot_user_history_v1") || "[]");
+        const todayStr = new Date().toDateString();
+        const todayItems = history.filter((item: any) => new Date(item.date).toDateString() === todayStr);
+        setTodayHistory(todayItems);
+      } catch {}
+    };
+    updateHistory();
+    window.addEventListener("profoot-analysis-done", updateHistory);
+    return () => window.removeEventListener("profoot-analysis-done", updateHistory);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -488,48 +503,92 @@ export default function AnalyzePage() {
         </div>
       )}
 
-      {/* 4. PROCHAINS MATCHS (Upcoming Future Calendar from Data) */}
-      {!analyzing && !result && futureMatches.length > 0 && (
-        <div className="space-y-2.5">
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 px-1">
-            Prochains matchs
-          </h4>
-          <div className="grid grid-cols-1 gap-2">
-            {futureMatches.map((m) => {
-              const hCl = getClub(m.homeTeam);
-              const aCl = getClub(m.awayTeam);
-              const [day, month] = m.date.split("/");
-              return (
-                <button 
-                  key={m.id}
-                  onClick={() => handleQuickMatchSelect(m.homeTeam, m.awayTeam)}
-                  className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 h-[56px] rounded-[18px] flex items-center px-4 shadow-sm transition-all group active:scale-[0.99]"
-                >
-                  {/* Date column — fixed width */}
-                  <div className="w-[52px] shrink-0 text-center border-r border-white/5 pr-3 mr-3">
-                    <span className="text-[10px] text-white/40 font-bold leading-none block">{day}/{month}</span>
-                    <span className="text-[10px] text-white/30 font-semibold leading-none block mt-0.5">{m.time}</span>
-                  </div>
-
-                  {/* Match row — flex with fixed logo sizes and centered vs */}
-                  <div className="flex items-center flex-1 min-w-0">
-                    <span className="text-[11px] font-extrabold text-white/90 group-hover:text-primary transition-colors truncate flex-1 text-right pr-2">
-                      {hCl.name}
-                    </span>
-                    <img src={hCl.logo} className="w-5 h-5 object-contain shrink-0" alt="" />
-                    <span className="text-[9px] text-white/25 font-black mx-2 shrink-0">vs</span>
-                    <img src={aCl.logo} className="w-5 h-5 object-contain shrink-0" alt="" />
-                    <span className="text-[11px] font-extrabold text-white/90 truncate flex-1 text-left pl-2">
-                      {aCl.name}
-                    </span>
-                  </div>
-
-                  <ChevronRight className="w-4 h-4 text-white/15 group-hover:text-primary transition-colors shrink-0 ml-2" />
-                </button>
-              );
-            })}
+      {/* 4. HISTORIQUE / PROCHAINS MATCHS */}
+      {!analyzing && !result && (
+        <>
+          {/* MOBILE ONLY: Analyses d'aujourd'hui */}
+          <div className="space-y-2.5 block lg:hidden">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 px-1">
+              {todayHistory.length > 0 ? `${todayHistory.length} match${todayHistory.length > 1 ? 's' : ''} analysé${todayHistory.length > 1 ? 's' : ''} aujourd'hui` : "Analyses d'aujourd'hui"}
+            </h4>
+            {todayHistory.length === 0 ? (
+              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 h-[56px] rounded-[18px] flex items-center justify-center px-4 shadow-sm">
+                <span className="text-[11px] font-semibold text-white/30">Aucune analyse aujourd'hui</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                {todayHistory.map((item, idx) => {
+                  const hCl = getClub(item.team1);
+                  const aCl = getClub(item.team2);
+                  return (
+                    <button 
+                      key={idx}
+                      onClick={() => handleQuickMatchSelect(item.team1, item.team2)}
+                      className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 h-[56px] rounded-[18px] flex items-center px-4 shadow-sm transition-all group active:scale-[0.99]"
+                    >
+                      <div className="flex items-center flex-1 min-w-0">
+                        <span className="text-[11px] font-extrabold text-white/90 group-hover:text-primary transition-colors truncate flex-1 text-right pr-2">
+                          {hCl.name}
+                        </span>
+                        <img src={hCl.logo} className="w-5 h-5 object-contain shrink-0" alt="" />
+                        <span className="text-[9px] text-white/25 font-black mx-2 shrink-0">vs</span>
+                        <img src={aCl.logo} className="w-5 h-5 object-contain shrink-0" alt="" />
+                        <span className="text-[11px] font-extrabold text-white/90 truncate flex-1 text-left pl-2">
+                          {aCl.name}
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-white/15 group-hover:text-primary transition-colors shrink-0 ml-2" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
+
+          {/* DESKTOP ONLY: Prochains matchs */}
+          {futureMatches.length > 0 && (
+            <div className="space-y-2.5 hidden lg:block">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 px-1">
+                Prochains matchs
+              </h4>
+              <div className="grid grid-cols-1 gap-2">
+                {futureMatches.map((m) => {
+                  const hCl = getClub(m.homeTeam);
+                  const aCl = getClub(m.awayTeam);
+                  const [day, month] = m.date.split("/");
+                  return (
+                    <button 
+                      key={m.id}
+                      onClick={() => handleQuickMatchSelect(m.homeTeam, m.awayTeam)}
+                      className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 h-[56px] rounded-[18px] flex items-center px-4 shadow-sm transition-all group active:scale-[0.99]"
+                    >
+                      {/* Date column — fixed width */}
+                      <div className="w-[52px] shrink-0 text-center border-r border-white/5 pr-3 mr-3">
+                        <span className="text-[10px] text-white/40 font-bold leading-none block">{day}/{month}</span>
+                        <span className="text-[10px] text-white/30 font-semibold leading-none block mt-0.5">{m.time}</span>
+                      </div>
+
+                      {/* Match row — flex with fixed logo sizes and centered vs */}
+                      <div className="flex items-center flex-1 min-w-0">
+                        <span className="text-[11px] font-extrabold text-white/90 group-hover:text-primary transition-colors truncate flex-1 text-right pr-2">
+                          {hCl.name}
+                        </span>
+                        <img src={hCl.logo} className="w-5 h-5 object-contain shrink-0" alt="" />
+                        <span className="text-[9px] text-white/25 font-black mx-2 shrink-0">vs</span>
+                        <img src={aCl.logo} className="w-5 h-5 object-contain shrink-0" alt="" />
+                        <span className="text-[11px] font-extrabold text-white/90 truncate flex-1 text-left pl-2">
+                          {aCl.name}
+                        </span>
+                      </div>
+
+                      <ChevronRight className="w-4 h-4 text-white/15 group-hover:text-primary transition-colors shrink-0 ml-2" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* =========================================================================
