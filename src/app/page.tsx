@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
+import { createClient } from "@/utils/supabase/client";
 import {
   ArrowRight,
   BarChart3,
@@ -125,11 +126,25 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
@@ -159,9 +174,15 @@ export default function LandingPage() {
           </div>
 
           <div className="nav-actions">
-            <Link href="/analyze" className="nav-login">
-              Se connecter
-            </Link>
+            {user ? (
+              <Link href="/dashboard" className="nav-login">
+                Mon compte
+              </Link>
+            ) : (
+              <Link href="/login" className="nav-login">
+                Se connecter
+              </Link>
+            )}
             <Link href="/analyze" className="nav-cta">
               <Zap className="w-4 h-4" /> Analyser
             </Link>

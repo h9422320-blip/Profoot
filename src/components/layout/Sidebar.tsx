@@ -7,7 +7,9 @@ import {
   LogOut, User, Menu, X, ChevronDown, Award, TrendingUp, Globe, CreditCard, BarChart2,
   Search, Brain, Shield
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { logout } from "@/app/login/actions";
+import { createClient } from "@/utils/supabase/client";
 
 // Admin role check — set to true to show the admin button
 const IS_ADMIN = true;
@@ -21,6 +23,17 @@ const mainNav = [
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("Utilisateur");
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        // Obtenir le nom avant le @ de l'email
+        setUserEmail(user.email.split('@')[0]);
+      }
+    });
+  }, []);
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -141,10 +154,19 @@ export function Sidebar() {
                 <User className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate">ob19431</p>
+                <p className="text-sm font-bold text-white truncate">{userEmail}</p>
                 <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Gratuit</p>
               </div>
             </div>
+            
+            <form action={logout}>
+              <button type="submit" className="w-full flex items-center justify-between gap-3 px-4 py-2 mt-2 rounded-xl text-xs font-bold text-foreground/50 hover:bg-white/5 hover:text-white transition-all border border-transparent hover:border-white/5">
+                <div className="flex items-center gap-3">
+                  <LogOut className="w-4 h-4" />
+                  <span>Se déconnecter</span>
+                </div>
+              </button>
+            </form>
           </div>
         </div>
       </aside>
