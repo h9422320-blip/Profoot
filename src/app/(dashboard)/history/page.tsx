@@ -17,14 +17,13 @@ import {
   X, 
   ExternalLink, 
   Eye, 
-  Shield, 
-  Zap, 
   Target,
   Clock,
   AlertCircle,
   User,
   LogOut,
-  Settings
+  Settings,
+  Lock
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { logout } from "@/app/login/actions";
