@@ -11,8 +11,6 @@ import { useState, useEffect } from "react";
 import { logout } from "@/app/login/actions";
 import { createClient } from "@/utils/supabase/client";
 
-// Admin role check — set to true to show the admin button
-const IS_ADMIN = true;
 
 const mainNav = [
   { href: "/analyze", label: "Analyse Tactique", icon: Brain },
@@ -140,13 +138,6 @@ export function Sidebar() {
               <div className="h-full bg-gradient-to-r from-danger/50 to-danger w-full rounded-full" />
             </div>
           </div>
-
-          {IS_ADMIN && (
-            <Link href="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-danger/70 hover:bg-danger/10 hover:text-danger transition-all border border-danger/10">
-              <Shield className="w-4 h-4" />
-              <span>Super Admin</span>
-            </Link>
-          )}
 
           <div className="pt-4 border-t border-white/5 space-y-1">
             <div className="flex items-center gap-3 px-2 py-2">
