@@ -24,6 +24,7 @@ export function Sidebar() {
   const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("Utilisateur");
   const [todayCount, setTodayCount] = useState(0);
+  const [isPro, setIsPro] = useState(false);
 
   // Fonction pour compter les analyses du jour
   function countTodayAnalyses() {
@@ -47,6 +48,14 @@ export function Sidebar() {
         setUserEmail(user.email);
       }
     });
+
+    // Check Pro Status
+    fetch('/api/payments/moneroo/status')
+      .then(res => res.json())
+      .then(data => {
+        setIsPro(data.isPro);
+      })
+      .catch(console.error);
 
     // Compter les analyses au chargement
     countTodayAnalyses();
@@ -102,6 +111,9 @@ export function Sidebar() {
                 <p className="text-xs text-white/50 truncate">{userEmail}</p>
               </div>
               <div className="py-2">
+                <Link href="/pricing" onClick={() => setMobileUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-warning hover:text-white hover:bg-warning/10 transition-colors">
+                  <CreditCard className="w-4 h-4" /> Abonnement Pro
+                </Link>
                 <Link href="/settings" onClick={() => setMobileUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors">
                   <User className="w-4 h-4" /> Mon compte
                 </Link>
@@ -206,7 +218,9 @@ export function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white truncate capitalize">{userEmail !== "Utilisateur" ? userEmail.split('@')[0].replace('.', ' ') : "Utilisateur"}</p>
-                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Gratuit</p>
+                <p className={`text-[10px] font-bold uppercase tracking-widest ${isPro ? "text-warning" : "text-primary"}`}>
+                  {isPro ? "PRO ELITE" : "Gratuit"}
+                </p>
               </div>
             </div>
             

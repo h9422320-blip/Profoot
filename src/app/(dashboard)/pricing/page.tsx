@@ -1,9 +1,51 @@
 "use client";
 
-import { Check, Zap, Brain, TrendingUp, Shield, BarChart3, Star } from "lucide-react";
-import Link from "next/link";
+import { Check, Zap, Brain, TrendingUp, Shield, Star, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function PricingPage() {
+  const router = useRouter();
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [isPro, setIsPro] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(true);
+
+  useEffect(() => {
+    // Vérifier si l'utilisateur est déjà Pro
+    fetch('/api/payments/moneroo/status')
+      .then(res => res.json())
+      .then(data => {
+        setIsPro(data.isPro);
+      })
+      .catch(err => console.error(err))
+      .finally(() => setCheckingStatus(false));
+  }, []);
+
+  const handleSubscribe = async (plan: string) => {
+    try {
+      setLoadingPlan(plan);
+      const res = await fetch('/api/payments/moneroo/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan })
+      });
+      
+      const data = await res.json();
+      
+      if (data.checkoutUrl) {
+        // Rediriger vers la page de paiement Moneroo
+        window.location.href = data.checkoutUrl;
+      } else {
+        alert(data.error || "Une erreur est survenue lors de l'initialisation du paiement.");
+        setLoadingPlan(null);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erreur de connexion au serveur de paiement.");
+      setLoadingPlan(null);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-12 pb-20">
       <div className="text-center space-y-4">
@@ -14,18 +56,18 @@ export default function PricingPage() {
           Passez au <span className="text-primary italic">Plan Pro</span>
         </h1>
         <p className="text-foreground/50 text-lg max-w-2xl mx-auto">
-          Débloquez la pleine puissance de l'IA ProFoot et accédez à des analyses de niveau professionnel.
+          Débloquez la pleine puissance de l'IA ProFoot et accédez à des analyses de niveau professionnel. Payez facilement via Orange Money, MTN, Wave, etc.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
         {/* Free Plan */}
         <div className="bg-card border border-border-card rounded-3xl p-8 space-y-8 flex flex-col">
           <div className="space-y-2">
             <h3 className="text-xl font-bold">Standard</h3>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-black">0€</span>
-              <span className="text-foreground/40 text-sm">/ mois</span>
+              <span className="text-4xl font-black">0</span>
+              <span className="text-foreground/40 text-sm">FCFA / mois</span>
             </div>
           </div>
           <p className="text-sm text-foreground/50">Pour les passionnés qui souhaitent un aperçu des prédictions IA.</p>
@@ -40,7 +82,7 @@ export default function PricingPage() {
           </button>
         </div>
 
-        {/* Pro Plan */}
+        {/* Pro Monthly Plan */}
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-primary to-info rounded-[2rem] blur opacity-25 group-hover:opacity-50 transition duration-1000" />
           <div className="relative bg-card border-2 border-primary rounded-3xl p-8 space-y-8 flex flex-col h-full shadow-2xl shadow-primary/20">
@@ -49,11 +91,11 @@ export default function PricingPage() {
             </div>
             <div className="space-y-2">
               <h3 className="text-xl font-bold flex items-center gap-2">
-                Pro <span className="bg-warning text-black text-[10px] px-2 py-0.5 rounded italic">ELITE</span>
+                Pro <span className="bg-warning text-black text-[10px] px-2 py-0.5 rounded italic">MENSUEL</span>
               </h3>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black">14.99€</span>
-                <span className="text-foreground/40 text-sm">/ mois</span>
+                <span className="text-4xl font-black">20.000</span>
+                <span className="text-foreground/40 text-sm">FCFA / mois</span>
               </div>
             </div>
             <p className="text-sm text-foreground/50">L'outil ultime pour les experts et analystes de données football.</p>
@@ -66,15 +108,62 @@ export default function PricingPage() {
               <FeatureItem label="Zéro Publicité" pro />
             </ul>
             <button 
-              onClick={() => {
-                localStorage.setItem('pro_mode', 'true');
-                window.location.href = '/dashboard';
-              }}
-              className="w-full py-4 rounded-2xl bg-primary hover:bg-primary-hover text-white font-black shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2"
+              onClick={() => handleSubscribe('monthly')}
+              disabled={loadingPlan !== null || checkingStatus || isPro}
+              className={`w-full py-4 rounded-2xl font-black shadow-lg transition-all flex items-center justify-center gap-2 ${
+                isPro 
+                  ? 'bg-success/20 text-success cursor-not-allowed'
+                  : 'bg-primary hover:bg-primary-hover text-white shadow-primary/30'
+              }`}
             >
-              Débloquer Pro maintenant <Zap className="w-4 h-4 fill-white" />
+              {checkingStatus ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : isPro ? (
+                <>Abonnement Actif <Check className="w-4 h-4" /></>
+              ) : loadingPlan === 'monthly' ? (
+                <Loader2 className="w-5 h-5 animate-spin text-white" />
+              ) : (
+                <>S'abonner maintenant <Zap className="w-4 h-4 fill-white" /></>
+              )}
             </button>
           </div>
+        </div>
+
+        {/* Pro Lifetime Plan */}
+        <div className="bg-card border border-border-card rounded-3xl p-8 space-y-8 flex flex-col">
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              Pro <span className="bg-success text-white text-[10px] px-2 py-0.5 rounded italic">À VIE</span>
+            </h3>
+            <div className="flex items-baseline gap-1">
+              <span className="text-4xl font-black">60.000</span>
+              <span className="text-foreground/40 text-sm">FCFA</span>
+            </div>
+          </div>
+          <p className="text-sm text-foreground/50">Payez une seule fois, profitez de ProFoot AI pour toujours.</p>
+          <ul className="space-y-4 flex-1">
+            <FeatureItem label="Toutes les fonctionnalités Pro" pro />
+            <FeatureItem label="Paiement unique (pas d'abonnement)" pro />
+            <FeatureItem label="Mises à jour futures incluses" pro />
+            <FeatureItem label="Support prioritaire" pro />
+          </ul>
+          <button 
+            onClick={() => handleSubscribe('lifetime')}
+            disabled={loadingPlan !== null || checkingStatus || isPro}
+            className={`w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 ${
+              isPro 
+                ? 'bg-sidebar border border-border-card text-foreground/40 cursor-not-allowed'
+                : 'bg-sidebar border border-border-card text-white hover:bg-sidebar-hover'
+            }`}
+          >
+            {loadingPlan === 'lifetime' ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : isPro ? (
+              'Déjà Pro'
+            ) : (
+              'Acheter l\'accès à vie'
+            )}
+          </button>
         </div>
       </div>
 

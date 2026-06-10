@@ -1,4 +1,5 @@
 import { User, Bell, Shield, CreditCard, Palette, Globe } from "lucide-react";
+import Link from "next/link";
 
 export default function SettingsPage() {
   return (
@@ -15,7 +16,9 @@ export default function SettingsPage() {
           <SettingsNavButton icon={Palette} label="Apparence" />
           <SettingsNavButton icon={Bell} label="Notifications" />
           <SettingsNavButton icon={Globe} label="Langue" />
-          <SettingsNavButton icon={CreditCard} label="Abonnement" />
+          <Link href="/pricing" className="block">
+            <SettingsNavButton icon={CreditCard} label="Abonnement" />
+          </Link>
           <SettingsNavButton icon={Shield} label="Sécurité" />
         </div>
 
