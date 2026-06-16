@@ -21,9 +21,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Plan invalide.' }, { status: 400 });
     }
 
-    // 3. Définir le montant selon le plan
-    const amount = plan === 'monthly' ? 20000 : 60000;
-    const currency = 'XOF';
+    // 3. Définir le montant et la devise selon le plan et l'environnement
+    const secretKey = process.env.MONEROO_SECRET_KEY;
+    if (!secretKey) {
+      console.error('MONEROO_SECRET_KEY manquante dans les variables d\'environnement');
+      return NextResponse.json({ error: 'Configuration serveur invalide.' }, { status: 500 });
+    }
+
+    const isSandbox = secretKey.includes('sandbox');
+    const amount = isSandbox
+      ? (plan === 'monthly' ? 10 : 30) // Prix de test en USD pour le Sandbox
+      : (plan === 'monthly' ? 20000 : 60000); // Vrais prix en FCFA (XOF) pour la Production
+
+    const currency = isSandbox ? 'USD' : 'XOF';
     
     // Obtenir l'URL de base dynamique pour le callback
     // En développement local (localhost), ou en production (Vercel)
@@ -46,13 +56,6 @@ export async function POST(req: Request) {
         plan_type: plan
       }
     };
-
-    // 5. Appeler l'API Moneroo
-    const secretKey = process.env.MONEROO_SECRET_KEY;
-    if (!secretKey) {
-      console.error('MONEROO_SECRET_KEY manquante dans les variables d\'environnement');
-      return NextResponse.json({ error: 'Configuration serveur invalide.' }, { status: 500 });
-    }
 
     const response = await fetch(MONEROO_API_URL, {
       method: 'POST',
