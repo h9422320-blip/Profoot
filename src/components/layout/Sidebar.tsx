@@ -96,41 +96,7 @@ export function Sidebar() {
           <span className="font-black text-xl tracking-tight text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
         </Link>
 
-        <div className="pointer-events-auto relative">
-          <button 
-            onClick={() => setMobileUserMenuOpen(!mobileUserMenuOpen)}
-            className="w-10 h-10 rounded-full bg-[#111A24]/90 backdrop-blur-2xl border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/5 transition-all shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
-          >
-            <User className="w-5 h-5" />
-          </button>
-          
-          {mobileUserMenuOpen && (
-            <div className="absolute top-12 right-0 w-64 bg-[#111A24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-2 animate-fade-in mt-2 z-50">
-              <div className="px-4 py-3 border-b border-white/5">
-                <p className="text-sm font-bold text-white capitalize">{userEmail !== "Utilisateur" ? userEmail.split('@')[0].replace('.', ' ') : "Utilisateur"}</p>
-                <p className="text-xs text-white/50 truncate">{userEmail}</p>
-              </div>
-              <div className="py-2">
-                <Link href="/pricing" onClick={() => setMobileUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-warning hover:text-white hover:bg-warning/10 transition-colors">
-                  <CreditCard className="w-4 h-4" /> Abonnement Pro
-                </Link>
-                <Link href="/settings" onClick={() => setMobileUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors">
-                  <User className="w-4 h-4" /> Mon compte
-                </Link>
-                <Link href="/settings" onClick={() => setMobileUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-colors">
-                  <Settings className="w-4 h-4" /> Paramètres
-                </Link>
-              </div>
-              <div className="border-t border-white/5 pt-2">
-                <form action={logout}>
-                  <button type="submit" className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors">
-                    <LogOut className="w-4 h-4" /> Déconnexion
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Icone utilisateur supprimée à la demande de l'utilisateur, tout a été déplacé vers la page Mon Profil */}
       </div>
 
       {/* Bottom Nav Mobile */}
