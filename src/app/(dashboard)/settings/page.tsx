@@ -265,6 +265,4 @@ function SettingsNavButton({ icon: Icon, label, active, onClick }: any) {
       {label}
     </button>
   );
-}ton>
-  );
 }
