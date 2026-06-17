@@ -48,7 +48,9 @@ export async function POST(req: Request) {
       customer: {
         email: user.email,
         first_name: user.user_metadata?.first_name || 'Utilisateur',
-        last_name: user.user_metadata?.last_name || 'ProFoot'
+        last_name: user.user_metadata?.last_name || 'ProFoot',
+        phone: user.phone || user.user_metadata?.phone || '+224620000000',
+        country: 'GN'
       },
       return_url: returnUrl,
       metadata: {
