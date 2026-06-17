@@ -40,6 +40,9 @@ export async function POST(req: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';
     const returnUrl = `${baseUrl}/api/payments/moneroo/callback`; // We'll create a callback route to handle the immediate return
 
+    const userCountry = req.headers.get('x-vercel-ip-country') || undefined;
+    const userPhone = user.phone || user.user_metadata?.phone || undefined;
+
     // 4. Préparer la requête pour Moneroo
     const payload = {
       amount,
@@ -49,8 +52,8 @@ export async function POST(req: Request) {
         email: user.email,
         first_name: user.user_metadata?.first_name || 'Utilisateur',
         last_name: user.user_metadata?.last_name || 'ProFoot',
-        phone: user.phone || user.user_metadata?.phone || '+224620000000',
-        country: 'GN'
+        ...(userPhone && { phone: userPhone }),
+        ...(userCountry && { country: userCountry })
       },
       return_url: returnUrl,
       metadata: {
