@@ -22,7 +22,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#050505]">
+    <div className="min-h-screen flex w-full bg-[#050505]">
       
       {/* --- COLONNE GAUCHE (Présentation Produit) - Masquée sur mobile --- */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#0a0a0a] border-r border-white/5 items-center justify-center overflow-hidden">
