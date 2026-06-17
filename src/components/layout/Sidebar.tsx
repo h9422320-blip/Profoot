@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { logout } from "@/app/login/actions";
 import { createClient } from "@/utils/supabase/client";
 
+import { ProFootLogo } from "@/components/ui/ProFootLogo";
 
 const mainNav = [
   { href: "/analyze", label: "Analyse Tactique", icon: Brain },
@@ -89,9 +90,9 @@ export function Sidebar() {
       
       {/* Top Header Mobile */}
       <div className="lg:hidden fixed top-0 left-0 w-full h-20 bg-gradient-to-b from-[#0A1118] to-transparent z-40 flex items-start justify-between pt-6 px-6 pointer-events-none">
-        <Link href="/dashboard" className="flex items-center gap-2 pointer-events-auto">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 text-[#0A1118] flex items-center justify-center shadow-lg shadow-primary/20">
-            <Brain className="w-4 h-4" />
+        <Link href="/dashboard" className="flex items-center gap-2 pointer-events-auto group">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 text-[#0A1118] flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
+            <ProFootLogo className="w-4 h-4" />
           </div>
           <span className="font-black text-xl tracking-tight text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
         </Link>
@@ -115,7 +116,7 @@ export function Sidebar() {
               </Link>
             );
           })}
-          <Link href="/history" className={`relative flex flex-col items-center justify-center w-14 h-12 rounded-full transition-all duration-300 ${isActive("/history") ? "bg-primary/10 text-primary" : "text-foreground/50 hover:text-foreground"}`}>
+          <Link href="/history" className={`relative flex flex-col items-center justify-center w-14 h-12 rounded-full transition-all duration-300 ${isActive("/history") || isActive("/settings") ? "bg-primary/10 text-primary" : "text-foreground/50 hover:text-foreground"}`}>
             <User className="w-5 h-5" />
           </Link>
         </div>
@@ -126,9 +127,9 @@ export function Sidebar() {
           ========================================= */}
       <aside className="hidden lg:flex w-[260px] h-screen bg-[#0A1118] flex-col border-r border-border-card fixed left-0 top-0 z-50">
         <div className="p-8 pb-4">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/5 text-primary border border-primary/40 flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.15)]">
-              <Brain className="w-5 h-5" />
+          <Link href="/dashboard" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/5 text-primary border border-primary/40 flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.15)] group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(34,197,94,0.3)] transition-all">
+              <ProFootLogo className="w-5 h-5" />
             </div>
             <span className="font-black text-2xl tracking-tight text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
           </Link>

@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Mail, Lock, User, AlertCircle, Brain, TrendingUp, Zap, ShieldCheck, Eye, EyeOff } from 'lucide-react'
+import { ArrowRight, Mail, Lock, User, AlertCircle, TrendingUp, Zap, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { signup } from '../login/actions'
+import { ProFootLogo } from '@/components/ui/ProFootLogo'
 
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
@@ -13,11 +14,14 @@ export default function SignupPage() {
   async function handleSubmit(formData: FormData) {
     setIsLoading(true)
     setError(null)
-    
-    const result = await signup(formData)
-    
-    if (result?.error) {
-      setError(result.error)
+    try {
+      const result = await signup(formData)
+      if (result?.error) {
+        setError(result.error)
+        setIsLoading(false)
+      }
+    } catch (e) {
+      setError('Une erreur inattendue est survenue')
       setIsLoading(false)
     }
   }
@@ -31,59 +35,54 @@ export default function SignupPage() {
         <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-900/20 blur-[120px] pointer-events-none" />
         
-        {/* Contenu */}
-        <div className="relative z-10 w-full max-w-xl px-12 xl:px-20">
-          <Link href="/" className="flex items-center gap-3 mb-16 group w-max">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-300">
-              <Brain className="w-6 h-6" />
-            </div>
-            <span className="text-2xl font-black text-white tracking-tight" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
-          </Link>
-          
-          <h1 className="text-4xl xl:text-5xl font-black text-white tracking-tight leading-[1.1] mb-6">
+        {/* Logo Top Left */}
+        <div className="absolute top-8 left-8 flex items-center gap-3">
+           <div className="w-10 h-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-black shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+              <ProFootLogo className="w-6 h-6" />
+           </div>
+           <span className="font-black text-2xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ProFoot</span>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 max-w-lg px-12">
+          <h1 className="text-5xl font-black text-white leading-[1.1] mb-6" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             Analysez les matchs avec l'intelligence artificielle.
           </h1>
           <p className="text-lg text-zinc-400 font-medium mb-12 leading-relaxed">
             Rejoignez des milliers de parieurs et de passionnés qui utilisent ProFoot pour prédire les résultats avec une précision inégalée.
           </p>
-          
+
           <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
-                <TrendingUp className="w-5 h-5 text-emerald-400" />
+            {[
+              { icon: TrendingUp, text: "Prédictions basées sur l'IA" },
+              { icon: Zap, text: "Données en temps réel" },
+              { icon: ShieldCheck, text: "Statistiques avancées" }
+            ].map((Feature, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                  <Feature.icon className="w-5 h-5" />
+                </div>
+                <span className="text-zinc-300 font-semibold text-lg">{Feature.text}</span>
               </div>
-              <p className="text-zinc-300 font-medium text-lg">Prédictions basées sur l'IA</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
-                <Zap className="w-5 h-5 text-emerald-400" />
-              </div>
-              <p className="text-zinc-300 font-medium text-lg">Données en temps réel</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-              </div>
-              <p className="text-zinc-300 font-medium text-lg">Statistiques avancées</p>
-            </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* --- COLONNE DROITE (Formulaire) --- */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center relative px-6 py-12 sm:px-12 lg:px-16 xl:px-24">
-        {/* Glow effect on mobile only */}
-        <div className="lg:hidden absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[400px] h-[300px] bg-emerald-500/10 blur-[100px] pointer-events-none" />
+        
+        {/* Glow Top Mobile */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none lg:hidden" />
 
         <div className="w-full max-w-[400px] mx-auto relative z-10">
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex justify-center mb-10">
-            <Link href="/" className="flex flex-col items-center gap-3">
-              <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-[18px] flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
-                <Brain className="w-7 h-7" />
-              </div>
-              <span className="text-2xl font-black text-white tracking-tight" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
-            </Link>
+          
+          {/* Logo Mobile Only */}
+          <div className="flex lg:hidden items-center gap-3 justify-center mb-12">
+            <div className="w-12 h-12 rounded-[20px] bg-emerald-500 flex items-center justify-center text-black shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+              <ProFootLogo className="w-7 h-7" />
+            </div>
+            <span className="font-black text-3xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ProFoot</span>
           </div>
 
           {/* Form Header */}

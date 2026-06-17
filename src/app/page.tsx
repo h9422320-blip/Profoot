@@ -24,6 +24,7 @@ import {
   Quote,
   MessageCircle,
 } from "lucide-react";
+import { ProFootLogo } from "@/components/ui/ProFootLogo";
 
 // ============================================================================
 // PROFOOT — LANDING PAGE PREMIUM v3.0
@@ -161,7 +162,7 @@ export default function LandingPage() {
         <div className="nav-inner">
           <Link href="/" className="nav-brand">
             <div className="nav-logo">
-              <Brain className="w-4 h-4" />
+              <ProFootLogo className="w-4 h-4" />
             </div>
             <span className="nav-brand-text">ProFoot</span>
           </Link>
@@ -408,7 +409,7 @@ export default function LandingPage() {
         <div className="footer-inner">
           <div className="footer-brand">
             <div className="nav-brand">
-              <div className="nav-logo"><Brain className="w-4 h-4" /></div>
+              <div className="nav-logo"><ProFootLogo className="w-4 h-4" /></div>
               <span className="nav-brand-text">ProFoot</span>
             </div>
             <p className="footer-desc">
@@ -670,7 +671,7 @@ function AppMockupContent() {
       {/* Phone Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <Brain className="w-4 h-4 text-[#10b981]" />
+          <ProFootLogo className="w-4 h-4 text-[#10b981]" />
           <span className="text-white font-bold text-sm tracking-tight">ProFoot</span>
         </div>
         <div className="w-6 h-0.5 bg-white/20 rounded-full">
