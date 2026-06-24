@@ -4,63 +4,55 @@ import { useState, useEffect, useRef } from "react";
 import { User, Bell, CreditCard, Palette, Globe, Check, Upload } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function SettingsPage() {
-  const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
+  const { lang, setLang, t } = useLanguage();
   
   const [activeTab, setActiveTab] = useState("profil");
   const [userEmail, setUserEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Notifications state
+  // Notification states
   const [notifPredictions, setNotifPredictions] = useState(true);
   const [notifResults, setNotifResults] = useState(true);
-  const [notifMatches, setNotifMatches] = useState(true);
-  const [notifSystem, setNotifSystem] = useState(true);
   const [notifOffers, setNotifOffers] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
 
   useEffect(() => {
     const fetchUser = async () => {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user?.email) {
-        setUserEmail(user.email);
+      if (user) {
+        if (user.email) setUserEmail(user.email);
         
-        // Extract name
+        // Load metadata
         if (user.user_metadata?.full_name) {
-          const parts = user.user_metadata.full_name.split(' ');
+          const parts = user.user_metadata.full_name.split(" ");
           setFirstName(parts[0] || "");
-          setLastName(parts.slice(1).join(' ') || "");
-        } else {
-          // Fallback parsing from email if no name exists
-          const namePart = user.email.split('@')[0];
-          setFirstName(namePart);
+          setLastName(parts.slice(1).join(" ") || "");
         }
-
-        // Restore avatar if any
-        const savedAvatar = localStorage.getItem(`avatar_${user.id}`);
-        if (savedAvatar) setAvatarUrl(savedAvatar);
+        if (user.user_metadata?.avatar_url) {
+          setAvatarUrl(user.user_metadata.avatar_url);
+        }
       }
       
-      // Load notifications
-      const savedNotifs = localStorage.getItem('profoot_notifications');
-      if (savedNotifs) {
-        const parsed = JSON.parse(savedNotifs);
-        setNotifPredictions(parsed.predictions ?? true);
-        setNotifResults(parsed.results ?? true);
-        setNotifMatches(parsed.matches ?? true);
-        setNotifSystem(parsed.system ?? true);
-        setNotifOffers(parsed.offers ?? false);
+      // Load notification preferences from localStorage
+      const prefs = localStorage.getItem("profoot_notifs");
+      if (prefs) {
+        try {
+          const parsed = JSON.parse(prefs);
+          if (parsed.predictions !== undefined) setNotifPredictions(parsed.predictions);
+          if (parsed.results !== undefined) setNotifResults(parsed.results);
+          if (parsed.offers !== undefined) setNotifOffers(parsed.offers);
+        } catch(e) {}
       }
       
       setLoading(false);
@@ -68,71 +60,80 @@ export default function SettingsPage() {
     fetchUser();
   }, []);
 
-  // Save notifications when they change
+  // Save notification preferences when they change
   useEffect(() => {
     if (!loading) {
-      localStorage.setItem('profoot_notifications', JSON.stringify({
+      localStorage.setItem("profoot_notifs", JSON.stringify({
         predictions: notifPredictions,
         results: notifResults,
-        matches: notifMatches,
-        system: notifSystem,
         offers: notifOffers
       }));
     }
-  }, [notifPredictions, notifResults, notifMatches, notifSystem, notifOffers, loading]);
+  }, [notifPredictions, notifResults, notifOffers, loading]);
 
-  const getInitials = (first: string, last: string, email: string) => {
-    if (first && last) return `${first[0]}${last[0]}`.toUpperCase();
-    if (first) return first.substring(0, 2).toUpperCase();
-    if (email) return email.substring(0, 2).toUpperCase();
-    return "U";
+  const getInitials = () => {
+    if (firstName || lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    }
+    if (!userEmail) return "U";
+    return userEmail.substring(0, 2).toUpperCase();
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    
-    const supabase = createClient();
-    const fullName = `${firstName} ${lastName}`.trim();
-    
-    const { error } = await supabase.auth.updateUser({
-      data: { full_name: fullName }
-    });
-
-    setSaving(false);
-    
-    if (error) {
-      alert(t("settings.profileError"));
-    } else {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: `${firstName} ${lastName}`.trim() }
+      });
+      if (error) throw error;
       alert(t("settings.profileUpdated"));
+    } catch (err) {
+      console.error(err);
+      alert(t("settings.profileError"));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result as string;
-        setAvatarUrl(base64String);
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${Math.random()}.${fileExt}`;
+    
+    try {
+      setSaving(true);
+      // Upload to bucket 'avatars'
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
         
-        // Save to local storage for persistence across reloads
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          localStorage.setItem(`avatar_${user.id}`, base64String);
-        }
-      };
-      reader.readAsDataURL(file);
+      if (uploadError) {
+        console.error('Error uploading:', uploadError);
+        // If bucket fails (often because bucket isn't created yet in dev), we can use a dummy image for mockup or just alert
+        alert("Erreur: Le bucket 'avatars' n'existe peut-être pas dans Supabase.");
+        return;
+      }
+      
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      setAvatarUrl(data.publicUrl);
+      
+      await supabase.auth.updateUser({
+        data: { avatar_url: data.publicUrl }
+      });
+      
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          {t("settings.title")}
-        </h1>
+        <h1 className="text-2xl md:text-3xl font-black text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.title")}</h1>
         <p className="text-foreground/50 text-sm mt-1 font-medium">{t("settings.subtitle")}</p>
       </div>
 
@@ -164,7 +165,7 @@ export default function SettingsPage() {
             onClick={() => setActiveTab("langue")} 
           />
           <Link href="/pricing" className="block">
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all text-warning hover:bg-warning/10 border border-transparent">
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all text-orange-400 hover:bg-orange-500/10 border border-transparent">
               <CreditCard className="w-4 h-4" />
               {t("settings.subscription")}
             </button>
@@ -176,14 +177,12 @@ export default function SettingsPage() {
           
           {/* TAB: PROFIL */}
           {activeTab === "profil" && (
-            <div className="bg-card backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-xl animate-fade-in">
-              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("settings.profileInfo")}
-              </h2>
+            <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-2xl animate-fade-in">
+              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.profileInfo")}</h2>
               
               {loading ? (
                 <div className="animate-pulse flex space-x-4">
-                  <div className="rounded-full bg-foreground/10 h-20 w-20"></div>
+                  <div className="rounded-3xl bg-foreground/10 h-24 w-24"></div>
                   <div className="flex-1 space-y-6 py-1">
                     <div className="h-2 bg-foreground/10 rounded"></div>
                     <div className="space-y-3">
@@ -198,27 +197,24 @@ export default function SettingsPage() {
               ) : (
                 <>
                   <div className="flex items-center gap-6 mb-10">
-                    {avatarUrl ? (
-                      <div 
-                        className="w-24 h-24 rounded-3xl bg-cover bg-center shadow-lg border-2 border-primary"
-                        style={{ backgroundImage: `url(${avatarUrl})` }}
-                      />
-                    ) : (
-                      <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center text-3xl font-black text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                        {getInitials(firstName, lastName, userEmail)}
-                      </div>
-                    )}
+                    <div 
+                      className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center text-3xl font-black text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] bg-cover bg-center overflow-hidden"
+                      style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : {}}
+                    >
+                      {!avatarUrl && getInitials()}
+                    </div>
                     <div>
                       <input 
                         type="file" 
                         accept="image/*" 
-                        ref={fileInputRef} 
-                        onChange={handleAvatarUpload} 
+                        ref={fileInputRef}
                         className="hidden" 
+                        onChange={handleAvatarUpload}
                       />
                       <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-2 bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-foreground px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                        disabled={saving}
+                        className="flex items-center gap-2 bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-foreground px-5 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
                       >
                         <Upload className="w-4 h-4" />
                         {t("settings.changeAvatar")}
@@ -251,19 +247,14 @@ export default function SettingsPage() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-foreground/50 uppercase tracking-widest">{t("settings.emailNonEditable")}</label>
-                      <input 
-                        type="email" 
-                        value={userEmail} 
-                        disabled 
-                        className="w-full bg-foreground/5 border border-foreground/5 rounded-xl px-4 py-3.5 text-sm text-foreground/50 cursor-not-allowed opacity-70" 
-                      />
+                      <input type="email" value={userEmail} disabled className="w-full bg-black/5 dark:bg-black/20 border border-foreground/5 rounded-xl px-4 py-3.5 text-sm text-foreground/50 cursor-not-allowed" />
                     </div>
                     
                     <div className="pt-6 border-t border-border-card flex justify-end">
                       <button 
                         type="submit" 
                         disabled={saving}
-                        className="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-xl text-sm font-black transition-all shadow-[0_4px_20px_rgba(16,185,129,0.3)] disabled:opacity-50"
+                        className="bg-gradient-to-r from-primary to-primary-hover hover:brightness-110 active:scale-[0.98] text-white px-8 py-3 rounded-xl text-sm font-black transition-all shadow-[0_4px_20px_rgba(16,185,129,0.3)] disabled:opacity-50"
                       >
                         {saving ? t("settings.saving") : t("settings.saveChanges")}
                       </button>
@@ -276,148 +267,123 @@ export default function SettingsPage() {
 
           {/* TAB: APPARENCE */}
           {activeTab === "apparence" && (
-            <div className="bg-card backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-xl animate-fade-in">
-              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("settings.appTheme")}
-              </h2>
+            <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-2xl animate-fade-in">
+              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.appTheme")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* DARK THEME BUTTON */}
                 <button 
                   onClick={() => setTheme("dark")}
-                  className={`border-2 rounded-2xl p-6 flex flex-col items-center gap-4 relative overflow-hidden transition-colors ${
-                    theme === "dark" ? "border-primary bg-primary/5" : "border-border-card bg-foreground/5 hover:border-foreground/20"
-                  }`}
+                  className={`border-2 ${theme === "dark" ? 'border-primary bg-primary/5' : 'border-border-card bg-foreground/5 hover:border-foreground/20'} rounded-2xl p-6 flex flex-col items-center gap-4 relative overflow-hidden transition-all`}
                 >
                   {theme === "dark" && (
                     <div className="absolute top-4 right-4 text-primary">
                       <Check className="w-5 h-5" />
                     </div>
                   )}
-                  <div className="w-full h-32 bg-[#0A1118] rounded-xl border border-white/10 flex items-center justify-center shadow-inner relative overflow-hidden">
+                  <div className="w-full h-32 bg-[#070e13] rounded-xl border border-white/10 flex items-center justify-center shadow-inner relative overflow-hidden">
                      <div className="absolute top-2 left-2 right-2 flex gap-2">
                         <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
                         <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-                        <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
+                        <div className="w-3 h-3 rounded-full bg-[#10B981]/50"></div>
                      </div>
-                     <div className="w-16 h-2 bg-primary/50 rounded-full" />
+                     <div className="w-16 h-2 bg-[#10B981]/30 rounded-full" />
                   </div>
-                  <span className={`font-bold ${theme === "dark" ? "text-foreground" : "text-foreground/70"}`}>
-                    {t("settings.darkTheme")}
-                  </span>
+                  <span className={`font-bold ${theme === "dark" ? 'text-foreground' : 'text-foreground/70'}`}>{t("settings.darkTheme")}</span>
                 </button>
-
-                {/* LIGHT THEME BUTTON */}
                 <button 
                   onClick={() => setTheme("light")}
-                  className={`border-2 rounded-2xl p-6 flex flex-col items-center gap-4 relative overflow-hidden transition-colors ${
-                    theme === "light" ? "border-primary bg-primary/5" : "border-border-card bg-foreground/5 hover:border-foreground/20"
-                  }`}
+                  className={`border-2 ${theme === "light" ? 'border-primary bg-primary/5' : 'border-border-card bg-foreground/5 hover:border-foreground/20'} rounded-2xl p-6 flex flex-col items-center gap-4 relative overflow-hidden transition-all`}
                 >
                   {theme === "light" && (
                     <div className="absolute top-4 right-4 text-primary">
                       <Check className="w-5 h-5" />
                     </div>
                   )}
-                  <div className="w-full h-32 bg-[#F8FAFC] rounded-xl border border-gray-200 flex items-center justify-center shadow-inner relative overflow-hidden">
+                  <div className="w-full h-32 bg-[#f8fafc] rounded-xl border border-gray-200 flex items-center justify-center shadow-inner relative overflow-hidden">
                      <div className="absolute top-2 left-2 right-2 flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                        <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                        <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-[#10B981]"></div>
                      </div>
-                     <div className="w-16 h-2 bg-primary/80 rounded-full" />
+                     <div className="w-16 h-2 bg-[#10B981] rounded-full" />
                   </div>
-                  <span className={`font-bold ${theme === "light" ? "text-foreground" : "text-foreground/70"}`}>
-                    {t("settings.lightTheme")}
-                  </span>
+                  <span className={`font-bold ${theme === "light" ? 'text-foreground' : 'text-foreground/70'}`}>{t("settings.lightTheme")}</span>
                 </button>
-
               </div>
             </div>
           )}
 
           {/* TAB: NOTIFICATIONS */}
           {activeTab === "notifications" && (
-            <div className="bg-card backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-xl animate-fade-in">
-              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("settings.notifPreferences")}
-              </h2>
+            <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-2xl animate-fade-in">
+              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.notifPreferences")}</h2>
               
-              <div className="space-y-4">
-                
-                <ToggleRow 
-                  title={t("settings.notifNewPredictions")} 
-                  description={t("settings.notifNewPredictionsDesc")} 
-                  checked={notifPredictions} 
-                  onChange={() => setNotifPredictions(!notifPredictions)} 
-                />
-                
-                <ToggleRow 
-                  title={t("settings.notifMatchResults")} 
-                  description={t("settings.notifMatchResultsDesc")} 
-                  checked={notifResults} 
-                  onChange={() => setNotifResults(!notifResults)} 
-                />
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-5 bg-foreground/5 rounded-2xl border border-border-card">
+                  <div>
+                    <h3 className="font-bold text-foreground text-sm">{t("settings.notifNewPredictions")}</h3>
+                    <p className="text-xs text-foreground/50 mt-1 font-medium">{t("settings.notifNewPredictionsDesc")}</p>
+                  </div>
+                  <button 
+                    onClick={() => setNotifPredictions(!notifPredictions)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifPredictions ? 'bg-primary' : 'bg-foreground/20'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifPredictions ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
 
-                <ToggleRow 
-                  title={t("settings.notifNewMatches")} 
-                  description={t("settings.notifNewMatchesDesc")} 
-                  checked={notifMatches} 
-                  onChange={() => setNotifMatches(!notifMatches)} 
-                />
-                
-                <ToggleRow 
-                  title={t("settings.notifSystem")} 
-                  description={t("settings.notifSystemDesc")} 
-                  checked={notifSystem} 
-                  onChange={() => setNotifSystem(!notifSystem)} 
-                />
+                <div className="flex items-center justify-between p-5 bg-foreground/5 rounded-2xl border border-border-card">
+                  <div>
+                    <h3 className="font-bold text-foreground text-sm">{t("settings.notifMatchResults")}</h3>
+                    <p className="text-xs text-foreground/50 mt-1 font-medium">{t("settings.notifMatchResultsDesc")}</p>
+                  </div>
+                  <button 
+                    onClick={() => setNotifResults(!notifResults)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifResults ? 'bg-primary' : 'bg-foreground/20'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifResults ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
 
-                <ToggleRow 
-                  title={t("settings.notifOffers")} 
-                  description={t("settings.notifOffersDesc")} 
-                  checked={notifOffers} 
-                  onChange={() => setNotifOffers(!notifOffers)} 
-                />
-
+                <div className="flex items-center justify-between p-5 bg-foreground/5 rounded-2xl border border-border-card">
+                  <div>
+                    <h3 className="font-bold text-foreground text-sm">{t("settings.notifOffers")}</h3>
+                    <p className="text-xs text-foreground/50 mt-1 font-medium">{t("settings.notifOffersDesc")}</p>
+                  </div>
+                  <button 
+                    onClick={() => setNotifOffers(!notifOffers)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifOffers ? 'bg-primary' : 'bg-foreground/20'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifOffers ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           {/* TAB: LANGUE */}
           {activeTab === "langue" && (
-            <div className="bg-card backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-xl animate-fade-in">
-              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("settings.interfaceLanguage")}
-              </h2>
+            <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-2xl animate-fade-in">
+              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.interfaceLanguage")}</h2>
               
               <div className="space-y-4">
                 <button 
                   onClick={() => setLang("fr")}
-                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${
-                    lang === "fr" ? 'bg-primary/10 border-primary/30' : 'bg-foreground/5 border-border-card hover:bg-foreground/10'
-                  }`}
+                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${lang === "fr" ? 'bg-primary/10 border-primary/30' : 'bg-foreground/5 border-border-card hover:bg-foreground/10'}`}
                 >
                   <div className="flex items-center gap-4">
                     <span className="text-2xl">🇫🇷</span>
-                    <span className={`font-bold ${lang === "fr" ? 'text-primary' : 'text-foreground'}`}>
-                      {t("settings.french")}
-                    </span>
+                    <span className={`font-bold ${lang === "fr" ? 'text-primary' : 'text-foreground'}`}>{t("settings.french")}</span>
                   </div>
                   {lang === "fr" && <Check className="w-5 h-5 text-primary" />}
                 </button>
 
                 <button 
                   onClick={() => setLang("en")}
-                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${
-                    lang === "en" ? 'bg-primary/10 border-primary/30' : 'bg-foreground/5 border-border-card hover:bg-foreground/10'
-                  }`}
+                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${lang === "en" ? 'bg-primary/10 border-primary/30' : 'bg-foreground/5 border-border-card hover:bg-foreground/10'}`}
                 >
                   <div className="flex items-center gap-4">
                     <span className="text-2xl">🇬🇧</span>
-                    <span className={`font-bold ${lang === "en" ? 'text-primary' : 'text-foreground'}`}>
-                      {t("settings.english")}
-                    </span>
+                    <span className={`font-bold ${lang === "en" ? 'text-primary' : 'text-foreground'}`}>{t("settings.english")}</span>
                   </div>
                   {lang === "en" && <Check className="w-5 h-5 text-primary" />}
                 </button>
@@ -443,22 +409,5 @@ function SettingsNavButton({ icon: Icon, label, active, onClick }: any) {
       <Icon className="w-5 h-5" />
       {label}
     </button>
-  );
-}
-
-function ToggleRow({ title, description, checked, onChange }: { title: string, description: string, checked: boolean, onChange: () => void }) {
-  return (
-    <div className="flex items-center justify-between p-5 bg-foreground/5 rounded-2xl border border-border-card">
-      <div>
-        <h3 className="font-bold text-foreground text-sm">{title}</h3>
-        <p className="text-xs text-foreground/50 mt-1 font-medium">{description}</p>
-      </div>
-      <button 
-        onClick={onChange}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-300 ease-in-out focus:outline-none ${checked ? 'bg-primary' : 'bg-foreground/20'}`}
-      >
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ease-in-out shadow-sm ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
-      </button>
-    </div>
   );
 }

@@ -10,13 +10,13 @@ import {
 import { useState, useEffect } from "react";
 import { logout } from "@/app/login/actions";
 import { createClient } from "@/utils/supabase/client";
-import { useLanguage } from "@/context/LanguageContext";
 
 import { ProFootLogo } from "@/components/ui/ProFootLogo";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Sidebar() {
-  const pathname = usePathname();
   const { t } = useLanguage();
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("Utilisateur");
@@ -93,7 +93,7 @@ export function Sidebar() {
       {/* Top Header Mobile */}
       <div className="lg:hidden fixed top-0 left-0 w-full h-20 bg-gradient-to-b from-[#0A1118] to-transparent z-40 flex items-start justify-between pt-6 px-6 pointer-events-none">
         <Link href="/dashboard" className="flex items-center gap-2 pointer-events-auto group">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 text-[#0A1118] flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 text-background flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
             <ProFootLogo className="w-4 h-4" />
           </div>
           <span className="font-black text-xl tracking-tight text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
@@ -102,7 +102,7 @@ export function Sidebar() {
 
       {/* Bottom Nav Mobile */}
       <div className="lg:hidden fixed bottom-6 left-6 right-6 z-50">
-        <div className="bg-[#111A24]/90 backdrop-blur-2xl border border-white/5 rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex items-center justify-between px-2 py-2">
+        <div className="bg-card/90 backdrop-blur-2xl border border-border-card rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex items-center justify-between px-2 py-2">
           {mainNav.map((item) => {
             const active = isActive(item.href);
             return (
@@ -125,13 +125,13 @@ export function Sidebar() {
       {/* =========================================
           💻 DESKTOP EXPERIENCE (SIDEBAR)
           ========================================= */}
-      <aside className="hidden lg:flex w-[260px] h-screen bg-[#0A1118] flex-col border-r border-border-card fixed left-0 top-0 z-50">
+      <aside className="hidden lg:flex w-[260px] h-screen bg-background flex-col border-r border-border-card fixed left-0 top-0 z-50">
         <div className="p-8 pb-4">
           <Link href="/dashboard" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/5 text-primary border border-primary/40 flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.15)] group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(34,197,94,0.3)] transition-all">
               <ProFootLogo className="w-5 h-5" />
             </div>
-            <span className="font-black text-2xl tracking-tight text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
+            <span className="font-black text-2xl tracking-tight text-foreground" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
           </Link>
         </div>
 
@@ -163,7 +163,7 @@ export function Sidebar() {
           </div>
         </nav>
 
-        <div className="p-6 border-t border-border-card space-y-6 bg-gradient-to-t from-black/20 to-transparent">
+        <div className="p-6 border-t border-border-card space-y-6 bg-gradient-to-t from-black/5 to-transparent">
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-foreground/60">
               <BarChart2 className="w-4 h-4" />
@@ -178,13 +178,13 @@ export function Sidebar() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/5 space-y-1">
+          <div className="pt-4 border-t border-border-card space-y-1">
             <div className="flex items-center gap-3 px-2 py-2">
-              <div className="w-8 h-8 rounded-full bg-sidebar flex items-center justify-center text-foreground/50 border border-border-card">
+              <div className="w-8 h-8 rounded-full bg-card flex items-center justify-center text-foreground/50 border border-border-card">
                 <User className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate capitalize">{userEmail !== "Utilisateur" ? userEmail.split('@')[0].replace('.', ' ') : "Utilisateur"}</p>
+                <p className="text-sm font-bold text-foreground truncate capitalize">{userEmail !== "Utilisateur" ? userEmail.split('@')[0].replace('.', ' ') : "Utilisateur"}</p>
                 <p className={`text-[10px] font-bold uppercase tracking-widest ${isPro ? "text-warning" : "text-primary"}`}>
                   {isPro ? t("sidebar.proElite") : t("sidebar.free")}
                 </p>
@@ -192,7 +192,7 @@ export function Sidebar() {
             </div>
             
             <form action={logout}>
-              <button type="submit" className="w-full flex items-center justify-between gap-3 px-4 py-2 mt-2 rounded-xl text-xs font-bold text-foreground/50 hover:bg-white/5 hover:text-white transition-all border border-transparent hover:border-white/5">
+              <button type="submit" className="w-full flex items-center justify-between gap-3 px-4 py-2 mt-2 rounded-xl text-xs font-bold text-foreground/50 hover:bg-foreground/5 hover:text-foreground transition-all border border-transparent hover:border-border-card">
                 <div className="flex items-center gap-3">
                   <LogOut className="w-4 h-4" />
                   <span>{t("sidebar.logout")}</span>

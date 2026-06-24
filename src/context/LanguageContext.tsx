@@ -1,64 +1,57 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import fr from '@/dictionaries/fr';
-import en from '@/dictionaries/en';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import fr from "@/dictionaries/fr";
+import en from "@/dictionaries/en";
 
-type Language = 'fr' | 'en';
-
+type Language = "fr" | "en";
 type Dictionary = typeof fr;
 
 interface LanguageContextType {
   lang: Language;
   setLang: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (keyPath: string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const dictionaries = {
+const dictionaries: Record<Language, Dictionary> = {
   fr,
   en,
 };
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Language>('fr');
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Language>("fr");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const savedLang = localStorage.getItem('profoot_lang') as Language;
-    if (savedLang === 'fr' || savedLang === 'en') {
+    const savedLang = localStorage.getItem("profoot_lang") as Language | null;
+    if (savedLang === "fr" || savedLang === "en") {
       setLangState(savedLang);
     }
+    setMounted(true);
   }, []);
 
   const setLang = (newLang: Language) => {
     setLangState(newLang);
-    localStorage.setItem('profoot_lang', newLang);
+    localStorage.setItem("profoot_lang", newLang);
   };
 
-  const t = (path: string): string => {
-    const keys = path.split('.');
+  const t = (keyPath: string): string => {
+    const keys = keyPath.split(".");
     let current: any = dictionaries[lang];
-    
     for (const key of keys) {
-      if (current === undefined || current === null) {
-        return path; // Fallback to path if not found
+      if (current[key] === undefined) {
+        console.warn(`Translation key not found: ${keyPath}`);
+        return keyPath;
       }
       current = current[key];
     }
-    
-    if (typeof current === 'string') {
-      return current;
-    }
-    
-    return path; // Fallback
+    return current as string;
   };
 
-  // Prevent hydration mismatch
   if (!mounted) {
-    return <div style={{ visibility: 'hidden' }}>{children}</div>;
+    return <>{children}</>;
   }
 
   return (
@@ -71,7 +64,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 export function useLanguage() {
   const context = useContext(LanguageContext);
   if (context === undefined) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    throw new Error("useLanguage must be used within a LanguageProvider");
   }
   return context;
 }
