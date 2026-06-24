@@ -56,11 +56,42 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
 
   if (!isOpen) return null;
 
-  // Search across all clubs
+  // French -> English translation dictionary for search
+  const frToEn: Record<string, string> = {
+    "écosse": "scotland", "ecosse": "scotland", "france": "france", "espagne": "spain",
+    "allemagne": "germany", "angleterre": "england", "italie": "italy",
+    "brésil": "brazil", "bresil": "brazil", "pays-bas": "netherlands", "hollande": "netherlands",
+    "belgique": "belgium", "portugal": "portugal", "maroc": "morocco",
+    "sénégal": "senegal", "senegal": "senegal", "algérie": "algeria", "algerie": "algeria",
+    "côte d'ivoire": "ivory", "cote d'ivoire": "ivory", "ivoire": "ivory",
+    "cameroun": "cameroon", "égypte": "egypt", "egypte": "egypt", "ghana": "ghana",
+    "nigeria": "nigeria", "mali": "mali", "guinée": "guinea", "guinee": "guinea",
+    "tunisie": "tunisia", "argentine": "argentina", "colombie": "colombia",
+    "mexique": "mexico", "croatie": "croatia", "danemark": "denmark",
+    "suisse": "switzerland", "suède": "sweden", "suede": "sweden",
+    "norvège": "norway", "norvege": "norway", "pologne": "poland",
+    "turquie": "turkey", "grèce": "greece", "russie": "russia",
+    "galles": "wales", "états-unis": "usa", "etats-unis": "usa",
+    "paris": "paris", "madrid": "madrid", "barcelone": "barcelona", "barcelona": "barcelona",
+    "munich": "munich", "milan": "milan", "inter": "inter", "juventus": "juventus",
+    "arsenal": "arsenal", "chelsea": "chelsea", "liverpool": "liverpool",
+    "marseille": "marseille", "lyon": "lyon", "monaco": "monaco", "lille": "lille",
+    "porto": "porto", "benfica": "benfica", "sporting": "sporting",
+    "ajax": "ajax", "psv": "psv", "feyenoord": "feyenoord",
+    "celtic": "celtic", "rangers": "rangers", "dortmund": "dortmund",
+  };
+
+  // Translate French query to English for matching
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const translatedQuery = frToEn[normalizedQuery] || normalizedQuery;
+
+  // Search across all clubs (matching French names too)
   const searchResults = searchQuery.trim().length >= 2
     ? Object.values(clubs).filter((c: any) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.shortName.toLowerCase().includes(searchQuery.toLowerCase())
+        c.name.toLowerCase().includes(normalizedQuery) ||
+        c.name.toLowerCase().includes(translatedQuery) ||
+        c.shortName.toLowerCase().includes(normalizedQuery) ||
+        c.shortName.toLowerCase().includes(translatedQuery)
       )
     : [];
 
@@ -235,6 +266,7 @@ export default function AnalyzePage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [analyzingStep, setAnalyzingStep] = useState(0);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [showGlobalForm, setShowGlobalForm] = useState(false);
   const [pickerOpen, setPickerOpen] = useState<1 | 2 | null>(null);
   const [todayHistory, setTodayHistory] = useState<any[]>([]);
@@ -283,6 +315,7 @@ export default function AnalyzePage() {
     setAnalyzing(true);
     setResult(null);
     setAnalyzingStep(0);
+    setAnalysisError(null);
     
     const startTime = Date.now();
     let currentStep = 0;
@@ -354,10 +387,10 @@ export default function AnalyzePage() {
 
       }, remainingTime + 300);
 
-    } catch (error) {
+    } catch (error: any) {
       clearInterval(interval);
       setAnalyzing(false);
-      alert("Une erreur est survenue lors de l'analyse tactique. Veuillez réessayer.");
+      setAnalysisError(error?.message || "Une erreur est survenue lors de l'analyse tactique.");
     }
   };
 
@@ -389,8 +422,27 @@ export default function AnalyzePage() {
           Notre IA est connectée à l'actualité foot et croise des millions de données pour chaque pronostic.
         </p>
       </div>
+      {/* ERROR BANNER - shown when analysis fails */}
+      {analysisError && (
+        <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-2xl p-4 animate-fade-in">
+          <div className="w-8 h-8 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
+            <X className="w-4 h-4 text-red-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-black text-red-400">Erreur d&apos;analyse</p>
+            <p className="text-xs text-red-400/70 mt-0.5 leading-relaxed">
+              {analysisError === "Erreur serveur API" || analysisError.includes("404") || analysisError.includes("introuvables")
+                ? "Cette équipe n'a pas encore été trouvée dans notre base de données. Essayez avec un autre nom ou choisissez une autre équipe."
+                : "Une erreur est survenue lors de la connexion au serveur d'analyse. Vérifiez votre connexion et réessayez."}
+            </p>
+          </div>
+          <button onClick={() => setAnalysisError(null)} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/20 transition-colors shrink-0">
+            <X className="w-3 h-3 text-red-400/60" />
+          </button>
+        </div>
+      )}
 
-      {/* 2. MATCH À ANALYSER CARD */}
+
       <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 md:p-5 flex flex-col shadow-lg relative overflow-hidden">
         <div className="text-[9px] font-black text-white/25 uppercase tracking-[0.2em] mb-2">
           MATCH À ANALYSER
