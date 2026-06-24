@@ -1,44 +1,139 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { User, Bell, CreditCard, Palette, Globe, Check } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { User, Bell, CreditCard, Palette, Globe, Check, Upload } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function SettingsPage() {
+  const { t, lang, setLang } = useLanguage();
+  const { theme, setTheme } = useTheme();
+  
   const [activeTab, setActiveTab] = useState("profil");
   const [userEmail, setUserEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [loading, setLoading] = useState(true);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [selectedLanguage, setSelectedLanguage] = useState("fr");
+  const [saving, setSaving] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Notifications state
+  const [notifPredictions, setNotifPredictions] = useState(true);
+  const [notifResults, setNotifResults] = useState(true);
+  const [notifMatches, setNotifMatches] = useState(true);
+  const [notifSystem, setNotifSystem] = useState(true);
+  const [notifOffers, setNotifOffers] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (user?.email) {
         setUserEmail(user.email);
+        
+        // Extract name
+        if (user.user_metadata?.full_name) {
+          const parts = user.user_metadata.full_name.split(' ');
+          setFirstName(parts[0] || "");
+          setLastName(parts.slice(1).join(' ') || "");
+        } else {
+          // Fallback parsing from email if no name exists
+          const namePart = user.email.split('@')[0];
+          setFirstName(namePart);
+        }
+
+        // Restore avatar if any
+        const savedAvatar = localStorage.getItem(`avatar_${user.id}`);
+        if (savedAvatar) setAvatarUrl(savedAvatar);
       }
+      
+      // Load notifications
+      const savedNotifs = localStorage.getItem('profoot_notifications');
+      if (savedNotifs) {
+        const parsed = JSON.parse(savedNotifs);
+        setNotifPredictions(parsed.predictions ?? true);
+        setNotifResults(parsed.results ?? true);
+        setNotifMatches(parsed.matches ?? true);
+        setNotifSystem(parsed.system ?? true);
+        setNotifOffers(parsed.offers ?? false);
+      }
+      
       setLoading(false);
     };
     fetchUser();
   }, []);
 
-  const getInitials = (email: string) => {
-    if (!email) return "U";
-    return email.substring(0, 2).toUpperCase();
+  // Save notifications when they change
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('profoot_notifications', JSON.stringify({
+        predictions: notifPredictions,
+        results: notifResults,
+        matches: notifMatches,
+        system: notifSystem,
+        offers: notifOffers
+      }));
+    }
+  }, [notifPredictions, notifResults, notifMatches, notifSystem, notifOffers, loading]);
+
+  const getInitials = (first: string, last: string, email: string) => {
+    if (first && last) return `${first[0]}${last[0]}`.toUpperCase();
+    if (first) return first.substring(0, 2).toUpperCase();
+    if (email) return email.substring(0, 2).toUpperCase();
+    return "U";
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Profil mis à jour avec succès !");
+    setSaving(true);
+    
+    const supabase = createClient();
+    const fullName = `${firstName} ${lastName}`.trim();
+    
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: fullName }
+    });
+
+    setSaving(false);
+    
+    if (error) {
+      alert(t("settings.profileError"));
+    } else {
+      alert(t("settings.profileUpdated"));
+    }
+  };
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        setAvatarUrl(base64String);
+        
+        // Save to local storage for persistence across reloads
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          localStorage.setItem(`avatar_${user.id}`, base64String);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Paramètres</h1>
-        <p className="text-white/50 text-sm mt-1 font-medium">Gérez votre compte et vos préférences personnelles.</p>
+        <h1 className="text-2xl md:text-3xl font-black text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          {t("settings.title")}
+        </h1>
+        <p className="text-foreground/50 text-sm mt-1 font-medium">{t("settings.subtitle")}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -46,32 +141,32 @@ export default function SettingsPage() {
         <div className="space-y-2">
           <SettingsNavButton 
             icon={User} 
-            label="Profil" 
+            label={t("settings.profile")} 
             active={activeTab === "profil"} 
             onClick={() => setActiveTab("profil")} 
           />
           <SettingsNavButton 
             icon={Palette} 
-            label="Apparence" 
+            label={t("settings.appearance")} 
             active={activeTab === "apparence"} 
             onClick={() => setActiveTab("apparence")} 
           />
           <SettingsNavButton 
             icon={Bell} 
-            label="Notifications" 
+            label={t("settings.notifications")} 
             active={activeTab === "notifications"} 
             onClick={() => setActiveTab("notifications")} 
           />
           <SettingsNavButton 
             icon={Globe} 
-            label="Langue" 
+            label={t("settings.language")} 
             active={activeTab === "langue"} 
             onClick={() => setActiveTab("langue")} 
           />
           <Link href="/pricing" className="block">
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all text-orange-400 hover:bg-orange-500/10 border border-transparent">
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all text-warning hover:bg-warning/10 border border-transparent">
               <CreditCard className="w-4 h-4" />
-              Abonnement
+              {t("settings.subscription")}
             </button>
           </Link>
         </div>
@@ -81,32 +176,52 @@ export default function SettingsPage() {
           
           {/* TAB: PROFIL */}
           {activeTab === "profil" && (
-            <div className="bg-[#111A24]/80 backdrop-blur-md border border-white/5 rounded-3xl p-8 shadow-2xl animate-fade-in">
-              <h2 className="text-xl font-black text-white mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Informations du profil</h2>
+            <div className="bg-card backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-xl animate-fade-in">
+              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("settings.profileInfo")}
+              </h2>
               
               {loading ? (
                 <div className="animate-pulse flex space-x-4">
-                  <div className="rounded-full bg-white/10 h-20 w-20"></div>
+                  <div className="rounded-full bg-foreground/10 h-20 w-20"></div>
                   <div className="flex-1 space-y-6 py-1">
-                    <div className="h-2 bg-white/10 rounded"></div>
+                    <div className="h-2 bg-foreground/10 rounded"></div>
                     <div className="space-y-3">
                       <div className="grid grid-cols-3 gap-4">
-                        <div className="h-2 bg-white/10 rounded col-span-2"></div>
-                        <div className="h-2 bg-white/10 rounded col-span-1"></div>
+                        <div className="h-2 bg-foreground/10 rounded col-span-2"></div>
+                        <div className="h-2 bg-foreground/10 rounded col-span-1"></div>
                       </div>
-                      <div className="h-2 bg-white/10 rounded"></div>
+                      <div className="h-2 bg-foreground/10 rounded"></div>
                     </div>
                   </div>
                 </div>
               ) : (
                 <>
                   <div className="flex items-center gap-6 mb-10">
-                    <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#10B981] to-[#059669] flex items-center justify-center text-3xl font-black text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                      {getInitials(userEmail)}
-                    </div>
+                    {avatarUrl ? (
+                      <div 
+                        className="w-24 h-24 rounded-3xl bg-cover bg-center shadow-lg border-2 border-primary"
+                        style={{ backgroundImage: `url(${avatarUrl})` }}
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center text-3xl font-black text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                        {getInitials(firstName, lastName, userEmail)}
+                      </div>
+                    )}
                     <div>
-                      <button className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">
-                        Changer l'avatar
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        ref={fileInputRef} 
+                        onChange={handleAvatarUpload} 
+                        className="hidden" 
+                      />
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2 bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-foreground px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                        {t("settings.changeAvatar")}
                       </button>
                     </div>
                   </div>
@@ -114,22 +229,43 @@ export default function SettingsPage() {
                   <form onSubmit={handleSaveProfile} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Prénom</label>
-                        <input type="text" placeholder="Votre prénom" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#10B981]/50 focus:bg-white/10 transition-all" />
+                        <label className="text-xs font-bold text-foreground/50 uppercase tracking-widest">{t("settings.firstName")}</label>
+                        <input 
+                          type="text" 
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          placeholder={t("settings.firstNamePlaceholder")} 
+                          className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:bg-foreground/10 transition-all" 
+                        />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Nom</label>
-                        <input type="text" placeholder="Votre nom" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#10B981]/50 focus:bg-white/10 transition-all" />
+                        <label className="text-xs font-bold text-foreground/50 uppercase tracking-widest">{t("settings.lastName")}</label>
+                        <input 
+                          type="text" 
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          placeholder={t("settings.lastNamePlaceholder")} 
+                          className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:bg-foreground/10 transition-all" 
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Email (Non modifiable)</label>
-                      <input type="email" value={userEmail} disabled className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3.5 text-sm text-white/50 cursor-not-allowed" />
+                      <label className="text-xs font-bold text-foreground/50 uppercase tracking-widest">{t("settings.emailNonEditable")}</label>
+                      <input 
+                        type="email" 
+                        value={userEmail} 
+                        disabled 
+                        className="w-full bg-foreground/5 border border-foreground/5 rounded-xl px-4 py-3.5 text-sm text-foreground/50 cursor-not-allowed opacity-70" 
+                      />
                     </div>
                     
-                    <div className="pt-6 border-t border-white/5 flex justify-end">
-                      <button type="submit" className="bg-gradient-to-r from-[#10B981] to-[#059669] hover:brightness-110 active:scale-[0.98] text-black px-8 py-3 rounded-xl text-sm font-black transition-all shadow-[0_4px_20px_rgba(16,185,129,0.3)]">
-                        Sauvegarder les modifications
+                    <div className="pt-6 border-t border-border-card flex justify-end">
+                      <button 
+                        type="submit" 
+                        disabled={saving}
+                        className="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-xl text-sm font-black transition-all shadow-[0_4px_20px_rgba(16,185,129,0.3)] disabled:opacity-50"
+                      >
+                        {saving ? t("settings.saving") : t("settings.saveChanges")}
                       </button>
                     </div>
                   </form>
@@ -140,107 +276,150 @@ export default function SettingsPage() {
 
           {/* TAB: APPARENCE */}
           {activeTab === "apparence" && (
-            <div className="bg-[#111A24]/80 backdrop-blur-md border border-white/5 rounded-3xl p-8 shadow-2xl animate-fade-in">
-              <h2 className="text-xl font-black text-white mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Thème de l'application</h2>
+            <div className="bg-card backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-xl animate-fade-in">
+              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("settings.appTheme")}
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <button className="border-2 border-[#10B981] bg-white/5 rounded-2xl p-6 flex flex-col items-center gap-4 relative overflow-hidden">
-                  <div className="absolute top-4 right-4 text-[#10B981]">
-                    <Check className="w-5 h-5" />
-                  </div>
+                
+                {/* DARK THEME BUTTON */}
+                <button 
+                  onClick={() => setTheme("dark")}
+                  className={`border-2 rounded-2xl p-6 flex flex-col items-center gap-4 relative overflow-hidden transition-colors ${
+                    theme === "dark" ? "border-primary bg-primary/5" : "border-border-card bg-foreground/5 hover:border-foreground/20"
+                  }`}
+                >
+                  {theme === "dark" && (
+                    <div className="absolute top-4 right-4 text-primary">
+                      <Check className="w-5 h-5" />
+                    </div>
+                  )}
                   <div className="w-full h-32 bg-[#0A1118] rounded-xl border border-white/10 flex items-center justify-center shadow-inner relative overflow-hidden">
-                     {/* Mockup UI */}
                      <div className="absolute top-2 left-2 right-2 flex gap-2">
                         <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
                         <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-                        <div className="w-3 h-3 rounded-full bg-[#10B981]/50"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
                      </div>
-                     <div className="w-16 h-2 bg-[#10B981]/30 rounded-full" />
+                     <div className="w-16 h-2 bg-primary/50 rounded-full" />
                   </div>
-                  <span className="font-bold text-white">Sombre (ProFoot Elite)</span>
+                  <span className={`font-bold ${theme === "dark" ? "text-foreground" : "text-foreground/70"}`}>
+                    {t("settings.darkTheme")}
+                  </span>
                 </button>
-                <button className="border-2 border-transparent bg-white/5 hover:border-white/10 rounded-2xl p-6 flex flex-col items-center gap-4 transition-colors opacity-50 cursor-not-allowed">
-                  <div className="w-full h-32 bg-[#F3F4F6] rounded-xl border border-gray-300 flex items-center justify-center shadow-inner relative overflow-hidden">
+
+                {/* LIGHT THEME BUTTON */}
+                <button 
+                  onClick={() => setTheme("light")}
+                  className={`border-2 rounded-2xl p-6 flex flex-col items-center gap-4 relative overflow-hidden transition-colors ${
+                    theme === "light" ? "border-primary bg-primary/5" : "border-border-card bg-foreground/5 hover:border-foreground/20"
+                  }`}
+                >
+                  {theme === "light" && (
+                    <div className="absolute top-4 right-4 text-primary">
+                      <Check className="w-5 h-5" />
+                    </div>
+                  )}
+                  <div className="w-full h-32 bg-[#F8FAFC] rounded-xl border border-gray-200 flex items-center justify-center shadow-inner relative overflow-hidden">
                      <div className="absolute top-2 left-2 right-2 flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
-                        <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-                        <div className="w-3 h-3 rounded-full bg-[#10B981]/50"></div>
+                        <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-400"></div>
                      </div>
-                     <div className="w-16 h-2 bg-[#10B981]/50 rounded-full" />
+                     <div className="w-16 h-2 bg-primary/80 rounded-full" />
                   </div>
-                  <span className="font-bold text-white/50">Clair (Bientôt disponible)</span>
+                  <span className={`font-bold ${theme === "light" ? "text-foreground" : "text-foreground/70"}`}>
+                    {t("settings.lightTheme")}
+                  </span>
                 </button>
+
               </div>
             </div>
           )}
 
           {/* TAB: NOTIFICATIONS */}
           {activeTab === "notifications" && (
-            <div className="bg-[#111A24]/80 backdrop-blur-md border border-white/5 rounded-3xl p-8 shadow-2xl animate-fade-in">
-              <h2 className="text-xl font-black text-white mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Préférences de notifications</h2>
+            <div className="bg-card backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-xl animate-fade-in">
+              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("settings.notifPreferences")}
+              </h2>
               
-              <div className="space-y-6">
-                <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5">
-                  <div>
-                    <h3 className="font-bold text-white text-sm">Alertes de nouveaux pronostics</h3>
-                    <p className="text-xs text-white/50 mt-1 font-medium">Recevoir un email quand une nouvelle analyse IA majeure est disponible.</p>
-                  </div>
-                  <button 
-                    onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notificationsEnabled ? 'bg-[#10B981]' : 'bg-white/20'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notificationsEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
+              <div className="space-y-4">
+                
+                <ToggleRow 
+                  title={t("settings.notifNewPredictions")} 
+                  description={t("settings.notifNewPredictionsDesc")} 
+                  checked={notifPredictions} 
+                  onChange={() => setNotifPredictions(!notifPredictions)} 
+                />
+                
+                <ToggleRow 
+                  title={t("settings.notifMatchResults")} 
+                  description={t("settings.notifMatchResultsDesc")} 
+                  checked={notifResults} 
+                  onChange={() => setNotifResults(!notifResults)} 
+                />
 
-                <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5">
-                  <div>
-                    <h3 className="font-bold text-white text-sm">Résultats de matchs suivis</h3>
-                    <p className="text-xs text-white/50 mt-1 font-medium">Notification push sur votre appareil quand un match suivi se termine.</p>
-                  </div>
-                  <button className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-[#10B981]">
-                    <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6" />
-                  </button>
-                </div>
+                <ToggleRow 
+                  title={t("settings.notifNewMatches")} 
+                  description={t("settings.notifNewMatchesDesc")} 
+                  checked={notifMatches} 
+                  onChange={() => setNotifMatches(!notifMatches)} 
+                />
+                
+                <ToggleRow 
+                  title={t("settings.notifSystem")} 
+                  description={t("settings.notifSystemDesc")} 
+                  checked={notifSystem} 
+                  onChange={() => setNotifSystem(!notifSystem)} 
+                />
 
-                <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5">
-                  <div>
-                    <h3 className="font-bold text-white text-sm">Offres et nouveautés</h3>
-                    <p className="text-xs text-white/50 mt-1 font-medium">Informations sur les nouvelles fonctionnalités de ProFoot.</p>
-                  </div>
-                  <button className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-white/20">
-                    <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1" />
-                  </button>
-                </div>
+                <ToggleRow 
+                  title={t("settings.notifOffers")} 
+                  description={t("settings.notifOffersDesc")} 
+                  checked={notifOffers} 
+                  onChange={() => setNotifOffers(!notifOffers)} 
+                />
+
               </div>
             </div>
           )}
 
           {/* TAB: LANGUE */}
           {activeTab === "langue" && (
-            <div className="bg-[#111A24]/80 backdrop-blur-md border border-white/5 rounded-3xl p-8 shadow-2xl animate-fade-in">
-              <h2 className="text-xl font-black text-white mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Langue de l'interface</h2>
+            <div className="bg-card backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-xl animate-fade-in">
+              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("settings.interfaceLanguage")}
+              </h2>
               
               <div className="space-y-4">
                 <button 
-                  onClick={() => setSelectedLanguage("fr")}
-                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${selectedLanguage === "fr" ? 'bg-[#10B981]/10 border-[#10B981]/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                  onClick={() => setLang("fr")}
+                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${
+                    lang === "fr" ? 'bg-primary/10 border-primary/30' : 'bg-foreground/5 border-border-card hover:bg-foreground/10'
+                  }`}
                 >
                   <div className="flex items-center gap-4">
                     <span className="text-2xl">🇫🇷</span>
-                    <span className={`font-bold ${selectedLanguage === "fr" ? 'text-[#10B981]' : 'text-white'}`}>Français</span>
+                    <span className={`font-bold ${lang === "fr" ? 'text-primary' : 'text-foreground'}`}>
+                      {t("settings.french")}
+                    </span>
                   </div>
-                  {selectedLanguage === "fr" && <Check className="w-5 h-5 text-[#10B981]" />}
+                  {lang === "fr" && <Check className="w-5 h-5 text-primary" />}
                 </button>
 
                 <button 
-                  onClick={() => setSelectedLanguage("en")}
-                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${selectedLanguage === "en" ? 'bg-[#10B981]/10 border-[#10B981]/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                  onClick={() => setLang("en")}
+                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${
+                    lang === "en" ? 'bg-primary/10 border-primary/30' : 'bg-foreground/5 border-border-card hover:bg-foreground/10'
+                  }`}
                 >
                   <div className="flex items-center gap-4">
                     <span className="text-2xl">🇬🇧</span>
-                    <span className={`font-bold ${selectedLanguage === "en" ? 'text-[#10B981]' : 'text-white'}`}>English (US)</span>
+                    <span className={`font-bold ${lang === "en" ? 'text-primary' : 'text-foreground'}`}>
+                      {t("settings.english")}
+                    </span>
                   </div>
-                  {selectedLanguage === "en" && <Check className="w-5 h-5 text-[#10B981]" />}
+                  {lang === "en" && <Check className="w-5 h-5 text-primary" />}
                 </button>
               </div>
             </div>
@@ -258,11 +437,28 @@ function SettingsNavButton({ icon: Icon, label, active, onClick }: any) {
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${
       active 
-        ? 'bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20 scale-[1.02] shadow-sm' 
-        : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+        ? 'bg-primary/10 text-primary border border-primary/20 scale-[1.02] shadow-sm' 
+        : 'text-foreground/60 hover:bg-foreground/5 hover:text-foreground border border-transparent'
     }`}>
       <Icon className="w-5 h-5" />
       {label}
     </button>
+  );
+}
+
+function ToggleRow({ title, description, checked, onChange }: { title: string, description: string, checked: boolean, onChange: () => void }) {
+  return (
+    <div className="flex items-center justify-between p-5 bg-foreground/5 rounded-2xl border border-border-card">
+      <div>
+        <h3 className="font-bold text-foreground text-sm">{title}</h3>
+        <p className="text-xs text-foreground/50 mt-1 font-medium">{description}</p>
+      </div>
+      <button 
+        onClick={onChange}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-300 ease-in-out focus:outline-none ${checked ? 'bg-primary' : 'bg-foreground/20'}`}
+      >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ease-in-out shadow-sm ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+      </button>
+    </div>
   );
 }

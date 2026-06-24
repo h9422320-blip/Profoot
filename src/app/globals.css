@@ -2,17 +2,35 @@
 @import "tailwindcss";
 @import "./landing.css";
 
+/* ── Dark theme (default) ── */
 :root {
   --background: #070e13;
   --foreground: #f8fafc;
-  
+
   --sidebar-bg: #0b1319;
   --card-bg: #101b23;
   --card-border: #1a2a36;
-  
+
   --primary: #10b981;
   --primary-hover: #059669;
-  
+
+  --accent-blue: #3b82f6;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+}
+
+/* ── Light theme overrides ── */
+[data-theme='light'] {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --sidebar-bg: #ffffff;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+
+  --primary: #10b981;
+  --primary-hover: #059669;
+
   --accent-blue: #3b82f6;
   --accent-orange: #f59e0b;
   --accent-red: #ef4444;
@@ -26,7 +44,7 @@
   --color-border-card: var(--card-border);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
-  
+
   --color-info: var(--accent-blue);
   --color-warning: var(--accent-orange);
   --color-danger: var(--accent-red);
@@ -37,6 +55,7 @@ body {
   color: var(--foreground);
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 h1, h2, h3, h4, .font-heading {
@@ -46,4 +65,4 @@ h1, h2, h3, h4, .font-heading {
 
 /* Custom UI Hierarchy */
 .text-stat { font-family: 'Sora', sans-serif; font-weight: 800; }
-.card-premium { background: var(--card); border: 1px solid var(--card-border); border-radius: 1.25rem; }
+.card-premium { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.25rem; }

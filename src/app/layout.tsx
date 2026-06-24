@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { Providers } from "@/components/Providers";
+
 export const metadata: Metadata = {
   title: "ProFoot - Analyse IA Football",
   description: "Plateforme SaaS d'analyse et de prédiction de matchs de football propulsée par l'IA.",
@@ -22,7 +24,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="min-h-full flex bg-background text-foreground w-full" style={{ fontFamily: "'Inter', sans-serif" }}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

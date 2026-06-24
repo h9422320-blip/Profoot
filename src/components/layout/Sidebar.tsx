@@ -10,22 +10,24 @@ import {
 import { useState, useEffect } from "react";
 import { logout } from "@/app/login/actions";
 import { createClient } from "@/utils/supabase/client";
+import { useLanguage } from "@/context/LanguageContext";
 
 import { ProFootLogo } from "@/components/ui/ProFootLogo";
 
-const mainNav = [
-  { href: "/analyze", label: "Analyse Tactique", icon: Brain },
-  { href: "/competitions", label: "Compétitions", icon: Trophy },
-  { href: "/competitions/wc", label: "Coupe du monde", icon: Globe, special: true },
-];
-
 export function Sidebar() {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("Utilisateur");
   const [todayCount, setTodayCount] = useState(0);
   const [isPro, setIsPro] = useState(false);
+
+  const mainNav = [
+    { href: "/analyze", label: t("sidebar.tacticalAnalysis"), icon: Brain },
+    { href: "/competitions", label: t("sidebar.competitions"), icon: Trophy },
+    { href: "/competitions/wc", label: t("sidebar.worldCup"), icon: Globe, special: true },
+  ];
 
   // Fonction pour compter les analyses du jour
   function countTodayAnalyses() {
@@ -96,8 +98,6 @@ export function Sidebar() {
           </div>
           <span className="font-black text-xl tracking-tight text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
         </Link>
-
-        {/* Icone utilisateur supprimée à la demande de l'utilisateur, tout a été déplacé vers la page Mon Profil */}
       </div>
 
       {/* Bottom Nav Mobile */}
@@ -137,7 +137,7 @@ export function Sidebar() {
 
         <nav className="px-6 flex-1 space-y-8 mt-6 overflow-y-auto">
           <div>
-            <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest px-2 mb-4">Analyse</p>
+            <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest px-2 mb-4">{t("sidebar.analysis")}</p>
             <div className="space-y-2">
               {mainNav.map((item) => (
                 <Link key={item.href} href={item.href} className={linkClass(item.href, item.special)}>
@@ -151,14 +151,14 @@ export function Sidebar() {
           <div className="space-y-2">
             <Link href="/history" className={linkClass("/history")}>
               <History className="w-5 h-5" />
-              <span>Historique</span>
+              <span>{t("sidebar.history")}</span>
             </Link>
             <Link href="/pricing" className={`flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all text-[14px] font-bold text-foreground/70 border border-border-card hover:bg-card/80`}>
               <div className="flex items-center gap-3">
                 <CreditCard className="w-5 h-5" />
-                <span>Pricing</span>
+                <span>{t("sidebar.pricing")}</span>
               </div>
-              <span className="bg-warning/20 text-warning text-[10px] px-2 py-1 rounded-lg font-black uppercase tracking-wider">Pro</span>
+              <span className="bg-warning/20 text-warning text-[10px] px-2 py-1 rounded-lg font-black uppercase tracking-wider">{t("sidebar.pro")}</span>
             </Link>
           </div>
         </nav>
@@ -167,11 +167,11 @@ export function Sidebar() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-foreground/60">
               <BarChart2 className="w-4 h-4" />
-              <span className="text-xs font-semibold">Analyses du jour</span>
+              <span className="text-xs font-semibold">{t("sidebar.todayAnalyses")}</span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-black text-primary tracking-tight">{todayCount}</span>
-              <span className="text-sm font-bold text-foreground/30">analyse{todayCount > 1 ? "s" : ""}</span>
+              <span className="text-sm font-bold text-foreground/30">{todayCount > 1 ? t("sidebar.analyses_plural") : t("sidebar.analysis_singular")}</span>
             </div>
             <div className="h-2 bg-primary/10 rounded-full overflow-hidden w-full">
               <div className="h-full bg-gradient-to-r from-primary/50 to-primary rounded-full transition-all duration-700" style={{ width: `${Math.min(todayCount * 10, 100)}%` }} />
@@ -186,7 +186,7 @@ export function Sidebar() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white truncate capitalize">{userEmail !== "Utilisateur" ? userEmail.split('@')[0].replace('.', ' ') : "Utilisateur"}</p>
                 <p className={`text-[10px] font-bold uppercase tracking-widest ${isPro ? "text-warning" : "text-primary"}`}>
-                  {isPro ? "PRO ELITE" : "Gratuit"}
+                  {isPro ? t("sidebar.proElite") : t("sidebar.free")}
                 </p>
               </div>
             </div>
@@ -195,7 +195,7 @@ export function Sidebar() {
               <button type="submit" className="w-full flex items-center justify-between gap-3 px-4 py-2 mt-2 rounded-xl text-xs font-bold text-foreground/50 hover:bg-white/5 hover:text-white transition-all border border-transparent hover:border-white/5">
                 <div className="flex items-center gap-3">
                   <LogOut className="w-4 h-4" />
-                  <span>Se déconnecter</span>
+                  <span>{t("sidebar.logout")}</span>
                 </div>
               </button>
             </form>
