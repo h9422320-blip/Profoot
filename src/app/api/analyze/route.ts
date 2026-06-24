@@ -396,7 +396,11 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     const result = await model.generateContent(prompt, { signal: controller.signal } as any);
     clearTimeout(timeoutId);
     
-    let responseText = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+    let responseText = result.response.text();
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      responseText = jsonMatch[0];
+    }
     const parsedData = JSON.parse(responseText);
 
     // Merge API basic data to keep the interface working
@@ -413,6 +417,6 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
 
   } catch (e: any) {
     console.error("[BACKEND_ANALYZE] Gemini failed:", e.message);
-    return NextResponse.json({ error: "Erreur lors de la génération de l'analyse IA détaillée." }, { status: 500 });
+    return NextResponse.json({ error: "Erreur lors de la génération de l'analyse IA détaillée.", details: e.message }, { status: 500 });
   }
 }
