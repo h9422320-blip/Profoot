@@ -357,6 +357,7 @@ DONNÉES REELLES FOURNIES :
 - Derniers résultats : ${JSON.stringify(recent1)}
 - Blessures majeures : ${JSON.stringify(t1Injuries?.response?.slice(0,5).map((i:any)=>i.player.name) || "Aucune")}
 - Meilleurs buteurs : ${scorers1.map((s:any) => `${s.name} (${s.goals})`).join(', ')}
+- Effectif complet : ${squad1.all.slice(0, 20).join(', ')}
 
 [DONNÉES ${team2.name}]
 - Niveau/Classement : ${stand2}
@@ -364,26 +365,29 @@ DONNÉES REELLES FOURNIES :
 - Derniers résultats : ${JSON.stringify(recent2)}
 - Blessures majeures : ${JSON.stringify(t2Injuries?.response?.slice(0,5).map((i:any)=>i.player.name) || "Aucune")}
 - Meilleurs buteurs : ${scorers2.map((s:any) => `${s.name} (${s.goals})`).join(', ')}
+- Effectif complet : ${squad2.all.slice(0, 20).join(', ')}
 
 [HISTORIQUE CONFRONTATIONS (H2H)]
 ${JSON.stringify(pastMatches.slice(0, 3).map((m:any)=>`${m.teams.home.name} ${m.goals.home}-${m.goals.away} ${m.teams.away.name}`))}
 
-TON ANALYSE ET TA DECISION :
-1. Évalue la différence de niveau réel entre les deux équipes (très important pour des matchs comme Belgique vs Iran, ou une équipe européenne vs une équipe asiatique/africaine).
+TON ANALYSE ET TA DECISION (MODE EXPERT & COACH) :
+1. Évalue la différence de niveau réel entre les équipes.
 2. Prédit le score exact (team1Goals et team2Goals).
-3. Calcule les probabilités (winProb, drawProb, loseProb, somme = 100).
-4. Génère les métriques avancées et les textes d'analyse pour l'utilisateur.
+3. Calcule les probabilités (winProb, drawProb, loseProb).
+4. GÉNÉRATION DES TEXTES : C'est ici que tu dois briller. Rédige tes analyses comme un analyste professionnel travaillant pour un grand club. 
+   - Utilise ET EXPLIQUE des termes tactiques (ex: "Ils ont un xG élevé car ils se créent des occasions nettes", ou "Un PPDA très bas signifie qu'ils vont presser haut et étouffer l'adversaire", "bloc bas", "transitions rapides"). 
+   - BASE-TOI SUR LES EFFECTIFS fournis ci-dessus. Cite nommément les joueurs clés, donne ton évaluation de leur forme actuelle, et identifie qui fera la différence depuis le banc. Attribue même une note ou un avis sur la performance de certains joueurs phares.
 
 RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun markdown) :
 {
-  "predictedScore": { "team1Goals": 0, "team2Goals": 0, "reasoning": "Phrase courte de 2 lignes justifiant le score avec des arguments percutants." },
+  "predictedScore": { "team1Goals": 0, "team2Goals": 0, "reasoning": "Phrase courte justifiant le score." },
   "winProb": 0,
   "drawProb": 0,
   "loseProb": 0,
-  "confidence": 0, // entre 70 et 99 selon la certitude de ta prédiction
-  "quickSummary": "Un résumé captivant du match.",
+  "confidence": 0,
+  "quickSummary": "Un résumé captivant du match et de la tactique attendue.",
   "comparison": {
-    "attack": { "team1": 0, "team2": 0 }, // Score de 10 à 99
+    "attack": { "team1": 0, "team2": 0 },
     "defense": { "team1": 0, "team2": 0 },
     "form": { "team1": 0, "team2": 0 },
     "h2h": { "team1": 50, "team2": 50 },
@@ -401,16 +405,16 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     "xT": { "team1": 0.0, "team2": 0.0 },
     "ppda": { "team1": 10, "team2": 10 }
   },
-  "keyStrengths": { "team1": ["Force 1", "Force 2"], "team2": ["Force 1", "Force 2"] },
+  "keyStrengths": { "team1": ["Force 1"], "team2": ["Force 1"] },
   "scenarios": [ { "title": "Scénario principal", "content": "..." } ],
   "sections": [
-    { "title": "Dynamique & Forme Récente", "icon": "Activity", "content": "Analyse détaillée de la forme. 4 phrases." },
-    { "title": "Bataille Offensive & Défensive", "icon": "Target", "content": "Analyse détaillée des forces en présence. 4 phrases." },
-    { "title": "Effectifs & Joueurs Clés", "icon": "Award", "content": "Analyse des joueurs. 4 phrases." },
-    { "title": "Absents & Blessés", "icon": "Shield", "content": "Impact des blessés. 4 phrases." },
-    { "title": "Historique des Confrontations", "icon": "History", "content": "Analyse du H2H. 4 phrases." },
-    { "title": "Contexte & Enjeux du Match", "icon": "Trophy", "content": "Importance du match et pression. 4 phrases." },
-    { "title": "Justification du Score Final", "icon": "Brain", "content": "Pourquoi tu as choisi ce score final précis en croisant l'écart de niveau et la forme. 5 phrases." }
+    { "title": "Dynamique & Forme Récente", "icon": "Activity", "content": "Analyse de la forme." },
+    { "title": "Bataille Tactique (xG, PPDA, Blocs)", "icon": "Target", "content": "Analyse tactique pro (pressing, blocs, xT) avec explications des abréviations pour le lecteur." },
+    { "title": "Effectifs & Évaluation des Joueurs", "icon": "Award", "content": "Analyse des joueurs de l'effectif. Qui est en forme ? Qui est sur le banc ? Évalue et note les joueurs clés." },
+    { "title": "Absents & Blessés", "icon": "Shield", "content": "Impact des blessés." },
+    { "title": "Historique des Confrontations", "icon": "History", "content": "Analyse du H2H." },
+    { "title": "Contexte & Enjeux du Match", "icon": "Trophy", "content": "Importance du match." },
+    { "title": "Justification du Score Final", "icon": "Brain", "content": "Pourquoi ce score final, en combinant les joueurs clés et la tactique." }
   ]
 }`;
 
