@@ -417,6 +417,54 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
 
   } catch (e: any) {
     console.error("[BACKEND_ANALYZE] Gemini failed:", e.message);
-    return NextResponse.json({ error: "Erreur lors de la génération de l'analyse IA détaillée.", details: e.message }, { status: 500 });
+    
+    // MATHEMATICAL FALLBACK IN CASE OF GEMINI ERROR (ex: Leaked API Key)
+    let winProb = 45; let loseProb = 25; let drawProb = 30;
+    let t1Goals = 2; let t2Goals = 1;
+    if (baseGoalsFor2 > baseGoalsFor1) {
+       winProb = 25; loseProb = 45; t1Goals = 1; t2Goals = 2;
+    }
+    
+    const fallbackData = {
+      isFinished: false,
+      predictedScore: { team1Goals: t1Goals, team2Goals: t2Goals, reasoning: `(Mode Secours Automatique) ${t1Goals > t2Goals ? team1.name : team2.name} est favori selon les statistiques de base.` },
+      winProb, drawProb, loseProb,
+      confidence: 75,
+      quickSummary: `[Note: Analyse IA désactivée - Problème de clé API Google] Prédiction basée sur les statistiques globales.`,
+      comparison: {
+        attack: { team1: 60, team2: 50 }, defense: { team1: 60, team2: 50 },
+        form: { team1: 60, team2: 50 }, h2h: { team1: 50, team2: 50 },
+        goals: { team1: 60, team2: 50 }, global: { team1: 60, team2: 50 }
+      },
+      predictions: {
+        expectedGoals: { team1: t1Goals + 0.5, team2: t2Goals + 0.2, total: t1Goals + t2Goals + 0.7 },
+        btts: { yes: 60, no: 40 },
+        overUnder: { over05: 90, over15: 75, over25: 50, over35: 30 }
+      },
+      advancedMetrics: {
+        possession: { team1: baseAvgPossession1, team2: baseAvgPossession2 },
+        xG: { team1: t1Goals + 0.5, team2: t2Goals + 0.2 },
+        xT: { team1: t1Goals + 0.6, team2: t2Goals + 0.3 },
+        ppda: { team1: 10, team2: 10 }
+      },
+      keyStrengths: { team1: ["Donnée non disponible"], team2: ["Donnée non disponible"] },
+      scenarios: [ { title: "Scénario de base", content: "Analyse experte indisponible." } ],
+      sections: [
+        { title: "Dynamique & Forme Récente", icon: "Activity", content: `Statistiques basiques : ${team1.name} a marqué ${baseGoalsFor1} buts cette saison. ${team2.name} a marqué ${baseGoalsFor2} buts.` },
+        { title: "Bataille Offensive & Défensive", icon: "Target", content: "Analyse détaillée impossible sans IA." },
+        { title: "Effectifs & Joueurs Clés", icon: "Award", content: "Analyse des joueurs impossible sans IA." },
+        { title: "Absents & Blessés", icon: "Shield", content: "Données ignorées en mode secours." },
+        { title: "Historique des Confrontations", icon: "History", content: "Données ignorées en mode secours." },
+        { title: "Contexte & Enjeux du Match", icon: "Trophy", content: "Données ignorées en mode secours." },
+        { title: "Alerte Système", icon: "Brain", content: "Le modèle d'intelligence artificielle n'a pas pu être contacté car la clé API Gemini configurée sur le serveur a été désactivée par Google (erreur: API key leaked). Veuillez configurer une nouvelle clé API dans les variables d'environnement Vercel." }
+      ],
+      globalForm: {
+        team1: { recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1, cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1, winStreak: winStreak1 },
+        team2: { recentMatches: recent2, goalsScored: baseGoalsFor2, goalsConceded: baseGoalsAgainst2, cleanSheets: s2r.clean_sheet?.total || 0, avgPossession: baseAvgPossession2, winStreak: winStreak2 }
+      }
+    };
+    
+    analysisCache.set(cacheKey, { data: fallbackData, timestamp: Date.now() });
+    return NextResponse.json(fallbackData);
   }
 }
