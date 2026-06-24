@@ -56,43 +56,18 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
 
   if (!isOpen) return null;
 
-  // French -> English translation dictionary for search
-  const frToEn: Record<string, string> = {
-    "écosse": "scotland", "ecosse": "scotland", "france": "france", "espagne": "spain",
-    "allemagne": "germany", "angleterre": "england", "italie": "italy",
-    "brésil": "brazil", "bresil": "brazil", "pays-bas": "netherlands", "hollande": "netherlands",
-    "belgique": "belgium", "portugal": "portugal", "maroc": "morocco",
-    "sénégal": "senegal", "senegal": "senegal", "algérie": "algeria", "algerie": "algeria",
-    "côte d'ivoire": "ivory", "cote d'ivoire": "ivory", "ivoire": "ivory",
-    "cameroun": "cameroon", "égypte": "egypt", "egypte": "egypt", "ghana": "ghana",
-    "nigeria": "nigeria", "mali": "mali", "guinée": "guinea", "guinee": "guinea",
-    "tunisie": "tunisia", "argentine": "argentina", "colombie": "colombia",
-    "mexique": "mexico", "croatie": "croatia", "danemark": "denmark",
-    "suisse": "switzerland", "suède": "sweden", "suede": "sweden",
-    "norvège": "norway", "norvege": "norway", "pologne": "poland",
-    "turquie": "turkey", "grèce": "greece", "russie": "russia",
-    "galles": "wales", "états-unis": "usa", "etats-unis": "usa",
-    "paris": "paris", "madrid": "madrid", "barcelone": "barcelona", "barcelona": "barcelona",
-    "munich": "munich", "milan": "milan", "inter": "inter", "juventus": "juventus",
-    "arsenal": "arsenal", "chelsea": "chelsea", "liverpool": "liverpool",
-    "marseille": "marseille", "lyon": "lyon", "monaco": "monaco", "lille": "lille",
-    "porto": "porto", "benfica": "benfica", "sporting": "sporting",
-    "ajax": "ajax", "psv": "psv", "feyenoord": "feyenoord",
-    "celtic": "celtic", "rangers": "rangers", "dortmund": "dortmund",
-  };
-
-  // Translate French query to English for matching
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const translatedQuery = frToEn[normalizedQuery] || normalizedQuery;
-
-  // Search across all clubs (matching French names too)
+  // Search across all clubs with French alias support
   const searchResults = searchQuery.trim().length >= 2
-    ? Object.values(clubs).filter((c: any) =>
-        c.name.toLowerCase().includes(normalizedQuery) ||
-        c.name.toLowerCase().includes(translatedQuery) ||
-        c.shortName.toLowerCase().includes(normalizedQuery) ||
-        c.shortName.toLowerCase().includes(translatedQuery)
-      )
+    ? Object.values(clubs).filter((c: any) => {
+        const q = searchQuery.toLowerCase().trim();
+        if (c.name.toLowerCase().includes(q) || c.shortName.toLowerCase().includes(q)) return true;
+        // Check French aliases
+        for (const [englishName, aliases] of Object.entries(FR_TEAM_ALIASES)) {
+          const matchesAlias = aliases.some(alias => alias.includes(q) || q.includes(alias));
+          if (matchesAlias && c.name.toLowerCase().includes(englishName.toLowerCase())) return true;
+        }
+        return false;
+      })
     : [];
 
   const showSearch = searchQuery.trim().length >= 2;
@@ -260,13 +235,83 @@ function CompetitionCarousel() {
   );
 }
 
+// French ↔ English name aliases for team search
+const FR_TEAM_ALIASES: Record<string, string[]> = {
+  // National teams
+  "france": ["france", "les bleus", "bleus"],
+  "spain": ["espagne", "esp", "spain", "roja"],
+  "germany": ["allemagne", "germany", "mannschaft"],
+  "england": ["angleterre", "england", "three lions"],
+  "brazil": ["brésil", "bresil", "brazil", "brasil", "seleção", "selecao"],
+  "argentina": ["argentine", "argentina", "albiceleste"],
+  "portugal": ["portugal"],
+  "italy": ["italie", "italy", "azzurri"],
+  "netherlands": ["pays-bas", "hollande", "netherlands", "nederland"],
+  "belgium": ["belgique", "belgium", "diables rouges"],
+  "croatia": ["croatie", "croatia", "hrvatska"],
+  "denmark": ["danemark", "denmark", "danemark"],
+  "serbia": ["serbie", "serbia"],
+  "wales": ["pays de galles", "wales"],
+  "scotland": ["écosse", "ecosse", "scotland"],
+  "switzerland": ["suisse", "switzerland", "schweiz"],
+  "austria": ["autriche", "austria"],
+  "poland": ["pologne", "poland"],
+  "ukraine": ["ukraine"],
+  "turkey": ["turquie", "turkey"],
+  "russia": ["russie", "russia"],
+  "greece": ["grèce", "grece", "greece"],
+  "sweden": ["suède", "suede", "sweden"],
+  "norway": ["norvège", "norvege", "norway"],
+  "romania": ["roumanie", "romania"],
+  // Africa
+  "morocco": ["maroc", "morocco"],
+  "senegal": ["sénégal", "senegal"],
+  "nigeria": ["nigeria", "super eagles"],
+  "cameroon": ["cameroun", "cameroon"],
+  "ghana": ["ghana"],
+  "mali": ["mali"],
+  "algeria": ["algérie", "algerie", "algeria"],
+  "egypt": ["égypte", "egypte", "egypt"],
+  "ivory coast": ["côte d'ivoire", "cote d'ivoire", "cote divoire", "ivory coast"],
+  "tunisia": ["tunisie", "tunisia"],
+  "guinea": ["guinée", "guinee", "guinea"],
+  "dr congo": ["rd congo", "rdc", "congo"],
+  // Americas
+  "usa": ["usa", "etats-unis", "états-unis", "united states"],
+  "mexico": ["mexique", "mexico"],
+  "colombia": ["colombie", "colombia"],
+  "chile": ["chili", "chile"],
+  "uruguay": ["uruguay"],
+  "ecuador": ["équateur", "equateur", "ecuador"],
+  "peru": ["pérou", "perou", "peru"],
+  "paraguay": ["paraguay"],
+  "venezuela": ["venezuela"],
+  "canada": ["canada"],
+  "jamaica": ["jamaïque", "jamaique", "jamaica"],
+  // Asia
+  "japan": ["japon", "japan"],
+  "south korea": ["corée du sud", "coree du sud", "south korea", "korea"],
+  "saudi arabia": ["arabie saoudite", "saudi arabia"],
+  "iran": ["iran"],
+  "australia": ["australie", "australia", "socceroos"],
+  // Clubs (common French usage)
+  "real madrid": ["real madrid", "real"],
+  "fc barcelona": ["barça", "barca", "fc barcelona", "barcelona"],
+  "psg": ["paris saint-germain", "paris", "psg"],
+  "manchester city": ["man city", "manchester city", "city"],
+  "manchester united": ["man united", "manchester united", "man utd"],
+  "juventus": ["juventus", "juve"],
+  "olympique de marseille": ["marseille", "om"],
+  "olympique lyonnais": ["lyon", "ol"],
+};
+
 export default function AnalyzePage() {
   const [team1, setTeam1] = useState<string | null>(null);
   const [team2, setTeam2] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzingStep, setAnalyzingStep] = useState(0);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [showGlobalForm, setShowGlobalForm] = useState(false);
   const [pickerOpen, setPickerOpen] = useState<1 | 2 | null>(null);
   const [todayHistory, setTodayHistory] = useState<any[]>([]);
@@ -314,8 +359,8 @@ export default function AnalyzePage() {
     
     setAnalyzing(true);
     setResult(null);
+    setAnalyzeError(null);
     setAnalyzingStep(0);
-    setAnalysisError(null);
     
     const startTime = Date.now();
     let currentStep = 0;
@@ -390,7 +435,8 @@ export default function AnalyzePage() {
     } catch (error: any) {
       clearInterval(interval);
       setAnalyzing(false);
-      setAnalysisError(error?.message || "Une erreur est survenue lors de l'analyse tactique.");
+      setResult(null);
+      setAnalyzeError(error?.message || "Erreur inconnue");
     }
   };
 
@@ -422,27 +468,8 @@ export default function AnalyzePage() {
           Notre IA est connectée à l'actualité foot et croise des millions de données pour chaque pronostic.
         </p>
       </div>
-      {/* ERROR BANNER - shown when analysis fails */}
-      {analysisError && (
-        <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-2xl p-4 animate-fade-in">
-          <div className="w-8 h-8 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
-            <X className="w-4 h-4 text-red-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-black text-red-400">Erreur d&apos;analyse</p>
-            <p className="text-xs text-red-400/70 mt-0.5 leading-relaxed">
-              {analysisError === "Erreur serveur API" || analysisError.includes("404") || analysisError.includes("introuvables")
-                ? "Cette équipe n'a pas encore été trouvée dans notre base de données. Essayez avec un autre nom ou choisissez une autre équipe."
-                : "Une erreur est survenue lors de la connexion au serveur d'analyse. Vérifiez votre connexion et réessayez."}
-            </p>
-          </div>
-          <button onClick={() => setAnalysisError(null)} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/20 transition-colors shrink-0">
-            <X className="w-3 h-3 text-red-400/60" />
-          </button>
-        </div>
-      )}
 
-
+      {/* 2. MATCH À ANALYSER CARD */}
       <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 md:p-5 flex flex-col shadow-lg relative overflow-hidden">
         <div className="text-[9px] font-black text-white/25 uppercase tracking-[0.2em] mb-2">
           MATCH À ANALYSER
@@ -503,6 +530,30 @@ export default function AnalyzePage() {
           <span className="text-[8px] text-white/25 uppercase tracking-widest font-bold mt-1">
             Basé sur stats réelles + actualités foot 2026
           </span>
+          {/* Inline Error Card — replaces the old alert() */}
+          {analyzeError && !analyzing && (
+            <div className="w-full max-w-md mx-auto mt-3 bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start gap-3 animate-fade-in">
+              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-red-400 text-sm font-black">!</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-black text-red-400 uppercase tracking-widest mb-1">Erreur d'analyse</p>
+                <p className="text-xs text-red-300/70 font-medium leading-relaxed">
+                  {analyzeError.includes("introuvables") 
+                    ? "Ces équipes ne sont pas encore reconnues par notre base de données. Essaie des équipes de grands championnats."
+                    : analyzeError.includes("statistiques")
+                    ? "Impossible de récupérer les statistiques réelles pour ce match. Réessaie dans un instant."
+                    : "Une erreur est survenue côté serveur. Réessaie dans quelques secondes."}
+                </p>
+                <button
+                  onClick={() => { setAnalyzeError(null); handleAnalyze(); }}
+                  className="mt-2 text-[10px] font-black text-red-400 uppercase tracking-widest hover:text-red-300 transition-colors flex items-center gap-1"
+                >
+                  ↺ Réessayer
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
