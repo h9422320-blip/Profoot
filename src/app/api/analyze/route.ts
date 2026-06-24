@@ -141,29 +141,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "API Football non configurée." }, { status: 503 });
   }
 
-  const [id1, id2] = await Promise.all([getTeamApiId(team1), getTeamApiId(team2)]);
-  if (!id1 || !id2) {
-    return NextResponse.json({ error: "Équipes introuvables via API-Football." }, { status: 404 });
-  }
+  let id1 = null; let id2 = null;
+  try {
+    const ids = await Promise.all([getTeamApiId(team1), getTeamApiId(team2)]);
+    id1 = ids[0]; id2 = ids[1];
+  } catch (e) {}
 
+  let t1Data: any = null, t2Data: any = null, h2hRes: any = null;
   const season = getCurrentSeason();
 
-  console.log(`[BACKEND_ANALYZE] Fetching H2H and Fixtures...`);
-  async function getFixturesWithFallback(teamId: string, initialSeason: number) {
-    let s = initialSeason;
-    let data = await fetchApiFootball(`/fixtures?team=${teamId}&season=${s}`);
-    if (!data?.response || data.response.length === 0) {
-      s -= 1;
-      data = await fetchApiFootball(`/fixtures?team=${teamId}&season=${s}`);
-    }
-    return { data, season: s };
+  if (id1 && id2) {
+    console.log(`[BACKEND_ANALYZE] Fetching H2H and Fixtures...`);
+    const [t1d, t2d, h2hr] = await Promise.all([
+      getFixturesWithFallback(id1, season),
+      getFixturesWithFallback(id2, season),
+      fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}`)
+    ]);
+    t1Data = t1d; t2Data = t2d; h2hRes = h2hr;
+  } else {
+    console.warn(`[BACKEND_ANALYZE] API-Football IDs missing (Rate Limit or Unmapped). Bypassing API-Football for PURE AI analysis.`);
+    t1Data = { data: { response: [] }, season };
+    t2Data = { data: { response: [] }, season };
+    h2hRes = { response: [] };
   }
-
-  const [t1Data, t2Data, h2hRes] = await Promise.all([
-    getFixturesWithFallback(id1, season),
-    getFixturesWithFallback(id2, season),
-    fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}`)
-  ]);
 
   const h2hList = h2hRes?.response || [];
   h2hList.sort((a: any, b: any) => new Date(b.fixture.date).getTime() - new Date(a.fixture.date).getTime());
@@ -250,21 +250,22 @@ export async function POST(req: Request) {
   if (t1Fixtures?.response?.length > 0) t1League = t1Fixtures.response[0].league.id;
   if (t2Fixtures?.response?.length > 0) t2League = t2Fixtures.response[0].league.id;
 
-  const [t1Stats, t2Stats, t1Injuries, t2Injuries, t1Squad, t2Squad, t1TopScorers, t2TopScorers, t1Standings, t2Standings] = await Promise.all([
-    fetchApiFootball(`/teams/statistics?team=${id1}&season=${t1Season}&league=${t1League}`, CACHE_TTL.TEAM_STATS),
-    fetchApiFootball(`/teams/statistics?team=${id2}&season=${t2Season}&league=${t2League}`, CACHE_TTL.TEAM_STATS),
-    fetchApiFootball(`/injuries?team=${id1}&season=${t1Season}`),
-    fetchApiFootball(`/injuries?team=${id2}&season=${t2Season}`),
-    fetchApiFootball(`/players/squads?team=${id1}`, CACHE_TTL.TEAM_STATS),
-    fetchApiFootball(`/players/squads?team=${id2}`, CACHE_TTL.TEAM_STATS),
-    fetchApiFootball(`/players/topscorers?season=${t1Season}&league=${t1League}`),
-    fetchApiFootball(`/players/topscorers?season=${t2Season}&league=${t2League}`),
-    fetchApiFootball(`/standings?season=${t1Season}&league=${t1League}`, CACHE_TTL.API_DATA),
-    fetchApiFootball(`/standings?season=${t2Season}&league=${t2League}`, CACHE_TTL.API_DATA)
-  ]);
+  let t1Stats = null, t2Stats = null, t1Injuries = null, t2Injuries = null, t1Squad = null, t2Squad = null, t1TopScorers = null, t2TopScorers = null, t1Standings = null, t2Standings = null;
 
-  if (!t1Stats || !t2Stats) {
-    return NextResponse.json({ error: "Impossible de récupérer les statistiques réelles." }, { status: 500 });
+  if (id1 && id2) {
+    const statsRes = await Promise.all([
+      fetchApiFootball(`/teams/statistics?team=${id1}&season=${t1Season}&league=${t1League}`, CACHE_TTL.TEAM_STATS),
+      fetchApiFootball(`/teams/statistics?team=${id2}&season=${t2Season}&league=${t2League}`, CACHE_TTL.TEAM_STATS),
+      fetchApiFootball(`/injuries?team=${id1}&season=${t1Season}`),
+      fetchApiFootball(`/injuries?team=${id2}&season=${t2Season}`),
+      fetchApiFootball(`/players/squads?team=${id1}`, CACHE_TTL.TEAM_STATS),
+      fetchApiFootball(`/players/squads?team=${id2}`, CACHE_TTL.TEAM_STATS),
+      fetchApiFootball(`/players/topscorers?season=${t1Season}&league=${t1League}`),
+      fetchApiFootball(`/players/topscorers?season=${t2Season}&league=${t2League}`),
+      fetchApiFootball(`/standings?season=${t1Season}&league=${t1League}`, CACHE_TTL.API_DATA),
+      fetchApiFootball(`/standings?season=${t2Season}&league=${t2League}`, CACHE_TTL.API_DATA)
+    ]);
+    [t1Stats, t2Stats, t1Injuries, t2Injuries, t1Squad, t2Squad, t1TopScorers, t2TopScorers, t1Standings, t2Standings] = statsRes;
   }
 
   // Extract Standings Info (For League Level/Rank Context)
@@ -345,9 +346,10 @@ export async function POST(req: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s timeout
 
     const prompt = `Tu es le moteur de prédiction IA de ProFoot, un système ultra-avancé d'analyse de football.
-TA MISSION : Analyser les données fournies pour ${team1.name} et ${team2.name}, prendre en compte LA FORCE REELLE DES ÉQUIPES (ne pas se laisser piéger par les statistiques d'une équipe faible qui joue dans une ligue facile vs une équipe forte dans une ligue difficile), évaluer les blessures, la dynamique et le H2H, puis PREDIRE LE SCORE EXACT et générer une explication détaillée.
+TA MISSION : Analyser le match entre ${team1.name} et ${team2.name}, prendre en compte LA FORCE REELLE DES ÉQUIPES, évaluer les dynamiques et PREDIRE LE SCORE EXACT avec une explication détaillée.
+TRÈS IMPORTANT : Si les données statistiques ci-dessous sont vides ou incomplètes (ex: possession à 50%, buts à 0), CELA SIGNIFIE QUE NOTRE API STATISTIQUE EST INJOIGNABLE. DANS CE CAS, IGNORE CES DONNÉES VIDES ET UTILISE TA PROPRE CONNAISSANCE GLOBALE DU FOOTBALL POUR RÉDIGER UNE ANALYSE PARFAITE DE CE MATCH !
 
-DONNÉES REELLES FOURNIES (API-Football) :
+DONNÉES REELLES FOURNIES :
 
 [DONNÉES ${team1.name}]
 - Niveau/Classement : ${stand1}
