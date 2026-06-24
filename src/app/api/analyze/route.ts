@@ -375,8 +375,9 @@ TON ANALYSE ET TA DECISION (MODE EXPERT & COACH) :
 2. Prédit le score exact (team1Goals et team2Goals).
 3. Calcule les probabilités (winProb, drawProb, loseProb).
 4. GÉNÉRATION DES TEXTES (TRÈS IMPORTANT) : Ton style de rédaction doit être ULTRA-PREMIUM, captivant, motivant et digne d'un directeur sportif ou d'un grand journaliste tactique. Interdiction d'utiliser des phrases banales. 
-   - PLUME PREMIUM : Utilise un vocabulaire riche, intense et immersif. Exemple de style attendu : "Le Real Madrid déploie une force de frappe terrifiante. Leur ratio d'Expected Goals (xG) souligne une capacité clinique à créer le danger, magistralement orchestrée par un Vinicius étincelant (Note: 9/10). En face, le Barça risque l'asphyxie tactique face à un PPDA très bas, synonyme d'un pressing féroce dès la perte de balle..."
-   - EXPLICATION INTÉGRÉE : Quand tu utilises un terme (xG, xT, PPDA, bloc médian, transition), explique son impact réel sur le match de façon claire mais experte.
+   - PLUME PREMIUM : Utilise un vocabulaire riche, intense et immersif. 
+   - EXPLICATION OBLIGATOIRE DES TERMES TECHNIQUES : À chaque fois que tu utilises un terme technique (xG, PPDA, xT, bloc médian, etc.), tu DOIS OBLIGATOIREMENT l'expliquer brièvement entre parenthèses pour le grand public.
+   - EXEMPLE EXACT DU STYLE ATTENDU : "Le Real Madrid déploie une force de frappe terrifiante. Leur ratio d'Expected Goals (xG, qui mesure la qualité réelle et la dangerosité des occasions de but) souligne une capacité clinique à créer le danger, magistralement orchestrée par un Vinicius étincelant (Note: 9/10). En face, le Barça risque l'asphyxie tactique face à un PPDA très bas (un indicateur prouvant que le Real exerce un pressing féroce et étouffant dès la perte de balle)..."
    - ÉVALUATION DES EFFECTIFS : Décortique les joueurs titulaires et les remplaçants fournis. Note les joueurs clés sur 10, explique leur rôle exact dans ce match précis, et révèle qui sera le facteur X capable de renverser la rencontre.
 
 RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun markdown) :
