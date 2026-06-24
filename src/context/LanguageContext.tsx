@@ -50,10 +50,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return current as string;
   };
 
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
+  // En SSR, on rend avec le thème par défaut pour éviter l'erreur "must be used within Provider"
   return (
     <LanguageContext.Provider value={{ lang, setLang, t }}>
       {children}
