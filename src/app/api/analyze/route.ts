@@ -356,16 +356,16 @@ DONNÉES REELLES FOURNIES :
 - Statistiques globales : ${baseGoalsFor1} buts marqués, ${baseGoalsAgainst1} encaissés en ${played1} matchs. Possession : ${baseAvgPossession1}%.
 - Derniers résultats : ${JSON.stringify(recent1)}
 - Blessures majeures : ${JSON.stringify(t1Injuries?.response?.slice(0,5).map((i:any)=>i.player.name) || "Aucune")}
-- Meilleurs buteurs : ${scorers1.map((s:any) => `${s.name} (${s.goals})`).join(', ')}
-- Effectif complet : ${squad1.all.slice(0, 20).join(', ')}
+- Meilleurs buteurs : ${scorers1.length > 0 ? scorers1.map((s:any) => `${s.name} (${s.goals})`).join(', ') : "Inconnu (utilise tes connaissances)"}
+- Effectif complet : ${squad1.all.length > 0 ? squad1.all.slice(0, 20).join(', ') : "Inconnu (API injoignable, base-toi sur ta propre connaissance des titulaires et remplaçants actuels de " + team1.name + ")"}
 
 [DONNÉES ${team2.name}]
 - Niveau/Classement : ${stand2}
 - Statistiques globales : ${baseGoalsFor2} buts marqués, ${baseGoalsAgainst2} encaissés en ${played2} matchs. Possession : ${baseAvgPossession2}%.
 - Derniers résultats : ${JSON.stringify(recent2)}
 - Blessures majeures : ${JSON.stringify(t2Injuries?.response?.slice(0,5).map((i:any)=>i.player.name) || "Aucune")}
-- Meilleurs buteurs : ${scorers2.map((s:any) => `${s.name} (${s.goals})`).join(', ')}
-- Effectif complet : ${squad2.all.slice(0, 20).join(', ')}
+- Meilleurs buteurs : ${scorers2.length > 0 ? scorers2.map((s:any) => `${s.name} (${s.goals})`).join(', ') : "Inconnu (utilise tes connaissances)"}
+- Effectif complet : ${squad2.all.length > 0 ? squad2.all.slice(0, 20).join(', ') : "Inconnu (API injoignable, base-toi sur ta propre connaissance des titulaires et remplaçants actuels de " + team2.name + ")"}
 
 [HISTORIQUE CONFRONTATIONS (H2H)]
 ${JSON.stringify(pastMatches.slice(0, 3).map((m:any)=>`${m.teams.home.name} ${m.goals.home}-${m.goals.away} ${m.teams.away.name}`))}
