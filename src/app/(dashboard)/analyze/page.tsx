@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader } from "lucide-react";
+import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw } from "lucide-react";
 import { clubs, getClub, matches, competitions } from "@/lib/data";
 
 // Extract future matches for the "Prochains matchs" list
@@ -530,28 +530,34 @@ export default function AnalyzePage() {
           <span className="text-[8px] text-white/25 uppercase tracking-widest font-bold mt-1">
             Basé sur stats réelles + actualités foot 2026
           </span>
-          {/* Inline Error Card — replaces the old alert() */}
+          {/* Premium Inline Error Card */}
           {analyzeError && !analyzing && (
-            <div className="w-full max-w-md mx-auto mt-3 bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start gap-3 animate-fade-in">
-              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-red-400 text-sm font-black">!</span>
+            <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#1A0B10] to-[#0A1118] border border-red-500/20 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(239,68,68,0.08)] relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500/50 to-transparent"></div>
+              
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-1">
+                <AlertTriangle className="w-6 h-6 text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
               </div>
-              <div className="flex-1">
-                <p className="text-xs font-black text-red-400 uppercase tracking-widest mb-1">Erreur d'analyse</p>
-                <p className="text-xs text-red-300/70 font-medium leading-relaxed">
+              
+              <div className="space-y-2">
+                <h4 className="text-[13px] font-black text-white tracking-[0.1em] uppercase">
+                  Analyse Interrompue
+                </h4>
+                <p className="text-xs text-white/50 font-medium leading-relaxed max-w-[280px] mx-auto">
                   {analyzeError.includes("introuvables") 
-                    ? "Ces équipes ne sont pas encore reconnues par notre base de données. Essaie des équipes de grands championnats."
+                    ? "Les équipes sélectionnées ne sont pas reconnues dans notre base de données. Veuillez choisir une équipe valide."
                     : analyzeError.includes("statistiques")
-                    ? "Impossible de récupérer les statistiques réelles pour ce match. Réessaie dans un instant."
-                    : "Une erreur est survenue côté serveur. Réessaie dans quelques secondes."}
+                    ? "Le serveur de statistiques est temporairement surchargé. Réessayez dans un instant."
+                    : "Une erreur de connexion au modèle d'intelligence artificielle est survenue."}
                 </p>
-                <button
-                  onClick={() => { setAnalyzeError(null); handleAnalyze(); }}
-                  className="mt-2 text-[10px] font-black text-red-400 uppercase tracking-widest hover:text-red-300 transition-colors flex items-center gap-1"
-                >
-                  ↺ Réessayer
-                </button>
               </div>
+
+              <button
+                onClick={() => { setAnalyzeError(null); handleAnalyze(); }}
+                className="mt-3 bg-red-500/10 hover:bg-red-500/20 active:scale-95 border border-red-500/30 text-red-400 font-bold py-2.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest"
+              >
+                <RefreshCcw className="w-4 h-4" /> Réessayer
+              </button>
             </div>
           )}
         </div>
