@@ -58,15 +58,34 @@ async function getTeamApiId(team: any) {
   
   let searchName = team.name;
   const translations: Record<string, string> = {
+    // French -> English
     "espagne": "Spain", "allemagne": "Germany", "angleterre": "England", 
-    "brésil": "Brazil", "bresil": "Brazil", "argentine": "Argentina", 
+    "brésil": "Brazil", "bresil": "Brazil", "brasil": "Brazil",
+    "france": "France", "argentine": "Argentina", "argentina": "Argentina",
     "maroc": "Morocco", "sénégal": "Senegal", "senegal": "Senegal", 
-    "algérie": "Algeria", "côte d'ivoire": "Ivory Coast", "égypte": "Egypt", 
+    "algérie": "Algeria", "algerie": "Algeria",
+    "côte d'ivoire": "Ivory Coast", "cote d'ivoire": "Ivory Coast", "cote divoire": "Ivory Coast",
+    "égypte": "Egypt", "egypte": "Egypt",
     "cameroun": "Cameroon", "rd congo": "Congo DR", "pays de galles": "Wales", 
     "croatie": "Croatia", "italie": "Italy", "danemark": "Denmark",
     "pays-bas": "Netherlands", "belgique": "Belgium", "portugal": "Portugal",
-    "etats-unis": "USA", "suisse": "Switzerland", "uruguay": "Uruguay",
-    "colombie": "Colombia", "mexique": "Mexico"
+    "etats-unis": "USA", "usa": "USA", "suisse": "Switzerland", "uruguay": "Uruguay",
+    "colombie": "Colombia", "mexique": "Mexico", "mexico": "Mexico",
+    "ghana": "Ghana", "nigeria": "Nigeria", "tunisie": "Tunisia", "tunisie": "Tunisia",
+    "mali": "Mali", "guinée": "Guinea", "guinee": "Guinea", "burkina faso": "Burkina Faso",
+    "japon": "Japan", "corée du sud": "South Korea", "australie": "Australia",
+    "pays-bas": "Netherlands", "hollande": "Netherlands",
+    "serbie": "Serbia", "pologne": "Poland", "roumanie": "Romania",
+    "espagne": "Spain", "suède": "Sweden", "suede": "Sweden",
+    "norvège": "Norway", "norvege": "Norway", "finlande": "Finland",
+    "russie": "Russia", "turquie": "Turkey", "grèce": "Greece", "grece": "Greece",
+    "chine": "China", "inde": "India", "arabie saoudite": "Saudi Arabia",
+    "iran": "Iran", "irak": "Iraq", "émirats arabes unis": "United Arab Emirates",
+    "angola": "Angola", "mozambique": "Mozambique", "zimbabwe": "Zimbabwe",
+    "afrique du sud": "South Africa", "zambie": "Zambia", "kenya": "Kenya",
+    "tanzanie": "Tanzania", "ethiopie": "Ethiopia",
+    "venezuela": "Venezuela", "pérou": "Peru", "perou": "Peru", "chili": "Chile",
+    "bolivie": "Bolivia", "équateur": "Ecuador", "equateur": "Ecuador", "paraguay": "Paraguay",
   };
 
   if (translations[team.name.toLowerCase()]) {
@@ -108,7 +127,7 @@ export async function POST(req: Request) {
   if (!team1 || !team2) return NextResponse.json({ error: "Équipes manquantes" }, { status: 400 });
 
   const today = new Date().toISOString().split('T')[0];
-  const cacheKey = `${team1.id}-${team2.id}-${today}`;
+  const cacheKey = `${team1.id || team1.name}-${team2.id || team2.name}-${today}`;
   const cachedAnalysis = analysisCache.get(cacheKey);
   if (cachedAnalysis && Date.now() - cachedAnalysis.timestamp < CACHE_TTL.ANALYSIS) {
     console.log(`[BACKEND_ANALYZE] Returning CACHED analysis for ${team1.name} vs ${team2.name}`);
