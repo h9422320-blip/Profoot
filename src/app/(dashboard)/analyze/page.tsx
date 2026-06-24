@@ -1112,11 +1112,11 @@ export default function AnalyzePage() {
                       <p className="text-[9px] text-white/40 uppercase tracking-widest font-black mt-0.5">Moteurs FBref & StatsBomb</p>
                     </div>
                   </div>
-                  <div className="space-y-6 mt-6 px-1">
-                    <ModernMetricBar label="Possession Moyenne Estimée" val1={result.advancedMetrics.possession.team1} val2={result.advancedMetrics.possession.team2} suffix="%" />
-                    <ModernMetricBar label="Expected Goals (xG)" val1={result.advancedMetrics.xG.team1} val2={result.advancedMetrics.xG.team2} />
-                    <ModernMetricBar label="Expected Threat (xT)" val1={result.advancedMetrics.xT.team1} val2={result.advancedMetrics.xT.team2} />
-                    <ModernMetricBar label="Intensité du Pressing (PPDA)" val1={result.advancedMetrics.ppda.team1} val2={result.advancedMetrics.ppda.team2} invertColors={true} />
+                  <div className="space-y-8 mt-6 px-1">
+                    <ModernMetricBar label="Possession Moyenne" description="Pourcentage de contrôle du ballon estimé" val1={result.advancedMetrics.possession.team1} val2={result.advancedMetrics.possession.team2} suffix="%" />
+                    <ModernMetricBar label="Expected Goals (xG)" description="Buts Attendus : Qualité des occasions créées" val1={result.advancedMetrics.xG.team1} val2={result.advancedMetrics.xG.team2} />
+                    <ModernMetricBar label="Expected Threat (xT)" description="Menace Attendue : Danger généré par les passes" val1={result.advancedMetrics.xT.team1} val2={result.advancedMetrics.xT.team2} />
+                    <ModernMetricBar label="Pressing (PPDA)" description="Plus ce chiffre est BAS, plus l'équipe presse haut et fort" val1={result.advancedMetrics.ppda.team1} val2={result.advancedMetrics.ppda.team2} invertColors={true} />
                   </div>
                 </div>
               )}
@@ -1292,17 +1292,26 @@ function DualBar({ label, v1, v2, suffix="", customL1="", customL2="", hideTitle
   );
 }
 
-function ModernMetricBar({ label, val1, val2, suffix = "", invertColors = false }: any) {
+function ModernMetricBar({ label, description, val1, val2, suffix = "", invertColors = false }: any) {
   const isV1Better = invertColors ? val1 < val2 : val1 > val2;
   const total = Number(val1) + Number(val2);
   const w1 = total === 0 ? 50 : (Number(val1) / total) * 100;
   const w2 = total === 0 ? 50 : (Number(val2) / total) * 100;
 
   return (
-    <div className="flex flex-col space-y-3 relative group">
+    <div className="flex flex-col space-y-4 relative group">
       <div className="flex justify-between items-end px-1 relative">
         <span className={`text-xl md:text-3xl font-black ${isV1Better ? 'text-[#10B981] drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-white/60'}`} style={{fontFamily:"'Space Grotesk',sans-serif"}}>{val1}{suffix}</span>
-        <span className="text-[9px] md:text-xs font-black uppercase tracking-[0.2em] text-white/40 absolute left-0 right-0 text-center bottom-1.5">{label}</span>
+        
+        <div className="absolute left-0 right-0 flex flex-col items-center justify-end bottom-0 z-10 pointer-events-none">
+          <span className="text-[9px] md:text-xs font-black uppercase tracking-[0.2em] text-white/40 bg-[#111A24] px-2">{label}</span>
+          {description && (
+            <span className="text-[8.5px] font-bold text-[#10B981]/80 bg-[#111A24] px-2 mt-0.5 tracking-wide max-w-[180px] md:max-w-xs text-center leading-tight">
+              {description}
+            </span>
+          )}
+        </div>
+
         <span className={`text-xl md:text-3xl font-black ${!isV1Better ? 'text-[#EF4444] drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]' : 'text-white/60'}`} style={{fontFamily:"'Space Grotesk',sans-serif"}}>{val2}{suffix}</span>
       </div>
       <div className="relative h-3 bg-black/45 rounded-full flex overflow-hidden border border-white/5 shadow-inner">
