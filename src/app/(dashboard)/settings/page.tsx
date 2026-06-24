@@ -132,10 +132,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.title")}</h1>
-        <p className="text-foreground/50 text-sm mt-1 font-medium">{t("settings.subtitle")}</p>
-      </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Navigation Paramètres */}
@@ -146,24 +143,7 @@ export default function SettingsPage() {
             active={activeTab === "profil"} 
             onClick={() => setActiveTab("profil")} 
           />
-          <SettingsNavButton 
-            icon={Palette} 
-            label={t("settings.appearance")} 
-            active={activeTab === "apparence"} 
-            onClick={() => setActiveTab("apparence")} 
-          />
-          <SettingsNavButton 
-            icon={Bell} 
-            label={t("settings.notifications")} 
-            active={activeTab === "notifications"} 
-            onClick={() => setActiveTab("notifications")} 
-          />
-          <SettingsNavButton 
-            icon={Globe} 
-            label={t("settings.language")} 
-            active={activeTab === "langue"} 
-            onClick={() => setActiveTab("langue")} 
-          />
+
           <Link href="/pricing" className="block">
             <button className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all text-orange-400 hover:bg-orange-500/10 border border-transparent">
               <CreditCard className="w-4 h-4" />
@@ -265,131 +245,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* TAB: APPARENCE */}
-          {activeTab === "apparence" && (
-            <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-2xl animate-fade-in">
-              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.appTheme")}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <button 
-                  onClick={() => setTheme("dark")}
-                  className={`border-2 ${theme === "dark" ? 'border-primary bg-primary/5' : 'border-border-card bg-foreground/5 hover:border-foreground/20'} rounded-2xl p-6 flex flex-col items-center gap-4 relative overflow-hidden transition-all`}
-                >
-                  {theme === "dark" && (
-                    <div className="absolute top-4 right-4 text-primary">
-                      <Check className="w-5 h-5" />
-                    </div>
-                  )}
-                  <div className="w-full h-32 bg-[#070e13] rounded-xl border border-white/10 flex items-center justify-center shadow-inner relative overflow-hidden">
-                     <div className="absolute top-2 left-2 right-2 flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
-                        <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-                        <div className="w-3 h-3 rounded-full bg-[#10B981]/50"></div>
-                     </div>
-                     <div className="w-16 h-2 bg-[#10B981]/30 rounded-full" />
-                  </div>
-                  <span className={`font-bold ${theme === "dark" ? 'text-foreground' : 'text-foreground/70'}`}>{t("settings.darkTheme")}</span>
-                </button>
-                <button 
-                  onClick={() => setTheme("light")}
-                  className={`border-2 ${theme === "light" ? 'border-primary bg-primary/5' : 'border-border-card bg-foreground/5 hover:border-foreground/20'} rounded-2xl p-6 flex flex-col items-center gap-4 relative overflow-hidden transition-all`}
-                >
-                  {theme === "light" && (
-                    <div className="absolute top-4 right-4 text-primary">
-                      <Check className="w-5 h-5" />
-                    </div>
-                  )}
-                  <div className="w-full h-32 bg-[#f8fafc] rounded-xl border border-gray-200 flex items-center justify-center shadow-inner relative overflow-hidden">
-                     <div className="absolute top-2 left-2 right-2 flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                        <div className="w-3 h-3 rounded-full bg-[#10B981]"></div>
-                     </div>
-                     <div className="w-16 h-2 bg-[#10B981] rounded-full" />
-                  </div>
-                  <span className={`font-bold ${theme === "light" ? 'text-foreground' : 'text-foreground/70'}`}>{t("settings.lightTheme")}</span>
-                </button>
-              </div>
-            </div>
-          )}
 
-          {/* TAB: NOTIFICATIONS */}
-          {activeTab === "notifications" && (
-            <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-2xl animate-fade-in">
-              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.notifPreferences")}</h2>
-              
-              <div className="space-y-6">
-                <div className="flex items-center justify-between p-5 bg-foreground/5 rounded-2xl border border-border-card">
-                  <div>
-                    <h3 className="font-bold text-foreground text-sm">{t("settings.notifNewPredictions")}</h3>
-                    <p className="text-xs text-foreground/50 mt-1 font-medium">{t("settings.notifNewPredictionsDesc")}</p>
-                  </div>
-                  <button 
-                    onClick={() => setNotifPredictions(!notifPredictions)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifPredictions ? 'bg-primary' : 'bg-foreground/20'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifPredictions ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between p-5 bg-foreground/5 rounded-2xl border border-border-card">
-                  <div>
-                    <h3 className="font-bold text-foreground text-sm">{t("settings.notifMatchResults")}</h3>
-                    <p className="text-xs text-foreground/50 mt-1 font-medium">{t("settings.notifMatchResultsDesc")}</p>
-                  </div>
-                  <button 
-                    onClick={() => setNotifResults(!notifResults)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifResults ? 'bg-primary' : 'bg-foreground/20'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifResults ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between p-5 bg-foreground/5 rounded-2xl border border-border-card">
-                  <div>
-                    <h3 className="font-bold text-foreground text-sm">{t("settings.notifOffers")}</h3>
-                    <p className="text-xs text-foreground/50 mt-1 font-medium">{t("settings.notifOffersDesc")}</p>
-                  </div>
-                  <button 
-                    onClick={() => setNotifOffers(!notifOffers)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifOffers ? 'bg-primary' : 'bg-foreground/20'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifOffers ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB: LANGUE */}
-          {activeTab === "langue" && (
-            <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-2xl animate-fade-in">
-              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.interfaceLanguage")}</h2>
-              
-              <div className="space-y-4">
-                <button 
-                  onClick={() => setLang("fr")}
-                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${lang === "fr" ? 'bg-primary/10 border-primary/30' : 'bg-foreground/5 border-border-card hover:bg-foreground/10'}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-2xl">🇫🇷</span>
-                    <span className={`font-bold ${lang === "fr" ? 'text-primary' : 'text-foreground'}`}>{t("settings.french")}</span>
-                  </div>
-                  {lang === "fr" && <Check className="w-5 h-5 text-primary" />}
-                </button>
-
-                <button 
-                  onClick={() => setLang("en")}
-                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all ${lang === "en" ? 'bg-primary/10 border-primary/30' : 'bg-foreground/5 border-border-card hover:bg-foreground/10'}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-2xl">🇬🇧</span>
-                    <span className={`font-bold ${lang === "en" ? 'text-primary' : 'text-foreground'}`}>{t("settings.english")}</span>
-                  </div>
-                  {lang === "en" && <Check className="w-5 h-5 text-primary" />}
-                </button>
-              </div>
-            </div>
-          )}
 
         </div>
       </div>
