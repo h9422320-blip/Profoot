@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const isSandbox = secretKey.includes('sandbox');
     const amount = isSandbox
       ? (plan === 'monthly' ? 10 : 30) // Prix de test en USD pour le Sandbox
-      : (plan === 'monthly' ? 20000 : 60000); // Vrais prix en FCFA (XOF) pour la Production
+      : (plan === 'monthly' ? 3000 : 60000); // Vrais prix en FCFA (XOF) pour la Production
 
     const currency = isSandbox ? 'USD' : 'XOF';
     
