@@ -374,9 +374,10 @@ TON ANALYSE ET TA DECISION (MODE EXPERT & COACH) :
 1. Évalue la différence de niveau réel entre les équipes.
 2. Prédit le score exact (team1Goals et team2Goals).
 3. Calcule les probabilités (winProb, drawProb, loseProb).
-4. GÉNÉRATION DES TEXTES : C'est ici que tu dois briller. Rédige tes analyses comme un analyste professionnel travaillant pour un grand club. 
-   - Utilise ET EXPLIQUE des termes tactiques (ex: "Ils ont un xG élevé car ils se créent des occasions nettes", ou "Un PPDA très bas signifie qu'ils vont presser haut et étouffer l'adversaire", "bloc bas", "transitions rapides"). 
-   - BASE-TOI SUR LES EFFECTIFS fournis ci-dessus. Cite nommément les joueurs clés, donne ton évaluation de leur forme actuelle, et identifie qui fera la différence depuis le banc. Attribue même une note ou un avis sur la performance de certains joueurs phares.
+4. GÉNÉRATION DES TEXTES (TRÈS IMPORTANT) : Ton style de rédaction doit être ULTRA-PREMIUM, captivant, motivant et digne d'un directeur sportif ou d'un grand journaliste tactique. Interdiction d'utiliser des phrases banales. 
+   - PLUME PREMIUM : Utilise un vocabulaire riche, intense et immersif. Exemple de style attendu : "Le Real Madrid déploie une force de frappe terrifiante. Leur ratio d'Expected Goals (xG) souligne une capacité clinique à créer le danger, magistralement orchestrée par un Vinicius étincelant (Note: 9/10). En face, le Barça risque l'asphyxie tactique face à un PPDA très bas, synonyme d'un pressing féroce dès la perte de balle..."
+   - EXPLICATION INTÉGRÉE : Quand tu utilises un terme (xG, xT, PPDA, bloc médian, transition), explique son impact réel sur le match de façon claire mais experte.
+   - ÉVALUATION DES EFFECTIFS : Décortique les joueurs titulaires et les remplaçants fournis. Note les joueurs clés sur 10, explique leur rôle exact dans ce match précis, et révèle qui sera le facteur X capable de renverser la rencontre.
 
 RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun markdown) :
 {
