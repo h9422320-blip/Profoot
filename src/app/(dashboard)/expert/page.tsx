@@ -11,8 +11,12 @@ interface Message {
   content: string;
 }
 
+// Email du propriétaire - accès gratuit pour les tests
+const OWNER_EMAIL = "kuzmabah@gmail.com";
+
 export default function ExpertAgentPage() {
   const [isPro, setIsPro] = useState<boolean | null>(null);
+  const [userEmail, setUserEmail] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -25,6 +29,14 @@ export default function ExpertAgentPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Fetch user email from Supabase
+    import("@/utils/supabase/client").then(({ createClient }) => {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user?.email) setUserEmail(user.email);
+      });
+    });
+
     fetch('/api/payments/moneroo/status')
       .then(res => res.json())
       .then(data => setIsPro(data.isPro))
@@ -72,7 +84,11 @@ export default function ExpertAgentPage() {
     }
   };
 
-  if (isPro === null) {
+  // Le propriétaire a toujours accès gratuitement
+  const isOwner = userEmail === OWNER_EMAIL;
+  const hasAccess = isOwner || isPro;
+
+  if (isPro === null && !isOwner) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader className="w-8 h-8 text-primary animate-spin" />
@@ -80,7 +96,7 @@ export default function ExpertAgentPage() {
     );
   }
 
-  if (!isPro) {
+  if (!hasAccess) {
     return (
       <div className="max-w-2xl mx-auto mt-12 animate-fade-in">
         <div className="bg-[#111A24]/80 backdrop-blur-xl border border-white/5 rounded-[32px] p-8 md:p-12 text-center shadow-2xl relative overflow-hidden">

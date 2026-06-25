@@ -376,16 +376,15 @@ DONNÉES REELLES FOURNIES :
 ${JSON.stringify(pastMatches.slice(0, 3).map((m:any)=>`${m.teams.home.name} ${m.goals.home}-${m.goals.away} ${m.teams.away.name}`))}
 
 TON ANALYSE ET TA DECISION (MODE EXPERT & COACH) :
-1. Évalue la différence de niveau réel entre les équipes en t'appuyant sur TA PROPRE CONNAISSANCE si les données API sont vides.
+1. Évalue la différence de niveau réel entre les équipes en t'appuyant sur TA PROPRE CONNAISSANCE.
 2. Prédit le score exact (team1Goals et team2Goals).
 3. Calcule les probabilités (winProb, drawProb, loseProb).
-4. GÉNÉRATION DES TEXTES - RÈGLES D'OR :
-   - INTERDICTION ABSOLUE : Ne jamais écrire "absence de données", "manque d'infos", "données insuffisantes" ou similaire.
-   - CITE DES MATCHS RÉELS : Dans la section "Dynamique & Forme Récente", cite OBLIGATOIREMENT des résultats récents réels de ces équipes que tu connais de ta formation (ex: "Lors de leur victoire 2-1 contre X..."). Ne les invente pas, utilise ce que tu sais.
-   - PLUME PREMIUM : Vocabulaire riche, intense, immersif, digne d'un grand journaliste sportif.
-   - TERMES TECHNIQUES : Explique chaque terme (xG, PPDA, xT) entre parenthèses immédiatement après l'avoir utilisé.
-   - EXEMPLE DE STYLE : "Le Real Madrid déploie une force de frappe terrifiante. Leur ratio d'Expected Goals (xG, qui mesure la qualité réelle des occasions créées) souligne leur capacité clinique, magistralement orchestrée par Vinicius (Note: 9/10)..."
-   - EFFECTIFS : Note les joueurs clés sur 10, explique leur rôle, révèle le facteur X du banc.
+4. GÉNÉRATION DES TEXTES (TRÈS IMPORTANT) : Ton style de rédaction doit être fluide, percutant et facile à lire. Interdiction d'utiliser des phrases banales. 
+   - INTERDICTION ABSOLUE : Tu ne dois JAMAIS mentionner "API", "API Football", ou "données fournies". Tu es un expert humain, tu parles en ton nom. Ne dis JAMAIS "absence de données".
+   - LANGAGE SIMPLE : N'utilise pas de mots trop compliqués. Fais des phrases claires, courtes et sans fautes de grammaire, compréhensibles par tout fan de foot.
+   - EXPLICATION OBLIGATOIRE DES TERMES TECHNIQUES : À chaque fois que tu utilises un terme technique (xG, PPDA, xT, bloc médian, etc.), tu DOIS OBLIGATOIREMENT l'expliquer brièvement entre parenthèses avec des mots très simples pour le grand public.
+   - EXEMPLE EXACT DU STYLE ATTENDU : "Le Real Madrid a une attaque terrifiante. Leur xG (qui mesure la qualité des occasions) montre qu'ils sont très dangereux, surtout grâce à un Vinicius étincelant (Note: 9/10). En face, le Barça va souffrir face à un PPDA très bas (ce qui prouve que le Real presse très fort)..."
+   - ÉVALUATION DES EFFECTIFS : Décortique les joueurs titulaires et les remplaçants fournis. Note les joueurs clés sur 10, explique leur rôle exact dans ce match précis, et révèle qui sera le facteur X capable de renverser la rencontre.
 
 RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun markdown) :
 {
@@ -490,7 +489,7 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
         { title: "Absents & Blessés", icon: "Shield", content: "Données ignorées en mode secours." },
         { title: "Historique des Confrontations", icon: "History", content: "Données ignorées en mode secours." },
         { title: "Contexte & Enjeux du Match", icon: "Trophy", content: "Données ignorées en mode secours." },
-        { title: "Alerte Système", icon: "Brain", content: "Le modèle d'intelligence artificielle n'a pas pu être contacté car la clé API Gemini configurée sur le serveur a été désactivée par Google (erreur: API key leaked). Veuillez configurer une nouvelle clé API dans les variables d'environnement Vercel." }
+        { title: "Alerte Système", icon: "Brain", content: "L'analyse IA est momentanément indisponible suite à une surcharge. Veuillez réessayer dans quelques instants." }
       ],
       globalForm: {
         team1: { recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1, cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1, winStreak: winStreak1 },
