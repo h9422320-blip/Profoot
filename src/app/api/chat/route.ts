@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
     const GEMINI_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_KEY) {
-      return new Response(JSON.stringify({ error: 'Clé API manquante' }), { status: 500 });
+      return Response.json({ error: 'Clé API manquante' }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
@@ -25,41 +25,20 @@ export async function POST(req: Request) {
       systemInstruction: SYSTEM_PROMPT,
     });
 
-    // Convert messages array to Gemini history format (all except the last)
-    const history = messages.slice(0, -1).map((m: any) => ({
+    // Convert to Gemini history format (all except last message)
+    const history = messages.slice(0, -1).map((m: { role: string; content: string }) => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }],
     }));
 
     const lastMessage = messages[messages.length - 1];
     const chat = model.startChat({ history });
-    const result = await chat.sendMessageStream(lastMessage.content);
+    const result = await chat.sendMessage(lastMessage.content);
+    const text = result.response.text();
 
-    // Stream response in Vercel AI SDK data stream format
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) {
-            controller.enqueue(encoder.encode(`0:${JSON.stringify(text)}\n`));
-          }
-        }
-        controller.close();
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'X-Vercel-AI-Data-Stream': 'v1',
-      },
-    });
+    return Response.json({ text });
   } catch (error: any) {
     console.error('Erreur Chatbot API:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }
