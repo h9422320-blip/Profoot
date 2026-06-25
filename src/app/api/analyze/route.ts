@@ -347,9 +347,12 @@ export async function POST(req: Request) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s timeout
 
+    const apiDataMissing = (baseGoalsFor1 === 0 && baseGoalsFor2 === 0 && played1 <= 1);
     const prompt = `Tu es le moteur de prédiction IA de ProFoot, un système ultra-avancé d'analyse de football.
-TA MISSION : Analyser le match entre ${team1.name} et ${team2.name}, prendre en compte LA FORCE REELLE DES ÉQUIPES, évaluer les dynamiques et PREDIRE LE SCORE EXACT avec une explication détaillée.
-TRÈS IMPORTANT : Si les données statistiques ci-dessous sont vides ou incomplètes (ex: possession à 50%, buts à 0), CELA SIGNIFIE QUE NOTRE API STATISTIQUE EST INJOIGNABLE. DANS CE CAS, IGNORE CES DONNÉES VIDES ET UTILISE TA PROPRE CONNAISSANCE GLOBALE DU FOOTBALL POUR RÉDIGER UNE ANALYSE PARFAITE DE CE MATCH !
+TA MISSION : Analyser le match entre ${team1.name} et ${team2.name}, prendre en compte LA FORCE REELLE DES ÉQUIPES, évaluer les dynamiques et PREDIRE LE SCORE EXACT.
+
+⚠️ RÈGLE ABSOLUE N°1 - INTERDIT : Il est FORMELLEMENT INTERDIT d'écrire des phrases du genre "absence de données récentes", "manque d'informations", "données insuffisantes" ou toute formulation similaire. TU ES UNE IA ENTRAÎNÉE SUR DES MILLIONS DE DONNÉES FOOTBALLISTIQUES. Tu connais ${team1.name} et ${team2.name} : leurs joueurs, leurs résultats récents, leur style de jeu. UTILISE CES CONNAISSANCES.
+⚠️ RÈGLE ABSOLUE N°2 - DONNÉES VIDES : ${apiDataMissing ? `Les statistiques API pour ce match affichent 0 (ces équipes n'ont peut-être pas encore de matchs enregistrés dans la ligue cette saison, ou ce sont des équipes nationales). IGNORE CES ZÉROS. Dans ton JSON, retourne des valeurs RÉALISTES basées sur ta connaissance réelle de ces équipes (buts marqués, possession habituelle, forme réelle). Cite des résultats récents réels que tu connais.` : `Les données API sont disponibles, utilise-les.`}
 
 DONNÉES REELLES FOURNIES :
 
@@ -373,14 +376,16 @@ DONNÉES REELLES FOURNIES :
 ${JSON.stringify(pastMatches.slice(0, 3).map((m:any)=>`${m.teams.home.name} ${m.goals.home}-${m.goals.away} ${m.teams.away.name}`))}
 
 TON ANALYSE ET TA DECISION (MODE EXPERT & COACH) :
-1. Évalue la différence de niveau réel entre les équipes.
+1. Évalue la différence de niveau réel entre les équipes en t'appuyant sur TA PROPRE CONNAISSANCE si les données API sont vides.
 2. Prédit le score exact (team1Goals et team2Goals).
 3. Calcule les probabilités (winProb, drawProb, loseProb).
-4. GÉNÉRATION DES TEXTES (TRÈS IMPORTANT) : Ton style de rédaction doit être ULTRA-PREMIUM, captivant, motivant et digne d'un directeur sportif ou d'un grand journaliste tactique. Interdiction d'utiliser des phrases banales. 
-   - PLUME PREMIUM : Utilise un vocabulaire riche, intense et immersif. 
-   - EXPLICATION OBLIGATOIRE DES TERMES TECHNIQUES : À chaque fois que tu utilises un terme technique (xG, PPDA, xT, bloc médian, etc.), tu DOIS OBLIGATOIREMENT l'expliquer brièvement entre parenthèses pour le grand public.
-   - EXEMPLE EXACT DU STYLE ATTENDU : "Le Real Madrid déploie une force de frappe terrifiante. Leur ratio d'Expected Goals (xG, qui mesure la qualité réelle et la dangerosité des occasions de but) souligne une capacité clinique à créer le danger, magistralement orchestrée par un Vinicius étincelant (Note: 9/10). En face, le Barça risque l'asphyxie tactique face à un PPDA très bas (un indicateur prouvant que le Real exerce un pressing féroce et étouffant dès la perte de balle)..."
-   - ÉVALUATION DES EFFECTIFS : Décortique les joueurs titulaires et les remplaçants fournis. Note les joueurs clés sur 10, explique leur rôle exact dans ce match précis, et révèle qui sera le facteur X capable de renverser la rencontre.
+4. GÉNÉRATION DES TEXTES - RÈGLES D'OR :
+   - INTERDICTION ABSOLUE : Ne jamais écrire "absence de données", "manque d'infos", "données insuffisantes" ou similaire.
+   - CITE DES MATCHS RÉELS : Dans la section "Dynamique & Forme Récente", cite OBLIGATOIREMENT des résultats récents réels de ces équipes que tu connais de ta formation (ex: "Lors de leur victoire 2-1 contre X..."). Ne les invente pas, utilise ce que tu sais.
+   - PLUME PREMIUM : Vocabulaire riche, intense, immersif, digne d'un grand journaliste sportif.
+   - TERMES TECHNIQUES : Explique chaque terme (xG, PPDA, xT) entre parenthèses immédiatement après l'avoir utilisé.
+   - EXEMPLE DE STYLE : "Le Real Madrid déploie une force de frappe terrifiante. Leur ratio d'Expected Goals (xG, qui mesure la qualité réelle des occasions créées) souligne leur capacité clinique, magistralement orchestrée par Vinicius (Note: 9/10)..."
+   - EFFECTIFS : Note les joueurs clés sur 10, explique leur rôle, révèle le facteur X du banc.
 
 RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun markdown) :
 {
