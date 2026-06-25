@@ -44,7 +44,7 @@ Tu parles comme un directeur sportif de haut niveau croisé avec un grand journa
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
       systemInstruction: SYSTEM_PROMPT,
-      tools: [{ googleSearch: {} }]
+      tools: [{ googleSearch: {} }] as any
     });
 
     // Limit history length to prevent payload too large / token limit issues (keep last 40 messages max)
