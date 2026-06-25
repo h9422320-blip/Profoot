@@ -31,6 +31,12 @@ export async function POST(req: Request) {
       parts: [{ text: m.content }],
     }));
 
+    // CRITICAL: Gemini history must ALWAYS start with a 'user' message. 
+    // We must drop the initial "welcome" message from the assistant.
+    while (history.length > 0 && history[0].role === 'model') {
+      history.shift();
+    }
+
     const lastMessage = messages[messages.length - 1];
     const chat = model.startChat({ history });
     const result = await chat.sendMessage(lastMessage.content);
