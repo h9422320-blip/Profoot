@@ -152,12 +152,14 @@ export async function POST(req: Request) {
 
   if (id1 && id2) {
     console.log(`[BACKEND_ANALYZE] Fetching H2H and Fixtures...`);
-    const [t1d, t2d, h2hr] = await Promise.all([
-      getFixturesWithFallback(id1, season),
-      getFixturesWithFallback(id2, season),
+    const [t1Fixtures, t2Fixtures, h2hr] = await Promise.all([
+      fetchApiFootball(`/fixtures?team=${id1}&season=${season}&last=10`, CACHE_TTL.TEAM_STATS),
+      fetchApiFootball(`/fixtures?team=${id2}&season=${season}&last=10`, CACHE_TTL.TEAM_STATS),
       fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}`)
     ]);
-    t1Data = t1d; t2Data = t2d; h2hRes = h2hr;
+    t1Data = { data: t1Fixtures, season };
+    t2Data = { data: t2Fixtures, season };
+    h2hRes = h2hr;
   } else {
     console.warn(`[BACKEND_ANALYZE] API-Football IDs missing (Rate Limit or Unmapped). Bypassing API-Football for PURE AI analysis.`);
     t1Data = { data: { response: [] }, season };
