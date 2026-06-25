@@ -10,8 +10,8 @@ import {
 import { useState, useEffect } from "react";
 import { logout } from "@/app/login/actions";
 import { createClient } from "@/utils/supabase/client";
+import Image from "next/image";
 
-import { ProFootLogo } from "@/components/ui/ProFootLogo";
 import { useLanguage } from "@/context/LanguageContext";
 
 export function Sidebar() {
@@ -94,10 +94,10 @@ export function Sidebar() {
       {/* Top Header Mobile */}
       <div className="lg:hidden fixed top-0 left-0 w-full h-20 bg-gradient-to-b from-[#0A1118] to-transparent z-40 flex items-start justify-between pt-6 px-6 pointer-events-none">
         <Link href="/dashboard" className="flex items-center gap-2 pointer-events-auto group">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 text-background flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
-            <ProFootLogo className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[#0A1118] to-[#111A24] border border-primary/20 shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform flex items-center justify-center">
+            <Image src="/logo.png" alt="ProFoot AI" width={32} height={32} className="w-full h-full object-contain" />
           </div>
-          <span className="font-black text-xl tracking-tight text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
+          <span className="font-black text-xl tracking-tight text-white" style={{fontFamily:"'Outfit',sans-serif"}}>PROFOOT <span style={{color:"#10B981"}}>AI</span></span>
         </Link>
       </div>
 
@@ -129,10 +129,10 @@ export function Sidebar() {
       <aside className="hidden lg:flex w-[260px] h-screen bg-background flex-col border-r border-border-card fixed left-0 top-0 z-50">
         <div className="p-8 pb-4">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/5 text-primary border border-primary/40 flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.15)] group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(34,197,94,0.3)] transition-all">
-              <ProFootLogo className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-2xl overflow-hidden bg-[#0A1118] border border-primary/20 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.2)] group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] transition-all">
+              <Image src="/logo.png" alt="ProFoot AI" width={44} height={44} className="w-full h-full object-contain" priority />
             </div>
-            <span className="font-black text-2xl tracking-tight text-foreground" style={{fontFamily:"'Space Grotesk',sans-serif"}}>ProFoot</span>
+            <span className="font-black text-2xl tracking-tight text-foreground" style={{fontFamily:"'Outfit',sans-serif"}}>PROFOOT <span className="text-primary">AI</span></span>
           </Link>
         </div>
 
