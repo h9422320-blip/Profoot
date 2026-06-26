@@ -223,10 +223,10 @@ export default function HistoryPage() {
                 <ChevronRight className="w-4 h-4 text-orange-400/50" />
              </Link>
              
-             <Link href="/settings" className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-[20px] transition-colors border border-white/5 group">
+             <Link href="/history/list" className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-[20px] transition-colors border border-white/5 group">
                 <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-white/60 group-hover:text-white transition-colors" />
-                  <span className="text-sm font-bold text-white">Mon compte</span>
+                  <History className="w-5 h-5 text-white/60 group-hover:text-white transition-colors" />
+                  <span className="text-sm font-bold text-white">Historique</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-white/30" />
              </Link>
