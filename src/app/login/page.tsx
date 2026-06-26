@@ -40,7 +40,9 @@ export default function LoginPage() {
         
         {/* Logo Top Left */}
         <div className="absolute top-8 left-8 flex items-center gap-3">
-           <Image src="/logo.png" alt="ProFoot" width={40} height={40} className="w-10 h-10 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+           <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+             <Image src="/logo.png" alt="ProFoot" width={40} height={40} className="w-full h-full object-cover scale-[1.35]" />
+           </div>
            <span className="font-black text-2xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ProFoot</span>
         </div>
 
@@ -78,7 +80,9 @@ export default function LoginPage() {
         <div className="w-full max-w-[400px] mx-auto relative z-10">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 justify-center mb-12">
-            <Image src="/logo.png" alt="ProFoot" width={48} height={48} className="w-12 h-12 object-contain drop-shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
+            <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_20px_rgba(16,185,129,0.5)]">
+              <Image src="/logo.png" alt="ProFoot" width={48} height={48} className="w-full h-full object-cover scale-[1.35]" />
+            </div>
             <span className="font-black text-3xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ProFoot</span>
           </div>
 
