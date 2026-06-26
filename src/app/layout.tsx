@@ -3,6 +3,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 
+import { Analytics } from "@vercel/analytics/react";
+
 export const metadata: Metadata = {
   title: "ProFoot AI — Analyse IA Football Premium",
   description: "La plateforme d'analyse football la plus avancée. Statistiques, prédictions et conseils experts propulsés par l'intelligence artificielle.",
@@ -28,6 +30,7 @@ export default function RootLayout({
         <ThemeProvider>
           <LanguageProvider>
             {children}
+            <Analytics />
           </LanguageProvider>
         </ThemeProvider>
       </body>
