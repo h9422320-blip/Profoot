@@ -20,7 +20,8 @@ export default function SignupPage() {
         setError(result.error)
         setIsLoading(false)
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.message?.includes('NEXT_REDIRECT')) throw e
       setError('Une erreur inattendue est survenue')
       setIsLoading(false)
     }

@@ -101,31 +101,56 @@ export default function ExpertAgentPage() {
     setInput("");
     setIsLoading(true);
 
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages.map(m => ({ role: m.role, content: m.content })) })
-      });
+    let attempt = 0;
+    const maxAttempts = 3;
+    let success = false;
 
-      if (!res.ok) throw new Error("Erreur serveur");
+    while (attempt < maxAttempts && !success) {
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: updatedMessages.map(m => ({ role: m.role, content: m.content })) })
+        });
 
-      const data = await res.json();
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: data.text || "Désolé, une erreur s'est produite."
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "⚠️ Une erreur s'est produite. Merci de réessayer dans quelques instants."
-      }]);
-    } finally {
-      setIsLoading(false);
+        if (!res.ok) {
+          // Si c'est une erreur 429 (Rate Limit) ou 500, on déclenche le catch pour réessayer
+          throw new Error(`HTTP Error ${res.status}`);
+        }
+
+        const data = await res.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: data.text || "Désolé, je n'ai pas pu générer de réponse."
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+        success = true;
+      } catch (error) {
+        attempt++;
+        console.warn(`Tentative ${attempt}/${maxAttempts} échouée pour l'IA...`);
+        
+        if (attempt >= maxAttempts) {
+          setMessages(prev => [...prev, {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: "⚠️ Le réseau semble instable ou l'IA est surchargée. J'ai essayé de me reconnecter mais sans succès. Merci de patienter quelques secondes avant de relancer votre question."
+          }]);
+        } else {
+          // Attente intelligente (backoff) : 3s, puis 5s
+          const delay = attempt === 1 ? 3000 : 5000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
+    
+    setIsLoading(false);
   };
 
   // Le propriétaire a toujours accès gratuitement
