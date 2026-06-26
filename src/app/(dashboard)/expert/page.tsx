@@ -196,8 +196,8 @@ export default function ExpertAgentPage() {
       {/* Header */}
       <div className="px-5 py-4 border-b border-white/[0.06] bg-black/30 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl overflow-hidden bg-[#0A1118] border border-primary/20 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-            <Image src="/logo.png" alt="ProFoot AI" width={44} height={44} className="w-full h-full object-contain" />
+          <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+            <Image src="/logo.png" alt="ProFoot AI" width={44} height={44} className="w-full h-full object-cover scale-[1.35]" />
           </div>
           <div>
             <h1 className="text-base font-black text-white flex items-center gap-1.5" style={{fontFamily:"'Outfit',sans-serif"}}>
@@ -222,8 +222,8 @@ export default function ExpertAgentPage() {
           <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2`}>
 
             {m.role === 'assistant' && (
-              <div className="w-7 h-7 rounded-xl overflow-hidden bg-[#0A1118] border border-primary/20 flex items-center justify-center shrink-0 mb-0.5">
-                <Image src="/logo.png" alt="AI" width={28} height={28} className="w-full h-full object-contain" />
+              <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0 mb-0.5">
+                <Image src="/logo.png" alt="AI" width={28} height={28} className="w-full h-full object-cover scale-[1.35]" />
               </div>
             )}
 
@@ -245,8 +245,8 @@ export default function ExpertAgentPage() {
 
         {isLoading && (
           <div className="flex justify-start items-end gap-2">
-            <div className="w-7 h-7 rounded-xl overflow-hidden bg-[#0A1118] border border-primary/20 flex items-center justify-center shrink-0">
-              <Image src="/logo.png" alt="AI" width={28} height={28} className="w-full h-full object-contain" />
+            <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0">
+              <Image src="/logo.png" alt="AI" width={28} height={28} className="w-full h-full object-cover scale-[1.35]" />
             </div>
             <div className="rounded-[20px] rounded-bl-sm px-5 py-4 bg-[#111A24]/90 border border-white/[0.07] flex items-center gap-3">
               <div className="flex gap-1">

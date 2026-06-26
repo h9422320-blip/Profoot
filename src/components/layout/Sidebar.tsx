@@ -129,8 +129,8 @@ export function Sidebar() {
       <aside className="hidden lg:flex w-[260px] h-screen bg-background flex-col border-r border-border-card fixed left-0 top-0 z-50">
         <div className="p-8 pb-4">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 rounded-2xl overflow-hidden bg-[#0A1118] border border-primary/20 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.2)] group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] transition-all">
-              <Image src="/logo.png" alt="ProFoot AI" width={44} height={44} className="w-full h-full object-contain" priority />
+            <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_20px_rgba(16,185,129,0.2)] group-hover:scale-105 group-hover:drop-shadow-[0_0_30px_rgba(16,185,129,0.35)] transition-all">
+              <Image src="/logo.png" alt="ProFoot AI" width={44} height={44} className="w-full h-full object-cover scale-[1.35]" priority />
             </div>
             <span className="font-black text-2xl tracking-tight text-foreground" style={{fontFamily:"'Outfit',sans-serif"}}>PROFOOT <span className="text-primary">AI</span></span>
           </Link>
