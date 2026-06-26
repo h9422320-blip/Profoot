@@ -174,45 +174,25 @@ export default function LandingPage() {
             <a href="#faq">FAQ</a>
           </div>
 
-          <div className="nav-actions">
-            {user ? (
-              <Link href="/dashboard" className="nav-login">
-                Mon compte
-              </Link>
-            ) : (
-              <Link href="/login" className="nav-login">
-                Se connecter
-              </Link>
-            )}
-            <Link href="/analyze" className="nav-cta">
+          <div className="flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-3">
+              {user ? (
+                <Link href="/dashboard" className="nav-login">
+                  Mon compte
+                </Link>
+              ) : (
+                <Link href="/login" className="nav-login">
+                  Se connecter
+                </Link>
+              )}
+            </div>
+            <Link href="/analyze" className="nav-cta !flex">
               <Zap className="w-4 h-4" /> Analyser
             </Link>
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            className="nav-hamburger"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Menu"
-          >
-            <span className={`hamburger-line ${mobileMenuOpen ? "open-1" : ""}`} />
-            <span className={`hamburger-line ${mobileMenuOpen ? "open-2" : ""}`} />
-            <span className={`hamburger-line ${mobileMenuOpen ? "open-3" : ""}`} />
-          </button>
         </div>
 
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="nav-mobile-menu">
-            <a href="#features" onClick={() => setMobileMenuOpen(false)}>Fonctionnalités</a>
-            <a href="#competitions" onClick={() => setMobileMenuOpen(false)}>Compétitions</a>
-            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>Comment ça marche</a>
-            <a href="#faq" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
-            <Link href="/analyze" className="mobile-cta" onClick={() => setMobileMenuOpen(false)}>
-              <Zap className="w-4 h-4" /> Commencer l'analyse
-            </Link>
-          </div>
-        )}
       </nav>
 
       <main>
