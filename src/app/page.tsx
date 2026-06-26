@@ -24,7 +24,7 @@ import {
   Quote,
   MessageCircle,
 } from "lucide-react";
-import { ProFootLogo } from "@/components/ui/ProFootLogo";
+import Image from "next/image";
 
 // ============================================================================
 // PROFOOT — LANDING PAGE PREMIUM v3.0
@@ -161,8 +161,8 @@ export default function LandingPage() {
       <nav className={`landing-nav ${scrolled ? "nav-scrolled" : ""}`}>
         <div className="nav-inner">
           <Link href="/" className="nav-brand">
-            <div className="nav-logo">
-              <ProFootLogo className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+              <Image src="/logo.png" alt="ProFoot" width={32} height={32} className="w-full h-full object-cover scale-[1.35]" />
             </div>
             <span className="nav-brand-text">ProFoot</span>
           </Link>
@@ -409,7 +409,7 @@ export default function LandingPage() {
         <div className="footer-inner">
           <div className="footer-brand">
             <div className="nav-brand">
-              <div className="nav-logo"><ProFootLogo className="w-4 h-4" /></div>
+              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]"><Image src="/logo.png" alt="ProFoot" width={32} height={32} className="w-full h-full object-cover scale-[1.35]" /></div>
               <span className="nav-brand-text">ProFoot</span>
             </div>
             <p className="footer-desc">
@@ -671,7 +671,9 @@ function AppMockupContent() {
       {/* Phone Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <ProFootLogo className="w-4 h-4 text-[#10b981]" />
+          <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+            <Image src="/logo.png" alt="ProFoot" width={24} height={24} className="w-full h-full object-cover scale-[1.35]" />
+          </div>
           <span className="text-white font-bold text-sm tracking-tight">ProFoot</span>
         </div>
         <div className="w-6 h-0.5 bg-white/20 rounded-full">
