@@ -92,10 +92,10 @@ export function Sidebar() {
           ========================================= */}
       
       {/* Top Header Mobile */}
-      <div className="lg:hidden fixed top-0 left-0 w-full h-20 bg-[#000000] z-40 flex items-start justify-between pt-6 px-6 pointer-events-none">
+      <div className="lg:hidden fixed top-0 left-0 w-full h-20 bg-[#0A1118]/95 backdrop-blur-md border-b border-white/5 z-40 flex items-start justify-between pt-6 px-6 pointer-events-none">
         <Link href="/dashboard" className="flex items-center gap-2 pointer-events-auto group">
           <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[#0A1118] to-[#111A24] border border-primary/20 shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform flex items-center justify-center">
-            <Image src="/logo.png" alt="ProFoot AI" width={32} height={32} className="w-full h-full object-contain" />
+            <Image src="/logo.png" alt="ProFoot AI" width={32} height={32} className="w-full h-full object-cover scale-[1.35]" />
           </div>
           <span className="font-black text-xl tracking-tight text-white" style={{fontFamily:"'Outfit',sans-serif"}}>PROFOOT <span style={{color:"#10B981"}}>AI</span></span>
         </Link>
