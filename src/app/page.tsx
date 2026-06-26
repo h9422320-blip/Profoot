@@ -223,7 +223,7 @@ export default function LandingPage() {
           <div className="hero-bg">
             <img
               src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=2070&auto=format&fit=crop"
-              alt="Stadium"
+              alt=""
               className="hero-bg-img"
             />
             <div className="hero-overlay" />
@@ -308,7 +308,7 @@ export default function LandingPage() {
           <div className="showcase-bg">
             <img
               src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=2070&auto=format&fit=crop"
-              alt="Stadium"
+              alt=""
               className="showcase-bg-img"
             />
             <div className="showcase-overlay" />
@@ -382,7 +382,7 @@ export default function LandingPage() {
           <div className="final-cta-bg">
             <img
               src="https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?q=80&w=2070&auto=format&fit=crop"
-              alt="Stadium"
+              alt=""
               className="final-cta-bg-img"
             />
             <div className="final-cta-overlay" />
