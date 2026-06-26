@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight, Mail, Lock, User, AlertCircle, TrendingUp, Zap, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { signup } from '../login/actions'
 import { ProFootLogo } from '@/components/ui/ProFootLogo'
@@ -38,9 +39,7 @@ export default function SignupPage() {
         
         {/* Logo Top Left */}
         <div className="absolute top-8 left-8 flex items-center gap-3">
-           <div className="w-10 h-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-black shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-              <ProFootLogo className="w-6 h-6" />
-           </div>
+           <Image src="/logo.png" alt="ProFoot" width={40} height={40} className="w-10 h-10 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
            <span className="font-black text-2xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ProFoot</span>
         </div>
 
@@ -78,11 +77,9 @@ export default function SignupPage() {
 
         <div className="w-full max-w-[400px] mx-auto relative z-10">
           
-          {/* Logo Mobile Only */}
-          <div className="flex lg:hidden items-center gap-3 justify-center mb-12">
-            <div className="w-12 h-12 rounded-[20px] bg-emerald-500 flex items-center justify-center text-black shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-              <ProFootLogo className="w-7 h-7" />
-            </div>
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex items-center gap-3 justify-center mb-12">
+            <Image src="/logo.png" alt="ProFoot" width={48} height={48} className="w-12 h-12 object-contain drop-shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
             <span className="font-black text-3xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ProFoot</span>
           </div>
 
