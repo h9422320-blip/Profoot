@@ -6,10 +6,6 @@ import { LanguageProvider } from "@/context/LanguageContext";
 export const metadata: Metadata = {
   title: "ProFoot AI — Analyse IA Football Premium",
   description: "La plateforme d'analyse football la plus avancée. Statistiques, prédictions et conseils experts propulsés par l'intelligence artificielle.",
-  icons: {
-    icon: "/favicon.png",
-    apple: "/logo.png",
-  },
 };
 
 export default function RootLayout({
@@ -23,8 +19,6 @@ export default function RootLayout({
       className="h-full antialiased scroll-smooth"
     >
       <head>
-        <link rel="icon" href="/favicon.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
