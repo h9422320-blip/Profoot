@@ -402,6 +402,7 @@ export default function LandingPage() {
               <Link href="/analyze">Analyse IA</Link>
               <Link href="/matches">Matchs du jour</Link>
               <Link href="/standings">Classements</Link>
+              <Link href="/support">Support</Link>
             </div>
             <div className="footer-col">
               <h4>Compétitions</h4>
@@ -418,7 +419,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 ProFoot. Tous droits réservés.</span>
+          <span>© 2026 ProFoot AI. Tous droits réservés.</span>
         </div>
       </footer>
     </div>
