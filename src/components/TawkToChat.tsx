@@ -2,7 +2,6 @@
 import { useEffect } from "react";
 
 const TAWK_PROPERTY_ID = "6a419e958719f21d5abdf20f"; // ProFoot AI
-const TAWK_WIDGET_ID = "1js856usr"; // Widget: ProFoot AI
 
 export default function TawkToChat() {
   useEffect(() => {
@@ -14,7 +13,7 @@ export default function TawkToChat() {
     const s0 = document.getElementsByTagName("script")[0];
 
     s1.async = true;
-    s1.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`;
+    s1.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/1js856usr`;
     s1.charset = "UTF-8";
     s1.setAttribute("crossorigin", "*");
 
