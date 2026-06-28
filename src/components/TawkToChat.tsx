@@ -9,6 +9,22 @@ export default function TawkToChat() {
     (window as any).Tawk_API = (window as any).Tawk_API || {};
     (window as any).Tawk_LoadStart = new Date();
 
+    // Adjust position on mobile to avoid overlapping the bottom navbar
+    (window as any).Tawk_API.customStyle = {
+      visibility: {
+        desktop: {
+          position: 'br',
+          xOffset: '15px',
+          yOffset: '15px'
+        },
+        mobile: {
+          position: 'br',
+          xOffset: '15px',
+          yOffset: '80px' // Moves it up by 80px on mobile
+        }
+      }
+    };
+
     const s1 = document.createElement("script");
     const s0 = document.getElementsByTagName("script")[0];
 
