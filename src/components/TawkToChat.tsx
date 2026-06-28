@@ -10,14 +10,11 @@ import { useEffect } from "react";
 // 4. Replace TAWK_PROPERTY_ID below with your real ID
 // ============================================================================
 
-const TAWK_PROPERTY_ID = "REPLACE_WITH_YOUR_TAWK_ID"; // <-- Replace this
+const TAWK_PROPERTY_ID = "6a419e958719f21d5abdf20f"; // ProFoot AI
 const TAWK_WIDGET_ID = "default";
 
 export default function TawkToChat() {
   useEffect(() => {
-    // Don't load if it's the placeholder
-    if (TAWK_PROPERTY_ID === "REPLACE_WITH_YOUR_TAWK_ID") return;
-
     const script = document.createElement("script");
     script.async = true;
     script.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`;
@@ -26,7 +23,9 @@ export default function TawkToChat() {
     document.head.appendChild(script);
 
     return () => {
-      document.head.removeChild(script);
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
     };
   }, []);
 
