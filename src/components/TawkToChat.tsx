@@ -49,20 +49,30 @@ export default function TawkToChat() {
     
     // Fonction pour gérer la visibilité
     const manageVisibility = () => {
-      if (pathname === "/") {
-        tawkApi.hideWidget();
-      } else {
-        tawkApi.showWidget();
+      try {
+        if (pathname === "/") {
+          if (tawkApi.hideWidget) tawkApi.hideWidget();
+        } else {
+          if (tawkApi.showWidget) tawkApi.showWidget();
+        }
+      } catch (e) {
+        console.warn("Tawk.to not fully ready");
       }
     };
 
-    // Si l'API est déjà chargée
-    if (tawkApi.isLoaded) {
-      manageVisibility();
-    } else {
-      // Sinon on attend qu'elle finisse de charger
-      tawkApi.onLoad = manageVisibility;
-    }
+    // On utilise un petit délai pour s'assurer que le widget est bien prêt à être caché/affiché
+    const checkInterval = setInterval(() => {
+      if (tawkApi.isLoaded || tawkApi.hideWidget) {
+        manageVisibility();
+        clearInterval(checkInterval);
+      }
+    }, 300);
+
+    // Sécurité: on nettoie l'intervalle après 10 secondes
+    setTimeout(() => clearInterval(checkInterval), 10000);
+
+    tawkApi.onLoad = manageVisibility;
+
   }, [pathname]);
 
   return null;
