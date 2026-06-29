@@ -50,7 +50,8 @@ export default function TawkToChat() {
     // Fonction pour gérer la visibilité
     const manageVisibility = () => {
       try {
-        if (pathname === "/") {
+        const hiddenRoutes = ["/", "/login", "/register"];
+        if (hiddenRoutes.includes(pathname)) {
           if (tawkApi.hideWidget) tawkApi.hideWidget();
         } else {
           if (tawkApi.showWidget) tawkApi.showWidget();
