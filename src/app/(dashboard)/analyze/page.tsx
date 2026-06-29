@@ -894,110 +894,148 @@ export default function AnalyzePage() {
             // B. 🔮 FUTURE MATCH : IA PREDICTION REPORT
             <div className="space-y-8">
               
-              {/* Form Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] space-y-3 shadow-md">
-                  <div className="flex items-center gap-3">
-                    <img src={getClub(team1!).logo} className="w-6 h-6 object-contain" alt="" />
-                    <span className="font-extrabold text-sm text-white">{getClub(team1!).name}</span>
+              {/* Forme Récente - Visifoot Clone */}
+              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-6 rounded-[24px] space-y-5 shadow-md">
+                <div className="flex justify-between items-center text-xs font-semibold text-white/50 mb-6">
+                  <div className="flex items-center gap-2 text-white">
+                    <span className="text-lg">📈</span>
+                    <h4 className="font-black text-sm" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Forme récente</h4>
                   </div>
-                  <div className="text-xs font-semibold text-white/60 flex items-center gap-2">
-                    <span>Forme :</span>
-                    <span className="text-sm flex items-center gap-1">
-                      {renderFormEmojis(getClub(team1!).form)}
+                  <span className="text-[10px]">{getClub(team1!).league ? leagueLabels[getClub(team1!).league] || "Toutes compétitions" : "Toutes compétitions"}</span>
+                </div>
+
+                <div className="flex items-center justify-between px-2 md:px-12">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      <img src={getClub(team1!).logo} className="w-7 h-7 object-contain" alt="" />
+                      <span className="font-bold text-sm text-white">{getClub(team1!).name}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+                      {getClub(team1!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team1!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '⚖️ Forme moyenne'}
                     </span>
                   </div>
-                  <div className="text-xs font-semibold text-white/60">
-                    <span>V-N-D : </span>
-                    <span className="font-black text-white">{calculateVND(getClub(team1!).form)}</span>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      <img src={getClub(team2!).logo} className="w-7 h-7 object-contain" alt="" />
+                      <span className="font-bold text-sm text-white">{getClub(team2!).name}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+                      {getClub(team2!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team2!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '⚖️ Forme moyenne'}
+                    </span>
                   </div>
                 </div>
-                
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] space-y-3 shadow-md">
-                  <div className="flex items-center gap-3">
-                    <img src={getClub(team2!).logo} className="w-6 h-6 object-contain" alt="" />
-                    <span className="font-extrabold text-sm text-white">{getClub(team2!).name}</span>
+
+                <button onClick={() => setShowGlobalForm(!showGlobalForm)} className="w-full bg-transparent border border-[#10B981]/20 hover:bg-[#10B981]/10 text-[#10B981] text-xs font-semibold py-3 rounded-[12px] transition-all">
+                  Voir la forme globale (toutes compétitions)
+                </button>
+
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="bg-[#1A2530]/50 border border-white/5 p-4 rounded-[16px] space-y-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <img src={getClub(team1!).logo} className="w-5 h-5 object-contain" alt="" />
+                      <span className="font-extrabold text-xs text-white">{getClub(team1!).name}</span>
+                    </div>
+                    <div className="text-[11px] font-semibold text-white/60 flex items-center gap-2">
+                      <span>Forme :</span>
+                      <span className="text-xs flex items-center gap-1">{renderFormEmojis(getClub(team1!).form)}</span>
+                    </div>
+                    <div className="text-[11px] font-semibold text-white/60">
+                      <span>V-N-D : </span>
+                      <span className="font-bold text-white">{calculateVND(getClub(team1!).form)}</span>
+                    </div>
                   </div>
-                  <div className="text-xs font-semibold text-white/60 flex items-center gap-2">
-                    <span>Forme :</span>
-                    <span className="text-sm flex items-center gap-1">
-                      {renderFormEmojis(getClub(team2!).form)}
-                    </span>
-                  </div>
-                  <div className="text-xs font-semibold text-white/60">
-                    <span>V-N-D : </span>
-                    <span className="font-black text-white">{calculateVND(getClub(team2!).form)}</span>
+                  <div className="bg-[#1A2530]/50 border border-white/5 p-4 rounded-[16px] space-y-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <img src={getClub(team2!).logo} className="w-5 h-5 object-contain" alt="" />
+                      <span className="font-extrabold text-xs text-white">{getClub(team2!).name}</span>
+                    </div>
+                    <div className="text-[11px] font-semibold text-white/60 flex items-center gap-2">
+                      <span>Forme :</span>
+                      <span className="text-xs flex items-center gap-1">{renderFormEmojis(getClub(team2!).form)}</span>
+                    </div>
+                    <div className="text-[11px] font-semibold text-white/60">
+                      <span>V-N-D : </span>
+                      <span className="font-bold text-white">{calculateVND(getClub(team2!).form)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Scenarios */}
-              <div className="bg-[#111A24]/40 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-md">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
+              {/* Résumé & Scénarios - EXACT VISIFOOT STYLE */}
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
                     <span className="text-lg">🔍</span>
                     <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Résumé rapide</h4>
                   </div>
-                  <p className="text-sm text-white/70 leading-relaxed font-semibold">{result.quickSummary || result.scenario}</p>
-                  <p className="text-[10px] text-[#10B981] font-black uppercase tracking-wider">Généré à partir de millions de données et de l'actualité foot.</p>
+                  <p className="text-[13px] text-white/80 leading-relaxed font-medium">{result.quickSummary || result.scenario}</p>
+                  <p className="text-[10px] text-[#10B981] font-semibold mt-1">Généré à partir de millions de données et de l'actualité foot.</p>
                 </div>
 
-                <div className="pt-6 border-t border-white/5 space-y-4">
-                  <div className="flex items-center gap-3">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
                     <span className="text-lg">📌</span>
                     <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Scénario #1</h4>
                   </div>
-                  <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px]">
-                    <p className="text-sm text-white/80 leading-relaxed font-semibold">
+                  <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-5 rounded-[12px]">
+                    <p className="text-[13px] text-white/80 leading-relaxed font-medium">
                       {result.scenarios?.[0]?.content || "Le match devrait se dérouler selon un schéma tactique équilibré mais tendu."}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Confiance - Déplacé juste après les scénarios, avant le Paywall */}
+              {/* Confiance - EXACT VISIFOOT STYLE */}
               {result.confidence && (
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
-                  <div className="space-y-3">
+                <div className="space-y-2 mt-4">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">🎯</span>
-                      <h5 className="text-xs font-black text-white/50 uppercase tracking-widest">Confiance de l'IA</h5>
+                      <h5 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Confiance de l'IA</h5>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="h-3.5 flex-1 bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-inner">
-                        <div className="h-full bg-[#10B981]" style={{ width: `${result.confidence}%` }}></div>
-                      </div>
-                      <span className="text-xs font-black text-white shrink-0">
-                        {result.confidence >= 80 ? "Très élevée" : result.confidence >= 60 ? "Élevée" : "Moyenne"}
-                      </span>
-                    </div>
-                    <p className="text-[9px] text-[#10B981] font-black uppercase tracking-wider mt-1">Niveau de confiance basé sur la qualité des données disponibles.</p>
                   </div>
+                  <div className="flex items-center gap-4">
+                    <div className="h-4 flex-1 bg-black/40 rounded-full overflow-hidden shadow-inner">
+                      <div className="h-full bg-[#10B981] rounded-full" style={{ width: `${result.confidence}%` }}></div>
+                    </div>
+                    <span className="text-xs font-bold text-white/80 shrink-0">
+                      {result.confidence >= 80 ? "Très élevée" : result.confidence >= 60 ? "Élevée" : "Moyenne"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-white/40 font-semibold pt-1">Niveau de confiance basé sur la qualité des données disponibles.</p>
                 </div>
               )}
 
               {/* PAYWALL WRAPPER BEGIN */}
-              <div className="relative">
+              <div className="relative pt-6">
                 {!isPremium && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-gradient-to-t from-[#070E13] via-[#070E13]/90 to-transparent">
-                    <div className="bg-black/60 backdrop-blur-md border border-white/10 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#10B981] to-transparent"></div>
-                      <Lock className="w-10 h-10 text-[#10B981] mx-auto mb-4" />
-                      <h3 className="text-xl font-black text-white mb-2" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
-                      <p className="text-sm text-white/60 font-medium mb-6">
-                        L'analyse complète contient les probabilités exactes, le score prédit, les statistiques comparatives et les insights premium.
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-gradient-to-t from-[#070E13] via-[#070E13]/80 to-transparent">
+                    <div className="bg-black/40 backdrop-blur-sm p-8 rounded-3xl max-w-lg w-full text-center relative overflow-hidden flex flex-col items-center">
+                      <h3 className="text-xl md:text-2xl font-black text-white mb-4" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
+                      
+                      <div className="w-56 h-1.5 bg-white/10 rounded-full mb-5 overflow-hidden">
+                        <div className="h-full bg-[#10B981] rounded-full" style={{ width: "15%" }}></div>
+                      </div>
+
+                      <p className="text-[13px] text-white/80 font-medium mb-6 max-w-[320px] leading-relaxed">
+                        L'analyse complète contient les probabilités exactes, les scénarios restants et les insights premium.
                       </p>
+                      
                       <Link 
                         href="/pricing"
-                        className="inline-flex w-full items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 text-black font-black py-3.5 px-6 rounded-xl transition-all uppercase tracking-widest text-xs"
+                        className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 text-[#070E13] font-black py-3 px-8 rounded-full transition-all text-sm w-auto"
                       >
-                        Débloquer l'analyse complète
+                        🔓 Débloquer l'analyse complète
                       </Link>
                     </div>
                   </div>
                 )}
                 
-                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[8px] opacity-40' : ''}`}>
+                {/* 
+                  VERY STRONG BLUR for the hidden content.
+                  Using blur-2xl and opacity-10 to completely hide the content from readers.
+                */}
+                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-2xl opacity-10' : ''}`}>
                   {/* Score pill */}
                   {result.predictedScore && (
                     <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
