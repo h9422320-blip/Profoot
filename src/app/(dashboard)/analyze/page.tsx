@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw } from "lucide-react";
+import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw, Lock } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
+import Link from "next/link";
 import { clubs, getClub, matches, competitions } from "@/lib/data";
 
 // Extract future matches for the "Prochains matchs" list
@@ -315,6 +317,33 @@ export default function AnalyzePage() {
   const [showGlobalForm, setShowGlobalForm] = useState(false);
   const [pickerOpen, setPickerOpen] = useState<1 | 2 | null>(null);
   const [todayHistory, setTodayHistory] = useState<any[]>([]);
+  const [isPremium, setIsPremium] = useState(true); // Default true to avoid flashing blur
+
+  useEffect(() => {
+    const checkPremium = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setIsPremium(false);
+        return;
+      }
+      
+      if (user.email === 'kuzmabah@gmail.com') {
+        setIsPremium(true);
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/payments/moneroo/status');
+        const data = await res.json();
+        setIsPremium(data.isPro);
+      } catch {
+        setIsPremium(false);
+      }
+    };
+    checkPremium();
+  }, []);
 
   const steps = [
     "🔍 Recherche des statistiques en temps réel...",
@@ -926,32 +955,10 @@ export default function AnalyzePage() {
                 </div>
               </div>
 
-              {/* Score pill */}
-              {result.predictedScore && (
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
-                  <div className="flex items-center gap-3 mb-6">
-                    <Trophy className="w-5 h-5 text-[#10B981]" />
-                    <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Score prédit par l'IA</h4>
-                  </div>
-                  
-                  <div className="flex items-center justify-center gap-4 md:gap-12 my-6 w-full">
-                    <div className="flex flex-col items-center gap-2 w-[30%]">
-                      <img src={getClub(team1!).logo} className="w-10 h-10 object-contain" alt="" />
-                      <span className="text-xs font-black text-white/75 text-center truncate">{getClub(team1!).shortName}</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-3 bg-black/40 px-6 py-3 rounded-full border border-white/5 shadow-inner">
-                      <span className="text-3xl md:text-5xl font-black text-[#10B981] font-[Space Grotesk]">{result.predictedScore.team1Goals}</span>
-                      <span className="text-lg font-bold text-white/20">-</span>
-                      <span className="text-3xl md:text-5xl font-black text-[#EF4444] font-[Space Grotesk]">{result.predictedScore.team2Goals}</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2 w-[30%]">
-                      <img src={getClub(team2!).logo} className="w-10 h-10 object-contain" alt="" />
-                      <span className="text-xs font-black text-white/75 text-center truncate">{getClub(team2!).shortName}</span>
-                    </div>
-                  </div>
-
-                  {/* Confiance */}
-                  <div className="mt-8 space-y-3">
+              {/* Confiance - Déplacé juste après les scénarios, avant le Paywall */}
+              {result.confidence && (
+                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
+                  <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">🎯</span>
                       <h5 className="text-xs font-black text-white/50 uppercase tracking-widest">Confiance de l'IA</h5>
@@ -964,7 +971,56 @@ export default function AnalyzePage() {
                         {result.confidence >= 80 ? "Très élevée" : result.confidence >= 60 ? "Élevée" : "Moyenne"}
                       </span>
                     </div>
+                    <p className="text-[9px] text-[#10B981] font-black uppercase tracking-wider mt-1">Niveau de confiance basé sur la qualité des données disponibles.</p>
                   </div>
+                </div>
+              )}
+
+              {/* PAYWALL WRAPPER BEGIN */}
+              <div className="relative">
+                {!isPremium && (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-gradient-to-t from-[#070E13] via-[#070E13]/90 to-transparent">
+                    <div className="bg-black/60 backdrop-blur-md border border-white/10 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#10B981] to-transparent"></div>
+                      <Lock className="w-10 h-10 text-[#10B981] mx-auto mb-4" />
+                      <h3 className="text-xl font-black text-white mb-2" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
+                      <p className="text-sm text-white/60 font-medium mb-6">
+                        L'analyse complète contient les probabilités exactes, le score prédit, les statistiques comparatives et les insights premium.
+                      </p>
+                      <Link 
+                        href="/pricing"
+                        className="inline-flex w-full items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 text-black font-black py-3.5 px-6 rounded-xl transition-all uppercase tracking-widest text-xs"
+                      >
+                        Débloquer l'analyse complète
+                      </Link>
+                    </div>
+                  </div>
+                )}
+                
+                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[8px] opacity-40' : ''}`}>
+                  {/* Score pill */}
+                  {result.predictedScore && (
+                    <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
+                      <div className="flex items-center gap-3 mb-6">
+                        <Trophy className="w-5 h-5 text-[#10B981]" />
+                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Score prédit par l'IA</h4>
+                      </div>
+                      
+                      <div className="flex items-center justify-center gap-4 md:gap-12 my-6 w-full">
+                        <div className="flex flex-col items-center gap-2 w-[30%]">
+                          <img src={getClub(team1!).logo} className="w-10 h-10 object-contain" alt="" />
+                          <span className="text-xs font-black text-white/75 text-center truncate">{getClub(team1!).shortName}</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-3 bg-black/40 px-6 py-3 rounded-full border border-white/5 shadow-inner">
+                          <span className="text-3xl md:text-5xl font-black text-[#10B981] font-[Space Grotesk]">{result.predictedScore.team1Goals}</span>
+                          <span className="text-lg font-bold text-white/20">-</span>
+                          <span className="text-3xl md:text-5xl font-black text-[#EF4444] font-[Space Grotesk]">{result.predictedScore.team2Goals}</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-2 w-[30%]">
+                          <img src={getClub(team2!).logo} className="w-10 h-10 object-contain" alt="" />
+                          <span className="text-xs font-black text-white/75 text-center truncate">{getClub(team2!).shortName}</span>
+                        </div>
+                      </div>
 
                   <div className="mt-6 bg-black/35 border border-white/5 rounded-[20px] p-5">
                     <h5 className="text-xs font-black uppercase tracking-wider text-white/40 mb-2">Explication stratégique</h5>
@@ -1139,6 +1195,10 @@ export default function AnalyzePage() {
                     </div>
                   );
                 })}
+              </div>
+              
+              {/* PAYWALL WRAPPER END */}
+              </div>
               </div>
 
             </div>
