@@ -1007,23 +1007,25 @@ export default function AnalyzePage() {
               )}
 
               {/* PAYWALL WRAPPER BEGIN */}
-              <div className="relative pt-6">
+              <div className={`relative pt-6 ${!isPremium ? 'max-h-[500px] overflow-hidden' : ''}`}>
                 {!isPremium && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-gradient-to-t from-[#070E13] via-[#070E13]/80 to-transparent">
-                    <div className="bg-black/40 backdrop-blur-sm p-8 rounded-3xl max-w-lg w-full text-center relative overflow-hidden flex flex-col items-center">
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-start p-6 pt-16 bg-gradient-to-b from-transparent via-[#070E13]/80 to-[#070E13]">
+                    <div className="bg-[#0D1520]/90 backdrop-blur-md border border-white/10 p-8 rounded-3xl max-w-lg w-full text-center relative overflow-hidden flex flex-col items-center shadow-2xl">
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#10B981] to-transparent"></div>
+                      
                       <h3 className="text-xl md:text-2xl font-black text-white mb-4" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
                       
                       <div className="w-56 h-1.5 bg-white/10 rounded-full mb-5 overflow-hidden">
                         <div className="h-full bg-[#10B981] rounded-full" style={{ width: "15%" }}></div>
                       </div>
 
-                      <p className="text-[13px] text-white/80 font-medium mb-6 max-w-[320px] leading-relaxed">
+                      <p className="text-[13px] text-white/85 font-medium mb-6 max-w-[320px] leading-relaxed">
                         L'analyse complète contient les probabilités exactes, les scénarios restants et les insights premium.
                       </p>
                       
                       <Link 
                         href="/pricing"
-                        className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 text-[#070E13] font-black py-3 px-8 rounded-full transition-all text-sm w-auto"
+                        className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 hover:scale-105 active:scale-95 text-[#070E13] font-black py-3.5 px-8 rounded-full transition-all text-sm w-auto shadow-lg shadow-[#10B981]/25"
                       >
                         🔓 Débloquer l'analyse complète
                       </Link>
@@ -1032,10 +1034,10 @@ export default function AnalyzePage() {
                 )}
                 
                 {/* 
-                  VERY STRONG BLUR for the hidden content.
-                  Using blur-2xl and opacity-10 to completely hide the content from readers.
+                  REAL BLUR: Keeping opacity higher so the colorful elements under are visible,
+                  but blurred enough to be completely unreadable.
                 */}
-                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-2xl opacity-10' : ''}`}>
+                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[10px] opacity-75' : ''}`}>
                   {/* Score pill */}
                   {result.predictedScore && (
                     <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
