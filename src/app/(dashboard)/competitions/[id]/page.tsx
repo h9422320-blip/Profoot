@@ -260,6 +260,24 @@ export default function CompetitionPage() {
 
         const bracket = getBracketData();
 
+        const renderTeam = (teamName: string, score: string, isWinner: boolean) => {
+          const cName = teamName.toLowerCase();
+          const club = leagueClubs.find(c => c.name.toLowerCase() === cName);
+          return (
+            <div className={`px-3 py-1.5 border-b border-white/5 flex justify-between items-center ${isWinner ? 'text-white' : 'text-white/60'}`}>
+               <div className="flex items-center gap-2 overflow-hidden">
+                 {club?.logo ? (
+                   <img src={club.logo} alt={teamName} className="w-4 h-4 object-contain" />
+                 ) : (
+                   <div className="w-4 h-4 rounded-full bg-white/10" />
+                 )}
+                 <span className={`truncate text-[13px] ${isWinner ? 'font-bold' : ''}`}>{teamName}</span>
+               </div>
+               <span className="font-bold">{score}</span>
+            </div>
+          );
+        };
+
         return (
           <div className="bg-[#1B2333] border border-white/5 rounded-[20px] p-6 overflow-x-auto">
             <div className="min-w-[800px] flex justify-between gap-4">
@@ -267,13 +285,9 @@ export default function CompetitionPage() {
               <div className="flex-1 flex flex-col gap-4">
                 <h4 className="text-center text-[12px] font-bold text-white/40 uppercase tracking-widest mb-2">Huitièmes</h4>
                 {bracket.r16.map((match: any, i: number) => (
-                  <div key={i} className="bg-[#1A222D] border border-white/5 rounded-lg overflow-hidden text-[13px] flex flex-col justify-center">
-                    <div className="px-3 py-2 border-b border-white/5 flex justify-between items-center text-white/70">
-                       <span className="truncate pr-2">{match.t1}</span><span className="font-bold text-white">{match.s1}</span>
-                    </div>
-                    <div className="px-3 py-2 flex justify-between items-center text-white/50">
-                       <span className="truncate pr-2">{match.t2}</span><span className="font-bold">{match.s2}</span>
-                    </div>
+                  <div key={i} className="bg-[#1A222D] border border-white/5 rounded-lg overflow-hidden flex flex-col justify-center">
+                    {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
+                    {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
                   </div>
                 ))}
               </div>
@@ -282,13 +296,9 @@ export default function CompetitionPage() {
               <div className="flex-1 flex flex-col gap-4 justify-around py-8">
                 <h4 className="text-center text-[12px] font-bold text-white/40 uppercase tracking-widest mb-2">Quarts</h4>
                 {bracket.qf.map((match: any, i: number) => (
-                  <div key={i} className="bg-[#1A222D] border border-white/5 rounded-lg overflow-hidden text-[13px] flex flex-col justify-center h-[76px]">
-                    <div className="px-3 py-1.5 border-b border-white/5 flex justify-between items-center text-white/70">
-                       <span className="truncate pr-2">{match.t1}</span><span className="font-bold text-white">{match.s1}</span>
-                    </div>
-                    <div className="px-3 py-1.5 flex justify-between items-center text-white/50">
-                       <span className="truncate pr-2">{match.t2}</span><span className="font-bold">{match.s2}</span>
-                    </div>
+                  <div key={i} className="bg-[#1A222D] border border-white/5 rounded-lg overflow-hidden flex flex-col justify-center h-[76px]">
+                    {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
+                    {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
                   </div>
                 ))}
               </div>
@@ -297,13 +307,9 @@ export default function CompetitionPage() {
               <div className="flex-1 flex flex-col gap-4 justify-around py-24">
                 <h4 className="text-center text-[12px] font-bold text-white/40 uppercase tracking-widest mb-2">Demies</h4>
                 {bracket.sf.map((match: any, i: number) => (
-                  <div key={i} className="bg-[#1A222D] border border-[#10B981]/30 rounded-lg overflow-hidden text-[13px] flex flex-col justify-center h-[76px]">
-                    <div className="px-3 py-1.5 border-b border-white/5 flex justify-between items-center text-[#10B981]">
-                       <span className="truncate pr-2 font-bold">{match.t1}</span><span className="font-bold">{match.s1}</span>
-                    </div>
-                    <div className="px-3 py-1.5 flex justify-between items-center text-white/50">
-                       <span className="truncate pr-2">{match.t2}</span><span className="font-bold">{match.s2}</span>
-                    </div>
+                  <div key={i} className="bg-[#1A222D] border border-[#10B981]/30 rounded-lg overflow-hidden flex flex-col justify-center h-[76px]">
+                    {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
+                    {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
                   </div>
                 ))}
               </div>
@@ -311,13 +317,9 @@ export default function CompetitionPage() {
               {/* Finale */}
               <div className="flex-1 flex flex-col gap-4 justify-center">
                 <h4 className="text-center text-[12px] font-bold text-[#FDE047] uppercase tracking-widest mb-2">Finale</h4>
-                <div className="bg-gradient-to-r from-[#2A2617] to-[#1A2222] border border-[#FDE047]/30 rounded-lg overflow-hidden text-[14px] flex flex-col justify-center h-[90px] shadow-[0_0_15px_rgba(253,224,71,0.1)]">
-                    <div className="px-4 py-2 border-b border-white/10 flex justify-between items-center font-bold">
-                       <span className="text-[#FDE047] truncate pr-2">{bracket.final.t1}</span><span className="text-white">{bracket.final.s1}</span>
-                    </div>
-                    <div className="px-4 py-2 flex justify-between items-center font-bold">
-                       <span className="text-[#FDE047] truncate pr-2">{bracket.final.t2}</span><span className="text-white">{bracket.final.s2}</span>
-                    </div>
+                <div className="bg-gradient-to-r from-[#2A2617] to-[#1A2222] border border-[#FDE047]/30 rounded-lg overflow-hidden flex flex-col justify-center h-[90px] shadow-[0_0_15px_rgba(253,224,71,0.1)]">
+                  {renderTeam(bracket.final.t1, bracket.final.s1, bracket.final.s1 > bracket.final.s2 || bracket.final.s1 === "V")}
+                  {renderTeam(bracket.final.t2, bracket.final.s2, bracket.final.s2 > bracket.final.s1 || bracket.final.s2 === "V")}
                 </div>
               </div>
             </div>
