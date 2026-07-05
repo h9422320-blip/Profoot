@@ -1049,7 +1049,7 @@ export default function AnalyzePage() {
               {/* PAYWALL WRAPPER BEGIN */}
               <div className={`relative pt-6 ${!isPremium ? 'max-h-[500px] overflow-hidden' : ''}`}>
                 {!isPremium && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-start p-6 pt-24 bg-gradient-to-b from-transparent via-[#050816]/95 to-[#050816] text-center">
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-start p-6 pt-10 bg-gradient-to-b from-[#050816]/60 via-[#050816] to-[#050816] text-center">
                     
                     <h3 className="text-xl md:text-3xl font-black text-white mb-4" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
                     
@@ -1071,10 +1071,9 @@ export default function AnalyzePage() {
                 )}
                 
                 {/* 
-                  REAL BLUR: Keeping opacity higher so the colorful elements under are visible,
-                  but blurred enough to be completely unreadable.
+                  REAL BLUR: Increased significantly so users cannot read the score or stats at all.
                 */}
-                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[10px] opacity-75' : ''}`}>
+                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[24px] opacity-40' : ''}`}>
                   {/* Score pill */}
                   {result.predictedScore && (
                     <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
