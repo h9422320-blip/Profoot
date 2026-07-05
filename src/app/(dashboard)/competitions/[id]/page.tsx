@@ -279,113 +279,147 @@ export default function CompetitionPage() {
         const renderTeam = (teamName: string, score: string, isWinner: boolean) => {
           const cName = teamName.toLowerCase();
           const club = leagueClubs.find(c => c.name.toLowerCase() === cName);
-          // Fake flags for generic UI matching Visifoot
           const getFlag = (n: string) => {
             const m: any = { "mexique":"mx","afrique du sud":"za","corée du sud":"kr","république tchèque":"cz","suisse":"ch","canada":"ca","bosnie-herzégovine":"ba","qatar":"qa","brésil":"br","maroc":"ma","écosse":"gb-sct","haïti":"ht","usa":"us","australie":"au","paraguay":"py","turquie":"tr","allemagne":"de","côte d'ivoire":"ci","équateur":"ec","curaçao":"cw","pays-bas":"nl","japon":"jp","suède":"se","tunisie":"tn","belgique":"be","egypte":"eg","iran":"ir","nouvelle-zélande":"nz","espagne":"es","iles du cap-vert":"cv","uruguay":"uy","arabie saoudite":"sa","france":"fr","norvège":"no","sénégal":"sn","irak":"iq","argentine":"ar","autriche":"at","algérie":"dz","jordanie":"jo","colombie":"co","portugal":"pt","rép. dém. du congo":"cd","ouzbékistan":"uz","angleterre":"gb-eng","croatie":"hr","ghana":"gh","panama":"pa" };
             return m[n.toLowerCase()] ? `https://flagcdn.com/w40/${m[n.toLowerCase()]}.png` : club?.logo;
           };
           const logo = getFlag(teamName);
+          
+          const isTbd = teamName.includes("Vainqueur") || teamName.includes("Winner") || teamName.includes("À déterminer") || teamName.includes("Perdant") || teamName.includes("3rd of");
+          const displayWinner = isWinner && score !== "-";
 
           return (
-            <div className={`px-3 py-1.5 border-b border-white/5 flex justify-between items-center ${isWinner ? 'text-[#10B981]' : 'text-white/60'}`}>
+            <div className={`px-3 py-1.5 flex justify-between items-center bg-transparent`}>
                <div className="flex items-center gap-2 overflow-hidden">
-                 {logo ? (
-                   <img src={logo} alt={teamName} className="w-4 h-4 object-contain" />
+                 {isTbd ? (
+                   <div className="w-[14px] h-[10px] rounded-[2px] bg-[#2A3740]" />
+                 ) : logo ? (
+                   <img src={logo} alt={teamName} className="w-[14px] h-[10px] rounded-[2px] object-cover" />
                  ) : (
-                   <div className="w-4 h-4 rounded-full bg-white/10" />
+                   <div className="w-[14px] h-[10px] rounded-[2px] bg-[#2A3740]" />
                  )}
-                 <span className={`truncate text-[12px] ${isWinner ? 'font-bold text-white' : 'text-white/60'}`}>{teamName}</span>
+                 <span className={`truncate text-[11px] ${displayWinner ? 'font-medium text-white' : 'text-[#8895A0]'}`}>{teamName}</span>
                </div>
-               <span className="font-bold text-[13px]">{score}</span>
+               <span className={`text-[12px] font-bold ${displayWinner ? 'text-[#10B981]' : 'text-[#8895A0]'}`}>{score !== "-" ? score : ""}</span>
             </div>
           );
         };
 
+        const BracketCard = ({ match, rightConnector = false, halfConnector = null }: any) => {
+          return (
+            <div className="relative w-[180px] h-[64px] flex flex-col justify-center bg-[#1A252C] rounded-xl z-10">
+              {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
+              {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
+              
+              {/* Ligne sortante à droite */}
+              {rightConnector && (
+                <div className="absolute top-1/2 -right-[24px] w-[24px] border-t border-[#2A3740]"></div>
+              )}
+              {/* Ligne verticale pour relier deux matchs */}
+              {halfConnector === 'top' && (
+                <div className="absolute top-1/2 -right-[24px] w-px h-[calc(50%+1rem)] bg-[#2A3740] rounded-tr-lg"></div>
+              )}
+              {halfConnector === 'bottom' && (
+                <div className="absolute bottom-1/2 -right-[24px] w-px h-[calc(50%+1rem)] bg-[#2A3740] rounded-br-lg"></div>
+              )}
+            </div>
+          );
+        };
+
+        const renderRound = (matches: any[], roundName: string, gap: string, pt: string = "") => (
+          <div className="flex flex-col relative z-10 w-[180px]" style={{ gap: gap, paddingTop: pt }}>
+            <h4 className="text-center text-[10px] font-bold text-[#8895A0] uppercase tracking-widest mb-6 h-[15px]">{roundName}</h4>
+            {matches.map((match: any, i: number) => (
+              <div key={i} className="relative w-[180px] h-[64px] flex flex-col justify-center bg-[#1A252C] rounded-xl z-10 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+                {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
+                {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
+              </div>
+            ))}
+          </div>
+        );
+
         return (
-          <div className="bg-[#111827] border border-white/5 rounded-[20px] p-6 overflow-x-auto">
-            <h2 className="text-white text-xl font-bold mb-6">Tableau à élimination directe</h2>
-            <div className="min-w-[1200px] flex justify-between gap-6 relative">
+          <div className="bg-[#0D151C] rounded-[16px] p-6 overflow-x-auto min-h-[800px]">
+            <h2 className="text-white text-[15px] font-bold mb-8">Tableau à élimination directe</h2>
+            <div className="min-w-[1100px] flex gap-[48px] relative pl-2">
+              
               {/* Seizièmes */}
               {bracket.r32 && bracket.r32.length > 0 && (
-                <div className="flex-1 flex flex-col gap-3 relative z-10">
-                  <h4 className="text-center text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Seizièmes de finale</h4>
+                <div className="flex flex-col relative z-10 w-[180px] gap-3">
+                  <h4 className="text-center text-[10px] font-bold text-[#8895A0] uppercase tracking-widest mb-3">Seizièmes de finale</h4>
                   {bracket.r32.map((match: any, i: number) => (
-                    <div key={`r32-${i}`} className="bg-[#1F2937] border border-white/5 rounded-lg overflow-hidden flex flex-col justify-center shadow-lg relative">
-                      {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
-                      {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
-                      {/* Connecting Line Right */}
-                      <div className="absolute top-1/2 -right-3 w-3 border-t border-[#374151]"></div>
-                      {i % 2 === 0 && <div className="absolute top-1/2 -right-3 w-px h-[calc(100%+0.75rem)] bg-[#374151]"></div>}
+                    <div key={`r32-${i}`} className="relative">
+                      <BracketCard match={match} />
+                      <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                      {i % 2 === 0 ? (
+                        <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+0.75rem)] bg-[#1F2E37] rounded-tr-[4px]"></div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
               )}
 
               {/* Huitièmes */}
-              <div className="flex-1 flex flex-col gap-3 justify-around relative z-10">
-                <h4 className="text-center text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Huitièmes de finale</h4>
+              <div className="flex flex-col relative z-10 w-[180px]" style={{ gap: 'calc(64px + 0.75rem)', paddingTop: bracket.r32?.length > 0 ? 'calc(32px + 1.2rem)' : '0' }}>
+                <h4 className="text-center text-[10px] font-bold text-[#8895A0] uppercase tracking-widest mb-3 absolute top-0 w-full">Huitièmes de finale</h4>
                 {bracket.r16.map((match: any, i: number) => (
-                  <div key={`r16-${i}`} className="bg-[#1F2937] border border-white/5 rounded-lg overflow-hidden flex flex-col justify-center shadow-lg relative">
-                    {/* Connecting Line Left */}
-                    <div className="absolute top-1/2 -left-3 w-3 border-t border-[#374151]"></div>
-                    {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
-                    {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
-                    {/* Connecting Line Right */}
-                    <div className="absolute top-1/2 -right-3 w-3 border-t border-[#374151]"></div>
-                    {i % 2 === 0 && <div className="absolute top-1/2 -right-3 w-px h-[calc(100%+0.75rem)] bg-[#374151] z-0"></div>}
+                  <div key={`r16-${i}`} className="relative">
+                    <BracketCard match={match} />
+                    <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                    <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                    {i % 2 === 0 ? (
+                      <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+64px+0.75rem)] bg-[#1F2E37] rounded-tr-[4px]"></div>
+                    ) : null}
                   </div>
                 ))}
               </div>
               
               {/* Quarts */}
-              <div className="flex-1 flex flex-col gap-3 justify-around relative z-10">
-                <h4 className="text-center text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Quarts de finale</h4>
+              <div className="flex flex-col relative z-10 w-[180px]" style={{ gap: 'calc(128px + 1.5rem + 0.75rem)', paddingTop: bracket.r32?.length > 0 ? 'calc(64px + 3rem)' : 'calc(32px + 1.2rem)' }}>
+                <h4 className="text-center text-[10px] font-bold text-[#8895A0] uppercase tracking-widest mb-3 absolute top-0 w-full">Quarts de finale</h4>
                 {bracket.qf.map((match: any, i: number) => (
-                  <div key={`qf-${i}`} className="bg-[#1F2937] border border-white/5 rounded-lg overflow-hidden flex flex-col justify-center shadow-lg relative">
-                    <div className="absolute top-1/2 -left-3 w-3 border-t border-[#374151]"></div>
-                    {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
-                    {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
-                    <div className="absolute top-1/2 -right-3 w-3 border-t border-[#374151]"></div>
-                    {i % 2 === 0 && <div className="absolute top-1/2 -right-3 w-px h-[calc(100%+0.75rem)] bg-[#374151] z-0"></div>}
+                  <div key={`qf-${i}`} className="relative">
+                    <BracketCard match={match} />
+                    <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                    <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                    {i % 2 === 0 ? (
+                      <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+128px+1.5rem+0.75rem)] bg-[#1F2E37] rounded-tr-[4px]"></div>
+                    ) : null}
                   </div>
                 ))}
               </div>
               
               {/* Demies */}
-              <div className="flex-1 flex flex-col gap-3 justify-around relative z-10">
-                <h4 className="text-center text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Demi-finales</h4>
+              <div className="flex flex-col relative z-10 w-[180px]" style={{ gap: 'calc(256px + 3rem + 1.5rem + 0.75rem)', paddingTop: bracket.r32?.length > 0 ? 'calc(128px + 6rem)' : 'calc(96px + 3.6rem)' }}>
+                <h4 className="text-center text-[10px] font-bold text-[#8895A0] uppercase tracking-widest mb-3 absolute top-0 w-full">Demi-finales</h4>
                 {bracket.sf.map((match: any, i: number) => (
-                  <div key={`sf-${i}`} className="bg-[#1F2937] border border-[#10B981]/30 rounded-lg overflow-hidden flex flex-col justify-center shadow-lg relative">
-                    <div className="absolute top-1/2 -left-3 w-3 border-t border-[#374151]"></div>
-                    {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
-                    {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
-                    <div className="absolute top-1/2 -right-3 w-3 border-t border-[#374151]"></div>
-                    {i % 2 === 0 && <div className="absolute top-1/2 -right-3 w-px h-[calc(100%+0.75rem)] bg-[#374151] z-0"></div>}
+                  <div key={`sf-${i}`} className="relative">
+                    <BracketCard match={match} />
+                    <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                    <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                    {i % 2 === 0 ? (
+                      <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+256px+3rem+1.5rem+0.75rem)] bg-[#1F2E37] rounded-tr-[4px]"></div>
+                    ) : null}
                   </div>
                 ))}
               </div>
 
               {/* Finale & 3e Place */}
-              <div className="flex-1 flex flex-col gap-10 justify-center relative z-10">
-                <div>
-                  <h4 className="text-center text-[10px] font-bold text-[#FDE047] uppercase tracking-widest mb-2">Finale</h4>
-                  <div className="bg-[#1F2937] border border-[#FDE047]/30 rounded-lg overflow-hidden flex flex-col justify-center shadow-[0_0_15px_rgba(253,224,71,0.05)] relative">
-                    <div className="absolute top-1/2 -left-3 w-3 border-t border-[#374151]"></div>
-                    {renderTeam(bracket.final?.t1 || "Vainqueur Demie 1", bracket.final?.s1 || "-", bracket.final?.s1 > bracket.final?.s2)}
-                    {renderTeam(bracket.final?.t2 || "Vainqueur Demie 2", bracket.final?.s2 || "-", bracket.final?.s2 > bracket.final?.s1)}
-                  </div>
+              <div className="flex flex-col justify-center relative z-10 w-[180px]">
+                <h4 className="text-center text-[10px] font-bold text-[#FDE047] uppercase tracking-widest mb-3 absolute top-0 w-full">Finale</h4>
+                <div className="relative mb-24">
+                  <BracketCard match={bracket.final || { t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" }} />
+                  <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#1F2E37]"></div>
                 </div>
 
                 {bracket.third_place && (
-                  <div className="mt-8">
-                    <h4 className="text-center text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Match pour la 3e place</h4>
-                    <div className="bg-[#1F2937] border border-white/5 rounded-lg overflow-hidden flex flex-col justify-center shadow-lg opacity-80">
-                      {renderTeam(bracket.third_place.t1, bracket.third_place.s1, bracket.third_place.s1 > bracket.third_place.s2)}
-                      {renderTeam(bracket.third_place.t2, bracket.third_place.s2, bracket.third_place.s2 > bracket.third_place.s1)}
-                    </div>
+                  <div className="relative">
+                    <h4 className="text-center text-[10px] font-bold text-[#8895A0] uppercase tracking-widest mb-3">Match pour la 3e place</h4>
+                    <BracketCard match={bracket.third_place} />
                   </div>
                 )}
               </div>
+
             </div>
           </div>
         );
