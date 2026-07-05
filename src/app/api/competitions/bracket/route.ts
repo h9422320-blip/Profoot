@@ -40,33 +40,38 @@ export async function GET(request: Request) {
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: `Tu es le moteur IA en arrière-plan (Background Engine) de l'application ProFoot. Ton rôle est de GÉNÉRER AUTOMATIQUEMENT et SIMULER l'intégralité d'un tournoi s'il n'est pas encore terminé, ou de donner les vrais résultats s'il est fini.
+      systemInstruction: `Tu es le moteur IA en arrière-plan (Background Engine) de l'application ProFoot. 
+Le contexte ACTUEL est que nous sommes le 5 Juillet 2026. La Coupe du Monde 2026 est en cours.
 
-CONSIGNES STRICTES :
-1. SIMULATION INTELLIGENTE : Si la compétition (ex: Coupe du Monde 2026) n'a pas encore eu lieu ou n'est pas finie, invente/simule des résultats RÉALISTES pour tout le tournoi jusqu'à la finale. Ne laisse JAMAIS de cases vides.
-2. COUPE DU MONDE 2026 (48 ÉQUIPES) : Le format comporte des Seizièmes de finale (r32) -> Huitièmes (r16) -> Quarts (qf) -> Demies (sf) -> Match 3ème place -> Finale.
-3. LOGIQUE D'ÉLIMINATION : L'équipe gagnante d'un match (celle qui a le score le plus élevé) doit OBLIGATOIREMENT être l'une des deux équipes du tour suivant qui y correspond. (Ex: Le gagnant du Match 1 r32 et du Match 2 r32 s'affrontent dans le Match 1 r16).
-4. TRADUIS OBLIGATOIREMENT TOUS LES NOMS EN FRANÇAIS (ex: "Brésil", "Maroc").
-5. Format JSON exact requis :
+CONSIGNES STRICTES ET ABSOLUES :
+1. CHRONOLOGIE (TRÈS IMPORTANT) : Nous sommes le 05/07/2026. Les Seizièmes de finale (r32) et les Huitièmes de finale (r16) SONT TERMINÉS.
+2. LES QUARTS DE FINALE N'ONT PAS COMMENCÉ ! Tu dois mettre les équipes qualifiées pour les Quarts (qf), mais LEURS SCORES DOIVENT ÊTRE "-" et le status "NS". Ne simule AUCUN score pour les Quarts de finale, les Demies ou la Finale.
+3. Pour les Demies (sf), la Troisième place et la Finale, le nom des équipes doit être des placeholders (ex: "Vainqueur Quart 1") avec des scores à "-".
+4. SIMULATION RÉALISTE POUR LE PASSÉ : Invente des scores réalistes et logiques UNIQUEMENT pour les Seizièmes (r32) et les Huitièmes (r16).
+5. TRADUIS OBLIGATOIREMENT TOUS LES NOMS EN FRANÇAIS (ex: "Brésil", "Maroc").
+6. Format JSON exact requis :
 {
   "r32": [
     {"t1": "Brésil", "t2": "Suisse", "s1": "2", "s2": "0", "status": "FT"},
-    ... 16 matchs total
+    ... 16 matchs total avec scores
   ],
   "r16": [
     {"t1": "Brésil", "t2": "Mexique", "s1": "3", "s2": "1", "status": "FT"},
-    ... 8 matchs total
+    ... 8 matchs total avec scores
   ],
-  "qf": [ ... 4 matchs total ],
-  "sf": [ ... 2 matchs total ],
-  "third_place": {"t1": "...", "t2": "...", "s1": "...", "s2": "...", "status": "FT"},
-  "final": {"t1": "...", "t2": "...", "s1": "...", "s2": "...", "status": "FT"}
+  "qf": [
+    {"t1": "Brésil", "t2": "France", "s1": "-", "s2": "-", "status": "NS"},
+    ... 4 matchs total SANS SCORES
+  ],
+  "sf": [ ... 2 matchs SANS SCORES, t1/t2 = "Vainqueur Quart X" ],
+  "third_place": {"t1": "Perdant Demie 1", "t2": "Perdant Demie 2", "s1": "-", "s2": "-", "status": "NS"},
+  "final": {"t1": "Vainqueur Demie 1", "t2": "Vainqueur Demie 2", "s1": "-", "s2": "-", "status": "NS"}
 }
 
-IMPORTANT : Chaque tour doit avoir exactement le bon nombre de matchs (r32=16, r16=8, qf=4, sf=2).`
+IMPORTANT : Ne génère AUCUN score de match après les Huitièmes de finale.`
     });
 
-    const prompt = `Génère l'arbre complet et simulé de la ${COMPETITION_NAMES[id]}. Remplis tout avec des scores logiques et réalistes. Retourne uniquement le JSON.`;
+    const prompt = `Génère l'arbre complet de la ${COMPETITION_NAMES[id]}. N'oublie pas : nous sommes le 5 Juillet 2026, les Quarts de finale n'ont pas encore été joués. Retourne uniquement le JSON.`;
 
     const result = await model.generateContent(prompt);
     const rawText = result.response.text().trim();
