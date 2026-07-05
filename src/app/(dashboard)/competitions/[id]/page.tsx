@@ -54,6 +54,23 @@ export default function CompetitionPage() {
         }
       })
       .catch(err => console.error("Error fetching live competition data:", err));
+
+    // For cup competitions: fetch REAL bracket from Gemini + Google Search intelligence
+    const isCupComp = ["wc", "ucl", "euro", "can", "copa"].includes(id as string);
+    if (isCupComp) {
+      fetch(`/api/competitions/bracket?id=${id}`)
+        .then(res => res.json())
+        .then(bracketData => {
+          if (bracketData && bracketData.r16 && bracketData.r16.length > 0) {
+            // Only use AI bracket if it has real data (not all "À déterminer")
+            const hasRealData = bracketData.r16.some((m: any) => m.t1 !== "À déterminer");
+            if (hasRealData) {
+              setLiveBracket(bracketData);
+            }
+          }
+        })
+        .catch(err => console.error("Error fetching AI bracket data:", err));
+    }
   }, [id]);
 
   useEffect(() => {
@@ -227,9 +244,12 @@ export default function CompetitionPage() {
         </div>
       ) : (() => {
         const getBracketData = () => {
+          // liveBracket comes from the AI-powered /api/competitions/bracket route
+          // which uses Gemini + Google Search to get REAL match results
           if (liveBracket) return liveBracket;
 
-          const emptyMatch = { t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" };
+          // Fallback: show loading state while AI fetches real data
+          const emptyMatch = { t1: "Chargement...", t2: "Chargement...", s1: "-", s2: "-" };
           return {
             r16: Array(8).fill(emptyMatch),
             qf: Array(4).fill(emptyMatch),

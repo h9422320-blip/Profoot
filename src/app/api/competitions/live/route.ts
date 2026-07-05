@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const API_KEY = process.env.API_FOOTBALL_KEY || "";
-const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 const LEAGUE_MAP: Record<string, { id: number, season: number }> = {
-  "ucl": { id: 2, season: 2025 },
+  "ucl": { id: 2, season: 2025 }, // Adjust seasons based on current reality
   "wc": { id: 1, season: 2026 },
   "euro": { id: 4, season: 2024 },
   "can": { id: 34, season: 2025 },
@@ -22,7 +20,7 @@ async function fetchApiFootball(endpoint: string) {
   try {
     const res = await fetch(url, {
       headers: { "x-apisports-key": API_KEY },
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 } // Cache for 1 hour to save API calls
     });
     return await res.json();
   } catch (error) {
@@ -42,35 +40,56 @@ export async function GET(request: Request) {
   const { id: apiLeagueId, season } = LEAGUE_MAP[id];
 
   try {
+    // 1. Fetch Standings
     const standingsRes = await fetchApiFootball(`/standings?league=${apiLeagueId}&season=${season}`);
     const standingsData = standingsRes?.response?.[0]?.league?.standings || [];
     
+    // Flatten standings (API-Sports returns an array of groups, each containing an array of teams)
     const groups = standingsData.map((group: any[]) => {
       return group.map((teamRank: any) => ({
         rank: teamRank.rank,
-        team: { id: teamRank.team.id, name: teamRank.team.name, logo: teamRank.team.logo },
+        team: {
+          id: teamRank.team.id,
+          name: teamRank.team.name,
+          logo: teamRank.team.logo
+        },
         points: teamRank.points,
         goalsDiff: teamRank.goalsDiff,
         group: teamRank.group,
         all: {
-          played: teamRank.all.played, win: teamRank.all.win, draw: teamRank.all.draw, lose: teamRank.all.lose,
-          goals: { for: teamRank.all.goals.for, against: teamRank.all.goals.against }
+          played: teamRank.all.played,
+          win: teamRank.all.win,
+          draw: teamRank.all.draw,
+          lose: teamRank.all.lose,
+          goals: {
+            for: teamRank.all.goals.for,
+            against: teamRank.all.goals.against
+          }
         }
       }));
     }).flat();
 
+    // 2. Fetch Fixtures (For Knockout bracket)
     const fixturesRes = await fetchApiFootball(`/fixtures?league=${apiLeagueId}&season=${season}`);
     const fixtures = fixturesRes?.response || [];
 
-    const bracket = { r16: [] as any[], qf: [] as any[], sf: [] as any[], final: null as any };
+    const bracket = {
+      r16: [] as any[],
+      qf: [] as any[],
+      sf: [] as any[],
+      final: null as any
+    };
 
     fixtures.forEach((f: any) => {
-      if (!f.league || !f.league.round) return;
       const round = f.league.round.toLowerCase();
       const matchData = {
-        t1: f.teams.home.name, t2: f.teams.away.name, t1Logo: f.teams.home.logo, t2Logo: f.teams.away.logo,
-        s1: f.goals.home !== null ? f.goals.home.toString() : "-", s2: f.goals.away !== null ? f.goals.away.toString() : "-",
-        status: f.fixture.status.short
+        t1: f.teams.home.name,
+        t2: f.teams.away.name,
+        t1Logo: f.teams.home.logo,
+        t2Logo: f.teams.away.logo,
+        s1: f.goals.home !== null ? f.goals.home.toString() : "-",
+        s2: f.goals.away !== null ? f.goals.away.toString() : "-",
+        status: f.fixture.status.short // "FT", "NS", etc.
       };
 
       if (round.includes('16') || round.includes('8th')) bracket.r16.push(matchData);
@@ -80,40 +99,6 @@ export async function GET(request: Request) {
         bracket.final = matchData;
       }
     });
-
-    // --- AI INTELLIGENCE FALLBACK ---
-    // If API-Sports doesn't have the knockout matches (e.g. World Cup 2026), use the AI to generate the realistic bracket
-    if (bracket.r16.length === 0 && bracket.qf.length === 0 && !bracket.final && GEMINI_KEY && ["wc", "can", "euro", "ucl", "copa"].includes(id)) {
-      try {
-        const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-        
-        const prompt = `Agis comme un expert IA du football mondial pour ProFoot. 
-Le tournoi "${id}" (wc=Coupe du Monde, euro=Euro, can=CAN) de la saison ${season} est arrivé à la phase éliminatoire.
-Génère un arbre de tournoi hautement réaliste (probabilités basées sur l'état de forme, historique, IA) ou les VRAIS résultats si le tournoi a déjà eu lieu.
-Retourne UNIQUEMENT un objet JSON valide avec cette structure stricte (pas de markdown, pas de texte avant/après):
-{
-  "r16": [{"t1": "Equipe 1", "t2": "Equipe 2", "s1": "score ou -", "s2": "score ou -"}],
-  "qf": [{"t1": "Equipe 1", "t2": "Equipe 2", "s1": "-", "s2": "-"}],
-  "sf": [{"t1": "Equipe 1", "t2": "Equipe 2", "s1": "-", "s2": "-"}],
-  "final": {"t1": "Equipe 1", "t2": "Equipe 2", "s1": "-", "s2": "-"}
-}
-Obligations: r16 doit avoir 8 éléments, qf: 4, sf: 2, final: 1 objet. Utilise les noms de pays en français (ex: "Argentine", "France"). Si les matchs ne sont pas encore joués, prédis des scores réalistes (ex: "2", "1") et des vainqueurs plausibles pour faire avancer les bonnes équipes jusqu'en finale.`;
-        
-        const aiResult = await model.generateContent(prompt);
-        let textResult = aiResult.response.text().trim();
-        if (textResult.startsWith('\`\`\`json')) textResult = textResult.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
-        else if (textResult.startsWith('\`\`\`')) textResult = textResult.replace(/\`\`\`/g, '').trim();
-        
-        const aiBracket = JSON.parse(textResult);
-        bracket.r16 = aiBracket.r16 || [];
-        bracket.qf = aiBracket.qf || [];
-        bracket.sf = aiBracket.sf || [];
-        bracket.final = aiBracket.final || null;
-      } catch (e) {
-        console.error("[AI Bracket Fallback Error]:", e);
-      }
-    }
 
     const emptyMatch = { t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" };
     
