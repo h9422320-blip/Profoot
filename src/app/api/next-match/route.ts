@@ -1,18 +1,34 @@
 import { NextResponse } from 'next/server';
 import { clubs } from '@/lib/data';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-async function fetchApiFootball(endpoint: string) {
-  const url = `https://v3.football.api-sports.io${endpoint}`;
-  const res = await fetch(url, {
-    headers: {
-      "x-apisports-key": process.env.API_FOOTBALL_KEY || "",
-    },
-    next: { revalidate: 3600 }
-  });
-  return res.json();
+const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
+
+// Helper for approximate matching (fuzzy search) since AI might return "L'Égypte", "Egypte", "Egypt", etc.
+function findBestMatchId(aiResponse: string): string | null {
+  const normalized = aiResponse.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  
+  if (normalized.length < 3) return null; // Avoid tiny matches
+
+  // 1. Direct key match (e.g. "egypt" -> "egypt")
+  for (const key in clubs) {
+    if (key.toLowerCase().includes(normalized) || normalized.includes(key.toLowerCase())) return key;
+  }
+
+  // 2. Name match (e.g. "Égypte" -> "Egypt")
+  for (const key in clubs) {
+    const club = clubs[key];
+    const internalNames = [
+      club.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""),
+      club.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "")
+    ];
+
+    if (internalNames.some(name => normalized.includes(name) || name.includes(normalized))) {
+      return key;
+    }
+  }
+  return null;
 }
-
-const getApiIdFromLogo = (logo: string) => parseInt(logo.split('/').pop()?.split('.')[0] || '0', 10);
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -27,32 +43,35 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Team not found' }, { status: 404 });
   }
 
-  const apiId = getApiIdFromLogo(team.logo);
-  if (!apiId) {
-    return NextResponse.json({ error: 'No API ID found' }, { status: 404 });
-  }
-
   try {
-    const data = await fetchApiFootball(`/fixtures?team=${apiId}&next=1`);
-    const fixtures = data?.response || [];
+    console.log(`[NEXT_MATCH_AI] Asking Gemini for next opponent of ${team.name}...`);
     
-    if (fixtures.length > 0) {
-      const match = fixtures[0];
-      // Find the opponent's API ID
-      const isHome = match.teams.home.id === apiId;
-      const opponentApiId = isHome ? match.teams.away.id : match.teams.home.id;
+    // We use the exact same technology as the Agent IA
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: "Tu es un expert en football connecté au web. Cherche le prochain adversaire officiel de l'équipe demandée. Réponds UNIQUEMENT avec le nom court de l'équipe adverse en anglais ou français, sans aucun autre mot, ni ponctuation.",
+      tools: [{ googleSearch: {} } as any]
+    });
 
-      // Find local internal ID for opponent
-      const opponentKey = Object.keys(clubs).find(key => getApiIdFromLogo(clubs[key].logo) === opponentApiId);
-      
-      if (opponentKey) {
-        return NextResponse.json({ nextTeamId: opponentKey });
-      }
-    }
+    const result = await model.generateContent(`Quel est le prochain adversaire de l'équipe nationale ou du club de football : ${team.name} ?`);
+    const aiOpponentName = result.response.text().trim();
     
-    return NextResponse.json({ nextTeamId: null });
+    console.log(`[NEXT_MATCH_AI] Gemini found: ${aiOpponentName}`);
+
+    // Map the plain text response (e.g., "Egypte") to our internal ID (e.g., "egypt")
+    const matchedId = findBestMatchId(aiOpponentName);
+
+    if (matchedId) {
+      console.log(`[NEXT_MATCH_AI] Matched ID: ${matchedId}`);
+      return NextResponse.json({ nextTeamId: matchedId });
+    } else {
+      console.warn(`[NEXT_MATCH_AI] No database match for AI response: ${aiOpponentName}`);
+      return NextResponse.json({ nextTeamId: null, aiRaw: aiOpponentName });
+    }
+
   } catch (error) {
-    console.error('[NEXT_MATCH] Error fetching:', error);
-    return NextResponse.json({ error: 'Failed to fetch next match' }, { status: 500 });
+    console.error('[NEXT_MATCH_AI] Error fetching from Gemini:', error);
+    return NextResponse.json({ error: 'Failed to fetch next match via AI' }, { status: 500 });
   }
 }
