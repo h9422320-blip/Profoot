@@ -35,55 +35,49 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log(`[BRACKET_AI] Fetching real bracket data for ${COMPETITION_NAMES[id]} via Gemini + Google Search...`);
+    console.log(`[BRACKET_AI] Generating automatic background simulation for ${COMPETITION_NAMES[id]} via Gemini...`);
 
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: `Tu es un expert football connecté au web via Google Search. Ton rôle est de fournir l'arbre EXACT et RÉEL d'un tournoi (huitièmes, quarts, demies, finale).
+      systemInstruction: `Tu es le moteur IA en arrière-plan (Background Engine) de l'application ProFoot. Ton rôle est de GÉNÉRER AUTOMATIQUEMENT et SIMULER l'intégralité d'un tournoi s'il n'est pas encore terminé, ou de donner les vrais résultats s'il est fini.
 
 CONSIGNES STRICTES :
-1. AUCUNE PRÉDICTION : Ne devine jamais un score ou un match à l'avance.
-2. MATCH JOUÉ : Si le match est terminé, mets les vraies équipes et les vrais scores.
-3. MATCH FUTUR (PROGRAMMÉ) : Si les deux équipes sont connues mais que le match n'est pas joué, mets les équipes avec le score "-".
-4. MATCH INCONNU (CASES VIDES) : Si les équipes ne sont pas encore qualifiées, remplis la case avec le nom officiel de la place (ex: "1er Groupe A", "Vainqueur Match 1", "Vainqueur Huitième 1") et le score "-". Ne laisse jamais la case vide.
-5. TRADUIS OBLIGATOIREMENT TOUS LES NOMS EN FRANÇAIS (ex: "Brésil", "Maroc").
-6. Réponds UNIQUEMENT en JSON valide.
-7. Format JSON exact requis :
+1. SIMULATION INTELLIGENTE : Si la compétition (ex: Coupe du Monde 2026) n'a pas encore eu lieu ou n'est pas finie, invente/simule des résultats RÉALISTES pour tout le tournoi jusqu'à la finale. Ne laisse JAMAIS de cases vides.
+2. COUPE DU MONDE 2026 (48 ÉQUIPES) : Le format comporte des Seizièmes de finale (r32) -> Huitièmes (r16) -> Quarts (qf) -> Demies (sf) -> Match 3ème place -> Finale.
+3. LOGIQUE D'ÉLIMINATION : L'équipe gagnante d'un match (celle qui a le score le plus élevé) doit OBLIGATOIREMENT être l'une des deux équipes du tour suivant qui y correspond. (Ex: Le gagnant du Match 1 r32 et du Match 2 r32 s'affrontent dans le Match 1 r16).
+4. TRADUIS OBLIGATOIREMENT TOUS LES NOMS EN FRANÇAIS (ex: "Brésil", "Maroc").
+5. Format JSON exact requis :
 {
+  "r32": [
+    {"t1": "Brésil", "t2": "Suisse", "s1": "2", "s2": "0", "status": "FT"},
+    ... 16 matchs total
+  ],
   "r16": [
-    {"t1": "France", "t2": "Sénégal", "s1": "2", "s2": "1", "status": "FT"},
+    {"t1": "Brésil", "t2": "Mexique", "s1": "3", "s2": "1", "status": "FT"},
     ... 8 matchs total
   ],
-  "qf": [
-    {"t1": "Vainqueur Huitième 1", "t2": "Vainqueur Huitième 2", "s1": "-", "s2": "-", "status": "NS"},
-    ... 4 matchs total
-  ],
-  "sf": [
-    ... 2 matchs total
-  ],
-  "final": {"t1": "Vainqueur Demie 1", "t2": "Vainqueur Demie 2", "s1": "-", "s2": "-", "status": "NS"}
+  "qf": [ ... 4 matchs total ],
+  "sf": [ ... 2 matchs total ],
+  "third_place": {"t1": "...", "t2": "...", "s1": "...", "s2": "...", "status": "FT"},
+  "final": {"t1": "...", "t2": "...", "s1": "...", "s2": "...", "status": "FT"}
 }
 
-IMPORTANT : Chaque tour doit avoir exactement le bon nombre de matchs (r16=8, qf=4, sf=2, final=1).`,
-      tools: [{ googleSearch: {} } as any]
+IMPORTANT : Chaque tour doit avoir exactement le bon nombre de matchs (r32=16, r16=8, qf=4, sf=2).`
     });
 
-    const prompt = `Génère l'arbre réel et actuel de la phase éliminatoire de la ${COMPETITION_NAMES[id]}. Traduis tous les noms en français. Ne fais aucune prédiction. Utilise uniquement les données officielles (matchs joués, programmés, ou les places à pourvoir type '1er Groupe A' ou 'Vainqueur Quart 1'). Retourne uniquement le JSON.`;
+    const prompt = `Génère l'arbre complet et simulé de la ${COMPETITION_NAMES[id]}. Remplis tout avec des scores logiques et réalistes. Retourne uniquement le JSON.`;
 
     const result = await model.generateContent(prompt);
     const rawText = result.response.text().trim();
     
     console.log(`[BRACKET_AI] Raw Gemini response length: ${rawText.length}`);
 
-    // Extract JSON from the response (handle potential markdown wrapping)
     let jsonStr = rawText;
-    // Remove markdown code blocks if present
     if (jsonStr.includes('```')) {
       const match = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (match) jsonStr = match[1];
     }
-    // Try to find JSON object boundaries
     const startIdx = jsonStr.indexOf('{');
     const endIdx = jsonStr.lastIndexOf('}');
     if (startIdx !== -1 && endIdx !== -1) {
@@ -92,35 +86,25 @@ IMPORTANT : Chaque tour doit avoir exactement le bon nombre de matchs (r16=8, qf
 
     const bracket = JSON.parse(jsonStr);
 
-    // Validate and pad the bracket structure
     const emptyMatch = { t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-", status: "NS" };
     
+    if (!bracket.r32 || !Array.isArray(bracket.r32)) bracket.r32 = [];
     if (!bracket.r16 || !Array.isArray(bracket.r16)) bracket.r16 = [];
     if (!bracket.qf || !Array.isArray(bracket.qf)) bracket.qf = [];
     if (!bracket.sf || !Array.isArray(bracket.sf)) bracket.sf = [];
+    if (!bracket.third_place) bracket.third_place = emptyMatch;
     if (!bracket.final) bracket.final = emptyMatch;
 
+    while (bracket.r32.length < 16) bracket.r32.push(emptyMatch);
     while (bracket.r16.length < 8) bracket.r16.push(emptyMatch);
     while (bracket.qf.length < 4) bracket.qf.push(emptyMatch);
     while (bracket.sf.length < 2) bracket.sf.push(emptyMatch);
 
-    // Cache the result
     cachedBrackets[id] = { data: bracket, timestamp: Date.now() };
 
-    console.log(`[BRACKET_AI] Successfully parsed bracket for ${id}: R16=${bracket.r16.length}, QF=${bracket.qf.length}, SF=${bracket.sf.length}`);
     return NextResponse.json(bracket);
-
   } catch (error) {
     console.error(`[BRACKET_AI] Error:`, error);
-    
-    // Return empty bracket on error
-    const emptyMatch = { t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-", status: "NS" };
-    return NextResponse.json({
-      r16: Array(8).fill(emptyMatch),
-      qf: Array(4).fill(emptyMatch),
-      sf: Array(2).fill(emptyMatch),
-      final: emptyMatch,
-      _error: "Failed to fetch live data"
-    });
+    return NextResponse.json({ error: 'Failed to generate bracket' }, { status: 500 });
   }
 }
