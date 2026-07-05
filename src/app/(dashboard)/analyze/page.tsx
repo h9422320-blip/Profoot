@@ -372,6 +372,33 @@ export default function AnalyzePage() {
     checkPremium();
   }, []);
 
+  // Upcoming matches suggestions for better UX (AI-like auto-fill)
+  const UPCOMING_MATCHES: Record<string, string> = {
+    "brazil": "norway",
+    "norway": "brazil",
+    "portugal": "spain",
+    "spain": "portugal",
+    "france": "germany",
+    "germany": "france",
+    "argentina": "colombia",
+    "colombia": "argentina",
+    "england": "italy",
+    "italy": "england",
+    "usa": "belgium",
+    "belgium": "usa",
+    "mexico": "usa",
+    "netherlands": "belgium",
+    "senegal": "egypt",
+    "morocco": "algeria"
+  };
+
+  const handleTeam1Select = (id: string) => {
+    setTeam1(id);
+    if (UPCOMING_MATCHES[id]) {
+      setTeam2(UPCOMING_MATCHES[id]);
+    }
+  };
+
   const steps = [
     "🔍 Recherche des statistiques en temps réel...",
     "🧠 Analyse tactique et styles de jeu...",
@@ -510,7 +537,7 @@ export default function AnalyzePage() {
       <div className="max-w-4xl mx-auto space-y-5 pb-24 px-4 md:px-0 pt-6 animate-fade-in">
       
       {/* Team Picker Modals */}
-      <TeamPicker isOpen={pickerOpen === 1} onClose={() => setPickerOpen(null)} onSelect={setTeam1} currentTeamId={team1} />
+      <TeamPicker isOpen={pickerOpen === 1} onClose={() => setPickerOpen(null)} onSelect={handleTeam1Select} currentTeamId={team1} />
       <TeamPicker isOpen={pickerOpen === 2} onClose={() => setPickerOpen(null)} onSelect={setTeam2} currentTeamId={team2} />
 
       {/* 1. HEADER — Visifoot style: large bold centered title */}

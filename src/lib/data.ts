@@ -249,6 +249,10 @@ nat("croatia", "Croatie", "hr", "Groupe L", 1, "wc"),
 nat("chile", "Chili", "cl", "Groupe L", 2, "wc"),
 nat("serbia", "Serbie", "rs", "Groupe L", 3, "wc"),
 nat("panama", "Panama", "pa", "Groupe L", 4, "wc"),
+nat("norway", "Norvège", "no", "Groupe M", 1, "wc"),
+nat("austria", "Autriche", "at", "Groupe M", 2, "wc"),
+nat("poland", "Pologne", "pl", "Groupe M", 3, "wc"),
+nat("ukraine", "Ukraine", "ua", "Groupe M", 4, "wc"),
 
 // UCL / AUTRES CLUBS EUROPÉENS
 c("sporting", "Sporting CP", "SPO", 228, "Portugal", "ucl", "Rúben Amorim", "José Alvalade", 1, 80, 34, 25, 5, 4, 75, 25, 50, 1.8, 12, ["W","W","W","D","L"]),
