@@ -1015,38 +1015,32 @@ export default function AnalyzePage() {
                     <img src={getClub(team1!).logo} className="w-5 h-5 object-contain" alt="" />
                     <span className="font-bold text-[13px] text-[#9ca3af]">{getClub(team1!).name}</span>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="text-[11px] font-semibold text-white flex items-center gap-2">
-                      <span className="w-[50px]">Forme :</span>
-                      <span>{renderFormEmojis(getClub(team1!).form)}</span>
-                    </div>
-                    <div className="pl-[58px]">
-                      <span className="text-xs opacity-80">⏳</span>
-                    </div>
-                    <div className="text-[11px] font-semibold text-white flex items-center gap-2">
-                      <span className="w-[50px]">V-N-D :</span>
-                      <span className="font-medium tracking-wide">{calculateVND(getClub(team1!).form)}</span>
-                    </div>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center text-[12px] font-semibold text-white pt-1">
+                    <span className="whitespace-nowrap">Forme :</span>
+                    <div className="flex">{renderFormEmojis(getClub(team1!).form)}</div>
+                    
+                    <span></span>
+                    <span className="text-[11px] opacity-80 pl-0.5">⏳</span>
+
+                    <span className="whitespace-nowrap">V-N-D :</span>
+                    <span className="font-medium tracking-wide">{calculateVND(getClub(team1!).form)}</span>
                   </div>
                 </div>
 
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
+                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-3 shadow-md">
                   <div className="flex items-center gap-2">
                     <img src={getClub(team2!).logo} className="w-5 h-5 object-contain" alt="" />
                     <span className="font-bold text-[13px] text-[#9ca3af]">{getClub(team2!).name}</span>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="text-[11px] font-semibold text-white flex items-center gap-2">
-                      <span className="w-[50px]">Forme :</span>
-                      <span>{renderFormEmojis(getClub(team2!).form)}</span>
-                    </div>
-                    <div className="pl-[58px]">
-                      <span className="text-xs opacity-80">⏳</span>
-                    </div>
-                    <div className="text-[11px] font-semibold text-white flex items-center gap-2">
-                      <span className="w-[50px]">V-N-D :</span>
-                      <span className="font-medium tracking-wide">{calculateVND(getClub(team2!).form)}</span>
-                    </div>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center text-[12px] font-semibold text-white pt-1">
+                    <span className="whitespace-nowrap">Forme :</span>
+                    <div className="flex">{renderFormEmojis(getClub(team2!).form)}</div>
+                    
+                    <span></span>
+                    <span className="text-[11px] opacity-80 pl-0.5">⏳</span>
+
+                    <span className="whitespace-nowrap">V-N-D :</span>
+                    <span className="font-medium tracking-wide">{calculateVND(getClub(team2!).form)}</span>
                   </div>
                 </div>
               </div>
