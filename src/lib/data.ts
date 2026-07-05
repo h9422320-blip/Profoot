@@ -19,8 +19,8 @@ const formVariations: ("W"|"D"|"L")[][] = [
 ];
 
 const nat=(id:string,name:string,flagCode:string,group:string,ranking:number,league:string="wc"):Club=>{
-  // Use ranking to pick a deterministic but varied form
-  const formIndex = ranking % formVariations.length;
+  // Use ranking and name to pick a deterministic but varied form
+  const formIndex = (ranking + name.charCodeAt(0) + name.charCodeAt(name.length - 1)) % formVariations.length;
   const form = formVariations[formIndex];
   
   return {

@@ -527,7 +527,8 @@ export default function AnalyzePage() {
       </div>
 
       {/* 2. MATCH À ANALYSER CARD */}
-      <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 md:p-5 flex flex-col shadow-lg relative overflow-hidden">
+      {!result && (
+        <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 md:p-5 flex flex-col shadow-lg relative overflow-hidden">
         <div className="text-[9px] font-black text-white/25 uppercase tracking-[0.2em] mb-2">
           MATCH À ANALYSER
         </div>
@@ -615,6 +616,7 @@ export default function AnalyzePage() {
           )}
         </div>
       </div>
+      )}
 
       {/* 3. LOADING CARD WITH CIRCULAR SVG PROGRESS (Screenshots 2 & 3 layout) */}
       {analyzing && (
@@ -1009,7 +1011,7 @@ export default function AnalyzePage() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
                   <div className="flex items-center gap-2">
                     <img src={getClub(team1!).logo} className="w-5 h-5 object-contain" alt="" />
