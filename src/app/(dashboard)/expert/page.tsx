@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Shield, Send, Loader, Sparkles, Lock, ArrowRight, Zap } from "lucide-react";
+import { Shield, Send, Loader, Sparkles, Lock, ArrowRight, Zap, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface Message {
   id: string;
@@ -165,6 +166,32 @@ export default function ExpertAgentPage() {
     );
   }
 
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
+
+  const handleSubscribe = async () => {
+    try {
+      setLoadingCheckout(true);
+      const res = await fetch('/api/payments/moneroo/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'lifetime' })
+      });
+      
+      const data = await res.json();
+      
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        alert(data.error || "Une erreur est survenue lors de l'initialisation du paiement.");
+        setLoadingCheckout(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erreur de connexion au serveur de paiement.");
+      setLoadingCheckout(false);
+    }
+  };
+
   if (!hasAccess) {
     return (
       <div className="flex items-center justify-center min-h-[75vh] animate-fade-in px-4">
@@ -190,14 +217,26 @@ export default function ExpertAgentPage() {
               L'Agent IA <strong className="text-white font-bold">ProFoot Expert</strong> est une technologie exclusive réservée aux membres annuels. Débloquez toute la puissance de l'IA sans limite.
             </p>
             
-            <Link href="/pricing" className="inline-flex relative z-10 w-full sm:w-auto group">
+            <div className="relative z-10 w-full sm:w-auto mx-auto mt-4 group">
               <div className="absolute -inset-1 bg-gradient-to-r from-[#10B981] to-[#047857] rounded-full blur opacity-40 group-hover:opacity-75 transition duration-500" />
-              <button className="relative w-full sm:w-auto bg-gradient-to-r from-[#10B981] to-[#059669] text-black font-black text-lg px-10 py-5 rounded-full flex items-center justify-center gap-3 transition-transform duration-300 group-hover:scale-[1.02] border border-[#34D399]/50 shadow-xl">
-                <span>Débloquer l'Accès VIP</span>
-                <span className="bg-black/10 px-3 py-1 rounded-full text-sm ml-2">60 000 FCFA/an</span>
-                <ArrowRight className="w-5 h-5 ml-1" />
+              <button 
+                onClick={handleSubscribe} 
+                disabled={loadingCheckout}
+                className="relative w-full bg-gradient-to-r from-[#10B981] to-[#059669] text-black font-black px-6 sm:px-10 py-4 sm:py-5 rounded-full flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3 transition-transform duration-300 group-hover:scale-[1.02] border border-[#34D399]/50 shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loadingCheckout ? (
+                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                ) : (
+                  <>
+                    <span className="text-base sm:text-lg">Débloquer l'Accès VIP</span>
+                    <div className="flex items-center">
+                      <span className="bg-black/10 px-3 py-1 rounded-full text-xs sm:text-sm font-bold">60 000 FCFA/an</span>
+                      <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-1.5" />
+                    </div>
+                  </>
+                )}
               </button>
-            </Link>
+            </div>
           </div>
         </div>
       </div>
