@@ -229,32 +229,6 @@ export default function CompetitionPage() {
         const getBracketData = () => {
           if (liveBracket) return liveBracket;
 
-          if (id === "wc") {
-            return {
-              r16: [
-                { t1: "France", t2: "Sénégal", s1: "2", s2: "0" },
-                { t1: "Argentine", t2: "Suède", s1: "3", s2: "1" },
-                { t1: "Angleterre", t2: "États-Unis", s1: "2", s2: "1" },
-                { t1: "Brésil", t2: "Maroc", s1: "1", s2: "0" },
-                { t1: "Espagne", t2: "Mexique", s1: "4", s2: "2" },
-                { t1: "Allemagne", t2: "Uruguay", s1: "2", s2: "0" },
-                { t1: "Portugal", t2: "Croatie", s1: "1", s2: "0" },
-                { t1: "Pays-Bas", t2: "Japon", s1: "3", s2: "1" }
-              ],
-              qf: [
-                { t1: "France", t2: "Argentine", s1: "2", s2: "2" },
-                { t1: "Angleterre", t2: "Brésil", s1: "1", s2: "2" },
-                { t1: "Espagne", t2: "Allemagne", s1: "1", s2: "0" },
-                { t1: "Portugal", t2: "Pays-Bas", s1: "2", s2: "1" }
-              ],
-              sf: [
-                { t1: "Argentine", t2: "Brésil", s1: "V", s2: "D" },
-                { t1: "Espagne", t2: "Portugal", s1: "V", s2: "D" }
-              ],
-              final: { t1: "Argentine", t2: "Espagne", s1: "-", s2: "-" }
-            };
-          }
-
           const emptyMatch = { t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" };
           return {
             r16: Array(8).fill(emptyMatch),
