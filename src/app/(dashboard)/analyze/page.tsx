@@ -904,22 +904,22 @@ export default function AnalyzePage() {
                   <span className="text-[10px]">{getClub(team1!).league ? leagueLabels[getClub(team1!).league] || "Toutes compétitions" : "Toutes compétitions"}</span>
                 </div>
 
-                <div className="flex items-center justify-between px-2 md:px-12">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="flex items-center gap-3">
-                      <img src={getClub(team1!).logo} className="w-7 h-7 object-contain" alt="" />
-                      <span className="font-bold text-sm text-white">{getClub(team1!).name}</span>
+                <div className="flex items-center justify-between gap-4 px-2 md:px-12">
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <div className="flex items-center gap-2.5">
+                      <img src={getClub(team1!).logo} className="w-6 h-6 object-contain shrink-0" alt="" />
+                      <span className="font-bold text-xs sm:text-sm text-white truncate max-w-[90px] sm:max-w-none">{getClub(team1!).name}</span>
                     </div>
-                    <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-white/70 flex items-center gap-1">
                       {getClub(team1!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team1!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '⚖️ Forme moyenne'}
                     </span>
                   </div>
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="flex items-center gap-3">
-                      <img src={getClub(team2!).logo} className="w-7 h-7 object-contain" alt="" />
-                      <span className="font-bold text-sm text-white">{getClub(team2!).name}</span>
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <div className="flex items-center gap-2.5">
+                      <img src={getClub(team2!).logo} className="w-6 h-6 object-contain shrink-0" alt="" />
+                      <span className="font-bold text-xs sm:text-sm text-white truncate max-w-[90px] sm:max-w-none">{getClub(team2!).name}</span>
                     </div>
-                    <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-white/70 flex items-center gap-1">
                       {getClub(team2!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team2!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '⚖️ Forme moyenne'}
                     </span>
                   </div>
@@ -929,11 +929,11 @@ export default function AnalyzePage() {
                   Voir la forme globale (toutes compétitions)
                 </button>
 
-                <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   <div className="bg-[#1A2530]/50 border border-white/5 p-4 rounded-[16px] space-y-2">
-                    <div className="flex items-center gap-2 mb-3">
-                      <img src={getClub(team1!).logo} className="w-5 h-5 object-contain" alt="" />
-                      <span className="font-extrabold text-xs text-white">{getClub(team1!).name}</span>
+                    <div className="flex items-center gap-2 mb-2">
+                      <img src={getClub(team1!).logo} className="w-5 h-5 object-contain shrink-0" alt="" />
+                      <span className="font-bold text-xs text-white truncate">{getClub(team1!).name}</span>
                     </div>
                     <div className="text-[11px] font-semibold text-white/60 flex items-center gap-2">
                       <span>Forme :</span>
@@ -945,9 +945,9 @@ export default function AnalyzePage() {
                     </div>
                   </div>
                   <div className="bg-[#1A2530]/50 border border-white/5 p-4 rounded-[16px] space-y-2">
-                    <div className="flex items-center gap-2 mb-3">
-                      <img src={getClub(team2!).logo} className="w-5 h-5 object-contain" alt="" />
-                      <span className="font-extrabold text-xs text-white">{getClub(team2!).name}</span>
+                    <div className="flex items-center gap-2 mb-2">
+                      <img src={getClub(team2!).logo} className="w-5 h-5 object-contain shrink-0" alt="" />
+                      <span className="font-bold text-xs text-white truncate">{getClub(team2!).name}</span>
                     </div>
                     <div className="text-[11px] font-semibold text-white/60 flex items-center gap-2">
                       <span>Forme :</span>
