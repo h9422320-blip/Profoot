@@ -188,14 +188,27 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
 }
 
 function renderFormEmojis(form: ("W" | "D" | "L")[]) {
-  const emojis: string[] = form.map(f => f === "W" ? "✅" : f === "D" ? "🟡" : "❌");
-  // Pad with hourglass up to 5 elements
-  while (emojis.length < 5) {
-    emojis.push("⏳");
+  const items = form.slice(-5).map(f => ({
+    color: f === "W" ? "#10B981" : f === "D" ? "#F59E0B" : "#EF4444",
+    label: f === "W" ? "V" : f === "D" ? "N" : "D"
+  }));
+  // Pad to 5
+  while (items.length < 5) {
+    items.unshift({ color: "#374151", label: "-" });
   }
-  // Add one future match indicator
-  emojis.push("⏳");
-  return emojis.join(" ");
+  return (
+    <span className="flex items-center gap-1">
+      {items.map((item, i) => (
+        <span
+          key={i}
+          className="inline-flex items-center justify-center w-5 h-5 rounded text-[9px] font-black"
+          style={{ backgroundColor: item.color, color: '#fff' }}
+        >
+          {item.label}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function calculateVND(form: ("W" | "D" | "L")[]) {
@@ -485,15 +498,15 @@ export default function AnalyzePage() {
       <TeamPicker isOpen={pickerOpen === 1} onClose={() => setPickerOpen(null)} onSelect={setTeam1} currentTeamId={team1} />
       <TeamPicker isOpen={pickerOpen === 2} onClose={() => setPickerOpen(null)} onSelect={setTeam2} currentTeamId={team2} />
 
-      {/* 1. HEADER — tighter, premium */}
-      <div className="text-center space-y-1 mt-0">
-        <h1 className="text-xl md:text-2xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+      {/* 1. HEADER — Visifoot style: large bold centered title */}
+      <div className="text-center space-y-3 mt-2 mb-4">
+        <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
           Analyse de match
         </h1>
-        <p className="text-[11px] md:text-xs text-white/50 font-medium">
+        <p className="text-xs md:text-sm text-white/60 font-medium">
           Entre les équipes que tu veux analyser
         </p>
-        <p className="text-[10px] md:text-[11px] text-[#10B981] font-bold max-w-sm mx-auto leading-snug">
+        <p className="text-[11px] md:text-xs text-[#10B981] font-bold max-w-sm mx-auto leading-relaxed">
           Notre IA est connectée à l'actualité foot et croise des millions de données pour chaque pronostic.
         </p>
       </div>
@@ -518,24 +531,24 @@ export default function AnalyzePage() {
             )}
           </div>
 
-          {/* Selectors Area */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-6 w-full max-w-lg mx-auto">
+          {/* Selectors Area — Visifoot style: bordered inputs with glow */}
+          <div className="flex flex-col items-center gap-3 w-full max-w-lg mx-auto">
               <button
                 onClick={() => setPickerOpen(1)}
-                className="w-full bg-black/40 border border-[#10B981]/40 hover:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-black text-white text-center shadow-[0_0_15px_rgba(16,185,129,0.05)] transition-all flex items-center justify-between cursor-pointer"
+                className="w-full bg-transparent border-2 border-[#10B981]/60 hover:border-[#10B981] focus:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-semibold text-white text-left shadow-[0_0_20px_rgba(16,185,129,0.08)] hover:shadow-[0_0_25px_rgba(16,185,129,0.15)] transition-all flex items-center justify-between cursor-pointer"
               >
-                <span className="truncate">{team1 ? getClub(team1!).name : "Sélectionner Équipe 1"}</span>
-                <ChevronDown className="w-4 h-4 text-white/40 shrink-0 ml-2" />
+                <span className="truncate text-white/90">{team1 ? getClub(team1!).name : "Cherche une équipe (ex: PSG, Real Madrid...)"}</span>
+                <ChevronDown className="w-4 h-4 text-[#10B981]/60 shrink-0 ml-2" />
               </button>
 
-              <span className="text-[10px] font-black text-white/15 uppercase tracking-[0.25em] sm:hidden">vs</span>
+              <span className="text-xs font-black text-white/30 uppercase tracking-[0.25em]">vs</span>
 
               <button
                 onClick={() => setPickerOpen(2)}
-                className="w-full bg-black/40 border border-[#10B981]/40 hover:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-black text-white text-center shadow-[0_0_15px_rgba(16,185,129,0.05)] transition-all flex items-center justify-between cursor-pointer"
+                className="w-full bg-transparent border-2 border-[#10B981]/60 hover:border-[#10B981] focus:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-semibold text-white text-left shadow-[0_0_20px_rgba(16,185,129,0.08)] hover:shadow-[0_0_25px_rgba(16,185,129,0.15)] transition-all flex items-center justify-between cursor-pointer"
               >
-                <span className="truncate">{team2 ? getClub(team2!).name : "Sélectionner Équipe 2"}</span>
-                <ChevronDown className="w-4 h-4 text-white/40 shrink-0 ml-2" />
+                <span className="truncate text-white/90">{team2 ? getClub(team2!).name : "Cherche une équipe (ex: Bayern, Arsenal...)"}</span>
+                <ChevronDown className="w-4 h-4 text-[#10B981]/60 shrink-0 ml-2" />
               </button>
           </div>
         </div>
@@ -1010,22 +1023,22 @@ export default function AnalyzePage() {
               <div className={`relative pt-6 ${!isPremium ? 'max-h-[500px] overflow-hidden' : ''}`}>
                 {!isPremium && (
                   <div className="absolute inset-0 z-20 flex flex-col items-center justify-start p-6 pt-16 bg-gradient-to-b from-transparent via-[#070E13]/80 to-[#070E13]">
-                    <div className="bg-[#0D1520]/90 backdrop-blur-md border border-white/10 p-8 rounded-3xl max-w-lg w-full text-center relative overflow-hidden flex flex-col items-center shadow-2xl">
+                    <div className="bg-[#0D1520]/90 backdrop-blur-md border border-white/10 p-7 rounded-3xl max-w-lg w-full text-center relative overflow-hidden flex flex-col items-center shadow-2xl">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#10B981] to-transparent"></div>
                       
-                      <h3 className="text-xl md:text-2xl font-black text-white mb-4" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
+                      <h3 className="text-lg md:text-2xl font-black text-white mb-3" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
                       
-                      <div className="w-56 h-1.5 bg-white/10 rounded-full mb-5 overflow-hidden">
+                      <div className="w-56 h-1.5 bg-white/10 rounded-full mb-4 overflow-hidden">
                         <div className="h-full bg-[#10B981] rounded-full" style={{ width: "15%" }}></div>
                       </div>
 
-                      <p className="text-[13px] text-white/85 font-medium mb-6 max-w-[320px] leading-relaxed">
+                      <p className="text-[12px] text-white/85 font-medium mb-5 max-w-[280px] leading-relaxed">
                         L'analyse complète contient les probabilités exactes, les scénarios restants et les insights premium.
                       </p>
                       
                       <Link 
                         href="/pricing"
-                        className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 hover:scale-105 active:scale-95 text-[#070E13] font-black py-3.5 px-8 rounded-full transition-all text-sm w-auto shadow-lg shadow-[#10B981]/25"
+                        className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 hover:scale-105 active:scale-95 text-[#070E13] font-black py-3 px-6 rounded-full transition-all text-xs w-full max-w-[260px] shadow-lg shadow-[#10B981]/25 whitespace-nowrap"
                       >
                         🔓 Débloquer l'analyse complète
                       </Link>
