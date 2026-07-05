@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Shield, Send, Loader, Sparkles, Lock, ArrowRight, Zap, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface Message {
   id: string;
@@ -71,6 +72,7 @@ export default function ExpertAgentPage() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -153,7 +155,17 @@ export default function ExpertAgentPage() {
     setIsLoading(false);
   };
 
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
+  // Le propriétaire a toujours accès gratuitement
+  const isOwner = userEmail && OWNER_EMAILS.includes(userEmail);
+  const hasAccess = isOwner || isPro;
+
+  if (isPro === null && !isOwner) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   const handleSubscribe = async () => {
     try {
@@ -178,19 +190,6 @@ export default function ExpertAgentPage() {
       setLoadingCheckout(false);
     }
   };
-
-  // Le propriétaire a toujours accès gratuitement
-  const isOwner = userEmail && OWNER_EMAILS.includes(userEmail);
-  const hasAccess = isOwner || isPro;
-
-  if (isPro === null && !isOwner) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
-  }
-
 
   if (!hasAccess) {
     return (
