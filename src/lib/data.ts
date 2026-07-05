@@ -7,9 +7,26 @@ const T=(id:number)=>`https://media.api-sports.io/football/teams/${id}.png`;
 const L=(id:number)=>`https://media.api-sports.io/football/leagues/${id}.png`;
 const c=(id:string,n:string,s:string,tid:number,co:string,le:string,ch:string,st:string,r:number,pts:number,p:number,w:number,d:number,l:number,gs:number,gc:number,pos:number,xg:number,cs:number,f:("W"|"D"|"L")[]):Club=>({id,name:n,shortName:s,logo:T(tid),country:co,league:le,coach:ch,stadium:st,ranking:r,points:pts,stats:{played:p,wins:w,draws:d,losses:l,goalsScored:gs,goalsConceded:gc,possession:pos,xG:xg,cleanSheets:cs},form:f,squad:[]});
 
-const nat=(id:string,name:string,flagCode:string,group:string,ranking:number,league:string="wc"):Club=>({
-  id, name, shortName:flagCode.toUpperCase(), logo:`https://flagcdn.com/w40/${flagCode}.png`, country:name, league, coach:"Sélectionneur", stadium:"National Stadium", ranking, points:0, stats:{played:0,wins:0,draws:0,losses:0,goalsScored:0,goalsConceded:0,possession:50,xG:0,cleanSheets:0}, form:["W","W","D","W","L"], squad:[], group
-});
+const formVariations: ("W"|"D"|"L")[][] = [
+  ["W","W","W","W","W"], // 5-0-0
+  ["W","W","D","W","W"], // 4-1-0
+  ["W","D","W","L","W"], // 3-1-1
+  ["D","D","W","W","W"], // 3-2-0
+  ["L","W","W","W","L"], // 3-0-2
+  ["W","D","D","W","L"], // 2-2-1
+  ["L","L","D","W","W"], // 2-1-2
+  ["D","L","L","D","D"], // 0-3-2
+];
+
+const nat=(id:string,name:string,flagCode:string,group:string,ranking:number,league:string="wc"):Club=>{
+  // Use ranking to pick a deterministic but varied form
+  const formIndex = ranking % formVariations.length;
+  const form = formVariations[formIndex];
+  
+  return {
+    id, name, shortName:flagCode.toUpperCase(), logo:`https://flagcdn.com/w40/${flagCode}.png`, country:name, league, coach:"Sélectionneur", stadium:"National Stadium", ranking, points:0, stats:{played:0,wins:0,draws:0,losses:0,goalsScored:0,goalsConceded:0,possession:50,xG:0,cleanSheets:0}, form, squad:[], group
+  };
+};
 
 export const competitions:Competition[]=[
 // EUROPE

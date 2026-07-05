@@ -196,9 +196,9 @@ function renderFormEmojis(form: ("W" | "D" | "L")[]) {
     items.unshift({ icon: "➖" });
   }
   return (
-    <span className="flex items-center gap-1.5">
+    <span className="flex items-center gap-2">
       {items.map((item, i) => (
-        <span key={i} className="text-[13px]">{item.icon}</span>
+        <span key={i} className="text-sm bg-[#1A2633] w-5 h-5 flex items-center justify-center rounded-sm border border-white/5 shadow-sm">{item.icon}</span>
       ))}
     </span>
   );
@@ -972,12 +972,15 @@ export default function AnalyzePage() {
                 <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
                   <div className="flex items-center gap-2">
                     <img src={getClub(team1!).logo} className="w-5 h-5 object-contain" alt="" />
-                    <span className="font-bold text-[13px] text-white/80">{getClub(team1!).name}</span>
+                    <span className="font-bold text-[13px] text-white/60">{getClub(team1!).name}</span>
                   </div>
                   <div className="flex flex-col gap-2">
                     <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
                       <span className="w-[50px]">Forme :</span>
                       <span>{renderFormEmojis(getClub(team1!).form)}</span>
+                    </div>
+                    <div className="pl-[58px]">
+                      <span className="text-xs">⏳</span>
                     </div>
                     <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
                       <span className="w-[50px]">V-N-D :</span>
@@ -989,12 +992,15 @@ export default function AnalyzePage() {
                 <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
                   <div className="flex items-center gap-2">
                     <img src={getClub(team2!).logo} className="w-5 h-5 object-contain" alt="" />
-                    <span className="font-bold text-[13px] text-white/80">{getClub(team2!).name}</span>
+                    <span className="font-bold text-[13px] text-white/60">{getClub(team2!).name}</span>
                   </div>
                   <div className="flex flex-col gap-2">
                     <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
                       <span className="w-[50px]">Forme :</span>
                       <span>{renderFormEmojis(getClub(team2!).form)}</span>
+                    </div>
+                    <div className="pl-[58px]">
+                      <span className="text-xs">⏳</span>
                     </div>
                     <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
                       <span className="w-[50px]">V-N-D :</span>
