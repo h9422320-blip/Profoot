@@ -40,34 +40,36 @@ export async function GET(request: Request) {
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: `Tu es un expert football connecté au web via Google Search et un analyste IA de pointe. Ton rôle est de fournir l'arbre d'un tournoi (huitièmes, quarts, demies, finale).
+      systemInstruction: `Tu es un expert football connecté au web via Google Search. Ton rôle est de fournir l'arbre EXACT et RÉEL d'un tournoi (huitièmes, quarts, demies, finale).
 
 CONSIGNES STRICTES :
-1. Recherche sur le web l'état actuel de la compétition.
-2. Si un match n'a pas encore eu lieu ou si l'adversaire n'est pas encore connu, TU DOIS PRÉDIRE le vainqueur et le score exact en te basant sur des statistiques réelles. Ne mets JAMAIS "À déterminer" ni "Vainqueur X/Y". Choisis toujours une équipe précise.
-3. TRADUIS OBLIGATOIREMENT TOUS LES NOMS D'ÉQUIPES EN FRANÇAIS (ex: "Brésil", "Maroc", "États-Unis", "Pays-Bas", "Angleterre"). C'est CRITIQUE pour que les logos s'affichent correctement.
-4. Réponds UNIQUEMENT en JSON valide.
-5. Format JSON exact requis :
+1. AUCUNE PRÉDICTION : Ne devine jamais un score ou un match à l'avance.
+2. MATCH JOUÉ : Si le match est terminé, mets les vraies équipes et les vrais scores.
+3. MATCH FUTUR (PROGRAMMÉ) : Si les deux équipes sont connues mais que le match n'est pas joué, mets les équipes avec le score "-".
+4. MATCH INCONNU (CASES VIDES) : Si les équipes ne sont pas encore qualifiées, remplis la case avec le nom officiel de la place (ex: "1er Groupe A", "Vainqueur Match 1", "Vainqueur Huitième 1") et le score "-". Ne laisse jamais la case vide.
+5. TRADUIS OBLIGATOIREMENT TOUS LES NOMS EN FRANÇAIS (ex: "Brésil", "Maroc").
+6. Réponds UNIQUEMENT en JSON valide.
+7. Format JSON exact requis :
 {
   "r16": [
     {"t1": "France", "t2": "Sénégal", "s1": "2", "s2": "1", "status": "FT"},
     ... 8 matchs total
   ],
   "qf": [
-    {"t1": "France", "t2": "Brésil", "s1": "1", "s2": "0", "status": "NS"},
+    {"t1": "Vainqueur Huitième 1", "t2": "Vainqueur Huitième 2", "s1": "-", "s2": "-", "status": "NS"},
     ... 4 matchs total
   ],
   "sf": [
     ... 2 matchs total
   ],
-  "final": {"t1": "Équipe1", "t2": "Équipe2", "s1": "3", "s2": "2", "status": "NS"}
+  "final": {"t1": "Vainqueur Demie 1", "t2": "Vainqueur Demie 2", "s1": "-", "s2": "-", "status": "NS"}
 }
 
-IMPORTANT : Chaque tour doit avoir exactement le bon nombre de matchs (r16=8, qf=4, sf=2, final=1) avec des VRAIES équipes en FRANÇAIS, et des vrais scores ou des scores PRÉDITS. Ne laisse aucun trou.`,
+IMPORTANT : Chaque tour doit avoir exactement le bon nombre de matchs (r16=8, qf=4, sf=2, final=1).`,
       tools: [{ googleSearch: {} } as any]
     });
 
-    const prompt = `Génère l'arbre complet de la phase éliminatoire de la ${COMPETITION_NAMES[id]}. Traduis tous les noms en français. Remplis TOUS les matchs (même les quarts, demies et finale) avec de vraies équipes et de vrais scores (ou des prédictions si le match n'a pas encore eu lieu). Retourne uniquement le JSON.`;
+    const prompt = `Génère l'arbre réel et actuel de la phase éliminatoire de la ${COMPETITION_NAMES[id]}. Traduis tous les noms en français. Ne fais aucune prédiction. Utilise uniquement les données officielles (matchs joués, programmés, ou les places à pourvoir type '1er Groupe A' ou 'Vainqueur Quart 1'). Retourne uniquement le JSON.`;
 
     const result = await model.generateContent(prompt);
     const rawText = result.response.text().trim();
