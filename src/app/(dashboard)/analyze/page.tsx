@@ -187,19 +187,41 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
   );
 }
 
-function renderFormEmojis(form: ("W" | "D" | "L")[]) {
-  const items = form.slice(-5).map(f => ({
-    icon: f === "W" ? "✅" : f === "D" ? "🟡" : "❌"
-  }));
+function renderFormEmojis(form: ("W" | "D" | "L" | string)[]) {
+  const items = form.slice(-5);
   // Pad to 5
   while (items.length < 5) {
-    items.unshift({ icon: "➖" });
+    items.unshift("-");
   }
   return (
-    <span className="flex items-center gap-2">
-      {items.map((item, i) => (
-        <span key={i} className="text-sm bg-[#1A2633] w-5 h-5 flex items-center justify-center rounded-sm border border-white/5 shadow-sm">{item.icon}</span>
-      ))}
+    <span className="flex items-center gap-1.5">
+      {items.map((item, i) => {
+        if (item === "W") {
+          return (
+            <div key={i} className="w-[18px] h-[18px] bg-[#10B981] rounded-sm flex items-center justify-center">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+          );
+        } else if (item === "D") {
+          return (
+            <div key={i} className="w-[18px] h-[18px] flex items-center justify-center">
+              <div className="w-3.5 h-3.5 bg-[#F59E0B] rounded-full"></div>
+            </div>
+          );
+        } else if (item === "L") {
+          return (
+            <div key={i} className="w-[18px] h-[18px] bg-[#EF4444] rounded-sm flex items-center justify-center">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+          );
+        } else {
+          return (
+            <div key={i} className="w-[18px] h-[18px] bg-black/40 rounded-sm flex items-center justify-center">
+              <span className="text-white/30 text-xs">-</span>
+            </div>
+          );
+        }
+      })}
     </span>
   );
 }
@@ -943,9 +965,11 @@ export default function AnalyzePage() {
                     <div className="flex items-center gap-3">
                       <img src={getClub(team1!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
                       <div className="flex flex-col items-start leading-tight">
-                        <span className="text-lg mb-0.5">🔥</span>
-                        <span className="text-[10px] font-semibold text-white/50">En grande</span>
-                        <span className="text-[10px] font-semibold text-white/50">forme</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-lg">🔥</span>
+                          <span className="text-[11px] font-semibold text-white/50">En grande</span>
+                        </div>
+                        <span className="text-[11px] font-semibold text-white/50 ml-[26px]">forme</span>
                       </div>
                     </div>
                   </div>
@@ -955,9 +979,11 @@ export default function AnalyzePage() {
                     <div className="flex items-center gap-3">
                       <img src={getClub(team2!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
                       <div className="flex flex-col items-start leading-tight">
-                        <span className="text-lg mb-0.5">🔥</span>
-                        <span className="text-[10px] font-semibold text-white/50">En grande</span>
-                        <span className="text-[10px] font-semibold text-white/50">forme</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-lg">🔥</span>
+                          <span className="text-[11px] font-semibold text-white/50">En grande</span>
+                        </div>
+                        <span className="text-[11px] font-semibold text-white/50 ml-[26px]">forme</span>
                       </div>
                     </div>
                   </div>
