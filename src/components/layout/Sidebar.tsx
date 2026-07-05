@@ -26,7 +26,6 @@ export function Sidebar() {
   const mainNav = [
     { href: "/analyze", label: t("sidebar.tacticalAnalysis"), icon: Brain },
     { href: "/competitions", label: t("sidebar.competitions"), icon: Trophy },
-    { href: "/competitions/wc", label: t("sidebar.worldCup"), icon: Globe, special: true },
     { href: "/expert", label: "Agent VIP (ProFoot)", icon: Shield, special: true },
   ];
 
