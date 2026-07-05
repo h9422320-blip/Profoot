@@ -963,11 +963,21 @@ export default function AnalyzePage() {
                     <span className="font-bold text-sm text-white/90">{getClub(team1!).name}</span>
                     <div className="flex items-center gap-3">
                       <img src={getClub(team1!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
-                      <div className="flex flex-col items-start leading-tight">
-                        <span className="text-lg mb-0.5">🔥</span>
-                        <span className="text-[10px] font-semibold text-white/50">En grande</span>
-                        <span className="text-[10px] font-semibold text-white/50">forme</span>
-                      </div>
+                      {(() => {
+                        const form = getClub(team1!).form;
+                        const w = form.filter(x=>x==='W').length;
+                        const l = form.filter(x=>x==='L').length;
+                        const icon = w >= 3 ? '🔥' : l >= 3 ? '📉' : '⚡';
+                        const t1 = w >= 3 ? 'En grande' : 'Forme';
+                        const t2 = w >= 3 ? 'forme' : l >= 3 ? 'fragile' : 'moyenne';
+                        return (
+                          <div className="flex flex-col items-start leading-tight">
+                            <span className="text-lg mb-0.5">{icon}</span>
+                            <span className="text-[10px] font-semibold text-white/50">{t1}</span>
+                            <span className="text-[10px] font-semibold text-white/50">{t2}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                   {/* Team 2 */}
@@ -975,11 +985,21 @@ export default function AnalyzePage() {
                     <span className="font-bold text-sm text-white/90">{getClub(team2!).name}</span>
                     <div className="flex items-center gap-3">
                       <img src={getClub(team2!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
-                      <div className="flex flex-col items-start leading-tight">
-                        <span className="text-lg mb-0.5">🔥</span>
-                        <span className="text-[10px] font-semibold text-white/50">En grande</span>
-                        <span className="text-[10px] font-semibold text-white/50">forme</span>
-                      </div>
+                      {(() => {
+                        const form = getClub(team2!).form;
+                        const w = form.filter(x=>x==='W').length;
+                        const l = form.filter(x=>x==='L').length;
+                        const icon = w >= 3 ? '🔥' : l >= 3 ? '📉' : '⚡';
+                        const t1 = w >= 3 ? 'En grande' : 'Forme';
+                        const t2 = w >= 3 ? 'forme' : l >= 3 ? 'fragile' : 'moyenne';
+                        return (
+                          <div className="flex flex-col items-start leading-tight">
+                            <span className="text-lg mb-0.5">{icon}</span>
+                            <span className="text-[10px] font-semibold text-white/50">{t1}</span>
+                            <span className="text-[10px] font-semibold text-white/50">{t2}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -989,21 +1009,21 @@ export default function AnalyzePage() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="grid grid-cols-2 gap-4 mt-4">
                 <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
                   <div className="flex items-center gap-2">
                     <img src={getClub(team1!).logo} className="w-5 h-5 object-contain" alt="" />
-                    <span className="font-bold text-[13px] text-white/60">{getClub(team1!).name}</span>
+                    <span className="font-bold text-[13px] text-[#9ca3af]">{getClub(team1!).name}</span>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
+                    <div className="text-[11px] font-semibold text-white flex items-center gap-2">
                       <span className="w-[50px]">Forme :</span>
                       <span>{renderFormEmojis(getClub(team1!).form)}</span>
                     </div>
                     <div className="pl-[58px]">
-                      <span className="text-xs">⏳</span>
+                      <span className="text-xs opacity-80">⏳</span>
                     </div>
-                    <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
+                    <div className="text-[11px] font-semibold text-white flex items-center gap-2">
                       <span className="w-[50px]">V-N-D :</span>
                       <span className="font-medium tracking-wide">{calculateVND(getClub(team1!).form)}</span>
                     </div>
@@ -1013,17 +1033,17 @@ export default function AnalyzePage() {
                 <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
                   <div className="flex items-center gap-2">
                     <img src={getClub(team2!).logo} className="w-5 h-5 object-contain" alt="" />
-                    <span className="font-bold text-[13px] text-white/60">{getClub(team2!).name}</span>
+                    <span className="font-bold text-[13px] text-[#9ca3af]">{getClub(team2!).name}</span>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
+                    <div className="text-[11px] font-semibold text-white flex items-center gap-2">
                       <span className="w-[50px]">Forme :</span>
                       <span>{renderFormEmojis(getClub(team2!).form)}</span>
                     </div>
                     <div className="pl-[58px]">
-                      <span className="text-xs">⏳</span>
+                      <span className="text-xs opacity-80">⏳</span>
                     </div>
-                    <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
+                    <div className="text-[11px] font-semibold text-white flex items-center gap-2">
                       <span className="w-[50px]">V-N-D :</span>
                       <span className="font-medium tracking-wide">{calculateVND(getClub(team2!).form)}</span>
                     </div>
