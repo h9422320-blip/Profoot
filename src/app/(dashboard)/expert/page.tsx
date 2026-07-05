@@ -167,24 +167,38 @@ export default function ExpertAgentPage() {
 
   if (!hasAccess) {
     return (
-      <div className="max-w-2xl mx-auto mt-12 animate-fade-in">
-        <div className="bg-[#111A24]/80 backdrop-blur-xl border border-white/5 rounded-[32px] p-8 md:p-12 text-center shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background/0 to-background/0 pointer-events-none" />
-          <div className="w-20 h-20 rounded-full bg-black/40 border border-white/5 flex items-center justify-center mx-auto mb-8 shadow-inner relative z-10">
-            <Lock className="w-8 h-8 text-[#10B981]" />
+      <div className="flex items-center justify-center min-h-[75vh] animate-fade-in px-4">
+        <div className="max-w-2xl w-full relative">
+          {/* Animated Glowing Background Orbs */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-[#10B981]/20 to-blue-500/20 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
+          
+          <div className="bg-[#0A1018]/60 backdrop-blur-3xl border border-white/[0.08] rounded-[40px] p-10 md:p-14 text-center shadow-[0_0_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
+            {/* Inner top highlight */}
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#10B981]/50 to-transparent" />
+            
+            {/* The Lock Icon */}
+            <div className="w-24 h-24 rounded-full bg-gradient-to-b from-[#10B981]/10 to-transparent border border-[#10B981]/30 flex items-center justify-center mx-auto mb-8 shadow-[inset_0_0_30px_rgba(16,185,129,0.15)] relative z-10 group transition-transform duration-500 hover:scale-110">
+              <div className="absolute inset-0 bg-[#10B981]/20 rounded-full blur-xl group-hover:bg-[#10B981]/30 transition-all" />
+              <Lock className="w-10 h-10 text-[#10B981] drop-shadow-[0_0_15px_rgba(16,185,129,0.8)] relative z-10" strokeWidth={1.5} />
+            </div>
+            
+            <h1 className="text-3xl md:text-5xl font-black mb-5 tracking-tight relative z-10 bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent" style={{fontFamily:"'Outfit',sans-serif"}}>
+              Accès Réservé VIP
+            </h1>
+            
+            <p className="text-base md:text-lg text-white/60 font-medium leading-relaxed mb-12 max-w-md mx-auto relative z-10">
+              L'Agent IA <strong className="text-white font-bold">ProFoot Expert</strong> est une technologie exclusive réservée aux membres annuels. Débloquez toute la puissance de l'IA sans limite.
+            </p>
+            
+            <Link href="/pricing" className="inline-flex relative z-10 w-full sm:w-auto group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-[#10B981] to-[#047857] rounded-full blur opacity-40 group-hover:opacity-75 transition duration-500" />
+              <button className="relative w-full sm:w-auto bg-gradient-to-r from-[#10B981] to-[#059669] text-black font-black text-lg px-10 py-5 rounded-full flex items-center justify-center gap-3 transition-transform duration-300 group-hover:scale-[1.02] border border-[#34D399]/50 shadow-xl">
+                <span>Débloquer l'Accès VIP</span>
+                <span className="bg-black/10 px-3 py-1 rounded-full text-sm ml-2">60 000 FCFA/an</span>
+                <ArrowRight className="w-5 h-5 ml-1" />
+              </button>
+            </Link>
           </div>
-          <h1 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight relative z-10" style={{fontFamily:"'Outfit',sans-serif"}}>
-            Accès Réservé VIP
-          </h1>
-          <p className="text-sm md:text-base text-white/70 font-semibold leading-relaxed mb-10 max-w-md mx-auto relative z-10">
-            L'Agent IA ProFoot Expert est exclusivement réservé aux membres possédant un abonnement annuel. Débloquez-le pour poser vos questions en illimité.
-          </p>
-          <Link href="/pricing" className="inline-flex relative z-10">
-            <button className="bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#34D399] hover:to-[#10B981] text-black font-black px-8 py-4 rounded-full flex items-center gap-3 transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-              <span>Devenir Membre VIP (60 000 FCFA/an)</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </Link>
         </div>
       </div>
     );

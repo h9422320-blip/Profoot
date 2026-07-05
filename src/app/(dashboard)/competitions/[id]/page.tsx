@@ -18,6 +18,44 @@ export default function CompetitionPage() {
     .sort((a, b) => a.ranking - b.ranking);
   const isCup = leagueClubs.some(c => c.group) || id === "wc" || id === "ucl" || id === "can" || id === "euro" || id === "copa_america";
 
+  const [activeClubs, setActiveClubs] = useState<any[]>(leagueClubs);
+  const [liveBracket, setLiveBracket] = useState<any>(null);
+
+  useEffect(() => {
+    setActiveClubs(leagueClubs);
+    fetch(`/api/competitions/live?id=${id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.groups && data.groups.length > 0) {
+          const newClubs = data.groups.map((apiTeam: any) => {
+            const local = leagueClubs.find(c => c.name.toLowerCase() === apiTeam.team.name.toLowerCase());
+            return {
+              id: local?.id || apiTeam.team.id.toString(),
+              name: apiTeam.team.name,
+              shortName: local?.shortName || apiTeam.team.name.substring(0,3).toUpperCase(),
+              logo: apiTeam.team.logo,
+              group: apiTeam.group?.replace('Group ', 'Groupe ') || null,
+              points: apiTeam.points,
+              ranking: apiTeam.rank,
+              stats: {
+                played: apiTeam.all.played,
+                wins: apiTeam.all.win,
+                draws: apiTeam.all.draw,
+                losses: apiTeam.all.lose,
+                goalsScored: apiTeam.all.goals.for,
+                goalsConceded: apiTeam.all.goals.against
+              }
+            };
+          });
+          setActiveClubs(newClubs);
+        }
+        if (data && data.bracket) {
+          setLiveBracket(data.bracket);
+        }
+      })
+      .catch(err => console.error("Error fetching live competition data:", err));
+  }, [id]);
+
   useEffect(() => {
     if (id !== "wc") return;
     const targetDate = new Date("2026-06-11T16:00:00Z").getTime();
@@ -104,71 +142,42 @@ export default function CompetitionPage() {
 
       {/* Tabs (Only if Cup) */}
       {isCup && (
-        <div className="flex items-center gap-1 mb-6 bg-[#1B2333] p-1.5 rounded-[16px] w-max border border-transparent overflow-x-auto max-w-full">
-          <button 
-            onClick={() => setWcView("groups")}
-            className={`px-5 py-2.5 rounded-[12px] text-[14px] font-medium transition-colors whitespace-nowrap ${wcView === 'groups' ? 'bg-[#064E3B]/80 text-[#10B981]' : 'text-white/40 hover:text-white/80'}`}
-          >
-            {id === 'ucl' ? 'Phase de Ligue' : 'Phase de Groupes'}
+        <div className="flex items-center gap-1 mb-6 bg-[#1B2333] p-1.5 rounded-[16px] w-max border border-white/5 overflow-x-auto max-w-full">
+          <button onClick={() => setWcView("groups")} className={`px-5 py-2.5 rounded-[12px] text-[14px] font-medium transition-colors whitespace-nowrap ${wcView === 'groups' ? 'bg-[#064E3B]/80 text-[#10B981]' : 'text-white/40 hover:text-white/80'}`}>
+            {id === 'ucl' ? 'Phase de Ligue' : 'Groupes'}
           </button>
-          <button 
-            onClick={() => setWcView("bracket")}
-            className={`px-5 py-2.5 rounded-[12px] text-[14px] font-medium transition-colors whitespace-nowrap ${wcView === 'bracket' ? 'bg-[#064E3B]/80 text-[#10B981]' : 'text-white/40 hover:text-white/80'}`}
-          >
-            Phase Éliminatoire
+          <button onClick={() => setWcView("bracket")} className={`px-5 py-2.5 rounded-[12px] text-[14px] font-medium transition-colors whitespace-nowrap ${wcView === 'bracket' ? 'bg-[#064E3B]/80 text-[#10B981]' : 'text-white/40 hover:text-white/80'}`}>
+            Éliminatoire
           </button>
         </div>
       )}
 
-      {/* Content */}
-      <div className="mb-6">
-        <h2 className="text-[22px] font-bold text-white mb-6">
-          {!isCup ? "Classement Général" : wcView === "groups" ? (id === 'ucl' ? 'Classement Unique' : 'Groupes') : "Arbre du Tournoi"}
-        </h2>
-      </div>
-      
       {(!isCup || wcView === "groups") ? (
         <div className="space-y-6">
-           {isCup && leagueClubs.some(c => c.group) ? (
+           {isCup && activeClubs.some((c: any) => c.group) ? (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {Array.from(new Set(leagueClubs.filter(c => c.group).map(c => c.group))).sort().map(groupName => (
-                  <div key={groupName} className="bg-[#1B2333] border border-white/5 rounded-[20px] overflow-hidden">
-                    <div className="px-4 py-3 bg-[#1A222D] border-b border-white/5">
-                      <h3 className="font-bold text-[14px]">{groupName}</h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-[13px]">
-                        <thead>
-                          <tr className="text-white/40 border-b border-white/5">
-                            <th className="py-2 px-3 font-medium">Club</th>
-                            <th className="py-2 px-2 text-center font-medium">J</th>
-                            <th className="py-2 px-2 text-center font-medium">Diff</th>
-                            <th className="py-2 px-3 text-center font-medium">Pts</th>
+               {Array.from(new Set(activeClubs.filter((c: any) => c.group).map((c: any) => c.group))).sort().map(groupName => (
+                  <div key={groupName as string} className="bg-[#1B2333] border border-white/5 rounded-[20px] overflow-hidden">
+                    <div className="px-4 py-3 bg-[#1A222D] border-b border-white/5"><h3 className="font-bold text-[14px]">{groupName as string}</h3></div>
+                    <table className="w-full text-left text-[13px]">
+                      <tbody className="divide-y divide-white/5">
+                        {activeClubs.filter((c: any) => c.group === groupName).sort((a: any, b: any) => a.ranking - b.ranking).map((club: any, i: number) => (
+                          <tr key={club.id} className="hover:bg-white/5">
+                            <td className="py-3 px-3 flex items-center gap-2">
+                              <span className="text-white/30 w-3">{i+1}</span>
+                              <img src={club.logo} className="w-5 h-5 object-contain" alt="" />
+                              <span className="font-semibold text-white">{club.name}</span>
+                            </td>
+                            <td className="py-3 px-3 text-center text-white/60">{club.points} pts</td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                          {leagueClubs.filter(c => c.group === groupName).sort((a,b) => a.ranking - b.ranking).map((club, i) => (
-                            <tr key={club.id} className="hover:bg-white/5 transition-colors cursor-pointer group">
-                              <td className="py-3 px-3">
-                                <Link href={`/club/${club.id}`} className="flex items-center gap-2">
-                                  <span className={`w-4 text-[12px] font-medium ${i < 2 ? 'text-[#10B981]' : 'text-white/30'}`}>{i+1}</span>
-                                  <img src={club.logo} className="w-5 h-5 object-contain" alt="" />
-                                  <span className="font-semibold text-white group-hover:text-[#10B981] truncate max-w-[100px] sm:max-w-[150px]">{club.name}</span>
-                                </Link>
-                              </td>
-                              <td className="py-3 px-2 text-center text-white/60">{club.stats.played}</td>
-                              <td className="py-3 px-2 text-center text-white/60">{(club.stats.goalsScored - club.stats.goalsConceded) > 0 ? `+${club.stats.goalsScored - club.stats.goalsConceded}` : (club.stats.goalsScored - club.stats.goalsConceded)}</td>
-                              <td className="py-3 px-3 text-center font-bold">{club.points}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                ))}
              </div>
            ) : (
-              <div className="bg-[#1B2333] border border-white/5 rounded-[20px] overflow-hidden">
+             <div className="bg-[#1B2333] border border-white/5 rounded-[24px] overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-[14px]">
                     <thead className="bg-[#1A222D] border-b border-white/5">
@@ -184,13 +193,12 @@ export default function CompetitionPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {leagueClubs.map((club, index) => {
-                        // Color code rankings: Top 4 Champions League (green), 5-6 Europa (orange), Bottom 3 Relegation (red)
+                      {activeClubs.sort((a: any, b: any) => a.ranking - b.ranking).map((club: any, index: number) => {
                         let rankColor = "text-white/40";
                         let borderLeft = "border-transparent";
                         if (index < 4) { rankColor = "text-[#10B981]"; borderLeft = "border-[#10B981]"; }
                         else if (index < 6) { rankColor = "text-[#FDE047]"; borderLeft = "border-[#FDE047]"; }
-                        else if (index >= leagueClubs.length - 3) { rankColor = "text-red-500"; borderLeft = "border-red-500"; }
+                        else if (index >= activeClubs.length - 3) { rankColor = "text-red-500"; borderLeft = "border-red-500"; }
                         
                         return (
                         <tr key={club.id} className="hover:bg-white/5 transition-colors group">
@@ -203,11 +211,11 @@ export default function CompetitionPage() {
                               <span className="font-semibold text-white group-hover:text-[#10B981] transition-colors">{club.name}</span>
                             </Link>
                           </td>
-                          <td className="py-3 px-3 text-center text-white/60">{club.stats.played}</td>
-                          <td className="py-3 px-3 text-center text-white/60 hidden sm:table-cell">{club.stats.wins}</td>
-                          <td className="py-3 px-3 text-center text-white/60 hidden sm:table-cell">{club.stats.draws}</td>
-                          <td className="py-3 px-3 text-center text-white/60 hidden sm:table-cell">{club.stats.losses}</td>
-                          <td className="py-3 px-3 text-center text-white/60">{(club.stats.goalsScored - club.stats.goalsConceded) > 0 ? `+${club.stats.goalsScored - club.stats.goalsConceded}` : (club.stats.goalsScored - club.stats.goalsConceded)}</td>
+                          <td className="py-3 px-3 text-center text-white/60">{club.stats?.played || 0}</td>
+                          <td className="py-3 px-3 text-center text-white/60 hidden sm:table-cell">{club.stats?.wins || 0}</td>
+                          <td className="py-3 px-3 text-center text-white/60 hidden sm:table-cell">{club.stats?.draws || 0}</td>
+                          <td className="py-3 px-3 text-center text-white/60 hidden sm:table-cell">{club.stats?.losses || 0}</td>
+                          <td className="py-3 px-3 text-center text-white/60">{club.stats ? ((club.stats.goalsScored - club.stats.goalsConceded) > 0 ? `+${club.stats.goalsScored - club.stats.goalsConceded}` : (club.stats.goalsScored - club.stats.goalsConceded)) : 0}</td>
                           <td className="py-3 px-5 text-center font-bold text-white bg-white/5">{club.points}</td>
                         </tr>
                       )})}
@@ -219,66 +227,14 @@ export default function CompetitionPage() {
         </div>
       ) : (() => {
         const getBracketData = () => {
-          // Champions League 2025-2026 (Verified Data)
-          if (id === "ucl") {
-            return {
-              r16: [
-                { t1: "Arsenal FC", t2: "Bayer Leverkusen", s1: "2", s2: "0" },
-                { t1: "Bayern Munich", t2: "Atalanta BC", s1: "4", s2: "1" },
-                { t1: "Manchester City", t2: "Real Madrid", s1: "1", s2: "2" }, // Real Madrid won 2-1 on agg
-                { t1: "Liverpool FC", t2: "Galatasaray", s1: "4", s2: "0" },
-                { t1: "Paris Saint-Germain", t2: "Chelsea FC", s1: "3", s2: "0" },
-                { t1: "Sporting CP", t2: "Bodø/Glimt", s1: "5", s2: "0" },
-                { t1: "FC Barcelone", t2: "Newcastle Utd", s1: "7", s2: "2" },
-                { t1: "Atlético Madrid", t2: "Tottenham", s1: "3", s2: "2" }
-              ],
-              qf: [
-                { t1: "Arsenal FC", t2: "Sporting CP", s1: "V", s2: "D" },
-                { t1: "Bayern Munich", t2: "Real Madrid", s1: "6", s2: "4" },
-                { t1: "Paris Saint-Germain", t2: "Liverpool FC", s1: "4", s2: "0" },
-                { t1: "Atlético Madrid", t2: "FC Barcelone", s1: "V", s2: "D" }
-              ],
-              sf: [
-                { t1: "Arsenal FC", t2: "Atlético Madrid", s1: "2", s2: "1" },
-                { t1: "Paris Saint-Germain", t2: "Bayern Munich", s1: "6", s2: "5" }
-              ],
-              final: { t1: "Paris Saint-Germain", t2: "Arsenal FC", s1: "-", s2: "-" } // 30 Mai 2026
-            };
-          }
+          if (liveBracket) return liveBracket;
 
-          // Coupe d'Afrique des Nations 2025 (Morocco winner)
-          if (id === "can") {
-            return {
-              r16: [
-                { t1: "Maroc", t2: "Zambie", s1: "2", s2: "0" },
-                { t1: "Sénégal", t2: "Cameroun", s1: "1", s2: "0" },
-                { t1: "Côte d'Ivoire", t2: "Mali", s1: "2", s2: "1" },
-                { t1: "Égypte", t2: "RD Congo", s1: "1", s2: "1" }, // (Tab)
-                { t1: "Algérie", t2: "Guinée", s1: "2", s2: "0" },
-                { t1: "Nigeria", t2: "Ghana", s1: "3", s2: "1" },
-                { t1: "Tunisie", t2: "Burkina Faso", s1: "1", s2: "0" },
-                { t1: "Afrique du Sud", t2: "Cap-Vert", s1: "2", s2: "1" }
-              ],
-              qf: [
-                { t1: "Maroc", t2: "Égypte", s1: "2", s2: "1" },
-                { t1: "Sénégal", t2: "Algérie", s1: "1", s2: "0" },
-                { t1: "Côte d'Ivoire", t2: "Nigeria", s1: "0", s2: "2" },
-                { t1: "Tunisie", t2: "Afrique du Sud", s1: "1", s2: "0" }
-              ],
-              sf: [
-                { t1: "Maroc", t2: "Nigeria", s1: "2", s2: "0" },
-                { t1: "Sénégal", t2: "Tunisie", s1: "2", s2: "1" }
-              ],
-              final: { t1: "Maroc", t2: "Sénégal", s1: "V", s2: "D" } // Morocco won by decision/forfeit in simulated 2025
-            };
-          }
-
-          // Fallback : Strictly NO hallucination. Show empty bracket for any other competition.
+          const emptyMatch = { t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" };
           return {
-            r16: Array(8).fill({ t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" }),
-            qf: Array(4).fill({ t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" }),
-            sf: Array(2).fill({ t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" }),
-            final: { t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" }
+            r16: Array(8).fill(emptyMatch),
+            qf: Array(4).fill(emptyMatch),
+            sf: Array(2).fill(emptyMatch),
+            final: emptyMatch
           };
         };
 
@@ -290,7 +246,7 @@ export default function CompetitionPage() {
               {/* Huitièmes */}
               <div className="flex-1 flex flex-col gap-4">
                 <h4 className="text-center text-[12px] font-bold text-white/40 uppercase tracking-widest mb-2">Huitièmes</h4>
-                {bracket.r16.map((match, i) => (
+                {bracket.r16.map((match: any, i: number) => (
                   <div key={i} className="bg-[#1A222D] border border-white/5 rounded-lg overflow-hidden text-[13px] flex flex-col justify-center">
                     <div className="px-3 py-2 border-b border-white/5 flex justify-between items-center text-white/70">
                        <span className="truncate pr-2">{match.t1}</span><span className="font-bold text-white">{match.s1}</span>
@@ -305,7 +261,7 @@ export default function CompetitionPage() {
               {/* Quarts */}
               <div className="flex-1 flex flex-col gap-4 justify-around py-8">
                 <h4 className="text-center text-[12px] font-bold text-white/40 uppercase tracking-widest mb-2">Quarts</h4>
-                {bracket.qf.map((match, i) => (
+                {bracket.qf.map((match: any, i: number) => (
                   <div key={i} className="bg-[#1A222D] border border-white/5 rounded-lg overflow-hidden text-[13px] flex flex-col justify-center h-[76px]">
                     <div className="px-3 py-1.5 border-b border-white/5 flex justify-between items-center text-white/70">
                        <span className="truncate pr-2">{match.t1}</span><span className="font-bold text-white">{match.s1}</span>
@@ -320,7 +276,7 @@ export default function CompetitionPage() {
               {/* Demies */}
               <div className="flex-1 flex flex-col gap-4 justify-around py-24">
                 <h4 className="text-center text-[12px] font-bold text-white/40 uppercase tracking-widest mb-2">Demies</h4>
-                {bracket.sf.map((match, i) => (
+                {bracket.sf.map((match: any, i: number) => (
                   <div key={i} className="bg-[#1A222D] border border-[#10B981]/30 rounded-lg overflow-hidden text-[13px] flex flex-col justify-center h-[76px]">
                     <div className="px-3 py-1.5 border-b border-white/5 flex justify-between items-center text-[#10B981]">
                        <span className="truncate pr-2 font-bold">{match.t1}</span><span className="font-bold">{match.s1}</span>
