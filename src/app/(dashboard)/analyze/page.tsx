@@ -189,23 +189,16 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
 
 function renderFormEmojis(form: ("W" | "D" | "L")[]) {
   const items = form.slice(-5).map(f => ({
-    color: f === "W" ? "#10B981" : f === "D" ? "#F59E0B" : "#EF4444",
-    label: f === "W" ? "V" : f === "D" ? "N" : "D"
+    icon: f === "W" ? "✅" : f === "D" ? "🟡" : "❌"
   }));
   // Pad to 5
   while (items.length < 5) {
-    items.unshift({ color: "#374151", label: "-" });
+    items.unshift({ icon: "➖" });
   }
   return (
-    <span className="flex items-center gap-1">
+    <span className="flex items-center gap-1.5">
       {items.map((item, i) => (
-        <span
-          key={i}
-          className="inline-flex items-center justify-center w-5 h-5 rounded text-[9px] font-black"
-          style={{ backgroundColor: item.color, color: '#fff' }}
-        >
-          {item.label}
-        </span>
+        <span key={i} className="text-[13px]">{item.icon}</span>
       ))}
     </span>
   );
@@ -934,65 +927,78 @@ export default function AnalyzePage() {
               </div>
 
               {/* Forme Récente - Visifoot Clone */}
-              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-6 rounded-[24px] space-y-5 shadow-md">
-                <div className="flex justify-between items-center text-xs font-semibold text-white/50 mb-6">
-                  <div className="flex items-center gap-2 text-white">
-                    <span className="text-lg">📈</span>
+              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] shadow-md">
+                <div className="flex justify-between items-center text-xs font-semibold text-white mb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📊</span>
                     <h4 className="font-black text-sm" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Forme récente</h4>
                   </div>
-                  <span className="text-[10px]">{getClub(team1!).league ? leagueLabels[getClub(team1!).league] || "Forme globale (toutes compétitions)" : "Forme globale (toutes compétitions)"}</span>
+                  <span className="text-[10px] text-white/40">Forme globale (toutes compétitions)</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Equipe 1 */}
-                  <div className="flex flex-col gap-3 relative">
+                <div className="flex justify-between items-start px-2 md:px-8 mb-6">
+                  {/* Team 1 */}
+                  <div className="flex flex-col items-center gap-3 w-1/2">
+                    <span className="font-bold text-sm text-white/90">{getClub(team1!).name}</span>
                     <div className="flex items-center gap-3">
                       <img src={getClub(team1!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
-                      <div className="flex flex-col">
-                        <span className="font-bold text-sm text-white">{getClub(team1!).name}</span>
-                        <span className="text-[11px] font-semibold text-[#F59E0B] flex items-center gap-1">
-                          {getClub(team1!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team1!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '🔥 En grande forme'}
-                        </span>
-                      </div>
-                    </div>
-                    <button onClick={() => setShowGlobalForm(!showGlobalForm)} className="w-fit px-4 bg-transparent border border-[#10B981]/20 hover:bg-[#10B981]/10 text-[#10B981] text-[11px] font-semibold py-2 rounded-full transition-all">
-                      Voir la forme en ligne
-                    </button>
-                    <div className="flex flex-col gap-1 mt-1">
-                      <div className="text-[12px] font-semibold text-white/60 flex items-center gap-2">
-                        <span className="w-12">Forme :</span>
-                        <span className="text-xs flex items-center gap-1">{renderFormEmojis(getClub(team1!).form)}</span>
-                      </div>
-                      <div className="text-[12px] font-semibold text-white/60 flex items-center gap-2">
-                        <span className="w-12">V-N-D :</span>
-                        <span className="font-bold text-white tracking-widest">{calculateVND(getClub(team1!).form)}</span>
+                      <div className="flex flex-col items-start leading-tight">
+                        <span className="text-lg mb-0.5">🔥</span>
+                        <span className="text-[10px] font-semibold text-white/50">En grande</span>
+                        <span className="text-[10px] font-semibold text-white/50">forme</span>
                       </div>
                     </div>
                   </div>
-
-                  {/* Equipe 2 */}
-                  <div className="flex flex-col gap-3 relative md:border-l border-white/5 md:pl-4 mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0">
+                  {/* Team 2 */}
+                  <div className="flex flex-col items-center gap-3 w-1/2">
+                    <span className="font-bold text-sm text-white/90">{getClub(team2!).name}</span>
                     <div className="flex items-center gap-3">
                       <img src={getClub(team2!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
-                      <div className="flex flex-col">
-                        <span className="font-bold text-sm text-white">{getClub(team2!).name}</span>
-                        <span className="text-[11px] font-semibold text-[#F59E0B] flex items-center gap-1">
-                          {getClub(team2!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team2!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '🔥 En grande forme'}
-                        </span>
+                      <div className="flex flex-col items-start leading-tight">
+                        <span className="text-lg mb-0.5">🔥</span>
+                        <span className="text-[10px] font-semibold text-white/50">En grande</span>
+                        <span className="text-[10px] font-semibold text-white/50">forme</span>
                       </div>
                     </div>
-                    <button onClick={() => setShowGlobalForm(!showGlobalForm)} className="w-fit px-4 bg-transparent border border-[#10B981]/20 hover:bg-[#10B981]/10 text-[#10B981] text-[11px] font-semibold py-2 rounded-full transition-all">
-                      Voir la forme en ligne
-                    </button>
-                    <div className="flex flex-col gap-1 mt-1">
-                      <div className="text-[12px] font-semibold text-white/60 flex items-center gap-2">
-                        <span className="w-12">Forme :</span>
-                        <span className="text-xs flex items-center gap-1">{renderFormEmojis(getClub(team2!).form)}</span>
-                      </div>
-                      <div className="text-[12px] font-semibold text-white/60 flex items-center gap-2">
-                        <span className="w-12">V-N-D :</span>
-                        <span className="font-bold text-white tracking-widest">{calculateVND(getClub(team2!).form)}</span>
-                      </div>
+                  </div>
+                </div>
+
+                <button onClick={() => setShowGlobalForm(!showGlobalForm)} className="w-full bg-transparent border border-[#10B981]/20 hover:bg-[#10B981]/10 text-[#10B981] text-[12px] font-semibold py-3 rounded-[14px] transition-all">
+                  Voir la forme en ligue
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
+                  <div className="flex items-center gap-2">
+                    <img src={getClub(team1!).logo} className="w-5 h-5 object-contain" alt="" />
+                    <span className="font-bold text-[13px] text-white/80">{getClub(team1!).name}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
+                      <span className="w-[50px]">Forme :</span>
+                      <span>{renderFormEmojis(getClub(team1!).form)}</span>
+                    </div>
+                    <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
+                      <span className="w-[50px]">V-N-D :</span>
+                      <span className="font-medium tracking-wide">{calculateVND(getClub(team1!).form)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
+                  <div className="flex items-center gap-2">
+                    <img src={getClub(team2!).logo} className="w-5 h-5 object-contain" alt="" />
+                    <span className="font-bold text-[13px] text-white/80">{getClub(team2!).name}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
+                      <span className="w-[50px]">Forme :</span>
+                      <span>{renderFormEmojis(getClub(team2!).form)}</span>
+                    </div>
+                    <div className="text-[11px] font-semibold text-white/80 flex items-center gap-2">
+                      <span className="w-[50px]">V-N-D :</span>
+                      <span className="font-medium tracking-wide">{calculateVND(getClub(team2!).form)}</span>
                     </div>
                   </div>
                 </div>
