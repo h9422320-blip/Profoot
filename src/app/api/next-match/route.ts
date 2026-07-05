@@ -4,32 +4,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
-// Helper for approximate matching (fuzzy search) since AI might return "L'Égypte", "Egypte", "Egypt", etc.
-function findBestMatchId(aiResponse: string): string | null {
-  const normalized = aiResponse.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
-  
-  if (normalized.length < 3) return null; // Avoid tiny matches
-
-  // 1. Direct key match (e.g. "egypt" -> "egypt")
-  for (const key in clubs) {
-    if (key.toLowerCase().includes(normalized) || normalized.includes(key.toLowerCase())) return key;
-  }
-
-  // 2. Name match (e.g. "Égypte" -> "Egypt")
-  for (const key in clubs) {
-    const club = clubs[key];
-    const internalNames = [
-      club.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""),
-      club.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "")
-    ];
-
-    if (internalNames.some(name => normalized.includes(name) || name.includes(normalized))) {
-      return key;
-    }
-  }
-  return null;
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const teamId = searchParams.get('teamId');
@@ -46,28 +20,34 @@ export async function GET(request: Request) {
   try {
     console.log(`[NEXT_MATCH_AI] Asking Gemini for next opponent of ${team.name}...`);
     
-    // We use the exact same technology as the Agent IA
+    const availableTeamsList = Object.entries(clubs).map(([key, c]) => `${key}="${c.name}"`).join(', ');
+
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: "Tu es un expert en football connecté au web. Cherche le prochain adversaire officiel de l'équipe demandée. Réponds UNIQUEMENT avec le nom court de l'équipe adverse en anglais ou français, sans aucun autre mot, ni ponctuation.",
+      systemInstruction: `Tu es un expert en football connecté au web via Google Search. Recherche le vrai prochain adversaire officiel de l'équipe demandée.
+Voici la liste des équipes disponibles dans notre base (Format: ID="Nom") :
+[ ${availableTeamsList} ]
+
+Consignes STRICTES :
+1. Recherche l'information exacte sur le web.
+2. Identifie l'ID correspondant à l'adversaire dans la liste fournie.
+3. Réponds UNIQUEMENT avec l'ID exact. Aucun autre mot, aucune phrase.
+4. Si l'adversaire n'est pas dans la liste ou si aucun match n'est prévu, réponds EXACTEMENT "null".`,
       tools: [{ googleSearch: {} } as any]
     });
 
-    const result = await model.generateContent(`Quel est le prochain adversaire de l'équipe nationale ou du club de football : ${team.name} ?`);
-    const aiOpponentName = result.response.text().trim();
+    const result = await model.generateContent(`Quel est l'ID du prochain adversaire de : ${team.name} ?`);
+    const aiOpponentId = result.response.text().trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
     
-    console.log(`[NEXT_MATCH_AI] Gemini found: ${aiOpponentName}`);
+    console.log(`[NEXT_MATCH_AI] Gemini answered ID: ${aiOpponentId}`);
 
-    // Map the plain text response (e.g., "Egypte") to our internal ID (e.g., "egypt")
-    const matchedId = findBestMatchId(aiOpponentName);
-
-    if (matchedId) {
-      console.log(`[NEXT_MATCH_AI] Matched ID: ${matchedId}`);
-      return NextResponse.json({ nextTeamId: matchedId });
+    if (aiOpponentId !== 'null' && clubs[aiOpponentId]) {
+      console.log(`[NEXT_MATCH_AI] Valid opponent found: ${clubs[aiOpponentId].name}`);
+      return NextResponse.json({ nextTeamId: aiOpponentId });
     } else {
-      console.warn(`[NEXT_MATCH_AI] No database match for AI response: ${aiOpponentName}`);
-      return NextResponse.json({ nextTeamId: null, aiRaw: aiOpponentName });
+      console.warn(`[NEXT_MATCH_AI] AI returned null or invalid ID: ${aiOpponentId}`);
+      return NextResponse.json({ nextTeamId: null, aiRaw: aiOpponentId });
     }
 
   } catch (error) {
