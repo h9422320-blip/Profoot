@@ -690,11 +690,11 @@ export default function AnalyzePage() {
                   const aCl = typeof item.team2 === 'string' ? getClub(item.team2) : item.team2;
                   
                   return (
-                    <button 
+                    <div
                       key={idx}
-                      onClick={() => handleQuickMatchSelect(hCl?.id || '', aCl?.id || '')}
-                      className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 rounded-[18px] flex flex-col p-4 shadow-sm transition-all group active:scale-[0.99] text-left"
+                      className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[18px] flex flex-col p-4 shadow-sm relative overflow-hidden"
                     >
+                      {/* Team names & logos — always visible */}
                       <div className="flex items-center w-full mb-3">
                         <span className="text-[13px] font-extrabold text-white/90 truncate flex-1 text-right pr-2">
                           {hCl?.name || "Inconnu"}
@@ -706,27 +706,45 @@ export default function AnalyzePage() {
                           {aCl?.name || "Inconnu"}
                         </span>
                       </div>
-                      <div className="flex flex-col gap-1 w-full bg-white/5 rounded-xl p-3">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[10px] text-white/40 font-medium">
-                            {item.date ? new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Récemment"}
-                          </span>
+
+                      {/* Sensitive data — blurred for non-premium */}
+                      <div className={`relative ${!isPremium ? 'pointer-events-none select-none' : ''}`}>
+                        <div className={`flex flex-col gap-1 w-full bg-white/5 rounded-xl p-3 ${!isPremium ? 'blur-[6px] opacity-50' : ''}`}>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] text-white/40 font-medium">
+                              {item.date ? new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Récemment"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] text-white/60 font-semibold">Score prédit :</span>
+                            <span className="text-[12px] text-[#10B981] font-black">{item.score}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] text-white/60 font-semibold">Fiabilité :</span>
+                            <span className="text-[11px] text-white font-bold">{item.confidence}%</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[11px] text-white/60 font-semibold">Score prédit :</span>
-                          <span className="text-[12px] text-[#10B981] font-black">{item.score}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[11px] text-white/60 font-semibold">Fiabilité :</span>
-                          <span className="text-[11px] text-white font-bold">{item.confidence}%</span>
-                        </div>
+                        {item.summary && (
+                          <p className={`mt-3 text-[10px] text-white/40 leading-relaxed line-clamp-2 ${!isPremium ? 'blur-[5px] opacity-50 select-none' : ''}`}>
+                            {item.summary}
+                          </p>
+                        )}
+
+                        {/* Lock overlay for non-premium */}
+                        {!isPremium && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10">
+                            <Link
+                              href="/pricing"
+                              onClick={e => e.stopPropagation()}
+                              className="flex items-center gap-1.5 font-black text-[11px] py-2 px-5 rounded-full transition-all hover:scale-105 active:scale-95 shadow-[0_4px_16px_rgba(45,212,191,0.35)]"
+                              style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#050816'}}
+                            >
+                              🔒 Débloquer les résultats
+                            </Link>
+                          </div>
+                        )}
                       </div>
-                      {item.summary && (
-                        <p className="mt-3 text-[10px] text-white/40 leading-relaxed line-clamp-2">
-                          {item.summary}
-                        </p>
-                      )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
