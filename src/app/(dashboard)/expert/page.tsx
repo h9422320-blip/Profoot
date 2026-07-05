@@ -11,8 +11,8 @@ interface Message {
   content: string;
 }
 
-// Email du propriétaire - accès gratuit pour les tests
-const OWNER_EMAIL = "kuzmabah@gmail.com";
+// Emails des propriétaires - accès gratuit pour les tests
+const OWNER_EMAILS = ["kuzmabah@gmail.com", "abdoulayecamara1996gn@gmail.com"];
 
 // Render message content with basic markdown-like formatting
 function MessageContent({ content, isUser }: { content: string; isUser: boolean }) {
@@ -154,7 +154,7 @@ export default function ExpertAgentPage() {
   };
 
   // Le propriétaire a toujours accès gratuitement
-  const isOwner = userEmail === OWNER_EMAIL;
+  const isOwner = userEmail && OWNER_EMAILS.includes(userEmail);
   const hasAccess = isOwner || isPro;
 
   if (isPro === null && !isOwner) {

@@ -356,7 +356,7 @@ export default function AnalyzePage() {
         return;
       }
       
-      if (user.email === 'kuzmabah@gmail.com') {
+      if (user.email === 'kuzmabah@gmail.com' || user.email === 'abdoulayecamara1996gn@gmail.com') {
         setIsPremium(true);
         return;
       }
@@ -1021,8 +1021,8 @@ export default function AnalyzePage() {
                     <span className="whitespace-nowrap">Forme :</span>
                     <div className="flex">{renderFormEmojis(getClub(team1!).form)}</div>
                     
+                    <div className="w-full flex justify-center text-[11px] opacity-80">⏳</div>
                     <span></span>
-                    <span className="text-[11px] opacity-80 pl-0.5">⏳</span>
 
                     <span className="whitespace-nowrap">V-N-D :</span>
                     <span className="font-medium tracking-wide">{calculateVND(getClub(team1!).form)}</span>
@@ -1038,8 +1038,8 @@ export default function AnalyzePage() {
                     <span className="whitespace-nowrap">Forme :</span>
                     <div className="flex">{renderFormEmojis(getClub(team2!).form)}</div>
                     
+                    <div className="w-full flex justify-center text-[11px] opacity-80">⏳</div>
                     <span></span>
-                    <span className="text-[11px] opacity-80 pl-0.5">⏳</span>
 
                     <span className="whitespace-nowrap">V-N-D :</span>
                     <span className="font-medium tracking-wide">{calculateVND(getClub(team2!).form)}</span>
@@ -1329,79 +1329,7 @@ export default function AnalyzePage() {
             </div>
           )}
 
-          {/* GLOBAL FORM (Dynamicmatches list toggle) */}
-          {result.globalForm && (
-            <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
-              <button onClick={() => setShowGlobalForm(!showGlobalForm)} className="w-full bg-transparent border border-primary/25 py-3.5 rounded-[20px] text-xs font-black text-primary hover:bg-[#10B981]/5 transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
-                {showGlobalForm ? "Masquer" : "Voir"} l'historique complet (5 derniers matchs)
-                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showGlobalForm ? 'rotate-180' : ''}`} />
-              </button>
 
-              {showGlobalForm && (
-                <div className="mt-6 space-y-6 border-t border-white/5 pt-6 animate-fade-in">
-                  {[team1!, team2!].map((tid, idx) => {
-                    const cl = getClub(tid);
-                    const formData = idx === 0 ? result.globalForm.team1 : result.globalForm.team2;
-                    if (!formData) return null;
-                    return (
-                      <div key={tid} className="space-y-4">
-                        <div className="flex items-center gap-3 mb-4">
-                          <img src={cl.logo} className="w-6 h-6 object-contain" alt="" />
-                          <h5 className="font-black text-xs uppercase tracking-wider text-white">{cl.name}</h5>
-                        </div>
-
-                        {/* Recent Matches List */}
-                        {formData.recentMatches && (
-                          <div className="space-y-2">
-                            {formData.recentMatches.map((m: any, mi: number) => (
-                              <div key={mi} className="flex items-center justify-between bg-black/25 border border-white/5 rounded-[20px] px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${m.result === 'W' ? 'bg-primary/10 text-primary border border-primary/20' : m.result === 'D' ? 'bg-warning/10 text-warning border border-warning/20' : 'bg-danger/10 text-danger border border-danger/20'}`}>
-                                    {m.result === 'W' ? 'V' : m.result === 'D' ? 'N' : 'D'}
-                                  </span>
-                                  <div className="truncate">
-                                    <span className="text-xs font-bold text-white block truncate max-w-[120px]">{m.opponent}</span>
-                                    <span className="text-[9px] text-white/40 uppercase tracking-widest font-black block mt-0.5">{m.competition}</span>
-                                  </div>
-                                </div>
-                                <span className="text-xs font-black text-white/80 shrink-0">{m.score}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Stats Summary */}
-                        <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mt-3">
-                          <div className="bg-black/20 border border-white/5 rounded-[16px] p-2 text-center shadow-inner">
-                            <p className="text-base font-black text-[#10B981] font-[Space Grotesk]">{formData.goalsScored}</p>
-                            <p className="text-[8px] text-white/40 uppercase tracking-widest font-black mt-0.5">Marqués</p>
-                          </div>
-                          <div className="bg-black/20 border border-white/5 rounded-[16px] p-2 text-center shadow-inner">
-                            <p className="text-base font-black text-danger font-[Space Grotesk]">{formData.goalsConceded}</p>
-                            <p className="text-[8px] text-white/40 uppercase tracking-widest font-black mt-0.5">Encaissés</p>
-                          </div>
-                          <div className="bg-black/20 border border-white/5 rounded-[16px] p-2 text-center shadow-inner">
-                            <p className="text-base font-black text-white font-[Space Grotesk]">{formData.cleanSheets}</p>
-                            <p className="text-[8px] text-white/40 uppercase tracking-widest font-black mt-0.5">Clean S.</p>
-                          </div>
-                          <div className="bg-black/20 border border-white/5 rounded-[16px] p-2 text-center shadow-inner">
-                            <p className="text-base font-black text-[#10B981] font-[Space Grotesk]">{formData.avgPossession}%</p>
-                            <p className="text-[8px] text-white/40 uppercase tracking-widest font-black mt-0.5">Poss.</p>
-                          </div>
-                          <div className="bg-black/20 border border-white/5 rounded-[16px] p-2 text-center shadow-inner col-span-3 md:col-span-1 mx-auto w-1/2 md:w-full">
-                            <p className="text-base font-black text-warning font-[Space Grotesk]">{formData.winStreak}</p>
-                            <p className="text-[8px] text-white/40 uppercase tracking-widest font-black mt-0.5">Série V</p>
-                          </div>
-                        </div>
-
-                        {idx === 0 && <div className="border-b border-white/5 mt-4"></div>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>
