@@ -1065,7 +1065,7 @@ export default function AnalyzePage() {
                       href="/pricing"
                       className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 hover:scale-105 active:scale-95 text-[#070E13] font-black py-3.5 px-8 rounded-full transition-all text-sm w-auto shadow-[0_8px_30px_rgba(16,185,129,0.3)] whitespace-nowrap"
                     >
-                      🔒 Débloquer l'analyse complète
+                      🔒 Débloquer les analyses maintenant
                     </Link>
                   </div>
                 )}
