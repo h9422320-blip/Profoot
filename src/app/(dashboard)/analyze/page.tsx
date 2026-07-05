@@ -372,47 +372,20 @@ export default function AnalyzePage() {
     checkPremium();
   }, []);
 
-  // Upcoming matches suggestions for better UX (AI-like auto-fill)
-  const UPCOMING_MATCHES: Record<string, string> = {
-    "brazil": "norway",
-    "norway": "brazil",
-    "portugal": "spain",
-    "spain": "portugal",
-    "france": "germany",
-    "germany": "france",
-    "argentina": "colombia",
-    "colombia": "argentina",
-    "england": "italy",
-    "italy": "england",
-    "usa": "belgium",
-    "belgium": "usa",
-    "mexico": "usa",
-    "netherlands": "belgium",
-    "senegal": "egypt",
-    "morocco": "algeria"
-  };
-
   const handleTeam1Select = async (id: string) => {
     setTeam1(id);
     
-    // 1. FAST FALLBACK: Keep user's requested static logic for instant UX
-    if (UPCOMING_MATCHES[id]) {
-      setTeam2(UPCOMING_MATCHES[id]);
-    }
-
-    // 2. REAL-TIME INTELLIGENCE: Ask the backend for the EXACT live next match
+    // REAL-TIME INTELLIGENCE: Ask the backend for the EXACT live next match
     try {
       const res = await fetch(`/api/next-match?teamId=${id}`);
       if (res.ok) {
         const data = await res.json();
-        // If the API found the real upcoming opponent in our DB, we update Team 2
-        // This overwrites the static fallback with 100% accurate live data (Microsoft/AI level)
         if (data.nextTeamId) {
           setTeam2(data.nextTeamId);
         }
       }
     } catch (error) {
-      console.warn("Could not fetch real-time next match, relying on fallback.", error);
+      console.warn("Could not fetch real-time next match", error);
     }
   };
 

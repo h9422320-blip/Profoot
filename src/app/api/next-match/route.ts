@@ -26,14 +26,15 @@ export async function GET(request: Request) {
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
       systemInstruction: `Tu es un expert en football connecté au web via Google Search. Recherche le vrai prochain adversaire officiel de l'équipe demandée.
-Voici la liste des équipes disponibles dans notre base (Format: ID="Nom") :
+Voici la liste exhaustive de toutes nos équipes (clubs, nations) :
 [ ${availableTeamsList} ]
 
 Consignes STRICTES :
-1. Recherche l'information exacte sur le web.
-2. Identifie l'ID correspondant à l'adversaire dans la liste fournie.
-3. Réponds UNIQUEMENT avec l'ID exact. Aucun autre mot, aucune phrase.
-4. Si l'adversaire n'est pas dans la liste ou si aucun match n'est prévu, réponds EXACTEMENT "null".`,
+1. Recherche sur le web contre qui l'équipe va jouer son prochain match.
+2. Trouve l'ID exact de cet adversaire dans la liste ci-dessus (la partie avant le =).
+3. Réponds UNIQUEMENT par cet ID en minuscules (ex: "usa", "marseille"). 
+4. N'ajoute AUCUN texte, aucun guillemet, aucune ponctuation, pas de "ID=".
+5. Si l'adversaire n'est pas dans la liste ou s'il n'y a pas de match, réponds strictement "null".`,
       tools: [{ googleSearch: {} } as any]
     });
 
