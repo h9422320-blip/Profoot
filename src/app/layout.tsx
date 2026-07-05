@@ -4,7 +4,6 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 
 import { Analytics } from "@vercel/analytics/react";
-import TawkToChat from "@/components/TawkToChat";
 
 export const metadata: Metadata = {
   title: "ProFoot AI — Analyse IA Football Premium",
@@ -32,7 +31,6 @@ export default function RootLayout({
           <LanguageProvider>
             {children}
             <Analytics />
-            <TawkToChat />
           </LanguageProvider>
         </ThemeProvider>
       </body>
