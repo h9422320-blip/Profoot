@@ -344,7 +344,7 @@ export default function AnalyzePage() {
   const [showGlobalForm, setShowGlobalForm] = useState(false);
   const [pickerOpen, setPickerOpen] = useState<1 | 2 | null>(null);
   const [todayHistory, setTodayHistory] = useState<any[]>([]);
-  const [isPremium, setIsPremium] = useState(true); // Default true to avoid flashing blur
+  const [isPremium, setIsPremium] = useState(false); // Default false to prevent data leaking before check finishes
 
   useEffect(() => {
     const checkPremium = async () => {
