@@ -907,6 +907,35 @@ export default function AnalyzePage() {
             // B. 🔮 FUTURE MATCH : IA PREDICTION REPORT
             <div className="space-y-8">
               
+              {/* HEADER VISIFOOT STYLE FOR ANALYZED MATCH */}
+              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-6 rounded-[24px] space-y-5 shadow-md flex flex-col items-center">
+                <span className="text-[10px] uppercase tracking-widest text-white/40 mb-2 font-bold">Match analysé</span>
+                
+                <div className="flex flex-col items-center gap-4 w-full text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <img src={getClub(team1!).logo} className="w-14 h-14 md:w-20 md:h-20 object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" alt="" />
+                    <span className="font-black text-white text-base md:text-xl">{getClub(team1!).name}</span>
+                  </div>
+                  
+                  <span className="text-xl font-black text-white/20 uppercase tracking-widest">VS</span>
+                  
+                  <div className="flex flex-col items-center gap-3">
+                    <img src={getClub(team2!).logo} className="w-14 h-14 md:w-20 md:h-20 object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" alt="" />
+                    <span className="font-black text-white text-base md:text-xl">{getClub(team2!).name}</span>
+                  </div>
+                </div>
+                
+                <div className="mt-4 bg-[#10B981]/10 border border-[#10B981]/30 rounded-full px-6 py-2.5 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                   <span className="text-[#10B981] text-xs font-bold uppercase tracking-widest">Analyse IA prête</span>
+                </div>
+                <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold mb-2">Basée sur stats + actualité foot</span>
+                
+                <div className="w-full flex flex-col items-start gap-2 pt-4 border-t border-white/5 text-[11px] font-semibold text-white/50">
+                  <div className="flex items-center gap-2"><span className="text-sm">🏆</span> {result.competition || "Match International"} <span className="mx-2">•</span> {result.date || "Bientôt"}</div>
+                  <div className="flex items-center gap-2"><span className="text-sm">📍</span> {getClub(team1!).stadium || "Stade National"}</div>
+                </div>
+              </div>
+
               {/* Forme Récente - Visifoot Clone */}
               <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-6 rounded-[24px] space-y-5 shadow-md">
                 <div className="flex justify-between items-center text-xs font-semibold text-white/50 mb-6">
@@ -914,7 +943,7 @@ export default function AnalyzePage() {
                     <span className="text-lg">📈</span>
                     <h4 className="font-black text-sm" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Forme récente</h4>
                   </div>
-                  <span className="text-[10px]">{getClub(team1!).league ? leagueLabels[getClub(team1!).league] || "Toutes compétitions" : "Toutes compétitions"}</span>
+                  <span className="text-[10px]">{getClub(team1!).league ? leagueLabels[getClub(team1!).league] || "Forme globale (toutes compétitions)" : "Forme globale (toutes compétitions)"}</span>
                 </div>
 
                 <div className="flex items-center justify-between gap-4 px-2 md:px-12">
@@ -923,8 +952,8 @@ export default function AnalyzePage() {
                       <img src={getClub(team1!).logo} className="w-6 h-6 object-contain shrink-0" alt="" />
                       <span className="font-bold text-xs sm:text-sm text-white truncate max-w-[90px] sm:max-w-none">{getClub(team1!).name}</span>
                     </div>
-                    <span className="text-[11px] font-semibold text-white/70 flex items-center gap-1">
-                      {getClub(team1!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team1!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '⚖️ Forme moyenne'}
+                    <span className="text-[11px] font-semibold text-[#F59E0B] flex items-center gap-1">
+                      {getClub(team1!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team1!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '🔥 En grande forme'}
                     </span>
                   </div>
                   <div className="flex flex-col items-center gap-2 text-center">
@@ -932,8 +961,8 @@ export default function AnalyzePage() {
                       <img src={getClub(team2!).logo} className="w-6 h-6 object-contain shrink-0" alt="" />
                       <span className="font-bold text-xs sm:text-sm text-white truncate max-w-[90px] sm:max-w-none">{getClub(team2!).name}</span>
                     </div>
-                    <span className="text-[11px] font-semibold text-white/70 flex items-center gap-1">
-                      {getClub(team2!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team2!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '⚖️ Forme moyenne'}
+                    <span className="text-[11px] font-semibold text-[#F59E0B] flex items-center gap-1">
+                      {getClub(team2!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team2!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '🔥 En grande forme'}
                     </span>
                   </div>
                 </div>
