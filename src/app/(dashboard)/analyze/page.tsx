@@ -685,31 +685,33 @@ export default function AnalyzePage() {
             ) : (
               <div className="grid grid-cols-1 gap-3">
                 {todayHistory.map((item, idx) => {
-                  // Ensure we handle both string IDs and object structures from local storage safely
                   const hCl = typeof item.team1 === 'string' ? getClub(item.team1) : item.team1;
                   const aCl = typeof item.team2 === 'string' ? getClub(item.team2) : item.team2;
-                  
-                  return (
-                    <div
-                      key={idx}
-                      className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[18px] flex flex-col p-4 shadow-sm relative overflow-hidden"
-                    >
-                      {/* Team names & logos — always visible */}
-                      <div className="flex items-center w-full mb-3">
-                        <span className="text-[13px] font-extrabold text-white/90 truncate flex-1 text-right pr-2">
-                          {hCl?.name || "Inconnu"}
-                        </span>
-                        <img src={hCl?.logo} className="w-6 h-6 object-contain shrink-0" alt="" />
-                        <span className="text-[10px] text-white/25 font-black mx-2 shrink-0">vs</span>
-                        <img src={aCl?.logo} className="w-6 h-6 object-contain shrink-0" alt="" />
-                        <span className="text-[13px] font-extrabold text-white/90 truncate flex-1 text-left pl-2">
-                          {aCl?.name || "Inconnu"}
-                        </span>
-                      </div>
 
-                      {/* Sensitive data — blurred for non-premium */}
-                      <div className={`relative ${!isPremium ? 'pointer-events-none select-none' : ''}`}>
-                        <div className={`flex flex-col gap-1 w-full bg-white/5 rounded-xl p-3 ${!isPremium ? 'blur-[6px] opacity-50' : ''}`}>
+                  return (
+                    <div key={idx} className="relative rounded-[18px] overflow-hidden">
+
+                      {/* Full card — blurred entirely for non-premium */}
+                      <button
+                        onClick={() => isPremium ? handleQuickMatchSelect(hCl?.id || '', aCl?.id || '') : undefined}
+                        className={`w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[18px] flex flex-col p-4 shadow-sm text-left transition-all ${
+                          isPremium
+                            ? 'hover:border-primary/20 active:scale-[0.99] cursor-pointer'
+                            : 'blur-[5px] opacity-60 cursor-default select-none pointer-events-none'
+                        }`}
+                      >
+                        <div className="flex items-center w-full mb-3">
+                          <span className="text-[13px] font-extrabold text-white/90 truncate flex-1 text-right pr-2">
+                            {hCl?.name || "Inconnu"}
+                          </span>
+                          <img src={hCl?.logo} className="w-6 h-6 object-contain shrink-0" alt="" />
+                          <span className="text-[10px] text-white/25 font-black mx-2 shrink-0">vs</span>
+                          <img src={aCl?.logo} className="w-6 h-6 object-contain shrink-0" alt="" />
+                          <span className="text-[13px] font-extrabold text-white/90 truncate flex-1 text-left pl-2">
+                            {aCl?.name || "Inconnu"}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1 w-full bg-white/5 rounded-xl p-3">
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-[10px] text-white/40 font-medium">
                               {item.date ? new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Récemment"}
@@ -725,25 +727,24 @@ export default function AnalyzePage() {
                           </div>
                         </div>
                         {item.summary && (
-                          <p className={`mt-3 text-[10px] text-white/40 leading-relaxed line-clamp-2 ${!isPremium ? 'blur-[5px] opacity-50 select-none' : ''}`}>
+                          <p className="mt-3 text-[10px] text-white/40 leading-relaxed line-clamp-2">
                             {item.summary}
                           </p>
                         )}
+                      </button>
 
-                        {/* Lock overlay for non-premium */}
-                        {!isPremium && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10">
-                            <Link
-                              href="/pricing"
-                              onClick={e => e.stopPropagation()}
-                              className="flex items-center gap-1.5 font-black text-[11px] py-2 px-5 rounded-full transition-all hover:scale-105 active:scale-95 shadow-[0_4px_16px_rgba(45,212,191,0.35)]"
-                              style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#050816'}}
-                            >
-                              🔒 Débloquer les résultats
-                            </Link>
-                          </div>
-                        )}
-                      </div>
+                      {/* Lock overlay floating above the blurred card */}
+                      {!isPremium && (
+                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-[18px]">
+                          <Link
+                            href="/pricing"
+                            className="flex items-center gap-1.5 font-black text-[11px] py-2.5 px-6 rounded-full transition-all hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(45,212,191,0.4)]"
+                            style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#050816'}}
+                          >
+                            🔒 Débloquer les résultats
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
