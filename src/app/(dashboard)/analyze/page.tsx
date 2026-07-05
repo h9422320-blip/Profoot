@@ -1076,16 +1076,14 @@ export default function AnalyzePage() {
 
               {/* Confiance - EXACT VISIFOOT STYLE */}
               {result.confidence && (
-                <div className="space-y-2 mt-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">🎯</span>
-                      <h5 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Confiance de l'IA</h5>
-                    </div>
+                <div className="bg-[#111A24]/70 border border-white/10 rounded-[20px] p-4 space-y-2 mt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">🎯</span>
+                    <h5 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Confiance de l'IA</h5>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="h-4 flex-1 bg-black/40 rounded-full overflow-hidden shadow-inner">
-                      <div className="h-full bg-[#10B981] rounded-full" style={{ width: `${result.confidence}%` }}></div>
+                    <div className="h-3 flex-1 bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5">
+                      <div className="h-full bg-gradient-to-r from-[#10B981] to-[#2DD4BF] rounded-full transition-all duration-1000" style={{ width: `${result.confidence}%` }}></div>
                     </div>
                     <span className="text-xs font-bold text-white/80 shrink-0">
                       {result.confidence >= 80 ? "Très élevée" : result.confidence >= 60 ? "Élevée" : "Moyenne"}
@@ -1096,25 +1094,26 @@ export default function AnalyzePage() {
               )}
 
               {/* PAYWALL WRAPPER BEGIN */}
-              <div className={`relative pt-6 ${!isPremium ? 'max-h-[500px] overflow-hidden' : ''}`}>
+              <div className={`relative pt-6 ${!isPremium ? 'max-h-[520px] overflow-hidden' : ''}`}>
                 {!isPremium && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-start p-6 pt-10 bg-gradient-to-b from-[#050816]/60 via-[#050816] to-[#050816] text-center">
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 py-10 text-center" style={{background: 'linear-gradient(to bottom, rgba(5,8,22,0) 0%, rgba(5,8,22,0.7) 20%, rgba(5,8,22,0.97) 45%, #050816 65%)' }}>
                     
                     <h3 className="text-xl md:text-3xl font-black text-white mb-4" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
                     
                     <div className="w-56 h-1.5 bg-white/10 rounded-full mb-5 overflow-hidden">
-                      <div className="h-full bg-[#10B981] rounded-full" style={{ width: "15%" }}></div>
+                      <div className="h-full bg-gradient-to-r from-[#10B981] to-[#2DD4BF] rounded-full" style={{ width: "15%" }}></div>
                     </div>
 
-                    <p className="text-[13px] md:text-[14px] text-white/85 font-medium mb-6 max-w-[320px] leading-relaxed drop-shadow-md">
+                    <p className="text-[13px] md:text-[14px] text-white/80 font-medium mb-8 max-w-[300px] leading-relaxed">
                       L'analyse complète contient les probabilités exactes, les scénarios restants et les insights premium.
                     </p>
                     
                     <Link 
                       href="/pricing"
-                      className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 hover:scale-105 active:scale-95 text-[#070E13] font-black py-3.5 px-8 rounded-full transition-all text-sm w-auto shadow-[0_8px_30px_rgba(16,185,129,0.3)] whitespace-nowrap"
+                      className="inline-flex items-center justify-center gap-2 font-black py-4 px-10 rounded-full transition-all text-sm shadow-[0_8px_32px_rgba(45,212,191,0.4)] whitespace-nowrap hover:scale-105 active:scale-95"
+                      style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#050816'}}
                     >
-                      🔒 Débloquer les analyses maintenant
+                      🔒 Débloquer l'analyse complète
                     </Link>
                   </div>
                 )}
