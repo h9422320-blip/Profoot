@@ -492,7 +492,8 @@ export default function AnalyzePage() {
   const progressPercent = Math.round(((analyzingStep + 1) / steps.length) * 100);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 pb-24 px-4 md:px-0 pt-0 animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-b from-[#050816] via-[#031b25] to-[#041f1a]">
+      <div className="max-w-4xl mx-auto space-y-5 pb-24 px-4 md:px-0 pt-6 animate-fade-in">
       
       {/* Team Picker Modals */}
       <TeamPicker isOpen={pickerOpen === 1} onClose={() => setPickerOpen(null)} onSelect={setTeam1} currentTeamId={team1} />
@@ -518,38 +519,34 @@ export default function AnalyzePage() {
         </div>
 
         <div className="flex flex-col items-center gap-3 w-full">
-          {/* Animated Logos Area */}
-          <div className="flex items-center justify-center w-full min-h-[140px] mb-4">
-            {(!team1 || !team2) ? (
-              <CompetitionCarousel />
-            ) : (
-              <div className="flex items-center justify-center gap-6 md:gap-16 w-full animate-fade-in">
-                <img src={getClub(team1!).logo} className="w-20 h-20 md:w-28 md:h-28 object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-transform hover:scale-110" alt="" />
-                <span className="text-sm md:text-xl font-black text-white/15 uppercase tracking-[0.25em]">vs</span>
-                <img src={getClub(team2!).logo} className="w-20 h-20 md:w-28 md:h-28 object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-transform hover:scale-110" alt="" />
+          {/* Selectors Area — Visifoot style */}
+          <div className="flex flex-col items-center gap-4 w-full max-w-lg mx-auto">
+              
+              {/* Team 1 Selector */}
+              <div className="flex flex-col items-center w-full gap-2.5">
+                {team1 && <img src={getClub(team1!).logo} className="w-16 h-16 md:w-20 md:h-20 object-contain animate-fade-in drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" alt="" />}
+                <button
+                  onClick={() => setPickerOpen(1)}
+                  className={`w-full bg-transparent border-2 ${team1 ? 'border-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.15)] text-center' : 'border-[#10B981]/60 shadow-[0_0_15px_rgba(16,185,129,0.05)] text-left'} hover:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-semibold text-white transition-all flex items-center justify-between cursor-pointer`}
+                >
+                  <span className={`truncate text-white/90 ${team1 ? 'mx-auto' : ''}`}>{team1 ? getClub(team1!).name : "Cherche une équipe (ex: Barcelona, PSG...)"}</span>
+                  {!team1 && <ChevronDown className="w-4 h-4 text-[#10B981]/60 shrink-0 ml-2" />}
+                </button>
               </div>
-            )}
-          </div>
 
-          {/* Selectors Area — Visifoot style: bordered inputs with glow */}
-          <div className="flex flex-col items-center gap-3 w-full max-w-lg mx-auto">
-              <button
-                onClick={() => setPickerOpen(1)}
-                className="w-full bg-transparent border-2 border-[#10B981]/60 hover:border-[#10B981] focus:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-semibold text-white text-left shadow-[0_0_20px_rgba(16,185,129,0.08)] hover:shadow-[0_0_25px_rgba(16,185,129,0.15)] transition-all flex items-center justify-between cursor-pointer"
-              >
-                <span className="truncate text-white/90">{team1 ? getClub(team1!).name : "Cherche une équipe (ex: PSG, Real Madrid...)"}</span>
-                <ChevronDown className="w-4 h-4 text-[#10B981]/60 shrink-0 ml-2" />
-              </button>
+              <span className="text-sm font-black text-white/30 uppercase tracking-[0.25em] my-1">vs</span>
 
-              <span className="text-xs font-black text-white/30 uppercase tracking-[0.25em]">vs</span>
-
-              <button
-                onClick={() => setPickerOpen(2)}
-                className="w-full bg-transparent border-2 border-[#10B981]/60 hover:border-[#10B981] focus:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-semibold text-white text-left shadow-[0_0_20px_rgba(16,185,129,0.08)] hover:shadow-[0_0_25px_rgba(16,185,129,0.15)] transition-all flex items-center justify-between cursor-pointer"
-              >
-                <span className="truncate text-white/90">{team2 ? getClub(team2!).name : "Cherche une équipe (ex: Bayern, Arsenal...)"}</span>
-                <ChevronDown className="w-4 h-4 text-[#10B981]/60 shrink-0 ml-2" />
-              </button>
+              {/* Team 2 Selector */}
+              <div className="flex flex-col items-center w-full gap-2.5">
+                {team2 && <img src={getClub(team2!).logo} className="w-16 h-16 md:w-20 md:h-20 object-contain animate-fade-in drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" alt="" />}
+                <button
+                  onClick={() => setPickerOpen(2)}
+                  className={`w-full bg-transparent border-2 ${team2 ? 'border-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.15)] text-center' : 'border-[#10B981]/60 shadow-[0_0_15px_rgba(16,185,129,0.05)] text-left'} hover:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-semibold text-white transition-all flex items-center justify-between cursor-pointer`}
+                >
+                  <span className={`truncate text-white/90 ${team2 ? 'mx-auto' : ''}`}>{team2 ? getClub(team2!).name : "Cherche une équipe (ex: Real Madrid, Bayern)"}</span>
+                  {!team2 && <ChevronDown className="w-4 h-4 text-[#10B981]/60 shrink-0 ml-2" />}
+                </button>
+              </div>
           </div>
         </div>
 
@@ -946,58 +943,56 @@ export default function AnalyzePage() {
                   <span className="text-[10px]">{getClub(team1!).league ? leagueLabels[getClub(team1!).league] || "Forme globale (toutes compétitions)" : "Forme globale (toutes compétitions)"}</span>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 px-2 md:px-12">
-                  <div className="flex flex-col items-center gap-2 text-center">
-                    <div className="flex items-center gap-2.5">
-                      <img src={getClub(team1!).logo} className="w-6 h-6 object-contain shrink-0" alt="" />
-                      <span className="font-bold text-xs sm:text-sm text-white truncate max-w-[90px] sm:max-w-none">{getClub(team1!).name}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Equipe 1 */}
+                  <div className="flex flex-col gap-3 relative">
+                    <div className="flex items-center gap-3">
+                      <img src={getClub(team1!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
+                      <div className="flex flex-col">
+                        <span className="font-bold text-sm text-white">{getClub(team1!).name}</span>
+                        <span className="text-[11px] font-semibold text-[#F59E0B] flex items-center gap-1">
+                          {getClub(team1!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team1!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '🔥 En grande forme'}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-[11px] font-semibold text-[#F59E0B] flex items-center gap-1">
-                      {getClub(team1!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team1!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '🔥 En grande forme'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 text-center">
-                    <div className="flex items-center gap-2.5">
-                      <img src={getClub(team2!).logo} className="w-6 h-6 object-contain shrink-0" alt="" />
-                      <span className="font-bold text-xs sm:text-sm text-white truncate max-w-[90px] sm:max-w-none">{getClub(team2!).name}</span>
+                    <button onClick={() => setShowGlobalForm(!showGlobalForm)} className="w-fit px-4 bg-transparent border border-[#10B981]/20 hover:bg-[#10B981]/10 text-[#10B981] text-[11px] font-semibold py-2 rounded-full transition-all">
+                      Voir la forme en ligne
+                    </button>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <div className="text-[12px] font-semibold text-white/60 flex items-center gap-2">
+                        <span className="w-12">Forme :</span>
+                        <span className="text-xs flex items-center gap-1">{renderFormEmojis(getClub(team1!).form)}</span>
+                      </div>
+                      <div className="text-[12px] font-semibold text-white/60 flex items-center gap-2">
+                        <span className="w-12">V-N-D :</span>
+                        <span className="font-bold text-white tracking-widest">{calculateVND(getClub(team1!).form)}</span>
+                      </div>
                     </div>
-                    <span className="text-[11px] font-semibold text-[#F59E0B] flex items-center gap-1">
-                      {getClub(team2!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team2!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '🔥 En grande forme'}
-                    </span>
                   </div>
-                </div>
 
-                <button onClick={() => setShowGlobalForm(!showGlobalForm)} className="w-full bg-transparent border border-[#10B981]/20 hover:bg-[#10B981]/10 text-[#10B981] text-xs font-semibold py-3 rounded-[12px] transition-all">
-                  Voir la forme globale (toutes compétitions)
-                </button>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div className="bg-[#1A2530]/50 border border-white/5 p-4 rounded-[16px] space-y-2">
-                    <div className="flex items-center gap-2 mb-2">
-                      <img src={getClub(team1!).logo} className="w-5 h-5 object-contain shrink-0" alt="" />
-                      <span className="font-bold text-xs text-white truncate">{getClub(team1!).name}</span>
+                  {/* Equipe 2 */}
+                  <div className="flex flex-col gap-3 relative md:border-l border-white/5 md:pl-4 mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0">
+                    <div className="flex items-center gap-3">
+                      <img src={getClub(team2!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
+                      <div className="flex flex-col">
+                        <span className="font-bold text-sm text-white">{getClub(team2!).name}</span>
+                        <span className="text-[11px] font-semibold text-[#F59E0B] flex items-center gap-1">
+                          {getClub(team2!).form.filter(x=>x==='W').length > 2 ? '🔥 En grande forme' : getClub(team2!).form.filter(x=>x==='L').length > 2 ? '📉 Forme fragile' : '🔥 En grande forme'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-[11px] font-semibold text-white/60 flex items-center gap-2">
-                      <span>Forme :</span>
-                      <span className="text-xs flex items-center gap-1">{renderFormEmojis(getClub(team1!).form)}</span>
-                    </div>
-                    <div className="text-[11px] font-semibold text-white/60">
-                      <span>V-N-D : </span>
-                      <span className="font-bold text-white">{calculateVND(getClub(team1!).form)}</span>
-                    </div>
-                  </div>
-                  <div className="bg-[#1A2530]/50 border border-white/5 p-4 rounded-[16px] space-y-2">
-                    <div className="flex items-center gap-2 mb-2">
-                      <img src={getClub(team2!).logo} className="w-5 h-5 object-contain shrink-0" alt="" />
-                      <span className="font-bold text-xs text-white truncate">{getClub(team2!).name}</span>
-                    </div>
-                    <div className="text-[11px] font-semibold text-white/60 flex items-center gap-2">
-                      <span>Forme :</span>
-                      <span className="text-xs flex items-center gap-1">{renderFormEmojis(getClub(team2!).form)}</span>
-                    </div>
-                    <div className="text-[11px] font-semibold text-white/60">
-                      <span>V-N-D : </span>
-                      <span className="font-bold text-white">{calculateVND(getClub(team2!).form)}</span>
+                    <button onClick={() => setShowGlobalForm(!showGlobalForm)} className="w-fit px-4 bg-transparent border border-[#10B981]/20 hover:bg-[#10B981]/10 text-[#10B981] text-[11px] font-semibold py-2 rounded-full transition-all">
+                      Voir la forme en ligne
+                    </button>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <div className="text-[12px] font-semibold text-white/60 flex items-center gap-2">
+                        <span className="w-12">Forme :</span>
+                        <span className="text-xs flex items-center gap-1">{renderFormEmojis(getClub(team2!).form)}</span>
+                      </div>
+                      <div className="text-[12px] font-semibold text-white/60 flex items-center gap-2">
+                        <span className="w-12">V-N-D :</span>
+                        <span className="font-bold text-white tracking-widest">{calculateVND(getClub(team2!).form)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1010,8 +1005,11 @@ export default function AnalyzePage() {
                     <span className="text-lg">🔍</span>
                     <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Résumé rapide</h4>
                   </div>
-                  <p className="text-[13px] text-white/80 leading-relaxed font-medium">{result.quickSummary || result.scenario}</p>
-                  <p className="text-[10px] text-[#10B981] font-semibold mt-1">Généré à partir de millions de données et de l'actualité foot.</p>
+                  <p className="text-[13px] text-white/80 leading-relaxed font-medium">
+                    {result.quickSummary || result.scenario}
+                    <br/><br/>
+                    <span className="text-[10px] text-[#10B981] italic font-semibold">Généré à partir de millions de données et de l'actualité foot.</span>
+                  </p>
                 </div>
 
                 <div className="space-y-3">
@@ -1051,27 +1049,24 @@ export default function AnalyzePage() {
               {/* PAYWALL WRAPPER BEGIN */}
               <div className={`relative pt-6 ${!isPremium ? 'max-h-[500px] overflow-hidden' : ''}`}>
                 {!isPremium && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-start p-6 pt-16 bg-gradient-to-b from-transparent via-[#070E13]/80 to-[#070E13]">
-                    <div className="bg-[#0D1520]/90 backdrop-blur-md border border-white/10 p-7 rounded-3xl max-w-lg w-full text-center relative overflow-hidden flex flex-col items-center shadow-2xl">
-                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#10B981] to-transparent"></div>
-                      
-                      <h3 className="text-lg md:text-2xl font-black text-white mb-3" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
-                      
-                      <div className="w-56 h-1.5 bg-white/10 rounded-full mb-4 overflow-hidden">
-                        <div className="h-full bg-[#10B981] rounded-full" style={{ width: "15%" }}></div>
-                      </div>
-
-                      <p className="text-[12px] text-white/85 font-medium mb-5 max-w-[280px] leading-relaxed">
-                        L'analyse complète contient les probabilités exactes, les scénarios restants et les insights premium.
-                      </p>
-                      
-                      <Link 
-                        href="/pricing"
-                        className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 hover:scale-105 active:scale-95 text-[#070E13] font-black py-3 px-6 rounded-full transition-all text-xs w-full max-w-[260px] shadow-lg shadow-[#10B981]/25 whitespace-nowrap"
-                      >
-                        🔓 Débloquer l'analyse complète
-                      </Link>
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-start p-6 pt-24 bg-gradient-to-b from-transparent via-[#050816]/95 to-[#050816] text-center">
+                    
+                    <h3 className="text-xl md:text-3xl font-black text-white mb-4" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
+                    
+                    <div className="w-56 h-1.5 bg-white/10 rounded-full mb-5 overflow-hidden">
+                      <div className="h-full bg-[#10B981] rounded-full" style={{ width: "15%" }}></div>
                     </div>
+
+                    <p className="text-[13px] md:text-[14px] text-white/85 font-medium mb-6 max-w-[320px] leading-relaxed drop-shadow-md">
+                      L'analyse complète contient les probabilités exactes, les scénarios restants et les insights premium.
+                    </p>
+                    
+                    <Link 
+                      href="/pricing"
+                      className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:brightness-110 hover:scale-105 active:scale-95 text-[#070E13] font-black py-3.5 px-8 rounded-full transition-all text-sm w-auto shadow-[0_8px_30px_rgba(16,185,129,0.3)] whitespace-nowrap"
+                    >
+                      🔒 Débloquer l'analyse complète
+                    </Link>
                   </div>
                 )}
                 
@@ -1359,9 +1354,9 @@ export default function AnalyzePage() {
               )}
             </div>
           )}
-
         </div>
       )}
+    </div>
     </div>
   );
 }
@@ -1435,7 +1430,7 @@ function DualBar({ label, v1, v2, suffix="", customL1="", customL2="", hideTitle
 }
 
 function ModernMetricBar({ label, description, val1, val2, suffix = "", invertColors = false }: any) {
-  const isV1Better = invertColors ? val1 < val2 : val1 > val2;
+  const isV1Better = invertColors ? Number(val1) < Number(val2) : Number(val1) > Number(val2);
   const total = Number(val1) + Number(val2);
   const w1 = total === 0 ? 50 : (Number(val1) / total) * 100;
   const w2 = total === 0 ? 50 : (Number(val2) / total) * 100;
