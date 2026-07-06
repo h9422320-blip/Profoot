@@ -57,64 +57,90 @@ export default function HistoryPage() {
   const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
-    // Charger le profil utilisateur
-    const fetchUser = async () => {
+    const init = async () => {
+      // 1. Charger le profil utilisateur
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUserProfile(user);
-        }
+        if (user) setUserProfile(user);
       } catch (e) {
         console.error(e);
       }
-    };
-    fetchUser();
 
-    // Check Pro Status
-    fetch('/api/payments/moneroo/status')
-      .then(res => res.json())
-      .then(data => {
-        setIsPro(data.isPro);
-      })
-      .catch(console.error);
-
-    // Charger l'historique depuis le localStorage
-    const loadHistory = () => {
+      // 2. Check Pro Status
       try {
-        const stored = localStorage.getItem("profoot_user_history_v1");
-        if (stored) {
-          setHistory(JSON.parse(stored));
+        const res = await fetch('/api/payments/moneroo/status');
+        const data = await res.json();
+        setIsPro(data.isPro);
+      } catch { /* ignore */ }
+
+      // 3. Charger l'historique depuis Supabase (priorité) puis localStorage (fallback)
+      try {
+        const res = await fetch('/api/history');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.history && data.history.length > 0) {
+            // Transformer le format Supabase vers le format de l'interface
+            const mapped: HistoryItem[] = data.history.map((item: any) => ({
+              id: item.id,
+              team1: { id: item.team1_id, name: item.team1_name, logo: item.team1_logo, league: item.team1_league },
+              team2: { id: item.team2_id, name: item.team2_name, logo: item.team2_logo, league: item.team2_league },
+              date: item.created_at,
+              isFinished: item.is_finished,
+              competition: item.competition,
+              type: item.is_finished ? 'Résultat passé' : 'Prédiction IA',
+              score: item.score,
+              confidence: item.confidence,
+              summary: item.summary,
+              winProb: item.win_prob,
+              drawProb: item.draw_prob,
+              loseProb: item.lose_prob,
+              data: item.analysis_data
+            }));
+            setHistory(mapped);
+            console.log(`[HISTORY] ✅ ${mapped.length} analyses chargées depuis Supabase`);
+          } else {
+            // Fallback localStorage si Supabase vide
+            const stored = localStorage.getItem("profoot_user_history_v1");
+            if (stored) setHistory(JSON.parse(stored));
+          }
         } else {
-          setHistory([]);
+          // Fallback localStorage si erreur API
+          const stored = localStorage.getItem("profoot_user_history_v1");
+          if (stored) setHistory(JSON.parse(stored));
         }
       } catch (e) {
-        console.error("Erreur de chargement de l'historique:", e);
+        console.error("Erreur chargement historique:", e);
+        // Fallback localStorage
+        try {
+          const stored = localStorage.getItem("profoot_user_history_v1");
+          if (stored) setHistory(JSON.parse(stored));
+        } catch { /* ignore */ }
       } finally {
         setLoading(false);
       }
     };
 
-    loadHistory();
+    init();
   }, []);
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = history.filter(item => item.id !== id);
     setHistory(updated);
-    try {
-      localStorage.setItem("profoot_user_history_v1", JSON.stringify(updated));
-    } catch (err) {
-      console.error("Erreur lors de la suppression:", err);
-    }
+    // Supprimer du localStorage
+    try { localStorage.setItem("profoot_user_history_v1", JSON.stringify(updated)); } catch { /* ignore */ }
+    // Supprimer de Supabase
+    try { await fetch(`/api/history?id=${id}`, { method: 'DELETE' }); } catch { /* ignore */ }
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer tout votre historique d'analyses ?")) {
       setHistory([]);
-      try {
-        localStorage.removeItem("profoot_user_history_v1");
-      } catch (err) {}
+      // Vider localStorage
+      try { localStorage.removeItem("profoot_user_history_v1"); } catch { /* ignore */ }
+      // Vider Supabase
+      try { await fetch('/api/history?all=true', { method: 'DELETE' }); } catch { /* ignore */ }
     }
   };
 

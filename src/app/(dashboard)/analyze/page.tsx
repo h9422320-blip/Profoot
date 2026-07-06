@@ -493,9 +493,39 @@ export default function AnalyzePage() {
             data: data
           };
 
+          // 1. Sauvegarde en localStorage (rapide, fallback)
           const existing = JSON.parse(localStorage.getItem("profoot_user_history_v1") || "[]");
           localStorage.setItem("profoot_user_history_v1", JSON.stringify([historyItem, ...existing]));
-          console.log("[HISTORY] Analyse enregistrée avec succès dans l'historique personnel.");
+
+          // 2. Sauvegarde dans Supabase (persistante, tous appareils)
+          fetch('/api/history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              team1_id: t1Obj.id,
+              team1_name: t1Obj.name,
+              team1_logo: t1Obj.logo || '',
+              team1_league: t1Obj.league || '',
+              team2_id: t2Obj.id,
+              team2_name: t2Obj.name,
+              team2_logo: t2Obj.logo || '',
+              team2_league: t2Obj.league || '',
+              competition: historyItem.competition,
+              score: historyItem.score,
+              confidence: historyItem.confidence,
+              summary: historyItem.summary,
+              is_finished: historyItem.isFinished,
+              win_prob: data.winProb || null,
+              draw_prob: data.drawProb || null,
+              lose_prob: data.loseProb || null,
+              analysis_data: data
+            })
+          }).then(r => {
+            if (r.ok) console.log("[HISTORY] ✅ Sauvegardé dans Supabase");
+            else console.warn("[HISTORY] ⚠️ Erreur Supabase, localStorage OK");
+          }).catch(() => console.warn("[HISTORY] ⚠️ Erreur réseau Supabase, localStorage OK"));
+
+          console.log("[HISTORY] Analyse enregistrée avec succès.");
           
           // Notifier la Sidebar pour mettre à jour le compteur
           window.dispatchEvent(new Event("profoot-analysis-done"));
