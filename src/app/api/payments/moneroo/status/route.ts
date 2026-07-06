@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
+// Emails avec accès VIP permanent — tous les abonnements débloqués
+const VIP_EMAILS = [
+  "abdoulayecamara2708@gmail.com",
+];
+
 export async function GET(req: Request) {
   try {
     const supabase = await createClient();
@@ -11,6 +16,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ isPro: false, error: 'Non autorisé' }, { status: 401 });
     }
 
+    // 2. VIP check — accès lifetime instantané
+    if (user.email && VIP_EMAILS.includes(user.email.toLowerCase())) {
+      return NextResponse.json({ isPro: true, plan: 'lifetime', expiresAt: null, vip: true });
+    }
     // 2. Chercher un abonnement actif
     const { data: subscriptions, error: dbError } = await supabase
       .from('subscriptions')
