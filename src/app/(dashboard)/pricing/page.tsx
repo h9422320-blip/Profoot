@@ -94,7 +94,7 @@ export default function PricingPage() {
                 Pro <span className="bg-warning text-black text-[10px] px-2 py-0.5 rounded italic">MENSUEL</span>
               </h3>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black">3.000</span>
+                <span className="text-4xl font-black">2.000</span>
                 <span className="text-foreground/40 text-sm">FCFA / mois</span>
               </div>
             </div>
@@ -136,7 +136,7 @@ export default function PricingPage() {
               Pro <span className="bg-success text-white text-[10px] px-2 py-0.5 rounded italic">À VIE</span>
             </h3>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-black">60.000</span>
+              <span className="text-4xl font-black">2.000</span>
               <span className="text-foreground/40 text-sm">FCFA</span>
             </div>
           </div>

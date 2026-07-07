@@ -229,7 +229,7 @@ export default function ExpertAgentPage() {
                   <>
                     <span className="text-base sm:text-lg">Débloquer l'Accès VIP</span>
                     <div className="flex items-center">
-                      <span className="bg-black/10 px-3 py-1 rounded-full text-xs sm:text-sm font-bold">60 000 FCFA/an</span>
+                      <span className="bg-black/10 px-3 py-1 rounded-full text-xs sm:text-sm font-bold">2 000 FCFA/an</span>
                       <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-1.5" />
                     </div>
                   </>
