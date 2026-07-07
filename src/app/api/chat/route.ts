@@ -1,8 +1,17 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { isRateLimited } from "@/lib/rateLimit";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  // --- BOUCLIER ANTI-SPAM (10 requêtes par minute pour l'agent IA) ---
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('remote-addr') || 'unknown-ip';
+  if (isRateLimited(ip, 'agent', 10, 60 * 1000)) {
+    console.warn(`[ANTI-SPAM] IP ${ip} bloquée pour abus du chat IA.`);
+    return Response.json({ error: "Trop de requêtes à l'Agent IA. Veuillez patienter une minute." }, { status: 429 });
+  }
+  // -------------------------------------------------------------------
+
   try {
     const { messages } = await req.json();
     const GEMINI_KEY = process.env.GEMINI_API_KEY;

@@ -115,7 +115,17 @@ function getCurrentSeason(): number {
   return month >= 8 ? now.getFullYear() : now.getFullYear() - 1;
 }
 
+import { isRateLimited } from "@/lib/rateLimit";
+
 export async function POST(req: Request) {
+  // --- BOUCLIER ANTI-SPAM (5 requêtes par minute) ---
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('remote-addr') || 'unknown-ip';
+  if (isRateLimited(ip, 'analyze', 5, 60 * 1000)) {
+    console.warn(`[ANTI-SPAM] IP ${ip} bloquée pour abus d'analyse.`);
+    return NextResponse.json({ error: "Trop de requêtes. Veuillez patienter une minute." }, { status: 429 });
+  }
+  // --------------------------------------------------
+
   let reqPayload: any = {};
   try {
     reqPayload = await req.json();
