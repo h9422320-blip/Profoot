@@ -548,6 +548,15 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
                   {data.analysisChart.map((d, i) => {
                     const h = Math.max((d.count / maxChart) * 100, 5);
                     const isToday = i === data.analysisChart.length - 1;
+                    const isYesterday = i === data.analysisChart.length - 2;
+                    const isTwoDaysAgo = i === data.analysisChart.length - 3;
+                    
+                    let bgClasses = "bg-gradient-to-t from-slate-300 to-slate-200";
+                    if (isToday) bgClasses = "bg-gradient-to-t from-emerald-500 to-teal-400 shadow-[0_-4px_16px_rgba(52,211,153,0.3)]";
+                    else if (isYesterday) bgClasses = "bg-gradient-to-t from-blue-500 to-sky-400 shadow-[0_-4px_16px_rgba(56,189,248,0.3)]";
+                    else if (isTwoDaysAgo) bgClasses = "bg-gradient-to-t from-indigo-500 to-violet-400 shadow-[0_-4px_16px_rgba(99,102,241,0.3)]";
+                    else bgClasses = "bg-gradient-to-t from-slate-300 to-slate-200 group-hover/bar:from-slate-400 group-hover/bar:to-slate-300";
+
                     return (
                       <div key={i} className="flex-1 flex flex-col items-center gap-3 group/bar relative h-full justify-end">
                         <div className="absolute -top-10 opacity-0 group-hover/bar:opacity-100 transition-all duration-200 translate-y-2 group-hover/bar:translate-y-0 z-20 pointer-events-none">
@@ -558,17 +567,17 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
                         </div>
                         <div className="w-full relative h-full flex items-end">
                           <div
-                            className={`w-full rounded-t-xl relative overflow-hidden ${isToday ? "bg-gradient-to-t from-emerald-500 to-teal-400 shadow-[0_-4px_16px_rgba(52,211,153,0.3)]" : "bg-slate-100 group-hover/bar:bg-slate-200"}`}
+                            className={`w-full rounded-t-xl relative overflow-hidden transition-all ${bgClasses}`}
                             style={{
                               height: `${h}%`,
                               animation: `barGrow 0.6s ease-out ${i * 60}ms both`,
                               transformOrigin: "bottom",
                             }}
                           >
-                            {isToday && <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />}
+                            {(isToday || isYesterday || isTwoDaysAgo) && <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent" />}
                           </div>
                         </div>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? "text-emerald-600" : "text-slate-400"}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? "text-emerald-600" : isYesterday ? "text-blue-500" : isTwoDaysAgo ? "text-indigo-500" : "text-slate-400"}`}>
                           {d.label.split(" ")[0]}
                         </span>
                       </div>
@@ -930,17 +939,24 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
                 {data.aiAgentStats.impactChart.map((d, i) => {
                   const max = Math.max(...data.aiAgentStats.impactChart.map(x => x.conversions), 1);
                   const h = Math.max((d.conversions / max) * 100, 5);
+                  const isToday = i === data.aiAgentStats.impactChart.length - 1;
+                  const isYesterday = i === data.aiAgentStats.impactChart.length - 2;
+                  
+                  let bgClasses = "bg-gradient-to-t from-amber-200 to-amber-100";
+                  if (isToday) bgClasses = "bg-gradient-to-t from-amber-500 to-orange-400 shadow-[0_-4px_12px_rgba(245,158,11,0.3)]";
+                  else if (isYesterday) bgClasses = "bg-gradient-to-t from-orange-400 to-amber-300 shadow-[0_-4px_12px_rgba(251,146,60,0.3)]";
+
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-3 relative h-full justify-end group/bar">
                       <div className="w-full relative h-full flex items-end">
                         <div 
-                          className="w-full rounded-t-xl bg-gradient-to-t from-amber-500 to-orange-400 relative overflow-hidden group-hover/bar:brightness-110 transition-all shadow-[0_-4px_12px_rgba(245,158,11,0.2)]"
+                          className={`w-full rounded-t-xl relative overflow-hidden group-hover/bar:brightness-110 transition-all ${bgClasses}`}
                           style={{ height: `${h}%`, animation: `barGrow 0.6s ease-out ${i * 80}ms both`, transformOrigin: 'bottom' }}
                         >
-                           <div className="absolute top-2 left-1/2 -translate-x-1/2 text-white font-black text-xs">{d.conversions}</div>
+                           <div className={`absolute top-2 left-1/2 -translate-x-1/2 font-black text-xs ${isToday || isYesterday ? 'text-white' : 'text-amber-700'}`}>{d.conversions}</div>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{d.date.split(" ")[0]}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? "text-amber-600" : isYesterday ? "text-orange-500" : "text-slate-400"}`}>{d.date.split(" ")[0]}</span>
                     </div>
                   );
                 })}
