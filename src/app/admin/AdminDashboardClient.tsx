@@ -7,7 +7,8 @@ import {
   AlertCircle, DollarSign, Target, PieChart, ChevronDown,
   Repeat, Star, X, Search, Calendar, Clock, Check,
   ChevronLeft, ChevronRight, Zap, BarChart2, Mail, Wifi,
-  ArrowUpRight, ArrowDownRight, Info, Shield, Settings
+  ArrowUpRight, ArrowDownRight, Info, Shield, Settings,
+  Globe, LogOut, Bot, Timer, MousePointerClick, Filter
 } from "lucide-react";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -59,6 +60,21 @@ interface Analysis {
   confidence: number;
 }
 
+interface BehaviorStats {
+  avgSessionDuration: string;
+  bounceRate: number;
+  topCountries: { country: string; users: number; percentage: number }[];
+  funnel: { stage: string; users: number; dropoff: number }[];
+}
+
+interface AiAgentStats {
+  totalQueries: number;
+  annualConversions: number;
+  conversionRate: number;
+  avgResponseTime: string;
+  impactChart: { date: string; conversions: number }[];
+}
+
 interface AdminData {
   totalUsers: number;
   newUsersToday: number;
@@ -76,6 +92,8 @@ interface AdminData {
   recentAnalyses: Analysis[];
   monthlyStats: MonthlyStatRow[];
   analysisChart: { label: string; count: number }[];
+  behaviorStats: BehaviorStats;
+  aiAgentStats: AiAgentStats;
   pricingConfig: PricingConfig;
   error: string | null;
 }
@@ -268,7 +286,7 @@ function CalendarPicker({ value, onChange, onClose }: {
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
 export default function AdminDashboardClient({ data, adminEmail }: { data: AdminData; adminEmail: string }) {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "users" | "finances" | "tools">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "users" | "finances" | "behavior" | "ai-agent" | "tools">("dashboard");
   const [selectedAnalysis, setSelectedAnalysis] = useState<Analysis | null>(null);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userSearch, setUserSearch] = useState("");
@@ -333,7 +351,7 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
   );
 
   return (
-    <div className="w-full flex-1 min-h-screen bg-slate-50 text-slate-800 font-sans relative overflow-x-hidden">
+    <div className="w-full flex-1 min-h-screen bg-slate-100 text-slate-800 font-sans relative overflow-x-hidden">
 
       {/* Subtle background pattern */}
       <div className="fixed inset-0 pointer-events-none" style={{
@@ -431,17 +449,17 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
       )}
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
-      <header className="sticky top-1 z-40 mx-4 mt-4 mb-6 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-sm px-5 py-4">
+      <header className="sticky top-1 z-40 mx-4 mt-4 mb-6 bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl px-5 py-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 
           {/* Logo + Titre */}
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center border-2 border-emerald-500/30 shadow-md">
+            <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center border-2 border-emerald-500/50 shadow-[0_0_15px_rgba(52,211,153,0.3)] bg-black">
               <Image src="/logo.png" alt="ProFoot AI" width={48} height={48} className="w-full h-full object-cover scale-[1.35]" priority />
             </div>
             <div>
-              <span className="font-black text-xl tracking-tight text-slate-800" style={{ fontFamily: "'Outfit',sans-serif" }}>
-                PROFOOT <span className="text-emerald-500">NEXUS</span>
+              <span className="font-black text-xl tracking-tight text-white" style={{ fontFamily: "'Outfit',sans-serif" }}>
+                PROFOOT <span className="text-emerald-400">NEXUS</span>
               </span>
               <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]"></span>
@@ -453,9 +471,9 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
             <div className="hidden md:block ml-4 relative">
               <button
                 onClick={() => setShowCalendar(v => !v)}
-                className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-slate-200 hover:border-emerald-400 rounded-xl text-sm font-semibold text-slate-700 transition-all shadow-sm hover:shadow-md active:scale-95"
+                className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-800 border border-slate-700 hover:border-emerald-500 hover:bg-slate-700 rounded-xl text-sm font-semibold text-slate-200 transition-all shadow-sm hover:shadow-md active:scale-95"
               >
-                <Calendar className="w-4 h-4 text-emerald-500" />
+                <Calendar className="w-4 h-4 text-emerald-400" />
                 <span className="max-w-[200px] truncate">{dateRangeLabel}</span>
                 <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showCalendar ? "rotate-180" : ""}`} />
               </button>
@@ -475,10 +493,12 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
           </div>
 
           {/* Navigation Tabs */}
-          <nav className="flex items-center p-1 bg-slate-100 rounded-xl gap-0.5 overflow-x-auto hide-scrollbar">
+          <nav className="flex items-center p-1 bg-slate-800/80 rounded-xl gap-0.5 overflow-x-auto hide-scrollbar border border-slate-700/50">
             <TabBtn active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={Activity} label="Vue Globale" />
             <TabBtn active={activeTab === "finances"} onClick={() => setActiveTab("finances")} icon={TrendingUp} label="Finances & Churn" />
             <TabBtn active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={Users} label="Utilisateurs" badge={filtered.users.length} />
+            <TabBtn active={activeTab === "behavior"} onClick={() => setActiveTab("behavior")} icon={MousePointerClick} label="Comportement" />
+            <TabBtn active={activeTab === "ai-agent"} onClick={() => setActiveTab("ai-agent")} icon={Bot} label="Agent IA" />
             <TabBtn active={activeTab === "tools"} onClick={() => setActiveTab("tools")} icon={Settings} label="Outils CEO" />
           </nav>
         </div>
@@ -809,6 +829,127 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
           </div>
         )}
 
+        {/* ════════════════ TAB: COMPORTEMENT ════════════════════════════ */}
+        {activeTab === "behavior" && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-400">
+            {/* KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <KpiCard label="Temps Moyen / Session" display={data.behaviorStats.avgSessionDuration} icon={Clock} iconBg="bg-blue-100" iconColor="text-blue-600" borderAccent="border-l-blue-400" trend="Engagement très élevé" positive delay={0} />
+              <KpiCard label="Taux de Rebond" display={`${data.behaviorStats.bounceRate}%`} icon={LogOut} iconBg="bg-rose-100" iconColor="text-rose-600" borderAccent="border-l-rose-400" trend="Quittent sans interaction" positive={false} delay={80} />
+              <KpiCard label="Top Pays" display={data.behaviorStats.topCountries[0].country} icon={Globe} iconBg="bg-emerald-100" iconColor="text-emerald-600" borderAccent="border-l-emerald-400" trend={`${data.behaviorStats.topCountries[0].percentage}% du trafic total`} positive delay={160} />
+              <KpiCard label="Taux de Rétention" display={`${filtered.retentionRate}%`} icon={Repeat} iconBg="bg-violet-100" iconColor="text-violet-600" borderAccent="border-l-violet-400" trend="Reviennent après J+1" positive={filtered.retentionRate > 30} delay={240} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Entonnoir */}
+              <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300">
+                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <Filter className="w-5 h-5 text-indigo-500" />
+                  Entonnoir de Conversion
+                </h2>
+                <div className="space-y-4">
+                  {data.behaviorStats.funnel.map((step, i) => {
+                    const maxUsers = data.behaviorStats.funnel[0].users;
+                    const w = Math.max((step.users / maxUsers) * 100, 5);
+                    return (
+                      <div key={i} className="relative group/funnel">
+                        <div className="flex justify-between text-sm font-bold text-slate-700 mb-1">
+                          <span>{i + 1}. {step.stage}</span>
+                          <span>{step.users.toLocaleString("fr-FR")} users</span>
+                        </div>
+                        <div className="w-full h-8 bg-slate-100 rounded-lg overflow-hidden relative">
+                          <div 
+                            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg transition-all duration-1000"
+                            style={{ width: `${w}%`, animation: `barGrowX 0.8s ease-out ${i * 150}ms both` }}
+                          />
+                        </div>
+                        {step.dropoff > 0 && (
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full pl-4 opacity-0 group-hover/funnel:opacity-100 transition-opacity whitespace-nowrap z-10 hidden sm:block">
+                            <span className="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-md shadow-sm border border-rose-100">-{step.dropoff}% de perte</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <style>{`
+                  @keyframes barGrowX {
+                    from { width: 0; opacity: 0; }
+                    to { opacity: 1; }
+                  }
+                `}</style>
+              </div>
+
+              {/* Top Pays List */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300">
+                <h2 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-emerald-500" /> Répartition Géographique
+                </h2>
+                <div className="space-y-4">
+                  {data.behaviorStats.topCountries.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="font-semibold text-slate-700">{c.country}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-slate-800">{c.percentage}%</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">{c.users} users</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ════════════════ TAB: AGENT IA ═══════════════════════════════ */}
+        {activeTab === "ai-agent" && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-400">
+            {/* KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <KpiCard label="Requêtes IA Totales" display={String(data.aiAgentStats.totalQueries)} icon={Brain} iconBg="bg-indigo-100" iconColor="text-indigo-600" borderAccent="border-l-indigo-400" trend="Volume global" positive delay={0} />
+              <KpiCard label="Conversions (Annuel)" display={String(data.aiAgentStats.annualConversions)} icon={Crown} iconBg="bg-amber-100" iconColor="text-amber-600" borderAccent="border-l-amber-400" trend="Achat via recommandation IA" positive delay={80} />
+              <KpiCard label="Taux d'Impact" display={`${data.aiAgentStats.conversionRate}%`} icon={TrendingUp} iconBg="bg-emerald-100" iconColor="text-emerald-600" borderAccent="border-l-emerald-400" trend="Des abonnements Premium" positive delay={160} />
+              <KpiCard label="Temps de Réponse" display={data.aiAgentStats.avgResponseTime} icon={Timer} iconBg="bg-sky-100" iconColor="text-sky-600" borderAccent="border-l-sky-400" trend="Extrêmement rapide" positive delay={240} />
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Bot className="w-5 h-5 text-indigo-500" /> Conversions Annuelles via IA</h2>
+                  <p className="text-sm text-slate-400 mt-0.5">Nombre d'abonnements annuels souscrits directement après une interaction avec l'Agent IA</p>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">Moteur de Vente #1</span>
+                </div>
+              </div>
+              
+              <div className="flex items-end gap-4 h-64">
+                {data.aiAgentStats.impactChart.map((d, i) => {
+                  const max = Math.max(...data.aiAgentStats.impactChart.map(x => x.conversions), 1);
+                  const h = Math.max((d.conversions / max) * 100, 5);
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-3 relative h-full justify-end group/bar">
+                      <div className="w-full relative h-full flex items-end">
+                        <div 
+                          className="w-full rounded-t-xl bg-gradient-to-t from-amber-500 to-orange-400 relative overflow-hidden group-hover/bar:brightness-110 transition-all shadow-[0_-4px_12px_rgba(245,158,11,0.2)]"
+                          style={{ height: `${h}%`, animation: `barGrow 0.6s ease-out ${i * 80}ms both`, transformOrigin: 'bottom' }}
+                        >
+                           <div className="absolute top-2 left-1/2 -translate-x-1/2 text-white font-black text-xs">{d.conversions}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{d.date.split(" ")[0]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ════════════════ TAB: OUTILS CEO ══════════════════════════════ */}
         {activeTab === "tools" && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-400">
@@ -897,11 +1038,11 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
 
 function TabBtn({ active, onClick, icon: Icon, label, badge }: any) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap active:scale-95 ${active ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-white/60"}`}>
-      <Icon className={`w-4 h-4 ${active ? "text-emerald-500" : "text-slate-400"}`} />
+    <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap active:scale-95 ${active ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/50"}`}>
+      <Icon className={`w-4 h-4 ${active ? "text-emerald-400" : "text-slate-500"}`} />
       {label}
       {badge !== undefined && (
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${active ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"}`}>{badge}</span>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${active ? "bg-emerald-500 text-white" : "bg-slate-800 text-slate-400"}`}>{badge}</span>
       )}
     </button>
   );

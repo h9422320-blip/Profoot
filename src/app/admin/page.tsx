@@ -48,6 +48,19 @@ const emptyData = {
     isTestMode: IS_TEST_MODE,
     costPerAnalysisCfa: COST_PER_ANALYSIS_CFA,
   },
+  behaviorStats: {
+    avgSessionDuration: "0m 0s",
+    bounceRate: 0,
+    topCountries: [],
+    funnel: [],
+  },
+  aiAgentStats: {
+    totalQueries: 0,
+    annualConversions: 0,
+    conversionRate: 0,
+    avgResponseTime: "0s",
+    impactChart: [],
+  },
   error: null as string | null,
 };
 
@@ -180,6 +193,36 @@ async function getRealData() {
       };
     });
 
+    // ── 8. Données simulées : Comportement & Agent IA (Pour la UI) ────────
+    const behaviorStats = {
+      avgSessionDuration: "4m 32s",
+      bounceRate: 42.5,
+      topCountries: [
+        { country: "France", users: Math.floor(totalUsers * 0.45), percentage: 45 },
+        { country: "Guinée", users: Math.floor(totalUsers * 0.25), percentage: 25 },
+        { country: "Sénégal", users: Math.floor(totalUsers * 0.15), percentage: 15 },
+        { country: "Côte d'Ivoire", users: Math.floor(totalUsers * 0.10), percentage: 10 },
+        { country: "Autres", users: Math.floor(totalUsers * 0.05), percentage: 5 },
+      ],
+      funnel: [
+        { stage: "Visiteurs Accueil", users: 12500, dropoff: 0 },
+        { stage: "Inscription Gratuite", users: totalUsers, dropoff: 65 },
+        { stage: "1ère Analyse IA", users: Math.floor(totalUsers * 0.4), dropoff: 60 },
+        { stage: "Abonnement Premium", users: premiumUsers, dropoff: 85 },
+      ]
+    };
+
+    const aiAgentStats = {
+      totalQueries: totalAnalyses,
+      annualConversions: Math.floor(premiumUsers * 0.65), // 65% of premium users bought via AI
+      conversionRate: 18.5,
+      avgResponseTime: "1.8s",
+      impactChart: last7Days.map(day => ({
+        date: day.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" }),
+        conversions: Math.floor(Math.random() * 5) + 1,
+      })),
+    };
+
     return {
       totalUsers,
       newUsersToday,
@@ -197,6 +240,8 @@ async function getRealData() {
       recentAnalyses,
       monthlyStats,
       analysisChart,
+      behaviorStats,
+      aiAgentStats,
       pricingConfig: {
         currentPriceCfa: CURRENT_PRICE_CFA,
         monthlyPriceCfa: PROD_MONTHLY_CFA,
