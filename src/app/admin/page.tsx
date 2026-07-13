@@ -6,13 +6,12 @@ import AdminDashboardClient from "./AdminDashboardClient";
 const ADMIN_EMAIL = "h9422320@gmail.com";
 
 // ─── PRICING (en Francs CFA) ───────────────────────────────────────────────
-// Phase actuelle = Test → prix temporaire de 2 000 CFA
-// Production → Mensuel 20 000 CFA / Annuel 60 000 CFA
-const TEST_PRICE_CFA = 2000;        // Phase test (actif maintenant)
-const PROD_MONTHLY_CFA = 20000;     // Futur mensuel
-const PROD_ANNUAL_CFA = 60000;      // Futur annuel
-const IS_TEST_MODE = true;          // Passer à false en production
-const CURRENT_PRICE_CFA = IS_TEST_MODE ? TEST_PRICE_CFA : PROD_MONTHLY_CFA;
+// Abonnement Mensuel : 20 000 CFA
+// Abonnement Annuel  : 60 000 CFA
+const PROD_MONTHLY_CFA = 20000;
+const PROD_ANNUAL_CFA = 60000;
+const IS_TEST_MODE = false;         // false = mode production (prix réels)
+const CURRENT_PRICE_CFA = PROD_MONTHLY_CFA;
 
 // Coût estimé par requête IA en CFA (~0.02 USD * ~600 CFA/USD)
 const COST_PER_ANALYSIS_CFA = 12;

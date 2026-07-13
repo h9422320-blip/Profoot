@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   Users, Brain, TrendingUp, Crown, UserCheck, Activity,
@@ -86,6 +86,23 @@ const MONTH_NAMES = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "
 
 function formatCfa(n: number) {
   return new Intl.NumberFormat("fr-FR").format(Math.round(n)) + " CFA";
+}
+
+// Hook: Count-up animation for numbers
+function useCountUp(target: number, duration = 900, active = true) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!active) { setCount(target); return; }
+    let start = 0;
+    const step = target / (duration / 16);
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= target) { setCount(target); clearInterval(timer); }
+      else setCount(Math.floor(start));
+    }, 16);
+    return () => clearInterval(timer);
+  }, [target, duration, active]);
+  return count;
 }
 
 function timeAgo(dateStr: string | null) {
@@ -428,10 +445,7 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
               </span>
               <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]"></span>
-                Tableau de Bord Admin
-                {pricingConfig.isTestMode && (
-                  <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded text-[9px] font-bold uppercase tracking-wider">Mode Test</span>
-                )}
+                Tableau de Bord Admin · {adminEmail}
               </p>
             </div>
 
@@ -483,55 +497,27 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
 
         {/* ════════════════ TAB: DASHBOARD ═══════════════════════════════ */}
         {activeTab === "dashboard" && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-400">
+          <div className="space-y-6">
 
-            {/* KPI Cards Row */}
+            {/* KPI Cards Row — staggered entrance */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-              <KpiCard
-                label="MRR (Revenu Mensuel)"
-                value={formatCfa(filtered.mrr)}
-                icon={DollarSign}
-                iconBg="bg-emerald-100"
-                iconColor="text-emerald-600"
-                trend={`${data.premiumUsers} abonné(s) × ${formatCfa(pricingConfig.currentPriceCfa)}`}
-                positive
-              />
-              <KpiCard
-                label="Abonnés Premium"
-                value={String(data.premiumUsers)}
-                icon={Crown}
-                iconBg="bg-amber-100"
-                iconColor="text-amber-600"
-                trend={`Taux conv. : ${premiumRate}% des ${data.totalUsers} inscrits`}
-                positive={parseFloat(premiumRate) > 5}
-              />
-              <KpiCard
-                label="Utilisateurs Actifs (30j)"
-                value={String(data.activeUsers30d)}
-                icon={UserCheck}
-                iconBg="bg-blue-100"
-                iconColor="text-blue-600"
-                trend={`24h: ${data.activeUsers24h} • 7j: ${data.activeUsers7d}`}
-                positive
-              />
-              <KpiCard
-                label="Analyses IA Totales"
-                value={String(data.totalAnalyses)}
-                icon={Brain}
-                iconBg="bg-violet-100"
-                iconColor="text-violet-600"
-                trend={`Coût IA estimé : ${formatCfa(data.totalAnalysesCost)}`}
-                positive
-              />
+              {[
+                { label: "MRR (Revenu Mensuel)", rawValue: filtered.mrr, display: formatCfa(filtered.mrr), icon: DollarSign, iconBg: "bg-emerald-100", iconColor: "text-emerald-600", borderAccent: "border-l-emerald-400", trend: `${data.premiumUsers} abonné(s) × ${formatCfa(pricingConfig.currentPriceCfa)}`, positive: true },
+                { label: "Abonnés Premium", rawValue: data.premiumUsers, display: String(data.premiumUsers), icon: Crown, iconBg: "bg-amber-100", iconColor: "text-amber-600", borderAccent: "border-l-amber-400", trend: `Conversion : ${premiumRate}% des ${data.totalUsers} inscrits`, positive: parseFloat(premiumRate) > 5 },
+                { label: "Utilisateurs Actifs (30j)", rawValue: data.activeUsers30d, display: String(data.activeUsers30d), icon: UserCheck, iconBg: "bg-blue-100", iconColor: "text-blue-600", borderAccent: "border-l-blue-400", trend: `24h: ${data.activeUsers24h} · 7j: ${data.activeUsers7d}`, positive: true },
+                { label: "Analyses IA Totales", rawValue: data.totalAnalyses, display: String(data.totalAnalyses), icon: Brain, iconBg: "bg-violet-100", iconColor: "text-violet-600", borderAccent: "border-l-violet-400", trend: `Coût IA estimé : ${formatCfa(data.totalAnalysesCost)}`, positive: true },
+              ].map((card, i) => (
+                <KpiCard key={card.label} {...card} delay={i * 80} />
+              ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Graphique Activité IA (7 jours réels) */}
-              <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+              {/* Graphique Activité IA (7 jours réels) avec barres animées */}
+              <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center justify-between mb-8">
                   <div>
                     <h2 className="text-lg font-bold text-slate-800">Activité des Analyses IA</h2>
-                    <p className="text-sm text-slate-400 mt-0.5">Volume réel des 7 derniers jours (depuis Supabase)</p>
+                    <p className="text-sm text-slate-400 mt-0.5">Volume réel des 7 derniers jours · depuis Supabase</p>
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -545,16 +531,21 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
                     const isToday = i === data.analysisChart.length - 1;
                     return (
                       <div key={i} className="flex-1 flex flex-col items-center gap-3 group/bar relative h-full justify-end">
-                        <div className="absolute -top-10 opacity-0 group-hover/bar:opacity-100 transition-all duration-300 translate-y-2 group-hover/bar:translate-y-0 z-20 pointer-events-none">
-                          <div className="bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap relative">
+                        <div className="absolute -top-10 opacity-0 group-hover/bar:opacity-100 transition-all duration-200 translate-y-2 group-hover/bar:translate-y-0 z-20 pointer-events-none">
+                          <div className="bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap relative">
                             {d.count} analyse{d.count !== 1 ? "s" : ""}
-                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 rotate-45" />
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45" />
                           </div>
                         </div>
                         <div className="w-full relative h-full flex items-end">
                           <div
-                            className={`w-full rounded-t-lg transition-all duration-500 relative overflow-hidden ${isToday ? "bg-gradient-to-t from-emerald-500 to-teal-400" : "bg-slate-200 group-hover/bar:bg-slate-300"}`}
-                            style={{ height: `${h}%` }}>
+                            className={`w-full rounded-t-xl relative overflow-hidden ${isToday ? "bg-gradient-to-t from-emerald-500 to-teal-400 shadow-[0_-4px_16px_rgba(52,211,153,0.3)]" : "bg-slate-100 group-hover/bar:bg-slate-200"}`}
+                            style={{
+                              height: `${h}%`,
+                              animation: `barGrow 0.6s ease-out ${i * 60}ms both`,
+                              transformOrigin: "bottom",
+                            }}
+                          >
                             {isToday && <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />}
                           </div>
                         </div>
@@ -565,13 +556,25 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
                     );
                   })}
                 </div>
+
+                {/* CSS keyframe injected inline */}
+                <style>{`
+                  @keyframes barGrow {
+                    from { transform: scaleY(0); opacity: 0; }
+                    to   { transform: scaleY(1); opacity: 1; }
+                  }
+                `}</style>
               </div>
 
               {/* Live Feed */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col max-h-[420px] relative overflow-hidden hover:shadow-md transition-shadow">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col max-h-[420px] relative overflow-hidden hover:shadow-lg transition-all duration-300">
                 <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none z-10" />
                 <h2 className="text-base font-bold text-slate-800 flex items-center gap-2 mb-5">
-                  <Activity className="w-4 h-4 text-indigo-500" /> Flux Temps Réel
+                  <Activity className="w-4 h-4 text-indigo-500" />
+                  Flux Temps Réel
+                  <span className="ml-auto text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-md">
+                    {filtered.analyses.length + filtered.users.length} événements
+                  </span>
                 </h2>
                 <div className="flex-1 overflow-auto pr-1 custom-scrollbar space-y-4">
                   {filtered.analyses.slice(0, 8).map((a, i) => (
@@ -580,7 +583,8 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
                       sub={`${a.team1} vs ${a.team2}`}
                       time={timeAgo(a.createdAt)}
                       onClick={() => setSelectedAnalysis(a)}
-                      isLast={i === 7}
+                      isLast={i === Math.min(7, filtered.analyses.length - 1)}
+                      delay={i * 50}
                     />
                   ))}
                   {filtered.users.slice(0, 4).map((u, i) => (
@@ -591,6 +595,7 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
                       time={timeAgo(u.createdAt)}
                       onClick={() => setSelectedUser(u)}
                       isLast={i === 3}
+                      delay={(filtered.analyses.slice(0, 8).length + i) * 50}
                     />
                   ))}
                 </div>
@@ -700,9 +705,8 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
                     <Crown className="w-4 h-4 text-amber-500" /> Tarification Actuelle
                   </h3>
                   <div className="space-y-3">
-                    <PriceRow label="Prix Test Actif" value={formatCfa(pricingConfig.currentPriceCfa)} highlighted />
-                    <PriceRow label="Futur Mensuel" value={formatCfa(pricingConfig.monthlyPriceCfa)} />
-                    <PriceRow label="Futur Annuel" value={formatCfa(pricingConfig.annualPriceCfa)} />
+                    <PriceRow label="Abonnement Mensuel" value={formatCfa(pricingConfig.currentPriceCfa)} highlighted />
+                    <PriceRow label="Abonnement Annuel" value={formatCfa(pricingConfig.annualPriceCfa)} />
                     <PriceRow label="Coût / Analyse IA" value={formatCfa(pricingConfig.costPerAnalysisCfa)} dim />
                   </div>
                 </div>
@@ -903,15 +907,29 @@ function TabBtn({ active, onClick, icon: Icon, label, badge }: any) {
   );
 }
 
-function KpiCard({ label, value, icon: Icon, iconBg, iconColor, trend, positive }: any) {
+function KpiCard({ label, display, icon: Icon, iconBg, iconColor, borderAccent, trend, positive, delay = 0 }: any) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-default group">
+    <div
+      className={`bg-white border border-slate-200 border-l-4 ${borderAccent ?? "border-l-slate-300"} rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-default group`}
+      style={{ animation: `cardSlideUp 0.5s ease-out ${delay}ms both` }}
+    >
+      <style>{`
+        @keyframes cardSlideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       <div className="flex items-start justify-between mb-5">
-        <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-          <Icon className={`w-5.5 h-5.5 ${iconColor}`} />
+        <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
+          <Icon className={`w-5 h-5 ${iconColor}`} />
         </div>
+        {positive !== undefined && (
+          <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
+            positive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"
+          }`}>{positive ? "▲" : "●"}</span>
+        )}
       </div>
-      <p className="text-3xl font-black text-slate-800 tracking-tight mb-1.5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{value}</p>
+      <p className="text-3xl font-black text-slate-800 tracking-tight mb-1.5 tabular-nums" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{display}</p>
       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
       {trend && (
         <p className={`text-xs font-medium flex items-center gap-1 ${positive ? "text-emerald-600" : "text-slate-400"}`}>
@@ -923,11 +941,21 @@ function KpiCard({ label, value, icon: Icon, iconBg, iconColor, trend, positive 
   );
 }
 
-function FeedItem({ icon: Icon, color, title, sub, time, onClick, isLast }: any) {
+function FeedItem({ icon: Icon, color, title, sub, time, onClick, isLast, delay = 0 }: any) {
   return (
-    <div className="flex gap-3 group/item cursor-pointer hover:-translate-x-0 hover:translate-x-1 transition-transform duration-200" onClick={onClick}>
+    <div
+      className="flex gap-3 group/item cursor-pointer hover:translate-x-1 transition-all duration-200"
+      onClick={onClick}
+      style={{ animation: `feedSlide 0.4s ease-out ${delay}ms both` }}
+    >
+      <style>{`
+        @keyframes feedSlide {
+          from { opacity: 0; transform: translateX(-10px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
       <div className="relative mt-1 shrink-0">
-        <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center group-hover/item:scale-110 transition-transform`}>
+        <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center group-hover/item:scale-110 transition-transform shadow-sm`}>
           <Icon className="w-3.5 h-3.5" />
         </div>
         {!isLast && <div className="absolute top-8 left-1/2 -translate-x-1/2 w-px h-5 bg-slate-100" />}
