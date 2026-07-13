@@ -356,7 +356,7 @@ export default function AnalyzePage() {
         return;
       }
       
-      if (user.email === 'kuzmabah@gmail.com' || user.email === 'abdoulayecamara1996gn@gmail.com') {
+      if (user.email === 'h9422320@gmail.com' || user.email === 'abdoulayecamara2708@gmail.com') {
         setIsPremium(true);
         return;
       }

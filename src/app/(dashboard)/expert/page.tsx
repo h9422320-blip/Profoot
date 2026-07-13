@@ -13,7 +13,7 @@ interface Message {
 }
 
 // Emails des propriétaires - accès gratuit pour les tests
-const OWNER_EMAILS = ["kuzmabah@gmail.com", "abdoulayecamara1996gn@gmail.com"];
+const OWNER_EMAILS = ["h9422320@gmail.com", "abdoulayecamara2708@gmail.com"];
 
 // Render message content with basic markdown-like formatting
 function MessageContent({ content, isUser }: { content: string; isUser: boolean }) {
