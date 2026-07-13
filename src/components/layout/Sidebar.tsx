@@ -22,6 +22,7 @@ export function Sidebar() {
   const [userEmail, setUserEmail] = useState<string>("Utilisateur");
   const [todayCount, setTodayCount] = useState(0);
   const [isPro, setIsPro] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const mainNav = [
     { href: "/analyze", label: t("sidebar.tacticalAnalysis"), icon: Brain },
@@ -49,6 +50,7 @@ export function Sidebar() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) {
         setUserEmail(user.email);
+        setIsAdmin(user.email === 'h9422320@gmail.com');
       }
     });
 
@@ -161,6 +163,24 @@ export function Sidebar() {
               <span className="bg-warning/20 text-warning text-[10px] px-2 py-1 rounded-lg font-black uppercase tracking-wider">{t("sidebar.pro")}</span>
             </Link>
           </div>
+
+          {/* Lien Admin — visible uniquement pour l'administrateur */}
+          {isAdmin && (
+            <div className="space-y-2">
+              <Link
+                href="/admin"
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-[15px] font-semibold border ${
+                  isActive("/admin")
+                    ? "bg-violet-500/20 text-violet-400 border-violet-500/30"
+                    : "border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+                }`}
+              >
+                <Shield className="w-5 h-5" />
+                <span>Tableau Admin</span>
+                <span className="ml-auto text-[9px] font-black bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-md uppercase tracking-wider">Super</span>
+              </Link>
+            </div>
+          )}
         </nav>
 
         <div className="p-6 border-t border-border-card space-y-6 bg-gradient-to-t from-black/5 to-transparent">
