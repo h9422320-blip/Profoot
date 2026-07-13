@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import AdminDashboardClient from "./AdminDashboardClient";
 
-const ADMIN_EMAIL = "kuzmabah@gmail.com";
+const ADMIN_EMAIL = "h9422320@gmail.com";
 
 async function getRealData() {
   const supabaseAdmin = createClient(

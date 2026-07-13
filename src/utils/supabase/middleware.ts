@@ -48,7 +48,7 @@ export async function updateSession(request: NextRequest) {
 
   // --- SECURITE ADMIN STRICTE ---
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!user || user.email !== 'kuzmabah@gmail.com') {
+    if (!user || user.email !== 'h9422320@gmail.com') {
       const url = request.nextUrl.clone()
       url.pathname = '/analyze' // Rediriger les curieux vers la page d'analyse
       return NextResponse.redirect(url)

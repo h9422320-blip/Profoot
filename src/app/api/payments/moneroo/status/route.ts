@@ -3,7 +3,8 @@ import { createClient } from '@/utils/supabase/server';
 
 // Emails avec accès VIP permanent — tous les abonnements débloqués
 const VIP_EMAILS = [
-  "abdoulayecamara2708@gmail.com",
+  "abdoulayecamara2708@gmail.com", // Accès Premium uniquement
+  "h9422320@gmail.com",            // Accès Premium + Admin
 ];
 
 export async function GET(req: Request) {
