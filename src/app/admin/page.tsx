@@ -29,7 +29,7 @@ async function getRealData() {
   if (!serviceKey || !supabaseUrl) {
     return {
       ...emptyData,
-      error: "⚠️ Clé SUPABASE_SERVICE_ROLE_KEY manquante dans Vercel. Ajoutez-la dans Settings → Environment Variables sur vercel.com puis redéployez.",
+      error: "⚠️ Clé SUPABASE_SERVICE_ROLE_KEY manquante dans Vercel.",
     };
   }
 
@@ -38,7 +38,6 @@ async function getRealData() {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 1. Vrais utilisateurs inscrits
     const { data: usersData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
     const allUsers = usersData?.users || [];
 
@@ -47,26 +46,22 @@ async function getRealData() {
     today.setHours(0, 0, 0, 0);
     const newUsersToday = allUsers.filter(u => new Date(u.created_at) >= today).length;
 
-    // 2. Vrais abonnements premium
     const premiumUsers = allUsers.filter(u =>
       u.user_metadata?.is_pro === true || u.app_metadata?.is_pro === true
     ).length;
 
-    // 3. Vraies analyses depuis l'historique
     const { data: analyses } = await supabaseAdmin
       .from("analysis_history")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(500);
 
     const allAnalyses = analyses || [];
     const analysesToday = allAnalyses.filter(a => new Date(a.created_at) >= today).length;
     const totalAnalyses = allAnalyses.length;
 
-    // 4. Derniers inscrits (les 8 plus récents)
     const recentUsers = allUsers
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 8)
       .map(u => ({
         id: u.id,
         email: u.email || "—",
@@ -76,16 +71,17 @@ async function getRealData() {
         lastSignIn: u.last_sign_in_at || null,
       }));
 
-    // 5. Dernières analyses
-    const recentAnalyses = allAnalyses.slice(0, 10).map(a => ({
+    const recentAnalyses = allAnalyses.map(a => ({
       id: a.id,
       team1: a.team1_name || "Équipe 1",
       team2: a.team2_name || "Équipe 2",
       createdAt: a.created_at,
       userId: a.user_id,
+      score: a.score || "N/A",
+      summary: a.summary || "Aucun résumé disponible.",
+      analysisData: a.analysis_data || null
     }));
 
-    // 6. Graphique 7 derniers jours
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
@@ -114,7 +110,6 @@ async function getRealData() {
       error: null,
     };
   } catch (e: any) {
-    console.error("[ADMIN] Error fetching data:", e);
     return {
       ...emptyData,
       error: `Erreur : ${e.message}`,
