@@ -297,18 +297,17 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
 
   // ── Date filtering across all data ─────────────────────────────────────
   const filtered = useMemo(() => {
-    const lo = dateRange.start ? new Date(dateRange.start).setHours(0, 0, 0, 0) : 0;
-    const hi = dateRange.end
-      ? new Date(dateRange.end).setHours(23, 59, 59, 999)
-      : Date.now();
-
     const users = data.recentUsers.filter(u => {
       const t = new Date(u.createdAt).getTime();
-      return t >= lo && t <= hi;
+      const afterStart = dateRange.start ? t >= new Date(dateRange.start).setHours(0, 0, 0, 0) : true;
+      const beforeEnd = dateRange.end ? t <= new Date(dateRange.end).setHours(23, 59, 59, 999) : true;
+      return afterStart && beforeEnd;
     });
     const analyses = data.recentAnalyses.filter(a => {
       const t = new Date(a.createdAt).getTime();
-      return t >= lo && t <= hi;
+      const afterStart = dateRange.start ? t >= new Date(dateRange.start).setHours(0, 0, 0, 0) : true;
+      const beforeEnd = dateRange.end ? t <= new Date(dateRange.end).setHours(23, 59, 59, 999) : true;
+      return afterStart && beforeEnd;
     });
 
     const premiumCount = users.filter(u => u.isPro).length;
