@@ -46,5 +46,15 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // --- SECURITE ADMIN STRICTE ---
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    if (!user || user.email !== 'kuzmabah@gmail.com') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/analyze' // Rediriger les curieux vers la page d'analyse
+      return NextResponse.redirect(url)
+    }
+  }
+  // ------------------------------
+
   return supabaseResponse
 }
