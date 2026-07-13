@@ -31,6 +31,7 @@ interface AdminData {
     userId: string;
   }[];
   analysisChart: { label: string; count: number }[];
+  error: string | null;
 }
 
 function timeAgo(dateStr: string | null) {
@@ -62,6 +63,16 @@ export default function AdminDashboardClient({ data, adminEmail }: { data: Admin
 
   return (
     <div className="min-h-screen bg-[#F6F7FB]">
+      {/* Bannière d'erreur si la clé Vercel manque */}
+      {data.error && (
+        <div className="bg-amber-50 border-b-2 border-amber-400 px-6 py-4 flex items-start gap-3">
+          <span className="text-2xl">⚠️</span>
+          <div>
+            <p className="text-sm font-bold text-amber-800">Configuration manquante</p>
+            <p className="text-sm text-amber-700 mt-0.5">{data.error}</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 md:px-10 py-5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
