@@ -238,15 +238,27 @@ async function getRealData() {
       .sort((a, b) => b.users - a.users);
     if (topCountries.length === 0) topCountries.push({ country: "Guinée", users: totalUsers, percentage: 100 });
 
+    const visiteurs = allActivityLogs.filter(l => l.action_type === 'page_view').length;
+    const realVisiteurs = Math.max(visiteurs, totalUsers); // Au moins égal au nombre d'inscrits
+
+    const s1 = realVisiteurs;
+    const s2 = totalUsers;
+    const s3 = new Set(allAnalyses.map(a => a.user_id)).size;
+    const s4 = premiumUsers;
+
+    const d1 = s1 > 0 ? Math.round(((s1 - s2) / s1) * 100) : 0;
+    const d2 = s2 > 0 ? Math.round(((s2 - s3) / s2) * 100) : 0;
+    const d3 = s3 > 0 ? Math.round(((s3 - s4) / s3) * 100) : 0;
+
     const behaviorStats = {
       avgSessionDuration: "2m 15s", // Needs real session tracking
-      bounceRate: 12.5,
+      bounceRate: d1, // Use top funnel dropoff as bounce rate
       topCountries,
       funnel: [
-        { stage: "Visiteurs Accueil", users: Math.max(totalUsers * 3, 100), dropoff: 0 },
-        { stage: "Inscription Gratuite", users: totalUsers, dropoff: 66 },
-        { stage: "1ère Analyse IA", users: new Set(allAnalyses.map(a => a.user_id)).size, dropoff: 45 },
-        { stage: "Abonnement Premium", users: premiumUsers, dropoff: 75 },
+        { stage: "Visiteurs Accueil", users: s1, dropoff: d1 },
+        { stage: "Inscription Gratuite", users: s2, dropoff: d2 },
+        { stage: "1ère Analyse IA", users: s3, dropoff: d3 },
+        { stage: "Abonnement Premium", users: s4, dropoff: 0 },
       ]
     };
 
@@ -261,10 +273,18 @@ async function getRealData() {
       annualConversions: Math.floor(premiumUsers * 0.4),
       conversionRate: avgScore, // Using ConversionRate as AI Score % internally for UI right now
       avgResponseTime: "1.2s",
-      impactChart: last7Days.map(day => ({
-        date: day.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" }),
-        conversions: Math.floor(Math.random() * 3), // Needs annual subscription precise timestamps
-      })),
+      impactChart: last7Days.map(day => {
+        const next = new Date(day);
+        next.setDate(next.getDate() + 1);
+        const count = allAiConversations.filter(c => {
+          const d = new Date(c.created_at);
+          return d >= day && d < next;
+        }).length;
+        return {
+          date: day.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" }),
+          conversions: count, 
+        };
+      }),
     };
 
     return {
