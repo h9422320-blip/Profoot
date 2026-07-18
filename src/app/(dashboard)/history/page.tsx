@@ -431,7 +431,7 @@ export default function HistoryPage() {
                     </div>
 
                     {/* Middle: Teams & Score/Prediction */}
-                    <div className="flex items-center justify-between my-2 py-3 bg-white/5 rounded-2xl px-4 border border-white/5 group-hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between my-2 py-3 bg-white/5 rounded-2xl px-4 border border-white/5 group-hover:border-white/10 transition-colors relative">
                       {/* Team 1 */}
                       <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
                         <img src={t1?.logo} className="w-10 h-10 object-contain drop-shadow" alt="" />
@@ -439,7 +439,7 @@ export default function HistoryPage() {
                       </div>
 
                       {/* Score / Center display */}
-                      <div className="flex flex-col items-center justify-center px-4 shrink-0">
+                      <div className={`flex flex-col items-center justify-center px-4 shrink-0 ${!isPro ? 'blur-md select-none' : ''}`}>
                         <span className="text-lg md:text-xl font-black text-white tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                           {item.score}
                         </span>
@@ -449,6 +449,11 @@ export default function HistoryPage() {
                           </span>
                         )}
                       </div>
+                      {!isPro && (
+                        <div className="absolute inset-0 flex items-center justify-center z-10">
+                          <Lock className="w-5 h-5 text-white/60" />
+                        </div>
+                      )}
 
                       {/* Team 2 */}
                       <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
@@ -458,7 +463,7 @@ export default function HistoryPage() {
                     </div>
 
                     {/* Summary */}
-                    <p className="text-xs text-white/60 font-medium line-clamp-2 my-3 leading-relaxed">
+                    <p className={`text-xs text-white/60 font-medium line-clamp-2 my-3 leading-relaxed ${!isPro ? 'blur-sm select-none' : ''}`}>
                       {item.summary}
                     </p>
 
@@ -517,8 +522,22 @@ export default function HistoryPage() {
             </div>
 
             {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative">
               
+              {/* PREMIUM LOCK OVERLAY for free users */}
+              {!isPro && (
+                <div className="absolute inset-0 z-30 bg-[#0D1520]/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8">
+                  <div className="w-16 h-16 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
+                    <Lock className="w-8 h-8 text-orange-400" />
+                  </div>
+                  <h3 className="text-lg font-black text-white text-center" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Contenu réservé aux membres Premium</h3>
+                  <p className="text-xs text-white/50 text-center max-w-sm">Passez à l'abonnement Premium pour accéder aux analyses détaillées, scores prédits, probabilités et résumés tactiques complets.</p>
+                  <Link href="/pricing" className="bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-black font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_4px_20px_rgba(245,158,11,0.3)]">
+                    <CreditCard className="w-4 h-4" /> Devenir Premium
+                  </Link>
+                </div>
+              )}
+
               {/* Teams & Score Banner */}
               <div className="bg-gradient-to-r from-[#111A24] to-[#1A2636] border border-white/5 rounded-2xl p-6 flex items-center justify-between shadow-inner">
                 <div className="flex items-center gap-4 flex-1">
@@ -529,7 +548,7 @@ export default function HistoryPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center px-6 shrink-0">
+                <div className={`flex flex-col items-center px-6 shrink-0 ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <span className="text-2xl md:text-3xl font-black text-white tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                     {selectedItem.score}
                   </span>
@@ -549,7 +568,7 @@ export default function HistoryPage() {
 
               {/* Confidence & Probabilities (if future) */}
               {!selectedItem.isFinished && selectedItem.data?.winProb && (
-                <div className="grid grid-cols-3 gap-4">
+                <div className={`grid grid-cols-3 gap-4 ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">Victoire {selectedItem.team1?.name}</span>
                     <span className="text-xl font-black text-[#10B981]">{selectedItem.data.winProb}%</span>
@@ -566,7 +585,7 @@ export default function HistoryPage() {
               )}
 
               {/* Summary Section */}
-              <div className="bg-white/5 border border-white/5 rounded-2xl p-5 space-y-3">
+              <div className={`bg-white/5 border border-white/5 rounded-2xl p-5 space-y-3 ${!isPro ? 'blur-lg select-none' : ''}`}>
                 <h4 className="text-xs font-black text-white/40 uppercase tracking-widest flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-[#10B981]" /> Résumé Tactique
                 </h4>
@@ -577,7 +596,7 @@ export default function HistoryPage() {
 
               {/* Advanced Sections from AI data if available */}
               {selectedItem.data?.sections && (
-                <div className="space-y-4">
+                <div className={`space-y-4 ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <h4 className="text-xs font-black text-white/40 uppercase tracking-widest">Points Clés de l'Analyse</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {selectedItem.data.sections.map((sec: any, idx: number) => (
@@ -594,7 +613,7 @@ export default function HistoryPage() {
 
               {/* Real Match Stats if finished */}
               {selectedItem.isFinished && selectedItem.data?.stats && (
-                <div className="bg-white/5 border border-white/5 rounded-2xl p-5 space-y-4">
+                <div className={`bg-white/5 border border-white/5 rounded-2xl p-5 space-y-4 ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <h4 className="text-xs font-black text-white/40 uppercase tracking-widest text-center">Statistiques du Match</h4>
                   <div className="space-y-3 max-w-md mx-auto">
                     {[

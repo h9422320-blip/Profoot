@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { History, Brain, Clock, Trash2, ChevronLeft, Sparkles, Filter, Search, X, ChevronRight, RefreshCw } from "lucide-react";
+import { History, Brain, Clock, Trash2, ChevronLeft, Sparkles, Filter, Search, X, ChevronRight, RefreshCw, Lock, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -12,20 +12,31 @@ export default function MobileHistoryListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("profoot_user_history_v1");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Trier du plus récent au plus ancien
-        parsed.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setHistory(parsed);
-        setFilteredHistory(parsed);
+    const init = async () => {
+      try {
+        const saved = localStorage.getItem("profoot_user_history_v1");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Trier du plus récent au plus ancien
+          parsed.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setHistory(parsed);
+          setFilteredHistory(parsed);
+        }
+      } catch (error) {
+        console.error("Erreur de lecture historique", error);
       }
-    } catch (error) {
-      console.error("Erreur de lecture historique", error);
-    }
+
+      // Check Pro Status
+      try {
+        const res = await fetch('/api/payments/moneroo/status');
+        const data = await res.json();
+        setIsPro(data.isPro);
+      } catch { /* ignore */ }
+    };
+    init();
   }, []);
 
   useEffect(() => {
@@ -171,13 +182,13 @@ export default function MobileHistoryListPage() {
                     </div>
 
                     {/* Middle Score */}
-                    <div className="flex items-center justify-between mb-4 px-2">
+                    <div className="flex items-center justify-between mb-4 px-2 relative">
                       <div className="flex flex-col items-center gap-2 flex-1">
                         <img src={t1?.logo} className="w-8 h-8 object-contain" alt="" />
                         <span className="text-[10px] font-bold text-white text-center line-clamp-1">{t1?.name}</span>
                       </div>
 
-                      <div className="flex flex-col items-center shrink-0 px-4">
+                      <div className={`flex flex-col items-center shrink-0 px-4 ${!isPro ? 'blur-md select-none' : ''}`}>
                         <span className="text-xl font-black text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                           {item.score}
                         </span>
@@ -187,6 +198,11 @@ export default function MobileHistoryListPage() {
                           </span>
                         )}
                       </div>
+                      {!isPro && (
+                        <div className="absolute inset-0 flex items-center justify-center z-10">
+                          <Lock className="w-5 h-5 text-white/60" />
+                        </div>
+                      )}
 
                       <div className="flex flex-col items-center gap-2 flex-1">
                         <img src={t2?.logo} className="w-8 h-8 object-contain" alt="" />
@@ -196,7 +212,7 @@ export default function MobileHistoryListPage() {
 
                     {/* Action Bar */}
                     <div className="bg-white/5 rounded-xl p-3 flex items-center justify-between mt-2">
-                      <span className="text-[10px] text-white/50 font-medium line-clamp-1 flex-1 pr-4">
+                      <span className={`text-[10px] text-white/50 font-medium line-clamp-1 flex-1 pr-4 ${!isPro ? 'blur-sm select-none' : ''}`}>
                         {item.summary}
                       </span>
                       <ChevronRight className="w-4 h-4 text-[#10B981] shrink-0" />
@@ -223,8 +239,22 @@ export default function MobileHistoryListPage() {
             <Brain className="w-5 h-5 text-[#10B981]" />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
             
+            {/* PREMIUM LOCK OVERLAY for free users */}
+            {!isPro && (
+              <div className="absolute inset-0 z-30 bg-[#0D1520]/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-6">
+                <div className="w-14 h-14 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
+                  <Lock className="w-7 h-7 text-orange-400" />
+                </div>
+                <h3 className="text-base font-black text-white text-center" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Contenu Premium</h3>
+                <p className="text-[11px] text-white/50 text-center">Passez à Premium pour voir les détails complets.</p>
+                <Link href="/pricing" className="bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-black font-black px-6 py-2.5 rounded-full text-[11px] uppercase tracking-widest flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" /> Devenir Premium
+                </Link>
+              </div>
+            )}
+
             {/* Score Banner Mobile */}
             <div className="bg-[#111A24] rounded-2xl p-4 border border-white/5">
               <div className="flex justify-between items-center text-center">
@@ -232,7 +262,7 @@ export default function MobileHistoryListPage() {
                   <img src={selectedItem.team1?.logo} className="w-12 h-12 object-contain" alt="" />
                   <span className="text-xs font-bold text-white line-clamp-2">{selectedItem.team1?.name}</span>
                 </div>
-                <div className="flex flex-col items-center justify-center w-[30%]">
+                <div className={`flex flex-col items-center justify-center w-[30%] ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <span className="text-2xl font-black text-white">{selectedItem.score}</span>
                   <span className="text-[9px] font-bold text-[#10B981] uppercase tracking-wider mt-1">
                     {selectedItem.isFinished ? "Final" : "Prédit"}
@@ -247,7 +277,7 @@ export default function MobileHistoryListPage() {
 
             {/* Confidence Mobile */}
             {!selectedItem.isFinished && selectedItem.data?.winProb && (
-              <div className="flex justify-between gap-2">
+              <div className={`flex justify-between gap-2 ${!isPro ? 'blur-lg select-none' : ''}`}>
                 <div className="flex-1 bg-white/5 rounded-xl p-2 text-center border border-white/5">
                   <span className="text-[8px] font-bold text-white/40 block mb-0.5">VICTOIRE T1</span>
                   <span className="text-sm font-black text-[#10B981]">{selectedItem.data.winProb}%</span>
@@ -264,7 +294,7 @@ export default function MobileHistoryListPage() {
             )}
 
             {/* Summary Mobile */}
-            <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+            <div className={`bg-white/5 rounded-2xl p-4 border border-white/5 ${!isPro ? 'blur-lg select-none' : ''}`}>
               <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2 flex items-center gap-2">
                 <Sparkles className="w-3 h-3 text-[#10B981]" /> Résumé
               </h4>
@@ -273,7 +303,7 @@ export default function MobileHistoryListPage() {
 
             {/* Stats Mobile */}
             {selectedItem.isFinished && selectedItem.data?.stats && (
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+              <div className={`bg-white/5 rounded-2xl p-4 border border-white/5 ${!isPro ? 'blur-lg select-none' : ''}`}>
                 <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest text-center mb-3">Statistiques</h4>
                 <div className="space-y-2">
                   {[
