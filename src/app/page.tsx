@@ -153,6 +153,7 @@ export default function LandingPage() {
       <div className="ambient-lighting">
         <div className="glow-orb-1" />
         <div className="glow-orb-2" />
+        <div className="glow-orb-3" />
       </div>
       <div className="premium-grid-bg" />
       {/* ================================================================ */}
