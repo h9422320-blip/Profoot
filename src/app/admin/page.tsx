@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { createClient as createServerClient } from "@/utils/supabase/server";
-import AdminDashboardClient from "./AdminDashboardClient";
+import OverviewDashboardClient from "./OverviewDashboardClient";
 
 const ADMIN_EMAIL = "h9422320@gmail.com";
 
@@ -288,6 +288,7 @@ async function getRealData() {
     };
 
     return {
+      ...emptyData,
       totalUsers,
       newUsersToday,
       premiumUsers,
@@ -328,10 +329,11 @@ export default async function AdminPage() {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Redirect is now mostly handled by layout, but we keep it just in case
   if (!user || user.email !== ADMIN_EMAIL) {
     redirect("/analyze");
   }
 
   const data = await getRealData();
-  return <AdminDashboardClient data={data} adminEmail={ADMIN_EMAIL} />;
+  return <OverviewDashboardClient data={data} />;
 }
