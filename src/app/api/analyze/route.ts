@@ -362,10 +362,11 @@ export async function POST(req: Request) {
       model: "gemini-2.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
-        maxOutputTokens: 4096,
-        // Désactive la "réflexion longue" de Gemini 2.5 Flash : la réponse part
-        // immédiatement au lieu de méditer 30-60s. Gain massif de vitesse.
-        thinkingConfig: { thinkingBudget: 0 },
+        // Limite haute pour ne JAMAIS couper une analyse détaillée
+        maxOutputTokens: 8192,
+        // Budget de réflexion COURT : l'IA planifie son analyse (qualité préservée)
+        // sans la méditation de 30-60s du mode par défaut. Vitesse + précision.
+        thinkingConfig: { thinkingBudget: 1024 },
       } as any,
     });
     const controller = new AbortController();
