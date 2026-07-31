@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw, Lock } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { fetchProStatus } from "@/lib/proStatus";
 import Link from "next/link";
 import { clubs, getClub, matches, competitions } from "@/lib/data";
 
@@ -349,8 +350,10 @@ export default function AnalyzePage() {
   useEffect(() => {
     const checkPremium = async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      // getSession lit la session locale (instantané, aucun appel réseau)
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+
       if (!user) {
         setIsPremium(false);
         return;
@@ -362,8 +365,7 @@ export default function AnalyzePage() {
       }
       
       try {
-        const res = await fetch('/api/payments/moneroo/status');
-        const data = await res.json();
+        const data = await fetchProStatus();
         setIsPremium(data.isPro);
       } catch {
         setIsPremium(false);

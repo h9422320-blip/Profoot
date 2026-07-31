@@ -27,6 +27,7 @@ import {
   CreditCard
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { fetchProStatus } from "@/lib/proStatus";
 import { logout } from "@/app/login/actions";
 
 interface HistoryItem {
@@ -69,8 +70,7 @@ export default function HistoryPage() {
 
       // 2. Check Pro Status
       try {
-        const res = await fetch('/api/payments/moneroo/status');
-        const data = await res.json();
+        const data = await fetchProStatus();
         setIsPro(data.isPro);
       } catch { /* ignore */ }
 

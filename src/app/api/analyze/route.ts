@@ -2,6 +2,9 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Laisse à l'analyse le temps de finir sur Vercel (données live + IA)
+export const maxDuration = 60;
+
 // ============================================================================
 // ProFoot ANALYSE ENGINE v6.0 — FULL AI DELEGATION
 // ============================================================================
@@ -29,7 +32,9 @@ async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DA
   const url = `https://v3.football.api-sports.io${endpoint}`;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    // 6s max par appel : en connexion lente on préfère continuer sans cette donnée
+    // (le moteur IA gère déjà les données manquantes) plutôt que bloquer l'analyse
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
     const res = await fetch(url, {
       method: 'GET',
       headers: { "x-apisports-key": API_FOOTBALL_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
@@ -353,9 +358,18 @@ export async function POST(req: Request) {
     console.log(`[BACKEND_ANALYZE] Calling Gemini for PREDICTION and EXPERT ANALYSIS...`);
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
     // Use flash as it's very fast and excellent at reasoning with structured JSON
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 4096,
+        // Désactive la "réflexion longue" de Gemini 2.5 Flash : la réponse part
+        // immédiatement au lieu de méditer 30-60s. Gain massif de vitesse.
+        thinkingConfig: { thinkingBudget: 0 },
+      } as any,
+    });
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s max avant fallback
 
     const apiDataMissing = (baseGoalsFor1 === 0 && baseGoalsFor2 === 0 && played1 <= 1);
     const prompt = `Tu es le moteur de prédiction IA de ProFoot, un système ultra-avancé d'analyse de football.

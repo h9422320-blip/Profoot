@@ -5,6 +5,7 @@ import { Shield, Send, Loader, Sparkles, Lock, ArrowRight, Zap, Loader2 } from "
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { fetchProStatus } from "@/lib/proStatus";
 
 interface Message {
   id: string;
@@ -78,13 +79,13 @@ export default function ExpertAgentPage() {
   useEffect(() => {
     import("@/utils/supabase/client").then(({ createClient }) => {
       const supabase = createClient();
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user?.email) setUserEmail(user.email);
+      // getSession lit la session locale (instantané, aucun appel réseau)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user?.email) setUserEmail(session.user.email);
       });
     });
 
-    fetch('/api/payments/moneroo/status')
-      .then(res => res.json())
+    fetchProStatus()
       .then(data => setIsPro(data.isPro))
       .catch(() => setIsPro(false));
   }, []);

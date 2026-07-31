@@ -3,6 +3,7 @@
 import { Check, Zap, Brain, TrendingUp, Shield, Star, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { fetchProStatus } from "@/lib/proStatus";
 
 export default function PricingPage() {
   const router = useRouter();
@@ -12,8 +13,7 @@ export default function PricingPage() {
 
   useEffect(() => {
     // Vérifier si l'utilisateur est déjà Pro
-    fetch('/api/payments/moneroo/status')
-      .then(res => res.json())
+    fetchProStatus()
       .then(data => {
         setIsPro(data.isPro);
       })

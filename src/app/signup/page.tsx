@@ -29,13 +29,20 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex w-full bg-[#050505]">
-      
+    <div className="landing-root min-h-screen flex w-full relative">
+      {/* Halos lumineux aurora (mêmes que la landing) */}
+      <div className="ambient-lighting">
+        <div className="glow-orb-1" />
+        <div className="glow-orb-2" />
+        <div className="glow-orb-3" />
+      </div>
+      <div className="premium-grid-bg" />
+
       {/* --- COLONNE GAUCHE (Présentation Produit) - Masquée sur mobile --- */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-[#0a0a0a] border-r border-white/5 items-center justify-center overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative border-r border-white/5 items-center justify-center overflow-hidden">
         {/* Background Gradients */}
         <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-900/20 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none" />
         
         {/* Logo Top Left */}
         <div className="absolute top-8 left-8 flex items-center gap-3">
@@ -56,12 +63,12 @@ export default function SignupPage() {
 
           <div className="space-y-6">
             {[
-              { icon: TrendingUp, text: "Prédictions basées sur l'IA" },
-              { icon: Zap, text: "Données en temps réel" },
-              { icon: ShieldCheck, text: "Statistiques avancées" }
+              { icon: TrendingUp, text: "Prédictions basées sur l'IA", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25 shadow-[0_0_18px_rgba(16,185,129,0.15)]" },
+              { icon: Zap, text: "Données en temps réel", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25 shadow-[0_0_18px_rgba(6,182,212,0.15)]" },
+              { icon: ShieldCheck, text: "Statistiques avancées", color: "text-violet-400 bg-violet-500/10 border-violet-500/25 shadow-[0_0_18px_rgba(139,92,246,0.15)]" }
             ].map((Feature, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+              <div key={i} className="flex items-center gap-4 group">
+                <div className={`w-12 h-12 rounded-full border flex items-center justify-center transition-transform group-hover:scale-110 ${Feature.color}`}>
                   <Feature.icon className="w-5 h-5" />
                 </div>
                 <span className="text-zinc-300 font-semibold text-lg">{Feature.text}</span>
@@ -77,8 +84,8 @@ export default function SignupPage() {
         {/* Glow Top Mobile */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none lg:hidden" />
 
-        <div className="w-full max-w-[400px] mx-auto relative z-10">
-          
+        <div className="w-full max-w-[440px] mx-auto relative z-10 bg-white/[0.04] border border-white/10 rounded-3xl p-8 sm:p-10 backdrop-blur-2xl shadow-[0_24px_60px_rgba(0,0,0,0.5),0_0_40px_rgba(16,185,129,0.06)]">
+
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 justify-center mb-12">
             <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_20px_rgba(16,185,129,0.5)]">
@@ -189,9 +196,8 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative w-full flex justify-center py-4 px-4 border border-transparent rounded-xl text-base font-bold text-white bg-emerald-500 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 focus:ring-offset-[#050505] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]"
+                className="hero-cta-primary group w-full justify-center !text-base disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[#030a07]"
               >
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out" />
                 <span className="relative flex items-center gap-2">
                   {isLoading ? 'Création en cours...' : 'Créer mon compte'}
                   {!isLoading && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}

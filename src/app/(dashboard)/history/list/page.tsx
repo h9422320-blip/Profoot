@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { History, Brain, Clock, Trash2, ChevronLeft, Sparkles, Filter, Search, X, ChevronRight, RefreshCw, Lock, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { fetchProStatus } from "@/lib/proStatus";
 
 export default function MobileHistoryListPage() {
   const router = useRouter();
@@ -31,8 +32,7 @@ export default function MobileHistoryListPage() {
 
       // Check Pro Status
       try {
-        const res = await fetch('/api/payments/moneroo/status');
-        const data = await res.json();
+        const data = await fetchProStatus();
         setIsPro(data.isPro);
       } catch { /* ignore */ }
     };
