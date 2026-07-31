@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 const VIP_EMAILS = [
   "abdoulayecamara2708@gmail.com", // Accès Premium uniquement
   "h9422320@gmail.com",            // Accès Premium + Admin
+  "bouba8952barry@gmail.com",      // Accès Premium gratuit (compte de test)
 ];
 
 export async function GET(req: Request) {

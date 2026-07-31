@@ -369,3 +369,76 @@
 .testimonial-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: white; }
 .testimonial-name { font-size: 14px; font-weight: 700; color: white; }
 .testimonial-role { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AMÉLIORATIONS RESPONSIVE — 2026-07-31 (ajouts uniquement, rien de supprimé)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Le contenu des écrans de téléphone (725px) dépasse le cadre : on termine
+   par un fondu vers le noir au lieu d'une coupure nette */
+.phone-screen { position: relative; }
+.mockup-screen::after,
+.phone-screen::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 90px;
+  background: linear-gradient(to top, #000 15%, transparent 100%);
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Halo doux derrière le héros (classe .hero-glow utilisée mais jamais définie) */
+.hero-glow {
+  position: absolute;
+  top: 20%; left: 50%;
+  transform: translateX(-50%);
+  width: 80vw; max-width: 900px;
+  height: 60vh;
+  background: radial-gradient(ellipse at center, rgba(16,185,129,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  /* ── Héros compact et lisible sur mobile ── */
+  .hero-section { padding-top: 92px; }
+  .hero-title { font-size: 32px; line-height: 1.12; margin-bottom: 18px; }
+  .hero-subtitle { font-size: 15px; line-height: 1.55; margin-bottom: 28px; }
+  .live-badge-wrapper { margin-bottom: 24px; }
+  .live-badge { font-size: 12px; padding: 7px 16px; }
+  .hero-app-mockup { margin-top: 40px; }
+
+  /* ── Pastilles flottantes entièrement visibles dans l'écran ── */
+  .floating-chip-left { left: -4px !important; top: 4px !important; }
+  .floating-chip-right { right: -4px !important; bottom: 100px !important; }
+
+  /* ── Logos de clubs flottants : plus rien de coupé au bord ── */
+  .psg-logo { left: -6px; top: 16%; }
+  .real-logo { right: -2px; top: -14px; }
+  .barca-logo { left: -8px; bottom: 34%; }
+  .chelsea-logo { right: -6px; bottom: 8%; }
+
+  /* ── Section « Architecture IA » ── */
+  .showcase-title { font-size: 26px; margin-bottom: 16px; }
+  .showcase-desc { font-size: 14px; margin-bottom: 28px; }
+  .showcase-match-label { font-size: 12px; margin-bottom: 14px; }
+  .showcase-stat-card { width: calc(50% - 8px) !important; padding: 18px 10px !important; }
+  .showcase-stat-card span:first-of-type { font-size: 14px !important; }
+  .showcase-stat-card svg { width: 24px; height: 24px; margin-bottom: 8px; }
+
+  /* ── Section analyse (2e téléphone) ── */
+  .analysis-desc { font-size: 14px; margin-bottom: 28px; }
+
+  /* ── Titres généraux un peu plus équilibrés ── */
+  .section-title { line-height: 1.15; }
+  .section-header { margin-bottom: 40px; }
+
+  /* ── Témoignages : carte adaptée à l'écran ── */
+  .testimonial-card { width: 300px; padding: 22px; }
+}
+
+/* Très petits écrans (≤ 380px) */
+@media (max-width: 380px) {
+  .hero-title { font-size: 29px; }
+  .stat-value { font-size: 28px; }
+}

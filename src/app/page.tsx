@@ -263,11 +263,11 @@ export default function LandingPage() {
               </div>
               
               {/* Floating elements */}
-              <div className="absolute top-20 -left-12 bg-[#111c24] border border-[#10b981]/30 px-4 py-2 rounded-full shadow-[0_10px_30px_rgba(16,185,129,0.2)] flex items-center gap-2 animate-[float_4s_ease-in-out_infinite] hover:scale-110 transition-transform cursor-default z-30">
+              <div className="floating-chip-left absolute top-20 -left-12 bg-[#111c24] border border-[#10b981]/30 px-4 py-2 rounded-full shadow-[0_10px_30px_rgba(16,185,129,0.2)] flex items-center gap-2 animate-[float_4s_ease-in-out_infinite] hover:scale-110 transition-transform cursor-default z-30">
                 <Database className="w-4 h-4 text-[#10b981] animate-pulse" />
                 <span className="text-white/90 text-xs font-bold">+200 Ligues</span>
               </div>
-              <div className="absolute bottom-32 -right-14 bg-[#111c24] border border-[#06b6d4]/30 px-4 py-2 rounded-full shadow-[0_10px_30px_rgba(6,182,212,0.2)] flex items-center gap-2 animate-[float_5s_ease-in-out_infinite_reverse] hover:scale-110 transition-transform cursor-default z-30">
+              <div className="floating-chip-right absolute bottom-32 -right-14 bg-[#111c24] border border-[#06b6d4]/30 px-4 py-2 rounded-full shadow-[0_10px_30px_rgba(6,182,212,0.2)] flex items-center gap-2 animate-[float_5s_ease-in-out_infinite_reverse] hover:scale-110 transition-transform cursor-default z-30">
                 <Cpu className="w-4 h-4 text-[#06b6d4] animate-pulse" />
                 <span className="text-white/90 text-xs font-bold">Temps Réel</span>
               </div>
@@ -502,17 +502,17 @@ function ShowcaseContent() {
       </p>
       
       <div className="flex flex-wrap justify-center gap-4 mt-8 mb-10">
-        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col items-center w-[160px]">
+        <div className="showcase-stat-card bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col items-center w-[160px]">
           <BarChart3 className="w-8 h-8 text-[#10b981] mb-3" />
           <span className="text-white font-bold text-lg">Expected Goals</span>
           <span className="text-white/40 text-xs text-center mt-1">Analyse des zones de danger</span>
         </div>
-        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col items-center w-[160px]">
+        <div className="showcase-stat-card bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col items-center w-[160px]">
           <Activity className="w-8 h-8 text-[#10b981] mb-3" />
           <span className="text-white font-bold text-lg">Forme Dynamique</span>
           <span className="text-white/40 text-xs text-center mt-1">Séries de victoires pondérées</span>
         </div>
-        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col items-center w-[160px]">
+        <div className="showcase-stat-card bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col items-center w-[160px]">
           <Target className="w-8 h-8 text-[#10b981] mb-3" />
           <span className="text-white font-bold text-lg">H2H Historique</span>
           <span className="text-white/40 text-xs text-center mt-1">Bêtes noires et rivalités</span>
