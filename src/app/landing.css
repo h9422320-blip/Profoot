@@ -442,3 +442,282 @@
   .hero-title { font-size: 29px; }
   .stat-value { font-size: 28px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREMIUM POLISH v4 — 2026-07-31
+   Éclairage, couleurs, animations et boutons premium sur TOUTE la landing
+   (mobile + tablette + desktop). Ajouts et surcharges uniquement.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. ÉCLAIRAGE GLOBAL : fond moins noir, halos plus lumineux ─────────── */
+.landing-root {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(16,185,129,0.10), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 40%, rgba(6,182,212,0.06), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 10% 75%, rgba(139,92,246,0.05), transparent 60%),
+    #030a07;
+}
+.glow-orb-1, .glow-orb-2, .glow-orb-3 { opacity: 0.42; filter: blur(150px); }
+
+/* Ligne lumineuse d'entrée de section (séparation élégante) */
+.features-section::after,
+.hiw-section::after,
+.testimonials-section::after,
+.faq-section::after,
+.analysis-section::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 78vw); height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(16,185,129,0.55), rgba(6,182,212,0.4), transparent);
+  pointer-events: none;
+}
+
+/* Halos de section renforcés */
+.hiw-section::before { background: radial-gradient(circle, rgba(6,182,212,0.14) 0%, rgba(16,185,129,0.10) 40%, transparent 70%); }
+.stats-section { background: linear-gradient(180deg, rgba(16,185,129,0.05), rgba(4,12,9,0.7) 40%, rgba(16,185,129,0.04)); border-top: 1px solid rgba(16,185,129,0.15); border-bottom: 1px solid rgba(16,185,129,0.12); }
+.faq-section::before { width: 90%; background: radial-gradient(circle, rgba(16,185,129,0.14) 0%, transparent 70%); }
+
+/* ── 2. BOUTONS PREMIUM : dégradés + reflet animé + lueur ───────────────── */
+@keyframes btn-shine {
+  0% { transform: translateX(-160%) skewX(-18deg); }
+  55%, 100% { transform: translateX(320%) skewX(-18deg); }
+}
+@keyframes cta-breathe {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(16,185,129,0.4), 0 0 24px rgba(16,185,129,0.25); }
+  50% { box-shadow: 0 0 0 1px rgba(16,185,129,0.7), 0 0 48px rgba(16,185,129,0.5), 0 0 80px rgba(6,182,212,0.2); }
+}
+.hero-cta-primary, .final-cta-btn {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(120deg, #10b981 0%, #0fb99b 45%, #059669 100%);
+  animation: cta-breathe 3s ease-in-out infinite;
+}
+.hero-cta-primary::before, .final-cta-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  animation: btn-shine 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.hero-cta-primary:hover, .final-cta-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  background: linear-gradient(120deg, #34d399 0%, #10c9a5 45%, #10b981 100%);
+}
+/* Boutons blancs : reflet émeraude discret */
+.nav-cta, .analysis-cta {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 8px 24px rgba(0,0,0,0.4);
+}
+.nav-cta::before, .analysis-cta::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(16,185,129,0.22), transparent);
+  animation: btn-shine 4.2s ease-in-out infinite;
+  pointer-events: none;
+}
+.nav-cta:hover { box-shadow: 0 0 0 1px rgba(16,185,129,0.5), 0 0 28px rgba(16,185,129,0.35); }
+.showcase-cta {
+  background: linear-gradient(120deg, rgba(16,185,129,0.16), rgba(6,182,212,0.12));
+  border-color: rgba(16,185,129,0.35);
+  box-shadow: 0 0 20px rgba(16,185,129,0.12);
+}
+.showcase-cta:hover {
+  background: linear-gradient(120deg, rgba(16,185,129,0.28), rgba(6,182,212,0.2));
+  border-color: rgba(16,185,129,0.6);
+  box-shadow: 0 0 32px rgba(16,185,129,0.3);
+  transform: translateY(-2px);
+}
+
+/* ── 3. NAVIGATION : soulignés animés ───────────────────────────────────── */
+.nav-links-desktop a { position: relative; }
+.nav-links-desktop a::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: -6px;
+  width: 0; height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-links-desktop a:hover::after { width: 100%; }
+
+/* ── 4. CARTES FONCTIONNALITÉS : icônes colorées + relief + hover lumineux ─ */
+.feature-card {
+  background: linear-gradient(180deg, rgba(22,30,27,0.75), rgba(9,13,11,0.92));
+  border-color: rgba(255,255,255,0.10);
+}
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 48px rgba(0,0,0,0.45), 0 0 36px rgba(16,185,129,0.14);
+}
+.feature-icon { transition: transform 0.3s, box-shadow 0.3s; }
+.feature-card:hover .feature-icon { transform: scale(1.12) rotate(-4deg); }
+/* Palette tournante des icônes (émeraude, cyan, violet, ambre) */
+.feature-card:nth-child(6n+1) .feature-icon { color: #34d399; background: rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.30); box-shadow: 0 0 18px rgba(16,185,129,0.15); }
+.feature-card:nth-child(6n+2) .feature-icon { color: #22d3ee; background: rgba(6,182,212,0.10); border-color: rgba(6,182,212,0.30); box-shadow: 0 0 18px rgba(6,182,212,0.15); }
+.feature-card:nth-child(6n+3) .feature-icon { color: #a78bfa; background: rgba(139,92,246,0.10); border-color: rgba(139,92,246,0.30); box-shadow: 0 0 18px rgba(139,92,246,0.15); }
+.feature-card:nth-child(6n+4) .feature-icon { color: #fbbf24; background: rgba(245,158,11,0.10); border-color: rgba(245,158,11,0.30); box-shadow: 0 0 18px rgba(245,158,11,0.15); }
+.feature-card:nth-child(6n+5) .feature-icon { color: #f472b6; background: rgba(236,72,153,0.10); border-color: rgba(236,72,153,0.30); box-shadow: 0 0 18px rgba(236,72,153,0.15); }
+.feature-card:nth-child(6n+6) .feature-icon { color: #38bdf8; background: rgba(14,165,233,0.10); border-color: rgba(14,165,233,0.30); box-shadow: 0 0 18px rgba(14,165,233,0.15); }
+
+/* ── 5. COMMENT ÇA MARCHE : étapes reliées, numéros et icônes premium ───── */
+@media (min-width: 768px) {
+  .hiw-grid { position: relative; }
+  .hiw-grid::before {
+    content: '';
+    position: absolute;
+    top: 76px; left: 16%; right: 16%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(16,185,129,0.45) 20%, rgba(6,182,212,0.45) 80%, transparent);
+    pointer-events: none;
+  }
+}
+.hiw-card {
+  background: linear-gradient(180deg, rgba(20,28,25,0.55), rgba(8,12,10,0.85));
+  border-color: rgba(255,255,255,0.09);
+}
+.hiw-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(16,185,129,0.35);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px rgba(16,185,129,0.12);
+}
+.hiw-icon {
+  background: linear-gradient(135deg, rgba(16,185,129,0.16), rgba(6,182,212,0.12));
+  border: 1px solid rgba(16,185,129,0.35);
+  color: #34d399;
+  box-shadow: 0 0 24px rgba(16,185,129,0.2);
+  position: relative;
+  z-index: 1;
+}
+.hiw-card:nth-child(2) .hiw-icon { color: #22d3ee; border-color: rgba(6,182,212,0.35); background: linear-gradient(135deg, rgba(6,182,212,0.16), rgba(16,185,129,0.10)); box-shadow: 0 0 24px rgba(6,182,212,0.2); }
+.hiw-card:nth-child(3) .hiw-icon { color: #a78bfa; border-color: rgba(139,92,246,0.35); background: linear-gradient(135deg, rgba(139,92,246,0.16), rgba(6,182,212,0.10)); box-shadow: 0 0 24px rgba(139,92,246,0.2); }
+.hiw-num {
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(16,185,129,0.28);
+  opacity: 1;
+}
+
+/* ── 6. STATS : chiffres en dégradé lumineux ────────────────────────────── */
+@keyframes stat-breathe {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(16,185,129,0.25)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 22px rgba(16,185,129,0.55)); transform: scale(1.04); }
+}
+.stat-value {
+  background: linear-gradient(120deg, #6ee7b7, #34d399 40%, #22d3ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: stat-breathe 2.6s ease-in-out infinite;
+  text-shadow: none;
+}
+.stat-card { position: relative; padding: 8px 0; }
+.stat-card::after {
+  content: '';
+  position: absolute;
+  bottom: -10px; left: 50%;
+  transform: translateX(-50%);
+  width: 44px; height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+  opacity: 0.55;
+}
+
+/* ── 7. SHOWCASE (Architecture IA) : cartes stats colorées ──────────────── */
+.showcase-stat-card { transition: all 0.35s cubic-bezier(0.16,1,0.3,1); }
+.showcase-stat-card:hover { transform: translateY(-5px); border-color: rgba(16,185,129,0.4) !important; box-shadow: 0 16px 32px rgba(0,0,0,0.4), 0 0 28px rgba(16,185,129,0.15); }
+.showcase-stat-card:nth-child(2) svg { color: #22d3ee; }
+.showcase-stat-card:nth-child(2):hover { border-color: rgba(6,182,212,0.4) !important; box-shadow: 0 16px 32px rgba(0,0,0,0.4), 0 0 28px rgba(6,182,212,0.15); }
+.showcase-stat-card:nth-child(3) svg { color: #a78bfa; }
+.showcase-stat-card:nth-child(3):hover { border-color: rgba(139,92,246,0.4) !important; box-shadow: 0 16px 32px rgba(0,0,0,0.4), 0 0 28px rgba(139,92,246,0.15); }
+
+/* ── 8. TÉMOIGNAGES : cartes en relief, avatars colorés ─────────────────── */
+.testimonial-card {
+  background: linear-gradient(180deg, rgba(22,30,27,0.85), rgba(10,14,12,0.95));
+  border-color: rgba(255,255,255,0.10);
+}
+.testimonial-card:hover { box-shadow: 0 16px 36px rgba(0,0,0,0.4), 0 0 26px rgba(16,185,129,0.12); }
+.testimonial-card:nth-child(4n+2) .testimonial-avatar { background: linear-gradient(135deg, #06b6d4, #0284c7); }
+.testimonial-card:nth-child(4n+3) .testimonial-avatar { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+.testimonial-card:nth-child(4n+4) .testimonial-avatar { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+/* ── 9. FAQ : accordéon lumineux ────────────────────────────────────────── */
+.faq-item {
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015));
+  border-color: rgba(255,255,255,0.09);
+}
+.faq-open {
+  border-color: rgba(16,185,129,0.45);
+  background: linear-gradient(180deg, rgba(16,185,129,0.07), rgba(16,185,129,0.02));
+  box-shadow: 0 0 28px rgba(16,185,129,0.10);
+}
+.faq-answer { color: rgba(255,255,255,0.65); border-left: 2px solid rgba(16,185,129,0.4); margin: 0 24px 4px; padding: 0 0 16px 14px; }
+@media (max-width: 768px) { .faq-answer { margin: 0 16px 4px; } }
+
+/* ── 10. CTA FINAL : grand halo + bouton respirant ──────────────────────── */
+.final-cta-section {
+  background: linear-gradient(180deg, rgba(16,185,129,0.05), rgba(3,10,7,0.6));
+  border-top: 1px solid rgba(16,185,129,0.15);
+}
+.final-cta-section::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(900px, 95vw); height: 110%;
+  background: radial-gradient(ellipse, rgba(16,185,129,0.16) 0%, rgba(6,182,212,0.06) 45%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+.final-cta-title { font-size: 32px; }
+@media (min-width: 768px) { .final-cta-title { font-size: 44px; } }
+
+/* ── 11. FOOTER : plus clair, liens vivants ─────────────────────────────── */
+.landing-footer {
+  background: linear-gradient(180deg, #010604, #03140d);
+  border-top: 1px solid rgba(16,185,129,0.15);
+}
+.footer-col a { transition: color 0.2s, padding-left 0.25s; }
+.footer-col a:hover { padding-left: 5px; }
+.footer-desc, .footer-brand p { color: rgba(255,255,255,0.45); }
+.footer-col a, .footer-col span { color: rgba(255,255,255,0.5); }
+.footer-bottom { color: rgba(255,255,255,0.35); }
+
+/* ── 12. BADGE LIVE + marquee compétitions plus vivants ─────────────────── */
+.live-badge { background: rgba(2,12,8,0.92); }
+.marquee-item { background: rgba(255,255,255,0.045); border-color: rgba(255,255,255,0.09); }
+.marquee-item:hover { box-shadow: 0 0 18px rgba(16,185,129,0.18); transform: translateY(-2px); }
+.competitions-section { background: linear-gradient(180deg, rgba(16,185,129,0.04), rgba(8,12,10,0.6)); border-top-color: rgba(16,185,129,0.12); border-bottom-color: rgba(16,185,129,0.12); }
+
+/* ── 13. Titres de section : sous-ligne lumineuse animée ────────────────── */
+@keyframes accent-glow {
+  0%, 100% { opacity: 0.5; width: 56px; }
+  50% { opacity: 1; width: 84px; }
+}
+.features-inner > .section-title::after,
+.hiw-inner > .section-title::after,
+.faq-inner > .section-title::after,
+.stats-inner > .section-title::after {
+  content: '';
+  display: block;
+  margin: 16px auto 0;
+  height: 3px; width: 56px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+  animation: accent-glow 3s ease-in-out infinite;
+}
+
+/* ── 14. Accessibilité : respect de prefers-reduced-motion ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .landing-root *, .landing-root *::before, .landing-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
