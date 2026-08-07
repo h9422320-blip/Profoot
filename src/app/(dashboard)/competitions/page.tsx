@@ -1,6 +1,7 @@
 import { Search, Trophy, Globe, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { competitions } from "@/lib/data";
+import { getSeasonLabel } from "@/lib/api-football";
 
 export default function CompetitionsPage() {
   const coupes = competitions.filter(c => c.id === "ucl" || c.id === "caf" || c.id === "can");
@@ -71,7 +72,7 @@ function CompetitionListItem({ comp }: { comp: any }) {
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
           <h3 className="text-white font-bold text-[16px] truncate">{comp.name}</h3>
-          <p className="text-white/50 text-[13px] truncate">{comp.country} • {comp.currentSeason}</p>
+          <p className="text-white/50 text-[13px] truncate">{comp.country} • {getSeasonLabel(comp.id)}</p>
         </div>
         <ChevronRight className="w-5 h-5 text-white/30 group-hover:text-white/60 shrink-0" />
       </div>

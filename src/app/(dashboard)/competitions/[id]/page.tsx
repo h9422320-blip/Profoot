@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getCompetition, clubs, cupParticipants } from "@/lib/data";
+import { getSeasonLabel } from "@/lib/api-football";
 import { ArrowLeft, Calendar, MapPin, Search, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -103,8 +104,8 @@ export default function CompetitionPage() {
     );
   }
 
-  const dateStr = id === "wc" ? "11 juin – 19 juillet 2026" : `Saison ${competition.currentSeason}`;
-  const locationStr = id === "wc" ? "USA • Canada • Mexique" : competition.country;
+  const dateStr = `Saison ${getSeasonLabel(String(id))}`;
+  const locationStr = competition.country;
 
   return (
     <div className="w-full max-w-4xl mx-auto pb-20 pt-6 px-4 font-sans text-white bg-[#16242e] min-h-screen">

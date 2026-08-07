@@ -137,6 +137,17 @@ const INTERNATIONAL_SEASONS: Record<string, (y: number) => number> = {
   nations_league: (y) => (y % 2 === 0 ? y : y - 1),
 };
 
+/**
+ * Libellé de saison affiché à l'écran : « 2026-27 » pour un championnat de
+ * clubs, l'année seule pour une compétition internationale. Les libellés
+ * étaient écrits en dur dans le référentiel et affichaient encore 2025-26.
+ */
+export function getSeasonLabel(leagueKey: string, now: Date = new Date()): string {
+  const year = getSeason(leagueKey, now);
+  if (INTERNATIONAL_SEASONS[leagueKey]) return String(year);
+  return `${year}-${String(year + 1).slice(2)}`;
+}
+
 /** Saison à interroger pour une compétition donnée. */
 export function getSeason(leagueKey: string, now: Date = new Date()): number {
   const special = INTERNATIONAL_SEASONS[leagueKey];
