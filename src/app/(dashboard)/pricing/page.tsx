@@ -106,6 +106,12 @@ export default function PricingPage() {
               <FeatureItem label="Analyse des compétitions" pro />
               <FeatureItem label="Analyse des grands championnats" pro />
               <FeatureItem label="Historique complet des analyses" pro />
+              <li className="flex items-center gap-3 opacity-60">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 bg-sidebar">
+                  <span className="text-foreground/40 text-xs font-bold">✕</span>
+                </div>
+                <span className="text-sm text-foreground/40">Agent IA VIP — exclusivité de l'Annuel</span>
+              </li>
             </ul>
             <button
               onClick={() => handleSubscribe('monthly')}
@@ -142,13 +148,13 @@ export default function PricingPage() {
             </div>
             <p className="text-xs text-success font-bold">Économisez 120 000 FCFA par rapport au mensuel</p>
           </div>
-          <p className="text-sm text-foreground/50">Tout le Mensuel, plus l'Agent IA VIP et les exclusivités.</p>
+          <p className="text-sm text-foreground/50">Le niveau ultime : tout le Mensuel, plus votre analyste IA personnel disponible 24h/24.</p>
           <ul className="space-y-4 flex-1">
-            <FeatureItem label="Toutes les fonctionnalités du Mensuel" pro />
-            <FeatureItem label="Accès complet à l'Agent IA VIP" pro />
+            <FeatureItem label="Toutes les fonctionnalités du Mensuel incluses" pro />
+            <FeatureItem label="Agent IA VIP illimité — votre expert football personnel 24h/24" pro />
+            <FeatureItem label="Pronostics, tactiques et transferts en temps réel via l'Agent" pro />
             <FeatureItem label="Priorité sur les nouvelles fonctionnalités" pro />
-            <FeatureItem label="Fonctionnalités Premium exclusives" pro />
-            <FeatureItem label="Toutes les futures améliorations" pro />
+            <FeatureItem label="Toutes les futures améliorations Premium incluses" pro />
           </ul>
           <button
             onClick={() => handleSubscribe('yearly')}

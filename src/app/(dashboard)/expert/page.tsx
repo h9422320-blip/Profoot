@@ -214,7 +214,7 @@ export default function ExpertAgentPage() {
             </h1>
             
             <p className="text-base md:text-lg text-white/60 font-medium leading-relaxed mb-12 max-w-md mx-auto relative z-10">
-              L'Agent IA <strong className="text-white font-bold">ProFoot Expert</strong> est une technologie exclusive réservée aux membres annuels. Débloquez toute la puissance de l'IA sans limite.
+              L'Agent IA <strong className="text-white font-bold">ProFoot Expert</strong> est une exclusivité réservée aux membres de l'<strong className="text-white font-bold">Abonnement Annuel</strong> : un analyste football personnel disponible 24h/24, connecté à l'actualité en temps réel — statistiques, tactiques, pronostics, transferts, sans aucune limite.
             </p>
             
             <div className="relative z-10 w-full sm:w-auto mx-auto mt-4 group">
@@ -230,7 +230,7 @@ export default function ExpertAgentPage() {
                   <>
                     <span className="text-base sm:text-lg">Débloquer l'Accès VIP</span>
                     <div className="flex items-center">
-                      <span className="bg-black/10 px-3 py-1 rounded-full text-xs sm:text-sm font-bold">2 000 FCFA/an</span>
+                      <span className="bg-black/10 px-3 py-1 rounded-full text-xs sm:text-sm font-bold">60 000 FCFA/an</span>
                       <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-1.5" />
                     </div>
                   </>
