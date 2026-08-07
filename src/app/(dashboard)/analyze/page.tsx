@@ -1198,9 +1198,16 @@ export default function AnalyzePage() {
               )}
 
               {/* PAYWALL WRAPPER BEGIN */}
-              <div className={`relative pt-6 ${!isPremium ? 'max-h-[520px] overflow-hidden' : ''}`}>
+              {/* La fenêtre descend jusqu'aux barres de « Comparaison
+                  statistique » : ce sont les seuls blocs vraiment colorés, donc
+                  les seuls perceptibles à travers le flou. Couper avant ne
+                  laissait voir que des cartes sombres — donc du noir. */}
+              <div className={`relative pt-6 ${!isPremium ? 'max-h-[1180px] overflow-hidden' : ''}`}>
                 {!isPremium && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 py-10 text-center" style={{background: 'linear-gradient(to bottom, rgba(5,8,22,0) 0%, rgba(5,8,22,0.7) 20%, rgba(5,8,22,0.97) 45%, #050816 65%)' }}>
+                  // Voile volontairement semi-transparent : l'utilisateur doit
+                  // DEVINER qu'une analyse riche existe dessous (barres, blocs,
+                  // couleurs) sans pouvoir la lire. C'est ce qui crée l'envie.
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 py-10 text-center" style={{background: 'linear-gradient(to bottom, rgba(5,8,22,0) 0%, rgba(5,8,22,0.30) 18%, rgba(5,8,22,0.55) 42%, rgba(5,8,22,0.52) 100%)' }}>
                     
                     <h3 className="text-xl md:text-3xl font-black text-white mb-4" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
                     
@@ -1222,10 +1229,12 @@ export default function AnalyzePage() {
                   </div>
                 )}
                 
-                {/* 
-                  REAL BLUR: Increased significantly so users cannot read the score or stats at all.
+                {/*
+                  Flou calibré : assez fort pour rendre chiffres et textes
+                  illisibles, assez léger pour laisser voir les formes et les
+                  couleurs des blocs (barres vertes/rouges, cartes, titres).
                 */}
-                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[24px] opacity-40' : ''}`}>
+                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[7px] opacity-[0.85]' : ''}`}>
                   {/* Score pill */}
                   {result.predictedScore && (
                     <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
