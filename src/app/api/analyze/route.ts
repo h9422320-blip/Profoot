@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { requireUser } from "@/lib/subscription";
 import { clubs } from "@/lib/data";
+import { findLiveTeam } from "@/lib/teams-live";
 
 // ============================================================================
 // ProFoot ANALYSE ENGINE v6.0 — FULL AI DELEGATION
@@ -164,12 +165,29 @@ export async function POST(req: Request) {
   // vérité, avec un objet qui n'est pas une équipe.
   const teamKey1 = String(rawTeam1.id);
   const teamKey2 = String(rawTeam2.id);
-  const known = (id: string) => Object.prototype.hasOwnProperty.call(clubs, id);
-  if (!known(teamKey1) || !known(teamKey2)) {
+
+  // Une équipe est valide si elle figure dans le référentiel historique OU
+  // dans la liste chargée en direct depuis API-Football (promus, championnats
+  // hors « big 5 »). Le nom n'est jamais repris du client : il vient toujours
+  // d'une source serveur, ce qui ferme l'injection dans le prompt de l'IA.
+  const resolveTeam = async (id: string) => {
+    if (Object.prototype.hasOwnProperty.call(clubs, id)) return clubs[id];
+    const live = await findLiveTeam(id);
+    if (!live) return null;
+    return {
+      id: live.id,
+      name: live.name,
+      logo: live.logo,
+      country: live.country,
+      league: live.league,
+      stadium: live.stadium,
+    } as any;
+  };
+
+  const [team1, team2] = await Promise.all([resolveTeam(teamKey1), resolveTeam(teamKey2)]);
+  if (!team1 || !team2) {
     return NextResponse.json({ error: "Équipe inconnue" }, { status: 404 });
   }
-  const team1 = clubs[teamKey1];
-  const team2 = clubs[teamKey2];
 
   const today = new Date().toISOString().split('T')[0];
   const cacheKey = `${team1.id}-${team2.id}-${today}`;

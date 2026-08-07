@@ -114,26 +114,44 @@ export const LEAGUE_IDS: Record<string, number> = {
   nations_league: 5,
 };
 
-// Current season for each league
-export const CURRENT_SEASON: Record<string, number> = {
-  epl: 2025,
-  laliga: 2025,
-  seriea: 2025,
-  bundesliga: 2025,
-  ligue1: 2025,
-  ucl: 2025,
-  uel: 2025,
-  uecl: 2025,
-  eredivisie: 2025,
-  ligaportugal: 2025,
-  proleague: 2025,
-  premiership: 2025,
-  superlig: 2025,
-  wc: 2026,
-  can: 2025,
-  caf: 2025,
-  nations_league: 2024,
+/**
+ * Saison en cours, calculée et non écrite en dur.
+ *
+ * Chez API-Football, une saison de club est désignée par son année de début :
+ * « 2026 » = saison 2026-2027, qui démarre à la mi-août. À partir du 1er août
+ * on bascule donc sur la nouvelle saison. Ce calcul évite d'avoir à réécrire
+ * ce fichier chaque été — c'est ce qui avait laissé toute l'application sur
+ * la saison 2025-2026.
+ */
+export function getClubSeason(now: Date = new Date()): number {
+  return now.getMonth() + 1 >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+/** Compétitions internationales : leur millésime ne suit pas le cycle des clubs. */
+const INTERNATIONAL_SEASONS: Record<string, (y: number) => number> = {
+  // Coupe du monde : tous les 4 ans (2026, 2030…)
+  wc: (y) => y - ((y - 2026) % 4 + 4) % 4,
+  // CAN : années impaires depuis 2025
+  can: (y) => (y % 2 === 1 ? y : y - 1),
+  // Ligue des nations : cycle bisannuel depuis 2024
+  nations_league: (y) => (y % 2 === 0 ? y : y - 1),
 };
+
+/** Saison à interroger pour une compétition donnée. */
+export function getSeason(leagueKey: string, now: Date = new Date()): number {
+  const special = INTERNATIONAL_SEASONS[leagueKey];
+  if (special) return special(now.getFullYear());
+  return getClubSeason(now);
+}
+
+/**
+ * Conservé pour compatibilité : se comporte comme un objet mais renvoie
+ * désormais une valeur calculée au lieu d'une constante périmée.
+ */
+export const CURRENT_SEASON: Record<string, number> = new Proxy(
+  {},
+  { get: (_t, key: string) => getSeason(key) }
+) as Record<string, number>;
 
 // ---------------------------------------------------------------------------
 // Public API Functions
@@ -243,12 +261,10 @@ export async function getFixtureById(fixtureId: number) {
 // ---------------------------------------------------------------------------
 
 function getSeasonForLeague(apiLeagueId: number): number {
-  // World Cup 2026
-  if (apiLeagueId === 1) return 2026;
-  // Nations League
-  if (apiLeagueId === 5) return 2024;
-  // Default: 2025 season
-  return 2025;
+  // Retrouve la clé de compétition à partir de son identifiant API pour
+  // réutiliser le calcul de saison commun — plus aucune année en dur.
+  const key = Object.keys(LEAGUE_IDS).find((k) => LEAGUE_IDS[k] === apiLeagueId);
+  return getSeason(key || 'epl');
 }
 
 /**

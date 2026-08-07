@@ -344,6 +344,46 @@ export default function AnalyzePage() {
   const [pickerOpen, setPickerOpen] = useState<1 | 2 | null>(null);
   const [todayHistory, setTodayHistory] = useState<any[]>([]);
   const [isPremium, setIsPremium] = useState(false); // Default false to prevent data leaking before check finishes
+  const [teamsVersion, setTeamsVersion] = useState(0);
+
+  // Équipes de la saison en cours, chargées depuis API-Football et fusionnées
+  // dans le référentiel local. Le fichier statique datait de 2025-2026 : ni les
+  // promus, ni les championnats hors « big 5 » n'étaient sélectionnables.
+  useEffect(() => {
+    let annule = false;
+    fetch('/api/teams')
+      .then(r => (r.ok ? r.json() : { teams: [] }))
+      .then(({ teams }) => {
+        if (annule || !teams?.length) return;
+        teams.forEach((t: any) => {
+          const existant = (clubs as any)[t.id];
+          const base = {
+            id: t.id,
+            shortName: t.name.slice(0, 3).toUpperCase(),
+            country: t.country,
+            stadium: t.stadium || 'Stade',
+            coach: 'N/A',
+            ranking: 0,
+            points: 0,
+            squad: [],
+            form: [],
+            stats: { played: 0, wins: 0, draws: 0, losses: 0, goalsScored: 0, goalsConceded: 0, possession: 0, xG: 0, cleanSheets: 0 },
+          };
+          (clubs as any)[t.id] = {
+            ...base,
+            // Les valeurs déjà connues (effectif, forme, entraîneur) sont conservées…
+            ...(existant || {}),
+            // …mais le nom, le logo et le championnat officiels font foi.
+            name: t.name,
+            logo: t.logo,
+            league: t.league,
+          };
+        });
+        setTeamsVersion(v => v + 1);
+      })
+      .catch(() => { /* le référentiel statique reste utilisable */ });
+    return () => { annule = true; };
+  }, []);
 
   useEffect(() => {
     const checkPremium = async () => {
@@ -569,8 +609,8 @@ export default function AnalyzePage() {
       <div className="max-w-4xl mx-auto space-y-5 pb-24 px-4 md:px-0 pt-6 animate-fade-in">
       
       {/* Team Picker Modals */}
-      <TeamPicker isOpen={pickerOpen === 1} onClose={() => setPickerOpen(null)} onSelect={handleTeam1Select} currentTeamId={team1} />
-      <TeamPicker isOpen={pickerOpen === 2} onClose={() => setPickerOpen(null)} onSelect={setTeam2} currentTeamId={team2} />
+      <TeamPicker key={`p1-${teamsVersion}`} isOpen={pickerOpen === 1} onClose={() => setPickerOpen(null)} onSelect={handleTeam1Select} currentTeamId={team1} />
+      <TeamPicker key={`p2-${teamsVersion}`} isOpen={pickerOpen === 2} onClose={() => setPickerOpen(null)} onSelect={setTeam2} currentTeamId={team2} />
 
       {/* 1. HEADER — Visifoot style: large bold centered title */}
       <div className="text-center space-y-3 mt-2 mb-4">

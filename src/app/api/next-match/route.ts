@@ -1,75 +1,90 @@
 import { NextResponse } from 'next/server';
 import { clubs } from '@/lib/data';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { requireUser } from '@/lib/subscription';
+import { findLiveTeam, getLiveTeams, slugify } from '@/lib/teams-live';
 
-// Appel Gemini : dépasse les 10 s accordées par défaut à une fonction serverless.
-export const maxDuration = 60;
+export const maxDuration = 30;
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
-
+/**
+ * Prochain adversaire d'une équipe.
+ *
+ * Cette route interrogeait auparavant Gemini avec la recherche Google pour
+ * « deviner » l'adversaire : lent, approximatif, et surtout dépendant d'un
+ * quota Google épuisé — la sélection automatique ne fonctionnait donc jamais.
+ * API-Football connaît le calendrier officiel : c'est une simple requête,
+ * fiable et instantanée.
+ */
 export async function GET(request: Request) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(request.url);
   const teamId = searchParams.get('teamId');
-
   if (!teamId) {
     return NextResponse.json({ error: 'Missing teamId' }, { status: 400 });
   }
 
-  const team = clubs[teamId];
-  if (!team) {
-    return NextResponse.json({ error: 'Team not found' }, { status: 404 });
-  }
+  const key = process.env.API_FOOTBALL_KEY;
+  if (!key) return NextResponse.json({ nextTeamId: null });
 
   try {
-    console.log(`[NEXT_MATCH_AI] Asking Gemini for next opponent of ${team.name}...`);
-    
-    const availableTeamsList = Object.entries(clubs).map(([key, c]) => `${key}="${c.name}"`).join(', ');
+    // L'identifiant peut venir du référentiel statique (héritage) ou de la
+    // liste chargée en direct : on résout l'identifiant API dans les deux cas.
+    const liveTeam = await findLiveTeam(teamId);
+    let apiId: number | null = liveTeam?.apiId ?? null;
 
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      systemInstruction: `Tu es un expert en football connecté au web via Google Search. Recherche le vrai prochain adversaire officiel de l'équipe demandée.
-Voici la liste exhaustive de toutes nos équipes (clubs, nations) :
-[ ${availableTeamsList} ]
+    if (!apiId && Object.prototype.hasOwnProperty.call(clubs, teamId)) {
+      const legacy: any = clubs[teamId];
+      const match = String(legacy.logo || '').match(/teams\/(\d+)\.png/);
+      if (match) apiId = Number(match[1]);
+    }
+    if (!apiId) return NextResponse.json({ nextTeamId: null });
 
-Consignes STRICTES :
-1. Recherche sur le web contre qui l'équipe va jouer son prochain match.
-2. Trouve l'ID exact de cet adversaire dans la liste ci-dessus (la partie avant le =).
-3. Réponds UNIQUEMENT par cet ID en minuscules (ex: "usa", "marseille"). 
-4. N'ajoute AUCUN texte, aucun guillemet, aucune ponctuation, pas de "ID=".
-5. Si l'adversaire n'est pas dans la liste ou s'il n'y a pas de match, réponds strictement "null".`,
-      tools: [{ googleSearch: {} } as any]
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    const res = await fetch(
+      `https://v3.football.api-sports.io/fixtures?team=${apiId}&next=8`,
+      { headers: { 'x-apisports-key': key }, signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) return NextResponse.json({ nextTeamId: null });
+
+    const data = await res.json();
+    const upcoming: any[] = data.response || [];
+
+    // Un match amical n'a pas d'intérêt pour un pronostic : on privilégie la
+    // prochaine rencontre officielle (championnat, coupe, compétition
+    // européenne) et on ne retombe sur un amical que s'il n'y a rien d'autre.
+    const isFriendly = (f: any) => /friendl|amic/i.test(f?.league?.name || '');
+    const fixture = upcoming.find((f) => !isFriendly(f)) || upcoming[0];
+
+    // Aucun match programmé (trêve, équipe éliminée) : on laisse l'utilisateur
+    // choisir librement son second club plutôt que d'imposer un choix faux.
+    if (!fixture) return NextResponse.json({ nextTeamId: null });
+
+    const home = fixture.teams.home;
+    const away = fixture.teams.away;
+    const opponent = home.id === apiId ? away : home;
+
+    // On renvoie l'identifiant utilisable par le sélecteur : le slug de la
+    // liste en direct si l'équipe y figure, sinon celui du référentiel.
+    const teams = await getLiveTeams();
+    const liveOpponent = teams.find((t) => t.apiId === opponent.id);
+    const legacyId = Object.keys(clubs).find((k) =>
+      String((clubs as any)[k].logo || '').includes(`/teams/${opponent.id}.png`)
+    );
+
+    return NextResponse.json({
+      nextTeamId: liveOpponent?.id || legacyId || slugify(opponent.name),
+      opponentName: opponent.name,
+      opponentApiId: opponent.id,
+      competition: fixture.league?.name || null,
+      date: fixture.fixture?.date || null,
+      venue: fixture.fixture?.venue?.name || null,
+      isHome: home.id === apiId,
     });
-
-    const result = await model.generateContent(`Quel est l'ID du prochain adversaire de : ${team.name} ?`);
-    const aiOpponentId = result.response.text().trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-    
-    console.log(`[NEXT_MATCH_AI] Gemini answered ID: ${aiOpponentId}`);
-
-    if (aiOpponentId !== 'null' && clubs[aiOpponentId]) {
-      console.log(`[NEXT_MATCH_AI] Valid opponent found: ${clubs[aiOpponentId].name}`);
-      return NextResponse.json({ nextTeamId: aiOpponentId });
-    } else {
-      console.warn(`[NEXT_MATCH_AI] AI returned null or invalid ID: ${aiOpponentId}`);
-      return NextResponse.json({ nextTeamId: null, aiRaw: aiOpponentId });
-    }
-
-  } catch (error: any) {
-    // Quota de recherche Google épuisé : la suggestion d'adversaire est un
-    // confort, pas un produit — on répond « aucun match » plutôt qu'une erreur.
-    const quotaExceeded =
-      error?.message?.includes('429') ||
-      error?.message?.includes('quota') ||
-      error?.message?.includes('RESOURCE_EXHAUSTED');
-    if (quotaExceeded) {
-      console.warn('[NEXT_MATCH_AI] Quota de recherche épuisé.');
-      return NextResponse.json({ nextTeamId: null });
-    }
-    console.error('[NEXT_MATCH_AI] Error fetching from Gemini:', error);
-    return NextResponse.json({ error: 'Failed to fetch next match via AI' }, { status: 500 });
+  } catch (error) {
+    console.error('[NEXT_MATCH] Erreur:', error);
+    return NextResponse.json({ nextTeamId: null });
   }
 }
