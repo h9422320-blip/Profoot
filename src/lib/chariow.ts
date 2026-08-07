@@ -9,9 +9,34 @@ import { PLANS, PlanKey, planFromAmount } from '@/lib/subscription';
 
 const CHARIOW_API_URL = 'https://api.chariow.com/v1';
 
-// Couple (pays, numéro) garanti valide au regard de la validation Chariow,
-// utilisé quand le compte ne contient aucun téléphone.
-const FALLBACK_PHONE = { number: '620000000', country_code: 'GN' };
+/**
+ * Chariow valide le numéro selon le plan de numérotation du pays. Quand le
+ * compte n'a pas de téléphone, on doit donc fournir un numéro cohérent avec le
+ * pays de l'acheteur — sinon la vente est refusée. Ces numéros de remplissage
+ * sont pré-validés pour chaque marché ; l'acheteur saisit le sien sur la page
+ * de paiement.
+ */
+const FALLBACK_NUMBERS: Record<string, string> = {
+  GN: '620000000',   // Guinée
+  CI: '0707070707',  // Côte d'Ivoire
+  SN: '771234567',   // Sénégal
+  ML: '70123456',    // Mali
+  BF: '70123456',    // Burkina Faso
+  TG: '90123456',    // Togo
+  BJ: '0197123456',  // Bénin
+  CM: '670000000',   // Cameroun
+  FR: '600000000',   // France
+  MA: '600000000',   // Maroc
+};
+const DEFAULT_COUNTRY = 'GN';
+
+function fallbackPhone(country?: string) {
+  const cc = (country || '').toUpperCase();
+  if (cc && FALLBACK_NUMBERS[cc]) {
+    return { number: FALLBACK_NUMBERS[cc], country_code: cc };
+  }
+  return { number: FALLBACK_NUMBERS[DEFAULT_COUNTRY], country_code: DEFAULT_COUNTRY };
+}
 
 function apiKey(): string {
   const key = process.env.CHARIOW_API_KEY;
@@ -107,10 +132,11 @@ export async function initCheckout(params: {
   // (pays, numéro) cohérent et non un pays deviné depuis l'adresse IP —
   // l'acheteur corrige de toute façon ses coordonnées sur la page de paiement.
   const phoneDigits = params.phoneNumber?.replace(/\D/g, '');
+  const neutralPhone = fallbackPhone(params.phoneCountryCode);
   body.phone =
     phoneDigits && phoneDigits.length >= 6
-      ? { number: phoneDigits, country_code: params.phoneCountryCode || FALLBACK_PHONE.country_code }
-      : { ...FALLBACK_PHONE };
+      ? { number: phoneDigits, country_code: neutralPhone.country_code }
+      : neutralPhone;
 
   const post = async (payload: Record<string, unknown>) => {
     const res = await fetch(`${CHARIOW_API_URL}/checkout`, {
@@ -131,7 +157,11 @@ export async function initCheckout(params: {
   // que de bloquer la vente, on refait la tentative avec le couple neutre.
   if (!res.ok && JSON.stringify(data?.errors ?? data?.message ?? '').toLowerCase().includes('phone')) {
     console.warn('Chariow a refusé le téléphone, nouvelle tentative avec le numéro de repli.');
-    ({ res, json: data } = await post({ ...body, phone: { ...FALLBACK_PHONE } }));
+    ({ res, json: data } = await post({ ...body, phone: neutralPhone }));
+    // Dernier recours : le pays lui-même n'est pas exploitable.
+    if (!res.ok) {
+      ({ res, json: data } = await post({ ...body, phone: fallbackPhone(DEFAULT_COUNTRY) }));
+    }
   }
 
   if (!res.ok) {
