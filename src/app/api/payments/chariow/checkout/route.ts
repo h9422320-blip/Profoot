@@ -53,8 +53,13 @@ export async function POST(req: Request) {
       amount: PLANS[plan].amountXof,
       currency: 'XOF',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erreur checkout Chariow:', error);
-    return NextResponse.json({ error: 'Impossible de démarrer le paiement.' }, { status: 500 });
+    // La cause exacte est renvoyée au client : un message générique rend le
+    // diagnostic impossible quand l'échec ne survient que sur certains comptes.
+    return NextResponse.json(
+      { error: `Paiement indisponible : ${error?.message || 'cause inconnue'}` },
+      { status: 500 }
+    );
   }
 }

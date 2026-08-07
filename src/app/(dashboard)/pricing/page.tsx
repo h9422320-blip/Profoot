@@ -27,6 +27,12 @@ export default function PricingPage() {
         body: JSON.stringify({ plan: selectedPlan })
       });
 
+      // Session expirée : reconnexion plutôt qu'un message d'erreur trompeur.
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+
       const data = await res.json();
 
       if (data.checkoutUrl) {
