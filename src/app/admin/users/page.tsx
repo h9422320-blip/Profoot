@@ -52,7 +52,7 @@ export default async function UsersPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user || user.email !== ADMIN_EMAIL) {
-    redirect("/dashboard");
+    redirect("/analyze");
   }
 
   const users = await getUsers();

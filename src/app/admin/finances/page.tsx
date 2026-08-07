@@ -37,7 +37,7 @@ export default async function FinancesPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user || user.email !== ADMIN_EMAIL) {
-    redirect("/dashboard");
+    redirect("/analyze");
   }
 
   const data = await getFinanceData();

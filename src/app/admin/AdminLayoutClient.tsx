@@ -106,7 +106,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
               <p className="text-sm font-medium text-white truncate">{user?.email}</p>
               <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Super Admin</p>
             </div>
-            <Link href="/dashboard" className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-md transition-colors">
+            <Link href="/analyze" className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-md transition-colors">
               <LogOut className="w-4 h-4" />
             </Link>
           </div>

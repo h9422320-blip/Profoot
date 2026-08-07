@@ -17,7 +17,7 @@ export default function ClubPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <h1 className="text-2xl font-bold">Club non trouvé</h1>
-        <Link href="/dashboard" className="text-primary hover:underline">Retour au dashboard</Link>
+        <Link href="/analyze" className="text-primary hover:underline">Retour à l'analyse</Link>
       </div>
     );
   }

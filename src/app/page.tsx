@@ -178,7 +178,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-3">
               {user ? (
-                <Link href="/dashboard" className="nav-login">
+                <Link href="/analyze" className="nav-login">
                   Mon compte
                 </Link>
               ) : (

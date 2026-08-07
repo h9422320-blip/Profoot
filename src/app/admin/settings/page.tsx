@@ -9,7 +9,7 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user || user.email !== ADMIN_EMAIL) {
-    redirect("/dashboard");
+    redirect("/analyze");
   }
 
   return <SettingsClient />;
