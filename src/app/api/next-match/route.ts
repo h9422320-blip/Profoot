@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { clubs } from '@/lib/data';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { requirePremium } from '@/lib/subscription';
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 export async function GET(request: Request) {
+  const guard = await requirePremium();
+  if (!guard.ok) return guard.response;
+
   const { searchParams } = new URL(request.url);
   const teamId = searchParams.get('teamId');
 
@@ -24,7 +28,7 @@ export async function GET(request: Request) {
 
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       systemInstruction: `Tu es un expert en football connecté au web via Google Search. Recherche le vrai prochain adversaire officiel de l'équipe demandée.
 Voici la liste exhaustive de toutes nos équipes (clubs, nations) :
 [ ${availableTeamsList} ]

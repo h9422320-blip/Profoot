@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { History, Brain, Clock, Trash2, ChevronLeft, Sparkles, Filter, Search, X, ChevronRight, RefreshCw, Lock, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { fetchProStatus } from "@/lib/proStatus";
 
 export default function MobileHistoryListPage() {
   const router = useRouter();
@@ -32,7 +31,8 @@ export default function MobileHistoryListPage() {
 
       // Check Pro Status
       try {
-        const data = await fetchProStatus();
+        const res = await fetch('/api/payments/status');
+        const data = await res.json();
         setIsPro(data.isPro);
       } catch { /* ignore */ }
     };

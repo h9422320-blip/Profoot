@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { requirePremium } from '@/lib/subscription';
 
-// GET — Récupérer l'historique de l'utilisateur connecté
+// GET — Récupérer l'historique de l'utilisateur connecté (fonctionnalité Premium)
 export async function GET(req: Request) {
   try {
+    const guard = await requirePremium();
+    if (!guard.ok) return guard.response;
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
+    const user = guard.user;
 
     const { searchParams } = new URL(req.url);
     const todayOnly = searchParams.get('today') === 'true';
@@ -38,14 +38,13 @@ export async function GET(req: Request) {
   }
 }
 
-// POST — Sauvegarder une nouvelle analyse
+// POST — Sauvegarder une nouvelle analyse (fonctionnalité Premium)
 export async function POST(req: Request) {
   try {
+    const guard = await requirePremium();
+    if (!guard.ok) return guard.response;
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
+    const user = guard.user;
 
     const body = await req.json();
     const {

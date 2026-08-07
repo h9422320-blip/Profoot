@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requirePremium } from "@/lib/subscription";
 
 const scoutCache = new Map<string, any>();
 
@@ -23,6 +24,9 @@ async function fetchApiFootball(endpoint: string) {
 }
 
 export async function POST(req: Request) {
+  const guard = await requirePremium();
+  if (!guard.ok) return guard.response;
+
   try {
     const { query } = await req.json();
     if (!query || typeof query !== "string") {

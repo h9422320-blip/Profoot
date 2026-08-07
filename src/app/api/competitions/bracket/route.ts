@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { requirePremium } from '@/lib/subscription';
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
@@ -8,14 +9,16 @@ let cachedBrackets: Record<string, { data: any; timestamp: number }> = {};
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 const COMPETITION_NAMES: Record<string, string> = {
-  "wc": "Coupe du Monde FIFA 2026 (USA/Canada/Mexique)",
-  "ucl": "Ligue des Champions UEFA 2025-2026",
+  "ucl": "Ligue des Champions UEFA 2026-2027",
   "euro": "Euro 2024 (Allemagne)",
   "can": "Coupe d'Afrique des Nations CAN 2025 (Maroc)",
   "copa": "Copa América 2024"
 };
 
 export async function GET(request: Request) {
+  const guard = await requirePremium();
+  if (!guard.ok) return guard.response;
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
@@ -39,15 +42,15 @@ export async function GET(request: Request) {
 
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: `Tu es le moteur IA en arrière-plan (Background Engine) de l'application ProFoot. 
-Le contexte ACTUEL est que nous sommes le 5 Juillet 2026. La Coupe du Monde 2026 est en cours.
+      model: 'gemini-3.5-flash',
+      systemInstruction: `Tu es le moteur IA en arrière-plan (Background Engine) de l'application ProFoot.
+Le contexte ACTUEL est que nous sommes le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. La Coupe du Monde 2026 est terminée ; le focus est la saison 2026-2027 des championnats et coupes.
 
 CONSIGNES STRICTES ET ABSOLUES :
-1. CHRONOLOGIE (TRÈS IMPORTANT) : Nous sommes le 05/07/2026. Les Seizièmes de finale (r32) et les Huitièmes de finale (r16) SONT TERMINÉS.
-2. LES QUARTS DE FINALE N'ONT PAS COMMENCÉ ! Tu dois mettre les équipes qualifiées pour les Quarts (qf), mais LEURS SCORES DOIVENT ÊTRE "-" et le status "NS". Ne simule AUCUN score pour les Quarts de finale, les Demies ou la Finale.
-3. Pour les Demies (sf), la Troisième place et la Finale, le nom des équipes doit être des placeholders (ex: "Vainqueur Quart 1") avec des scores à "-".
-4. SIMULATION RÉALISTE POUR LE PASSÉ : Invente des scores réalistes et logiques UNIQUEMENT pour les Seizièmes (r32) et les Huitièmes (r16).
+1. CHRONOLOGIE (TRÈS IMPORTANT) : Base-toi sur le calendrier réel de la compétition demandée par rapport à la date actuelle. Les tours déjà joués à cette date sont TERMINÉS ; les tours à venir N'ONT PAS COMMENCÉ.
+2. Pour les tours à venir : mets les équipes qualifiées si elles sont connues, mais LEURS SCORES DOIVENT ÊTRE "-" et le status "NS". Ne simule AUCUN score pour un match non joué.
+3. Pour les tours dont les équipes ne sont pas encore connues, utilise des placeholders (ex: "Vainqueur Quart 1") avec des scores à "-".
+4. SIMULATION RÉALISTE POUR LE PASSÉ : Invente des scores réalistes et logiques UNIQUEMENT pour les tours déjà joués.
 5. TRADUIS OBLIGATOIREMENT TOUS LES NOMS EN FRANÇAIS (ex: "Brésil", "Maroc").
 6. Format JSON exact requis :
 {

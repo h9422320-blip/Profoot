@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw, Lock } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
-import { fetchProStatus } from "@/lib/proStatus";
 import Link from "next/link";
 import { clubs, getClub, matches, competitions } from "@/lib/data";
 
@@ -11,7 +10,7 @@ import { clubs, getClub, matches, competitions } from "@/lib/data";
 const futureMatches = matches.filter(m => m.status === "upcoming");
 
 // Group clubs by league for the picker
-const leagueOrder = ["ucl", "epl", "laliga", "ligue1", "seriea", "bundesliga", "eredivisie", "ligaportugal", "proleague", "premiership", "superlig", "wc", "can", "caf"];
+const leagueOrder = ["ucl", "epl", "laliga", "ligue1", "seriea", "bundesliga", "eredivisie", "ligaportugal", "proleague", "premiership", "superlig", "can", "caf"];
 const leagueLabels: Record<string, string> = {
   epl: "Premier League",
   laliga: "La Liga",
@@ -24,7 +23,6 @@ const leagueLabels: Record<string, string> = {
   premiership: "Scottish Premiership",
   superlig: "Süper Lig",
   ucl: "Autres Europe",
-  wc: "Coupe du Monde 2026",
   can: "CAN",
   caf: "Clubs Africains",
 };
@@ -235,7 +233,7 @@ function calculateVND(form: ("W" | "D" | "L")[]) {
 
 function CompetitionCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const displayComps = competitions.filter(c => c.region === "europe" || c.id === "wc" || c.id === "can");
+  const displayComps = competitions.filter(c => c.region === "europe" || c.id === "can");
   
   useEffect(() => {
     const timer = setInterval(() => {
@@ -350,10 +348,8 @@ export default function AnalyzePage() {
   useEffect(() => {
     const checkPremium = async () => {
       const supabase = createClient();
-      // getSession lit la session locale (instantané, aucun appel réseau)
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-
+      const { data: { user } } = await supabase.auth.getUser();
+      
       if (!user) {
         setIsPremium(false);
         return;
@@ -365,7 +361,8 @@ export default function AnalyzePage() {
       }
       
       try {
-        const data = await fetchProStatus();
+        const res = await fetch('/api/payments/status');
+        const data = await res.json();
         setIsPremium(data.isPro);
       } catch {
         setIsPremium(false);

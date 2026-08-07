@@ -27,7 +27,6 @@ import {
   CreditCard
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
-import { fetchProStatus } from "@/lib/proStatus";
 import { logout } from "@/app/login/actions";
 
 interface HistoryItem {
@@ -70,7 +69,8 @@ export default function HistoryPage() {
 
       // 2. Check Pro Status
       try {
-        const data = await fetchProStatus();
+        const res = await fetch('/api/payments/status');
+        const data = await res.json();
         setIsPro(data.isPro);
       } catch { /* ignore */ }
 

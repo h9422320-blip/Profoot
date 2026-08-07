@@ -5,7 +5,6 @@ import { Shield, Send, Loader, Sparkles, Lock, ArrowRight, Zap, Loader2 } from "
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { fetchProStatus } from "@/lib/proStatus";
 
 interface Message {
   id: string;
@@ -79,14 +78,15 @@ export default function ExpertAgentPage() {
   useEffect(() => {
     import("@/utils/supabase/client").then(({ createClient }) => {
       const supabase = createClient();
-      // getSession lit la session locale (instantané, aucun appel réseau)
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user?.email) setUserEmail(session.user.email);
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user?.email) setUserEmail(user.email);
       });
     });
 
-    fetchProStatus()
-      .then(data => setIsPro(data.isPro))
+    // L'Agent IA VIP est réservé à l'abonnement Annuel (droit "vip").
+    fetch('/api/payments/status')
+      .then(res => res.json())
+      .then(data => setIsPro(!!data.vip))
       .catch(() => setIsPro(false));
   }, []);
 
@@ -171,10 +171,10 @@ export default function ExpertAgentPage() {
   const handleSubscribe = async () => {
     try {
       setLoadingCheckout(true);
-      const res = await fetch('/api/payments/moneroo/checkout', {
+      const res = await fetch('/api/payments/chariow/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: 'lifetime' })
+        body: JSON.stringify({ plan: 'yearly' })
       });
       
       const data = await res.json();

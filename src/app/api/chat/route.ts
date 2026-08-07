@@ -1,9 +1,14 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { isRateLimited } from "@/lib/rateLimit";
+import { requireVip } from "@/lib/subscription";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  // --- PERMISSIONS : l'Agent IA est réservé aux abonnés Annuels (VIP) ---
+  const guard = await requireVip();
+  if (!guard.ok) return guard.response;
+
   // --- BOUCLIER ANTI-SPAM (10 requêtes par minute pour l'agent IA) ---
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('remote-addr') || 'unknown-ip';
   if (isRateLimited(ip, 'agent', 10, 60 * 1000)) {
@@ -22,7 +27,7 @@ export async function POST(req: Request) {
     const currentDate = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const SYSTEM_PROMPT = `Tu es ProFoot Expert — l'intelligence artificielle football la plus pointue et la plus premium du marché. Tu es connecté en temps réel à internet via Google Search.
 
-DATE ACTUELLE : ${currentDate}. Nous sommes en 2026. La Coupe du Monde 2026 (USA/Canada/Mexique) est en cours. Ne dis JAMAIS qu'elle est dans le futur.
+DATE ACTUELLE : ${currentDate}. Nous sommes en 2026. La Coupe du Monde 2026 est terminée (finale jouée le 19 juillet 2026) — n'en parle que si on te pose la question. Le focus actuel : la préparation et le début de la saison 2026-2027 des grands championnats (Premier League, Liga, Serie A, Bundesliga, Ligue 1, coupes d'Europe).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 TON IDENTITÉ PREMIUM
@@ -51,14 +56,9 @@ Tu parles comme un directeur sportif de haut niveau croisé avec un grand journa
 
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       systemInstruction: SYSTEM_PROMPT,
-      tools: [{ googleSearch: {} } as any],
-      generationConfig: {
-        // Réponse immédiate sans phase de "réflexion longue" — la recherche
-        // Google reste active, mais l'agent répond beaucoup plus vite.
-        thinkingConfig: { thinkingBudget: 0 },
-      } as any,
+      tools: [{ googleSearch: {} } as any]
     });
 
     // Limit history length to prevent payload too large / token limit issues (keep last 40 messages max)

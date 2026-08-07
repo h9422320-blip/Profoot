@@ -34,21 +34,37 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Proteger toutes les routes qui commencent par /dashboard, /analyze, /match, /club, /competitions, /settings, /history, /standings, /pricing, /stats, /search, /ia-center
-  const protectedPaths = ['/dashboard', '/analyze', '/match', '/club', '/competitions', '/settings', '/history', '/standings', '/pricing', '/stats', '/search', '/ia-center', '/admin'];
-  
+  // --- SESSION LIMITÉE À 24H ---
+  // Au-delà de 24h après la dernière connexion, la session est invalidée :
+  // l'utilisateur doit se reconnecter (exigence produit ProFoot).
+  const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000;
+  let activeUser = user;
+  if (user) {
+    const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
+    if (!lastSignIn || Date.now() - lastSignIn > MAX_SESSION_AGE_MS) {
+      await supabase.auth.signOut();
+      activeUser = null;
+    }
+  }
+
+  // Protéger toutes les pages de l'application (tout sauf accueil, login, signup, pages légales et API publiques)
+  const protectedPaths = ['/dashboard', '/analyze', '/match', '/matches', '/club', '/competitions', '/settings', '/history', '/standings', '/pricing', '/stats', '/search', '/ia-center', '/expert', '/payment-success', '/payment-failed', '/admin'];
+
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path));
 
-  if (!user && isProtectedPath) {
-    // Si l'utilisateur n'est pas connecté et essaie d'accéder à une route protégée, redirection vers /login
+  if (!activeUser && isProtectedPath) {
+    // Non connecté (ou session expirée) sur une page protégée : redirection vers /login,
+    // en conservant les cookies (notamment l'effacement de session) posés par Supabase.
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach(cookie => redirectResponse.cookies.set(cookie))
+    return redirectResponse
   }
 
   // --- SECURITE ADMIN STRICTE ---
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!user || user.email !== 'h9422320@gmail.com') {
+    if (!activeUser || activeUser.email !== 'h9422320@gmail.com') {
       const url = request.nextUrl.clone()
       url.pathname = '/analyze' // Rediriger les curieux vers la page d'analyse
       return NextResponse.redirect(url)

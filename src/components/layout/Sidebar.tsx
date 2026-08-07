@@ -10,7 +10,6 @@ import {
 import { useState, useEffect } from "react";
 import { logout } from "@/app/login/actions";
 import { createClient } from "@/utils/supabase/client";
-import { fetchProStatus } from "@/lib/proStatus";
 import Image from "next/image";
 
 import { useLanguage } from "@/context/LanguageContext";
@@ -48,17 +47,16 @@ export function Sidebar() {
 
   useEffect(() => {
     const supabase = createClient();
-    // getSession lit la session locale (instantané, aucun appel réseau)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const user = session?.user;
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) {
         setUserEmail(user.email);
         setIsAdmin(user.email === 'h9422320@gmail.com');
       }
     });
 
-    // Check Pro Status (avec cache navigateur 5 min)
-    fetchProStatus()
+    // Check Pro Status
+    fetch('/api/payments/status')
+      .then(res => res.json())
       .then(data => {
         setIsPro(data.isPro);
       })

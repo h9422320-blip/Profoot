@@ -46,12 +46,9 @@ export const competitions:Competition[]=[
 {id:"superlig",name:"Süper Lig",shortName:"Süper Lig",country:"Turquie",logo:L(203),region:"europe",matchesPerSeason:380,iaAccuracy:72,iaTrend:"down",currentSeason:"2025-26",status:"Terminé — Galatasaray Champion"},
 
 // MONDE
-{id:"wc",name:"Coupe du Monde FIFA 2026",shortName:"WC",country:"Monde",logo:L(15),region:"international",matchesPerSeason:104,iaAccuracy:75,iaTrend:"stable",currentSeason:"2026",status:"Phase de Groupes — 11 juin"},
-{id:"wc_qual",name:"Éliminatoires CDM 2026",shortName:"Qual. WC",country:"Monde",logo:L(15),region:"international",matchesPerSeason:400,iaAccuracy:70,iaTrend:"stable",currentSeason:"2024-2026",status:"En cours"},
 {id:"nations_league",name:"UEFA Nations League",shortName:"UNL",country:"Europe",logo:L(5),region:"international",matchesPerSeason:162,iaAccuracy:76,iaTrend:"up",currentSeason:"2024-25",status:"Final 4 — Juin"},
 {id:"copa_america",name:"Copa America",shortName:"Copa",country:"Am. Sud",logo:L(9),region:"international",matchesPerSeason:32,iaAccuracy:74,iaTrend:"stable",currentSeason:"2024",status:"Terminé — Argentine Vainqueur"},
 {id:"euro",name:"UEFA Euro",shortName:"Euro",country:"Europe",logo:L(4),region:"international",matchesPerSeason:51,iaAccuracy:82,iaTrend:"stable",currentSeason:"2024",status:"Terminé — Espagne Vainqueur"},
-{id:"cwc",name:"Coupe du Monde des Clubs",shortName:"CWC",country:"Monde",logo:L(17),region:"international",matchesPerSeason:63,iaAccuracy:79,iaTrend:"up",currentSeason:"2025",status:"Phase de Groupes — Été 2025"},
 
 // AFRIQUE
 {id:"can",name:"Coupe d'Afrique des Nations",shortName:"CAN",country:"Afrique",logo:L(21),region:"africa",matchesPerSeason:52,iaAccuracy:72,iaTrend:"up",currentSeason:"2025",status:"Phase finale"},
@@ -69,8 +66,7 @@ export const cupParticipants: Record<string, string[]> = {
   can: ["algeria", "mali", "nigeria", "ghana", "cameroon", "ivory_coast_can", "egypt_can", "morocco_can", "senegal_can", "tunisia_can", "guinea", "dr_congo"],
   euro: ["france", "spain", "germany", "italy", "england", "portugal", "netherlands", "belgium", "croatia", "denmark", "serbia", "wales", "scotland"],
   copa_america: ["argentina", "brazil", "colombia", "uruguay", "chile", "ecuador", "usa", "mexico", "canada", "jamaica", "costa_rica", "panama", "paraguay"],
-  nations_league: ["france", "spain", "germany", "italy", "england", "portugal", "netherlands", "belgium", "croatia", "denmark", "serbia", "wales", "scotland"],
-  cwc: ["mancity", "chelsea", "realmadrid", "bayern", "psg", "inter", "juventus", "dortmund", "atletico", "porto", "benfica", "salzburg", "alahly", "wydad", "esperance", "sundowns"]
+  nations_league: ["france", "spain", "germany", "italy", "england", "portugal", "netherlands", "belgium", "croatia", "denmark", "serbia", "wales", "scotland"]
 };
 
 [

@@ -1,39 +1,36 @@
 "use client";
 
-import { Check, Zap, Brain, TrendingUp, Shield, Star, Loader2 } from "lucide-react";
+import { Check, Zap, Brain, TrendingUp, Shield, Star, Loader2, Crown } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { fetchProStatus } from "@/lib/proStatus";
 
 export default function PricingPage() {
-  const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [isPro, setIsPro] = useState(false);
+  const [plan, setPlan] = useState<'FREE' | 'MONTHLY' | 'YEARLY'>('FREE');
   const [checkingStatus, setCheckingStatus] = useState(true);
 
   useEffect(() => {
-    // Vérifier si l'utilisateur est déjà Pro
-    fetchProStatus()
+    fetch('/api/payments/status')
+      .then(res => res.json())
       .then(data => {
-        setIsPro(data.isPro);
+        if (data.plan === 'MONTHLY' || data.plan === 'YEARLY') setPlan(data.plan);
       })
       .catch(err => console.error(err))
       .finally(() => setCheckingStatus(false));
   }, []);
 
-  const handleSubscribe = async (plan: string) => {
+  const handleSubscribe = async (selectedPlan: 'monthly' | 'yearly') => {
     try {
-      setLoadingPlan(plan);
-      const res = await fetch('/api/payments/moneroo/checkout', {
+      setLoadingPlan(selectedPlan);
+      const res = await fetch('/api/payments/chariow/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan })
+        body: JSON.stringify({ plan: selectedPlan })
       });
-      
+
       const data = await res.json();
-      
+
       if (data.checkoutUrl) {
-        // Rediriger vers la page de paiement Moneroo
+        // Rediriger vers la page de paiement Chariow
         window.location.href = data.checkoutUrl;
       } else {
         alert(data.error || "Une erreur est survenue lors de l'initialisation du paiement.");
@@ -46,6 +43,9 @@ export default function PricingPage() {
     }
   };
 
+  const isMonthly = plan === 'MONTHLY';
+  const isYearly = plan === 'YEARLY';
+
   return (
     <div className="max-w-6xl mx-auto space-y-12 pb-20">
       <div className="text-center space-y-4">
@@ -53,7 +53,7 @@ export default function PricingPage() {
           <Star className="w-3 h-3 fill-warning" /> Expérience Elite
         </div>
         <h1 className="text-4xl md:text-6xl font-black text-foreground tracking-tighter">
-          Passez au <span className="text-primary italic">Plan Pro</span>
+          Passez au <span className="text-primary italic">Premium</span>
         </h1>
         <p className="text-foreground/50 text-lg max-w-2xl mx-auto">
           Débloquez la pleine puissance de l'IA ProFoot et accédez à des analyses de niveau professionnel. Payez facilement via Orange Money, MTN, Wave, etc.
@@ -67,7 +67,7 @@ export default function PricingPage() {
             <h3 className="text-xl font-bold">Standard</h3>
             <div className="flex items-baseline gap-1">
               <span className="text-4xl font-black">0</span>
-              <span className="text-foreground/40 text-sm">FCFA / mois</span>
+              <span className="text-foreground/40 text-sm">FCFA</span>
             </div>
           </div>
           <p className="text-sm text-foreground/50">Pour les passionnés qui souhaitent un aperçu des prédictions IA.</p>
@@ -78,47 +78,47 @@ export default function PricingPage() {
             <FeatureItem label="Publicité discrète" />
           </ul>
           <button className="w-full py-4 rounded-2xl bg-sidebar border border-border-card text-foreground/40 font-bold cursor-not-allowed">
-            Plan Actuel
+            {plan === 'FREE' ? 'Plan Actuel' : 'Plan de base'}
           </button>
         </div>
 
-        {/* Pro Monthly Plan */}
+        {/* Premium Mensuel */}
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-primary to-info rounded-[2rem] blur opacity-25 group-hover:opacity-50 transition duration-1000" />
           <div className="relative bg-card border-2 border-primary rounded-3xl p-8 space-y-8 flex flex-col h-full shadow-2xl shadow-primary/20">
             <div className="absolute top-4 right-4 px-3 py-1 bg-primary text-white text-[10px] font-black rounded-full uppercase tracking-widest">
-              Recommandé
+              Populaire
             </div>
             <div className="space-y-2">
               <h3 className="text-xl font-bold flex items-center gap-2">
-                Pro <span className="bg-warning text-black text-[10px] px-2 py-0.5 rounded italic">MENSUEL</span>
+                Premium <span className="bg-warning text-black text-[10px] px-2 py-0.5 rounded italic">MENSUEL</span>
               </h3>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black">2.000</span>
+                <span className="text-4xl font-black">15.000</span>
                 <span className="text-foreground/40 text-sm">FCFA / mois</span>
               </div>
             </div>
-            <p className="text-sm text-foreground/50">L'outil ultime pour les experts et analystes de données football.</p>
+            <p className="text-sm text-foreground/50">L'accès complet à l'analyseur IA et aux statistiques professionnelles.</p>
             <ul className="space-y-4 flex-1">
-              <FeatureItem label="Analyses IA Illimitées" pro />
-              <FeatureItem label="Détails tactiques profonds (xG, xA)" pro />
-              <FeatureItem label="États physiques & Blessures réels" pro />
-              <FeatureItem label="Historique Head-to-Head illimité" pro />
-              <FeatureItem label="Accès Coupe du Monde 2026" pro />
-              <FeatureItem label="Zéro Publicité" pro />
+              <FeatureItem label="Accès complet à l'analyseur IA" pro />
+              <FeatureItem label="Analyses Premium illimitées" pro />
+              <FeatureItem label="Statistiques avancées (xG, xA)" pro />
+              <FeatureItem label="Analyse des compétitions" pro />
+              <FeatureItem label="Analyse des grands championnats" pro />
+              <FeatureItem label="Historique complet des analyses" pro />
             </ul>
-            <button 
+            <button
               onClick={() => handleSubscribe('monthly')}
-              disabled={loadingPlan !== null || checkingStatus || isPro}
+              disabled={loadingPlan !== null || checkingStatus || isMonthly || isYearly}
               className={`w-full py-4 rounded-2xl font-black shadow-lg transition-all flex items-center justify-center gap-2 ${
-                isPro 
+                isMonthly || isYearly
                   ? 'bg-success/20 text-success cursor-not-allowed'
                   : 'bg-primary hover:bg-primary-hover text-white shadow-primary/30'
               }`}
             >
               {checkingStatus ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
-              ) : isPro ? (
+              ) : isMonthly || isYearly ? (
                 <>Abonnement Actif <Check className="w-4 h-4" /></>
               ) : loadingPlan === 'monthly' ? (
                 <Loader2 className="w-5 h-5 animate-spin text-white" />
@@ -129,39 +129,44 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Pro Lifetime Plan */}
-        <div className="bg-card border border-border-card rounded-3xl p-8 space-y-8 flex flex-col">
+        {/* Premium Annuel (VIP) */}
+        <div className="bg-card border border-warning/40 rounded-3xl p-8 space-y-8 flex flex-col">
           <div className="space-y-2">
             <h3 className="text-xl font-bold flex items-center gap-2">
-              Pro <span className="bg-success text-white text-[10px] px-2 py-0.5 rounded italic">À VIE</span>
+              Premium <span className="bg-success text-white text-[10px] px-2 py-0.5 rounded italic">ANNUEL</span>
+              <Crown className="w-4 h-4 text-warning" />
             </h3>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-black">2.000</span>
-              <span className="text-foreground/40 text-sm">FCFA</span>
+              <span className="text-4xl font-black">60.000</span>
+              <span className="text-foreground/40 text-sm">FCFA / an</span>
             </div>
+            <p className="text-xs text-success font-bold">Économisez 120 000 FCFA par rapport au mensuel</p>
           </div>
-          <p className="text-sm text-foreground/50">Payez une seule fois, profitez de ProFoot AI pour toujours.</p>
+          <p className="text-sm text-foreground/50">Tout le Mensuel, plus l'Agent IA VIP et les exclusivités.</p>
           <ul className="space-y-4 flex-1">
-            <FeatureItem label="Toutes les fonctionnalités Pro" pro />
-            <FeatureItem label="Paiement unique (pas d'abonnement)" pro />
-            <FeatureItem label="Mises à jour futures incluses" pro />
-            <FeatureItem label="Support prioritaire" pro />
+            <FeatureItem label="Toutes les fonctionnalités du Mensuel" pro />
+            <FeatureItem label="Accès complet à l'Agent IA VIP" pro />
+            <FeatureItem label="Priorité sur les nouvelles fonctionnalités" pro />
+            <FeatureItem label="Fonctionnalités Premium exclusives" pro />
+            <FeatureItem label="Toutes les futures améliorations" pro />
           </ul>
-          <button 
-            onClick={() => handleSubscribe('lifetime')}
-            disabled={loadingPlan !== null || checkingStatus || isPro}
+          <button
+            onClick={() => handleSubscribe('yearly')}
+            disabled={loadingPlan !== null || checkingStatus || isYearly}
             className={`w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 ${
-              isPro 
-                ? 'bg-sidebar border border-border-card text-foreground/40 cursor-not-allowed'
-                : 'bg-sidebar border border-border-card text-white hover:bg-sidebar-hover'
+              isYearly
+                ? 'bg-success/20 text-success cursor-not-allowed'
+                : 'bg-warning hover:bg-warning/90 text-black shadow-lg shadow-warning/20'
             }`}
           >
-            {loadingPlan === 'lifetime' ? (
+            {loadingPlan === 'yearly' ? (
               <Loader2 className="w-5 h-5 animate-spin" />
-            ) : isPro ? (
-              'Déjà Pro'
+            ) : isYearly ? (
+              <>Abonnement Actif <Check className="w-4 h-4" /></>
+            ) : isMonthly ? (
+              <>Passer au VIP <Crown className="w-4 h-4" /></>
             ) : (
-              'Acheter l\'accès à vie'
+              <>Devenir VIP <Crown className="w-4 h-4" /></>
             )}
           </button>
         </div>
