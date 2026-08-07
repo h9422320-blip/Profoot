@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw, Lock } from "lucide-react";
+import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw, Lock, ArrowRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { clubs, getClub, matches, competitions } from "@/lib/data";
@@ -455,6 +455,19 @@ export default function AnalyzePage() {
       });
 
       if (!res.ok) {
+        // Distinguer « il faut s'abonner » d'une vraie panne : afficher une
+        // erreur technique à un visiteur non abonné le laisse croire que le
+        // service est cassé alors qu'il doit simplement souscrire.
+        if (res.status === 403) {
+          clearInterval(interval);
+          setAnalyzing(false);
+          setAnalyzeError("PREMIUM_REQUIRED");
+          return;
+        }
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
         throw new Error("Erreur serveur API");
       }
 
@@ -632,19 +645,44 @@ export default function AnalyzePage() {
           </span>
           {/* Premium Inline Error Card */}
           {analyzeError && !analyzing && (
+            analyzeError === "PREMIUM_REQUIRED" ? (
+            <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#0B1A14] to-[#0A1118] border border-primary/25 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(16,185,129,0.10)] relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-1">
+                <Lock className="w-6 h-6 text-primary drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[13px] font-black text-white tracking-[0.1em] uppercase">
+                  Analyse réservée aux abonnés
+                </h4>
+                <p className="text-xs text-white/50 font-medium leading-relaxed max-w-[280px] mx-auto">
+                  L'analyseur IA fait partie de l'offre Premium. Abonnez-vous pour lancer des analyses illimitées sur tous les grands championnats.
+                </p>
+              </div>
+
+              <Link
+                href="/pricing"
+                className="mt-3 bg-primary hover:bg-primary-hover active:scale-95 text-white font-bold py-2.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest"
+              >
+                Voir les offres <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+            ) : (
             <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#1A0B10] to-[#0A1118] border border-red-500/20 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(239,68,68,0.08)] relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500/50 to-transparent"></div>
-              
+
               <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-1">
                 <AlertTriangle className="w-6 h-6 text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
               </div>
-              
+
               <div className="space-y-2">
                 <h4 className="text-[13px] font-black text-white tracking-[0.1em] uppercase">
                   Analyse Interrompue
                 </h4>
                 <p className="text-xs text-white/50 font-medium leading-relaxed max-w-[280px] mx-auto">
-                  {analyzeError.includes("introuvables") 
+                  {analyzeError.includes("introuvables")
                     ? "Les équipes sélectionnées ne sont pas reconnues dans notre base de données. Veuillez choisir une équipe valide."
                     : analyzeError.includes("statistiques")
                     ? "Le serveur de statistiques est temporairement surchargé. Réessayez dans un instant."
@@ -659,6 +697,7 @@ export default function AnalyzePage() {
                 <RefreshCcw className="w-4 h-4" /> Réessayer
               </button>
             </div>
+            )
           )}
         </div>
       </div>

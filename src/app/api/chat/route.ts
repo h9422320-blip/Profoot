@@ -56,11 +56,18 @@ Tu parles comme un directeur sportif de haut niveau croisé avec un grand journa
 
 
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      systemInstruction: SYSTEM_PROMPT,
-      tools: [{ googleSearch: {} } as any]
-    });
+
+    // La recherche Google en temps réel dispose d'un quota distinct, bien plus
+    // restreint, du modèle lui-même. Quand il est épuisé, on répond quand même
+    // — sans temps réel plutôt que pas du tout : l'Agent VIP est un produit
+    // payant, il ne doit jamais rester muet.
+    const buildModel = (withSearch: boolean) =>
+      genAI.getGenerativeModel({
+        model: 'gemini-3.5-flash',
+        systemInstruction: SYSTEM_PROMPT,
+        ...(withSearch ? { tools: [{ googleSearch: {} } as any] } : {}),
+      });
+    let model = buildModel(true);
 
     // Limit history length to prevent payload too large / token limit issues (keep last 40 messages max)
     const recentMessages = messages.slice(-40, -1);
@@ -88,13 +95,32 @@ Tu parles comme un directeur sportif de haut niveau croisé avec un grand journa
     }
 
     const lastMessage = messages[messages.length - 1];
-    const chat = model.startChat({ history });
-    const result = await chat.sendMessage(lastMessage.content);
-    const text = result.response.text();
+    let text: string;
+    try {
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(lastMessage.content);
+      text = result.response.text();
+    } catch (searchError: any) {
+      const quotaExceeded =
+        searchError?.message?.includes('429') ||
+        searchError?.message?.includes('quota') ||
+        searchError?.message?.includes('RESOURCE_EXHAUSTED');
+      if (!quotaExceeded) throw searchError;
+
+      console.warn('[AGENT VIP] Quota de recherche Google épuisé — réponse sans temps réel.');
+      model = buildModel(false);
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(lastMessage.content);
+      text = result.response.text();
+    }
 
     return Response.json({ text });
   } catch (error: any) {
     console.error('Erreur Chatbot API:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    // Message lisible pour l'utilisateur, détails techniques dans les logs.
+    return Response.json(
+      { error: "L'Agent IA est momentanément indisponible. Réessayez dans quelques instants." },
+      { status: 503 }
+    );
   }
 }

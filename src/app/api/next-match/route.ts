@@ -58,7 +58,17 @@ Consignes STRICTES :
       return NextResponse.json({ nextTeamId: null, aiRaw: aiOpponentId });
     }
 
-  } catch (error) {
+  } catch (error: any) {
+    // Quota de recherche Google épuisé : la suggestion d'adversaire est un
+    // confort, pas un produit — on répond « aucun match » plutôt qu'une erreur.
+    const quotaExceeded =
+      error?.message?.includes('429') ||
+      error?.message?.includes('quota') ||
+      error?.message?.includes('RESOURCE_EXHAUSTED');
+    if (quotaExceeded) {
+      console.warn('[NEXT_MATCH_AI] Quota de recherche épuisé.');
+      return NextResponse.json({ nextTeamId: null });
+    }
     console.error('[NEXT_MATCH_AI] Error fetching from Gemini:', error);
     return NextResponse.json({ error: 'Failed to fetch next match via AI' }, { status: 500 });
   }
