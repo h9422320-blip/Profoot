@@ -9,6 +9,10 @@ import { PLANS, PlanKey, planFromAmount } from '@/lib/subscription';
 
 const CHARIOW_API_URL = 'https://api.chariow.com/v1';
 
+// Couple (pays, numéro) garanti valide au regard de la validation Chariow,
+// utilisé quand le compte ne contient aucun téléphone.
+const FALLBACK_PHONE = { number: '620000000', country_code: 'GN' };
+
 function apiKey(): string {
   const key = process.env.CHARIOW_API_KEY;
   if (!key) throw new Error('CHARIOW_API_KEY manquante.');
@@ -97,25 +101,39 @@ export async function initCheckout(params: {
       app: 'profoot',
     },
   };
-  // Le téléphone est obligatoire côté Chariow ; repli neutre si l'utilisateur
-  // n'en a pas renseigné (il pourra le corriger sur la page de paiement).
+  // Chariow exige un téléphone ET valide le numéro selon le code pays : un
+  // numéro de remplissage n'est accepté que s'il correspond au plan de
+  // numérotation du pays envoyé. Sans numéro connu, on utilise donc un couple
+  // (pays, numéro) cohérent et non un pays deviné depuis l'adresse IP —
+  // l'acheteur corrige de toute façon ses coordonnées sur la page de paiement.
   const phoneDigits = params.phoneNumber?.replace(/\D/g, '');
-  body.phone = {
-    number: phoneDigits && phoneDigits.length >= 5 ? phoneDigits : '600000000',
-    country_code: params.phoneCountryCode || 'GN',
+  body.phone =
+    phoneDigits && phoneDigits.length >= 6
+      ? { number: phoneDigits, country_code: params.phoneCountryCode || FALLBACK_PHONE.country_code }
+      : { ...FALLBACK_PHONE };
+
+  const post = async (payload: Record<string, unknown>) => {
+    const res = await fetch(`${CHARIOW_API_URL}/checkout`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey()}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    return { res, json: await res.json().catch(() => ({})) };
   };
 
-  const res = await fetch(`${CHARIOW_API_URL}/checkout`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey()}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let { res, json: data } = await post(body);
 
-  const data = await res.json().catch(() => ({}));
+  // Le téléphone enregistré peut être invalide pour le pays détecté : plutôt
+  // que de bloquer la vente, on refait la tentative avec le couple neutre.
+  if (!res.ok && JSON.stringify(data?.errors ?? data?.message ?? '').toLowerCase().includes('phone')) {
+    console.warn('Chariow a refusé le téléphone, nouvelle tentative avec le numéro de repli.');
+    ({ res, json: data } = await post({ ...body, phone: { ...FALLBACK_PHONE } }));
+  }
+
   if (!res.ok) {
     console.error('Erreur checkout Chariow:', res.status, data);
     throw new Error(data?.message || `Chariow a refusé la création du paiement (${res.status}).`);
