@@ -122,9 +122,21 @@ export async function initCheckout(params: {
   }
 
   const payload = data?.data ?? data;
+  // L'URL de paiement se trouve dans `payment.checkout_url` ; les autres
+  // emplacements sont des replis au cas où Chariow ferait évoluer sa réponse.
+  const checkoutUrl =
+    payload?.payment?.checkout_url ??
+    payload?.checkout_url ??
+    payload?.purchase?.checkout_url ??
+    payload?.purchase?.payment?.checkout_url;
+
+  if (!checkoutUrl && payload?.step === 'payment') {
+    console.error('Chariow: aucune URL de paiement dans la réponse:', JSON.stringify(payload).slice(0, 500));
+  }
+
   return {
     step: payload?.step ?? 'payment',
-    checkoutUrl: payload?.checkout_url,
+    checkoutUrl,
   };
 }
 
