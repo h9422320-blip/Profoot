@@ -19,11 +19,9 @@ export interface Entitlements {
 
 // Configuration des offres — montants en FCFA (XOF), source de vérité pour le
 // checkout ET la validation des webhooks. Ne jamais dupliquer ces montants ailleurs.
-// ⚠️ TARIFS DE TEST TEMPORAIRES (5 000 / 6 000 FCFA) — à remettre à
-// 15 000 / 60 000 FCFA après les achats de validation, ici ET dans Chariow.
 export const PLANS = {
-  monthly: { amountXof: 5000, durationDays: 30, tier: 'MONTHLY' as PlanTier, vip: false, label: 'Mensuel' },
-  yearly: { amountXof: 6000, durationDays: 365, tier: 'YEARLY' as PlanTier, vip: true, label: 'Annuel' },
+  monthly: { amountXof: 15000, durationDays: 30, tier: 'MONTHLY' as PlanTier, vip: false, label: 'Mensuel' },
+  yearly: { amountXof: 60000, durationDays: 365, tier: 'YEARLY' as PlanTier, vip: true, label: 'Annuel' },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;

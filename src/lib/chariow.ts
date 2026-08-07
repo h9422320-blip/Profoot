@@ -17,16 +17,45 @@ const CHARIOW_API_URL = 'https://api.chariow.com/v1';
  * de paiement.
  */
 const FALLBACK_NUMBERS: Record<string, string> = {
-  GN: '620000000',   // Guinée
-  CI: '0707070707',  // Côte d'Ivoire
-  SN: '771234567',   // Sénégal
-  ML: '70123456',    // Mali
-  BF: '70123456',    // Burkina Faso
-  TG: '90123456',    // Togo
-  BJ: '0197123456',  // Bénin
-  CM: '670000000',   // Cameroun
-  FR: '600000000',   // France
-  MA: '600000000',   // Maroc
+  // Afrique de l'Ouest
+  GN: '620000000',    // Guinée
+  CI: '0707070707',   // Côte d'Ivoire
+  SN: '771234567',    // Sénégal
+  ML: '70123456',     // Mali
+  BF: '70123456',     // Burkina Faso
+  NE: '90123456',     // Niger
+  TG: '90123456',     // Togo
+  BJ: '0197123456',   // Bénin
+  MR: '22123456',     // Mauritanie
+  NG: '8031234567',   // Nigeria
+  GH: '241234567',    // Ghana
+  SL: '76123456',     // Sierra Leone
+  LR: '770123456',    // Liberia
+  GM: '3012345',      // Gambie
+  // Afrique centrale
+  CM: '670000000',    // Cameroun
+  CD: '810123456',    // RD Congo
+  CG: '060123456',    // Congo-Brazzaville
+  GA: '060123456',    // Gabon
+  TD: '60123456',     // Tchad
+  CF: '70123456',     // Centrafrique
+  BI: '79123456',     // Burundi
+  RW: '781234567',    // Rwanda
+  // Maghreb, océan Indien, Corne
+  MA: '600000000',    // Maroc
+  DZ: '551234567',    // Algérie
+  TN: '20123456',     // Tunisie
+  DJ: '77123456',     // Djibouti
+  MG: '341234567',    // Madagascar
+  MU: '57123456',     // Maurice
+  KM: '3212345',      // Comores
+  SC: '2512345',      // Seychelles
+  // Europe et Amériques francophones
+  FR: '600000000',    // France
+  BE: '470123456',    // Belgique
+  CH: '761234567',    // Suisse
+  CA: '4389995555',   // Canada
+  HT: '34123456',     // Haïti
 };
 const DEFAULT_COUNTRY = 'GN';
 

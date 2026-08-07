@@ -100,7 +100,7 @@ export default function PricingPage() {
                 Premium <span className="bg-warning text-black text-[10px] px-2 py-0.5 rounded italic">MENSUEL</span>
               </h3>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black">5.000</span>
+                <span className="text-4xl font-black">15.000</span>
                 <span className="text-foreground/40 text-sm">FCFA / mois</span>
               </div>
             </div>
@@ -149,10 +149,10 @@ export default function PricingPage() {
               <Crown className="w-4 h-4 text-warning" />
             </h3>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-black">6.000</span>
+              <span className="text-4xl font-black">60.000</span>
               <span className="text-foreground/40 text-sm">FCFA / an</span>
             </div>
-            <p className="text-xs text-success font-bold">Économisez 54 000 FCFA par rapport au mensuel</p>
+            <p className="text-xs text-success font-bold">Économisez 120 000 FCFA par rapport au mensuel</p>
           </div>
           <p className="text-sm text-foreground/50">Le niveau ultime : tout le Mensuel, plus votre analyste IA personnel disponible 24h/24.</p>
           <ul className="space-y-4 flex-1">
