@@ -355,6 +355,16 @@ export default function AnalyzePage() {
       .then(r => (r.ok ? r.json() : { teams: [] }))
       .then(({ teams }) => {
         if (annule || !teams?.length) return;
+
+        // La liste officielle REMPLACE celle du championnat, elle ne s'y ajoute
+        // pas : sinon les équipes reléguées la saison passée resteraient
+        // sélectionnables à côté des promues (La Liga affichait 29 équipes).
+        const liguesAJour = new Set<string>(teams.map((t: any) => t.league));
+        Object.keys(clubs).forEach(id => {
+          const c = (clubs as any)[id];
+          if (c && liguesAJour.has(c.league)) delete (clubs as any)[id];
+        });
+
         teams.forEach((t: any) => {
           const existant = (clubs as any)[t.id];
           const base = {
