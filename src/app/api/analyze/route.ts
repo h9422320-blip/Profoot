@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { requirePremium } from "@/lib/subscription";
+import { clubs } from "@/lib/data";
 
 // ============================================================================
 // ProFoot ANALYSE ENGINE v6.0 — FULL AI DELEGATION
@@ -115,7 +116,7 @@ function getCurrentSeason(): number {
   return month >= 8 ? now.getFullYear() : now.getFullYear() - 1;
 }
 
-import { isRateLimited, clientIp } from "@/lib/rateLimit";
+import { isRateLimited, clientIp, setBounded } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   // --- PERMISSIONS : l'analyseur IA est réservé aux abonnés Premium ---
@@ -137,11 +138,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { team1, team2 } = reqPayload;
-  if (!team1 || !team2) return NextResponse.json({ error: "Équipes manquantes" }, { status: 400 });
+  // SÉCURITÉ : les équipes sont résolues depuis le référentiel serveur à partir
+  // de leur seul identifiant. Faire confiance aux noms envoyés par le client
+  // permettrait d'injecter des instructions dans le prompt de l'IA, et de
+  // stocker la réponse détournée dans le cache partagé par tous les abonnés.
+  const rawTeam1 = reqPayload.team1;
+  const rawTeam2 = reqPayload.team2;
+  if (!rawTeam1?.id || !rawTeam2?.id) {
+    return NextResponse.json({ error: "Équipes manquantes" }, { status: 400 });
+  }
+  const team1 = clubs[String(rawTeam1.id)];
+  const team2 = clubs[String(rawTeam2.id)];
+  if (!team1 || !team2) {
+    return NextResponse.json({ error: "Équipe inconnue" }, { status: 404 });
+  }
 
   const today = new Date().toISOString().split('T')[0];
-  const cacheKey = `${team1.id || team1.name}-${team2.id || team2.name}-${today}`;
+  const cacheKey = `${team1.id}-${team2.id}-${today}`;
   const cachedAnalysis = analysisCache.get(cacheKey);
   if (cachedAnalysis && Date.now() - cachedAnalysis.timestamp < CACHE_TTL.ANALYSIS) {
     console.log(`[BACKEND_ANALYZE] Returning CACHED analysis for ${team1.name} vs ${team2.name}`);
@@ -248,7 +261,7 @@ export async function POST(req: Request) {
       },
       summary: `Score final certifié via API-Football. ${targetPastMatch.teams.home.name} ${hScore} - ${aScore} ${targetPastMatch.teams.away.name}.`
     };
-    analysisCache.set(cacheKey, { data: realMatchResult, timestamp: Date.now() });
+    setBounded(analysisCache, cacheKey, { data: realMatchResult, timestamp: Date.now() });
     return NextResponse.json(realMatchResult);
   }
 
@@ -458,7 +471,7 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     };
 
     console.log(`[BACKEND_ANALYZE] Gemini analysis & prediction completed successfully.`);
-    analysisCache.set(cacheKey, { data: parsedData, timestamp: Date.now() });
+    setBounded(analysisCache, cacheKey, { data: parsedData, timestamp: Date.now() });
     
     return NextResponse.json(parsedData);
 
@@ -508,7 +521,7 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
       }
     };
     
-    analysisCache.set(cacheKey, { data: fallbackData, timestamp: Date.now() });
+    setBounded(analysisCache, cacheKey, { data: fallbackData, timestamp: Date.now() });
     return NextResponse.json(fallbackData);
   }
 }

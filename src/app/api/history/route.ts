@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     const { data, error } = await query;
     if (error) {
       console.error('[HISTORY] Error fetching:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
     }
 
     return NextResponse.json({ history: data || [] });
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error('[HISTORY] Error inserting:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, item: data });
@@ -104,7 +104,7 @@ export async function DELETE(req: Request) {
 
     const { error } = await query;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requirePremium } from "@/lib/subscription";
+import { setBounded } from "@/lib/rateLimit";
 
 const scoutCache = new Map<string, any>();
 
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
       sources: ["API-Football (Données Certifiées)"]
     };
 
-    scoutCache.set(cacheKey, result);
+    setBounded(scoutCache, cacheKey, result);
     return NextResponse.json(result);
 
   } catch (error) {

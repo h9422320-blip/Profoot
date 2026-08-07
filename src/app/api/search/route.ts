@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isRateLimited, clientIp } from "@/lib/rateLimit";
+import { isRateLimited, clientIp, setBounded } from "@/lib/rateLimit";
 
 const searchCache = new Map<string, any>();
 
@@ -113,6 +113,6 @@ export async function POST(req: Request) {
     timestamp: new Date().toISOString()
   };
 
-  searchCache.set(cacheKey, resultJson);
+  setBounded(searchCache, cacheKey, resultJson);
   return NextResponse.json(resultJson);
 }

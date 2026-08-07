@@ -27,6 +27,19 @@ if (typeof setInterval !== 'undefined') {
 }
 
 /**
+ * Cache borné : au-delà de `maxSize` entrées, les plus anciennes sont évincées.
+ * Les clés étant dérivées d'entrées utilisateur, un cache sans plafond peut
+ * être gonflé jusqu'à saturer la mémoire du serveur.
+ */
+export function setBounded(cache: Map<string, any>, key: string, value: any, maxSize = 500) {
+  if (cache.size >= maxSize) {
+    const oldest = cache.keys().next();
+    if (!oldest.done) cache.delete(oldest.value);
+  }
+  cache.set(key, value);
+}
+
+/**
  * Identifie l'appelant de façon non falsifiable.
  *
  * `x-forwarded-for` est une liste "client, proxy1, proxy2…" à laquelle un
