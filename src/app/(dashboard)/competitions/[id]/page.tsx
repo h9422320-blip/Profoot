@@ -107,7 +107,7 @@ export default function CompetitionPage() {
   const locationStr = id === "wc" ? "USA • Canada • Mexique" : competition.country;
 
   return (
-    <div className="w-full max-w-4xl mx-auto pb-20 pt-6 px-4 font-sans text-white bg-[#0B121C] min-h-screen">
+    <div className="w-full max-w-4xl mx-auto pb-20 pt-6 px-4 font-sans text-white bg-[#16242e] min-h-screen">
       {/* Back Button */}
       <button onClick={() => router.back()} className="flex items-center gap-2 text-white/70 hover:text-white mb-6 transition-colors">
         <ArrowLeft className="w-5 h-5" />
@@ -115,7 +115,7 @@ export default function CompetitionPage() {
       </button>
 
       {/* Hero Card */}
-      <div className="bg-gradient-to-br from-[#1E2532] to-[#0F141C] border border-white/5 rounded-[24px] p-6 md:p-8 mb-6 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#1E2532] to-[#1d2f3a] border border-white/5 rounded-[24px] p-6 md:p-8 mb-6 relative overflow-hidden">
         <div className="flex items-start justify-between mb-4">
           <div className="w-[60px] h-[60px] md:w-[80px] md:h-[80px] bg-white/5 rounded-[16px] flex items-center justify-center border border-white/10 shadow-inner p-1">
             {competition.logo.startsWith('http') || competition.logo.startsWith('data:') ? (
@@ -159,7 +159,7 @@ export default function CompetitionPage() {
 
       {/* Tabs (Only if Cup) */}
       {isCup && (
-        <div className="flex items-center gap-1 mb-6 bg-[#1B2333] p-1.5 rounded-[16px] w-max border border-white/5 overflow-x-auto max-w-full">
+        <div className="flex items-center gap-1 mb-6 bg-[#243542] p-1.5 rounded-[16px] w-max border border-white/5 overflow-x-auto max-w-full">
           <button onClick={() => setWcView("groups")} className={`px-5 py-2.5 rounded-[12px] text-[14px] font-medium transition-colors whitespace-nowrap ${wcView === 'groups' ? 'bg-[#064E3B]/80 text-[#10B981]' : 'text-white/40 hover:text-white/80'}`}>
             {id === 'ucl' ? 'Phase de Ligue' : 'Groupes'}
           </button>
@@ -174,7 +174,7 @@ export default function CompetitionPage() {
            {isCup && activeClubs.some((c: any) => c.group) ? (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {Array.from(new Set(activeClubs.filter((c: any) => c.group).map((c: any) => c.group))).sort().map(groupName => (
-                  <div key={groupName as string} className="bg-[#1B2333] border border-white/5 rounded-[20px] overflow-hidden">
+                  <div key={groupName as string} className="bg-[#243542] border border-white/5 rounded-[20px] overflow-hidden">
                     <div className="px-4 py-3 bg-[#1A222D] border-b border-white/5"><h3 className="font-bold text-[14px]">{groupName as string}</h3></div>
                     <table className="w-full text-left text-[13px]">
                       <tbody className="divide-y divide-white/5">
@@ -194,7 +194,7 @@ export default function CompetitionPage() {
                ))}
              </div>
            ) : (
-             <div className="bg-[#1B2333] border border-white/5 rounded-[24px] overflow-hidden shadow-xl">
+             <div className="bg-[#243542] border border-white/5 rounded-[24px] overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-[14px]">
                     <thead className="bg-[#1A222D] border-b border-white/5">
@@ -339,7 +339,7 @@ export default function CompetitionPage() {
         );
 
         return (
-          <div className="bg-[#0D151C] rounded-[16px] p-6 overflow-x-auto min-h-[800px]">
+          <div className="bg-[#18272f] rounded-[16px] p-6 overflow-x-auto min-h-[800px]">
             <h2 className="text-white text-[15px] font-bold mb-8">Tableau à élimination directe</h2>
             <div className="min-w-[1100px] flex gap-[48px] relative pl-2">
               
@@ -350,9 +350,9 @@ export default function CompetitionPage() {
                   {bracket.r32.map((match: any, i: number) => (
                     <div key={`r32-${i}`} className="relative">
                       <BracketCard match={match} />
-                      <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                      <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#2e4757]"></div>
                       {i % 2 === 0 ? (
-                        <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+0.75rem)] bg-[#1F2E37] rounded-tr-[4px]"></div>
+                        <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+0.75rem)] bg-[#2e4757] rounded-tr-[4px]"></div>
                       ) : null}
                     </div>
                   ))}
@@ -365,10 +365,10 @@ export default function CompetitionPage() {
                 {bracket.r16.map((match: any, i: number) => (
                   <div key={`r16-${i}`} className="relative">
                     <BracketCard match={match} />
-                    <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#1F2E37]"></div>
-                    <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                    <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#2e4757]"></div>
+                    <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#2e4757]"></div>
                     {i % 2 === 0 ? (
-                      <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+64px+0.75rem)] bg-[#1F2E37] rounded-tr-[4px]"></div>
+                      <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+64px+0.75rem)] bg-[#2e4757] rounded-tr-[4px]"></div>
                     ) : null}
                   </div>
                 ))}
@@ -380,10 +380,10 @@ export default function CompetitionPage() {
                 {bracket.qf.map((match: any, i: number) => (
                   <div key={`qf-${i}`} className="relative">
                     <BracketCard match={match} />
-                    <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#1F2E37]"></div>
-                    <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                    <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#2e4757]"></div>
+                    <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#2e4757]"></div>
                     {i % 2 === 0 ? (
-                      <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+128px+1.5rem+0.75rem)] bg-[#1F2E37] rounded-tr-[4px]"></div>
+                      <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+128px+1.5rem+0.75rem)] bg-[#2e4757] rounded-tr-[4px]"></div>
                     ) : null}
                   </div>
                 ))}
@@ -395,10 +395,10 @@ export default function CompetitionPage() {
                 {bracket.sf.map((match: any, i: number) => (
                   <div key={`sf-${i}`} className="relative">
                     <BracketCard match={match} />
-                    <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#1F2E37]"></div>
-                    <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                    <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#2e4757]"></div>
+                    <div className="absolute top-1/2 -right-[48px] w-[24px] border-t-2 border-[#2e4757]"></div>
                     {i % 2 === 0 ? (
-                      <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+256px+3rem+1.5rem+0.75rem)] bg-[#1F2E37] rounded-tr-[4px]"></div>
+                      <div className="absolute top-1/2 right-[-24px] w-px h-[calc(100%+256px+3rem+1.5rem+0.75rem)] bg-[#2e4757] rounded-tr-[4px]"></div>
                     ) : null}
                   </div>
                 ))}
@@ -409,7 +409,7 @@ export default function CompetitionPage() {
                 <h4 className="text-center text-[10px] font-bold text-[#FDE047] uppercase tracking-widest mb-3 absolute top-0 w-full">Finale</h4>
                 <div className="relative mb-24">
                   <BracketCard match={bracket.final || { t1: "À déterminer", t2: "À déterminer", s1: "-", s2: "-" }} />
-                  <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#1F2E37]"></div>
+                  <div className="absolute top-1/2 -left-[24px] w-[24px] border-t-2 border-[#2e4757]"></div>
                 </div>
 
                 {bracket.third_place && (

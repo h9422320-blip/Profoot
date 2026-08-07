@@ -649,7 +649,7 @@ function AnalysisContent() {
 // Reusable App Mockup Content
 function AppMockupContent() {
   return (
-    <div className="flex-1 bg-[#050505] p-5 pt-8 flex flex-col font-sans relative overflow-hidden">
+    <div className="flex-1 bg-[#16242e] p-5 pt-8 flex flex-col font-sans relative overflow-hidden">
       {/* Phone Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
@@ -672,7 +672,7 @@ function AppMockupContent() {
       </div>
 
       {/* Match Search Card */}
-      <div className="bg-[#0f171e] border border-white/5 hover:border-white/10 hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] rounded-2xl p-4 mb-6 transition-all duration-300 transform hover:-translate-y-1">
+      <div className="bg-[#1d2f3a] border border-white/5 hover:border-white/10 hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] rounded-2xl p-4 mb-6 transition-all duration-300 transform hover:-translate-y-1">
         <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse"></span> Match à analyser</p>
         
         {/* Team 1 */}
@@ -681,7 +681,7 @@ function AppMockupContent() {
             <div className="absolute inset-0 bg-[#10b981] blur-md opacity-0 group-hover:opacity-40 transition-opacity"></div>
             <img src="https://media.api-sports.io/football/teams/85.png" alt="PSG" className="relative w-12 h-12 mb-3 transform group-hover:scale-110 transition-transform" />
           </div>
-          <div className="w-full bg-[#050505] border border-[#10b981] rounded-lg p-2.5 text-center text-white text-sm font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+          <div className="w-full bg-[#16242e] border border-[#10b981] rounded-lg p-2.5 text-center text-white text-sm font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]">
             Paris Saint Germain
           </div>
         </div>
@@ -689,23 +689,23 @@ function AppMockupContent() {
         <div className="text-center text-white/30 text-xs font-bold my-2">VS</div>
         
         {/* Team 2 */}
-        <div className="w-full bg-[#050505] border border-white/10 hover:border-white/20 rounded-lg p-2.5 text-center text-white/50 text-sm mb-4 cursor-text transition-colors">
+        <div className="w-full bg-[#16242e] border border-white/10 hover:border-white/20 rounded-lg p-2.5 text-center text-white/50 text-sm mb-4 cursor-text transition-colors">
           Cherche une équipe (ex: Real Madrid, Bayern...)
         </div>
         
         {/* Analyze Button */}
-        <div className="w-full bg-gradient-to-r from-[#10b981] to-[#059669] text-[#070e13] text-center font-bold text-sm rounded-lg p-3 cursor-pointer hover:scale-[1.02] transition-transform shadow-[0_0_15px_rgba(16,185,129,0.3)] flex justify-center items-center gap-2">
+        <div className="w-full bg-gradient-to-r from-[#10b981] to-[#059669] text-[#101c24] text-center font-bold text-sm rounded-lg p-3 cursor-pointer hover:scale-[1.02] transition-transform shadow-[0_0_15px_rgba(16,185,129,0.3)] flex justify-center items-center gap-2">
           <Activity className="w-4 h-4 animate-pulse" /> Analyser le match avec l'IA
         </div>
       </div>
 
       {/* Upcoming Matches */}
-      <div className="bg-[#0f171e] border border-white/5 rounded-2xl p-4 flex-1 transition-all duration-300 hover:border-white/10">
+      <div className="bg-[#1d2f3a] border border-white/5 rounded-2xl p-4 flex-1 transition-all duration-300 hover:border-white/10">
         <p className="text-[12px] text-white/60 mb-4 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#06b6d4] animate-pulse"></span> Prochains matchs</p>
         
         <div className="space-y-3">
           {/* Match Row */}
-          <div className="flex items-center justify-between bg-[#050505] hover:bg-[#0a0a0a] border border-white/5 hover:border-white/10 rounded-lg p-2 cursor-pointer transition-all hover:scale-[1.02] group">
+          <div className="flex items-center justify-between bg-[#16242e] hover:bg-[#16242e] border border-white/5 hover:border-white/10 rounded-lg p-2 cursor-pointer transition-all hover:scale-[1.02] group">
             <div className="text-[9px] text-white/40 leading-tight group-hover:text-white/60 transition-colors">03/04<br/>20:45</div>
             <div className="flex items-center gap-1.5 text-[10px] font-bold">
               <span className="text-[#10b981]">Paris Saint G...</span>
@@ -716,7 +716,7 @@ function AppMockupContent() {
             </div>
           </div>
           {/* Match Row */}
-          <div className="flex items-center justify-between bg-[#050505] hover:bg-[#0a0a0a] border border-white/5 hover:border-white/10 rounded-lg p-2 cursor-pointer transition-all hover:scale-[1.02] group">
+          <div className="flex items-center justify-between bg-[#16242e] hover:bg-[#16242e] border border-white/5 hover:border-white/10 rounded-lg p-2 cursor-pointer transition-all hover:scale-[1.02] group">
             <div className="text-[9px] text-white/40 leading-tight group-hover:text-white/60 transition-colors">08/04<br/>21:00</div>
             <div className="flex items-center gap-1.5 text-[10px] font-bold">
               <span className="text-[#10b981]">Paris Saint G...</span>

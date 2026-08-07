@@ -65,7 +65,7 @@ export default function FinancesClient({ data }: { data: any }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
-        className="bg-[#101b23] border border-[#1a2a36] rounded-2xl p-6"
+        className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6"
       >
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -84,14 +84,14 @@ export default function FinancesClient({ data }: { data: any }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.6 }}
-        className="bg-[#101b23] border border-[#1a2a36] rounded-2xl overflow-hidden"
+        className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl overflow-hidden"
       >
-        <div className="p-6 border-b border-[#1a2a36]">
+        <div className="p-6 border-b border-[#2e4757]">
           <h3 className="text-lg font-bold text-white">Transactions Récentes</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-[#0b1319]/50 border-b border-[#1a2a36] text-white/50">
+            <thead className="bg-[#16242e]/50 border-b border-[#2e4757] text-white/50">
               <tr>
                 <th className="px-6 py-4 font-semibold">Client</th>
                 <th className="px-6 py-4 font-semibold">Plan</th>
@@ -103,7 +103,7 @@ export default function FinancesClient({ data }: { data: any }) {
             <tbody>
               {/* Fake transaction data for display */}
               {[1, 2, 3, 4, 5].map((_, idx) => (
-                <tr key={idx} className="border-b border-[#1a2a36] last:border-0 hover:bg-white/[0.02] transition-colors">
+                <tr key={idx} className="border-b border-[#2e4757] last:border-0 hover:bg-white/[0.02] transition-colors">
                   <td className="px-6 py-4 text-white font-medium">user{idx + 1}@example.com</td>
                   <td className="px-6 py-4 text-white/70">Pro Mensuel</td>
                   <td className="px-6 py-4 text-white font-bold">20 000 CFA</td>

@@ -203,7 +203,7 @@ export default function HistoryPage() {
           ========================================= */}
       <div className="block lg:hidden space-y-6 pt-6">
         <h1 className="text-2xl font-black text-white tracking-tight" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Mon Profil</h1>
-        <div className="bg-[#111A24]/80 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-2xl">
+        <div className="bg-[#1d2f3a]/80 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-2xl">
            
            <div className="flex items-center gap-4 border-b border-white/5 pb-6 mb-6">
               <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-[#10B981] to-[#059669] text-white flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -300,12 +300,12 @@ export default function HistoryPage() {
           CAS 1 — NOUVEL UTILISATEUR (VIDE)
           ========================================== */}
       {history.length === 0 ? (
-        <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-8 md:p-16 text-center shadow-2xl flex flex-col items-center justify-center max-w-2xl mx-auto space-y-8 my-12 animate-fade-in">
+        <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-8 md:p-16 text-center shadow-2xl flex flex-col items-center justify-center max-w-2xl mx-auto space-y-8 my-12 animate-fade-in">
           
           {/* Illustration moderne AI Football */}
           <div className="relative w-32 h-32 md:w-40 md:h-40 flex items-center justify-center">
             <div className="absolute inset-0 bg-[#10B981]/10 blur-[40px] rounded-full animate-pulse"></div>
-            <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-tr from-[#0D1520] to-[#1A2636] border border-[#10B981]/30 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+            <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-tr from-[#18272f] to-[#1A2636] border border-[#10B981]/30 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.2)]">
               <Brain className="w-12 h-12 md:w-16 md:h-16 text-[#10B981] animate-float" />
             </div>
           </div>
@@ -334,7 +334,7 @@ export default function HistoryPage() {
         <div className="space-y-6">
           
           {/* BARRE DE RECHERCHE ET FILTRES */}
-          <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 shadow-lg flex flex-col md:flex-row items-center gap-4">
+          <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 shadow-lg flex flex-col md:flex-row items-center gap-4">
             
             {/* Recherche */}
             <div className="relative w-full md:flex-1">
@@ -361,9 +361,9 @@ export default function HistoryPage() {
                 onChange={(e) => setFilterComp(e.target.value)}
                 className="w-full md:w-auto bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-xs font-semibold text-white outline-none focus:border-[#10B981]/40 transition-colors cursor-pointer"
               >
-                <option value="all" className="bg-[#0D1520]">Toutes les compétitions</option>
+                <option value="all" className="bg-[#18272f]">Toutes les compétitions</option>
                 {competitionsList.map(c => (
-                  <option key={c} value={c} className="bg-[#0D1520]">{c}</option>
+                  <option key={c} value={c} className="bg-[#18272f]">{c}</option>
                 ))}
               </select>
             </div>
@@ -375,16 +375,16 @@ export default function HistoryPage() {
                 onChange={(e) => setFilterType(e.target.value)}
                 className="w-full md:w-auto bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-xs font-semibold text-white outline-none focus:border-[#10B981]/40 transition-colors cursor-pointer"
               >
-                <option value="all" className="bg-[#0D1520]">Tous les types</option>
-                <option value="future" className="bg-[#0D1520]">Prédictions IA (Futur)</option>
-                <option value="past" className="bg-[#0D1520]">Résultats passés (Terminé)</option>
+                <option value="all" className="bg-[#18272f]">Tous les types</option>
+                <option value="future" className="bg-[#18272f]">Prédictions IA (Futur)</option>
+                <option value="past" className="bg-[#18272f]">Résultats passés (Terminé)</option>
               </select>
             </div>
           </div>
 
           {/* RÉSULTATS DU FILTRE */}
           {filteredHistory.length === 0 ? (
-            <div className="bg-[#111A24]/40 border border-white/5 rounded-[24px] p-12 text-center text-white/50 font-medium text-sm">
+            <div className="bg-[#1d2f3a]/40 border border-white/5 rounded-[24px] p-12 text-center text-white/50 font-medium text-sm">
               Aucune analyse ne correspond à vos critères de recherche.
             </div>
           ) : (
@@ -397,7 +397,7 @@ export default function HistoryPage() {
                   <div
                     key={item.id}
                     onClick={() => setSelectedItem(item)}
-                    className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 hover:border-[#10B981]/30 rounded-[24px] p-5 flex flex-col justify-between shadow-lg transition-all hover:translate-y-[-2px] cursor-pointer group relative overflow-hidden"
+                    className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 hover:border-[#10B981]/30 rounded-[24px] p-5 flex flex-col justify-between shadow-lg transition-all hover:translate-y-[-2px] cursor-pointer group relative overflow-hidden"
                   >
                     {/* Top bar: Badge + Date + Trash */}
                     <div className="flex items-center justify-between gap-2 mb-4">
@@ -499,11 +499,11 @@ export default function HistoryPage() {
           onClick={() => setSelectedItem(null)}
         >
           <div 
-            className="bg-[#0D1520] border border-white/10 rounded-[32px] w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-scale-up"
+            className="bg-[#18272f] border border-white/10 rounded-[32px] w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-[#111A24]">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-[#1d2f3a]">
               <div className="flex items-center gap-3">
                 <Brain className="w-6 h-6 text-[#10B981]" />
                 <div>
@@ -526,7 +526,7 @@ export default function HistoryPage() {
               
               {/* PREMIUM LOCK OVERLAY for free users */}
               {!isPro && (
-                <div className="absolute inset-0 z-30 bg-[#0D1520]/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8">
+                <div className="absolute inset-0 z-30 bg-[#18272f]/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8">
                   <div className="w-16 h-16 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
                     <Lock className="w-8 h-8 text-orange-400" />
                   </div>
@@ -539,7 +539,7 @@ export default function HistoryPage() {
               )}
 
               {/* Teams & Score Banner */}
-              <div className="bg-gradient-to-r from-[#111A24] to-[#1A2636] border border-white/5 rounded-2xl p-6 flex items-center justify-between shadow-inner">
+              <div className="bg-gradient-to-r from-[#1d2f3a] to-[#1A2636] border border-white/5 rounded-2xl p-6 flex items-center justify-between shadow-inner">
                 <div className="flex items-center gap-4 flex-1">
                   <img src={selectedItem.team1?.logo} className="w-14 h-14 object-contain drop-shadow" alt="" />
                   <div>
@@ -635,7 +635,7 @@ export default function HistoryPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-white/5 bg-[#111A24]">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-white/5 bg-[#1d2f3a]">
               <Link
                 href={`/analyze?t1=${selectedItem.team1?.id}&t2=${selectedItem.team2?.id}`}
                 className="bg-[#10B981] hover:bg-[#059669] text-black font-black px-6 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-2"

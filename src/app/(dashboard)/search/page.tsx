@@ -182,7 +182,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A1118] text-foreground pb-24 pt-8 px-4 lg:px-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#16242e] text-foreground pb-24 pt-8 px-4 lg:px-8 max-w-7xl mx-auto">
       {/* HEADER HERO */}
       <div className="mb-10 text-center max-w-3xl mx-auto">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary mb-6 animate-pulse">
@@ -201,7 +201,7 @@ export default function SearchPage() {
       <div className="max-w-4xl mx-auto mb-12">
         <form onSubmit={onSubmit} className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-primary via-emerald-500 to-teal-500 rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition duration-500" />
-          <div className="relative flex items-center bg-[#111A24] border border-white/10 rounded-3xl shadow-2xl px-4 py-3 lg:py-4 transition-all focus-within:border-primary/50">
+          <div className="relative flex items-center bg-[#1d2f3a] border border-white/10 rounded-3xl shadow-2xl px-4 py-3 lg:py-4 transition-all focus-within:border-primary/50">
             <Search className="w-6 h-6 text-foreground/40 ml-2 mr-4 flex-shrink-0" />
             <input
               type="text"
@@ -213,7 +213,7 @@ export default function SearchPage() {
             <button
               type="submit"
               disabled={loading || !query.trim()}
-              className="flex items-center gap-2 bg-gradient-to-r from-primary to-emerald-500 text-[#0A1118] font-black text-sm px-6 py-3 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none flex-shrink-0"
+              className="flex items-center gap-2 bg-gradient-to-r from-primary to-emerald-500 text-[#16242e] font-black text-sm px-6 py-3 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none flex-shrink-0"
             >
               <span>Rechercher</span>
               <ArrowRight className="w-4 h-4" />
@@ -251,7 +251,7 @@ export default function SearchPage() {
           
           {/* LOADING STATE (STREAMING STEPS) */}
           {loading && (
-            <div className="bg-[#111A24] border border-border-card rounded-3xl p-8 shadow-xl relative overflow-hidden">
+            <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-8 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-emerald-400 to-teal-500 animate-pulse" />
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary animate-spin">
@@ -270,7 +270,7 @@ export default function SearchPage() {
                   const done = idx < currentStepIndex;
                   return (
                     <div key={idx} className={`flex items-center gap-3 transition-all duration-500 ${active ? "text-primary scale-[1.01]" : done ? "text-foreground/40" : "text-foreground/20"}`}>
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${active ? "bg-primary text-[#0A1118] shadow-lg shadow-primary/30 animate-pulse" : done ? "bg-card border border-border-card text-foreground/40" : "bg-card/50 border border-border-card text-foreground/20"}`}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${active ? "bg-primary text-[#16242e] shadow-lg shadow-primary/30 animate-pulse" : done ? "bg-card border border-border-card text-foreground/40" : "bg-card/50 border border-border-card text-foreground/20"}`}>
                         {done ? "✓" : idx + 1}
                       </div>
                       <span className={`text-sm font-semibold ${active ? "text-white font-bold" : ""}`}>{step.text}</span>
@@ -294,7 +294,7 @@ export default function SearchPage() {
 
           {/* EMPTY STATE / INITIAL PROMPT */}
           {!result && !loading && !error && (
-            <div className="bg-[#111A24]/60 border border-border-card rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[350px]">
+            <div className="bg-[#1d2f3a]/60 border border-border-card rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[350px]">
               <div className="w-16 h-16 rounded-3xl bg-card border border-border-card flex items-center justify-center text-foreground/40 mb-6 shadow-inner">
                 <Globe className="w-8 h-8" />
               </div>
@@ -326,7 +326,7 @@ export default function SearchPage() {
             <div className="space-y-8 animate-fade-in">
               
               {/* ANSWER CARD */}
-              <div className="bg-[#111A24] border border-border-card rounded-3xl p-6 lg:p-8 shadow-2xl relative overflow-hidden">
+              <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-6 lg:p-8 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-primary via-emerald-500 to-teal-500" />
                 
                 <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
@@ -356,7 +356,7 @@ export default function SearchPage() {
 
               {/* WEB SOURCES SECTION */}
               {result.sources && result.sources.length > 0 && (
-                <div className="bg-[#111A24] border border-border-card rounded-3xl p-6 lg:p-8 shadow-xl">
+                <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-6 lg:p-8 shadow-xl">
                   <h4 className="font-black text-base text-white mb-6 flex items-center gap-2">
                     <Globe className="w-5 h-5 text-primary" />
                     <span>Sources Web & Citations (Mai 2026)</span>
@@ -396,7 +396,7 @@ export default function SearchPage() {
 
               {/* RELATED QUESTIONS */}
               {result.relatedQuestions && result.relatedQuestions.length > 0 && (
-                <div className="bg-[#111A24] border border-border-card rounded-3xl p-6 lg:p-8 shadow-xl">
+                <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-6 lg:p-8 shadow-xl">
                   <h4 className="font-black text-base text-white mb-6 flex items-center gap-2">
                     <HelpCircle className="w-5 h-5 text-info" />
                     <span>Questions Connexes & Approfondissement</span>
@@ -428,7 +428,7 @@ export default function SearchPage() {
 
         {/* RIGHT: SEARCH HISTORY & RECENT SEARCHES (1 COL) */}
         <div className="space-y-8">
-          <div className="bg-[#111A24] border border-border-card rounded-3xl p-6 lg:p-8 shadow-xl sticky top-24">
+          <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-6 lg:p-8 shadow-xl sticky top-24">
             <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
               <div className="flex items-center gap-2.5">
                 <Clock className="w-5 h-5 text-primary" />

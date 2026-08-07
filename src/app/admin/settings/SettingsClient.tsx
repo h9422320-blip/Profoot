@@ -37,7 +37,7 @@ export default function SettingsClient() {
           className="md:col-span-2 space-y-6"
         >
           {/* Section: General */}
-          <div className="bg-[#101b23] border border-[#1a2a36] rounded-2xl p-6 space-y-6">
+          <div className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6 space-y-6">
             <h3 className="text-lg font-bold text-white">Configuration Générale</h3>
             
             <div className="space-y-4">
@@ -46,7 +46,7 @@ export default function SettingsClient() {
                 <input
                   type="text"
                   defaultValue="ProFoot AI"
-                  className="w-full bg-[#0b1319] border border-[#1a2a36] rounded-xl py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
+                  className="w-full bg-[#16242e] border border-[#2e4757] rounded-xl py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
                 />
               </div>
 
@@ -55,11 +55,11 @@ export default function SettingsClient() {
                 <input
                   type="email"
                   defaultValue="support@profoot.ai"
-                  className="w-full bg-[#0b1319] border border-[#1a2a36] rounded-xl py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
+                  className="w-full bg-[#16242e] border border-[#2e4757] rounded-xl py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
                 />
               </div>
 
-              <div className="pt-4 flex items-center justify-between border-t border-[#1a2a36]">
+              <div className="pt-4 flex items-center justify-between border-t border-[#2e4757]">
                 <div>
                   <p className="text-sm font-medium text-white">Mode Maintenance</p>
                   <p className="text-xs text-white/40">Désactiver l'accès public au site</p>

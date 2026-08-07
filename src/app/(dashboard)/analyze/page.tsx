@@ -79,7 +79,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
       className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-end md:items-center justify-center animate-fade-in"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="w-full max-w-md bg-[#0D1520] border border-white/10 rounded-t-[28px] md:rounded-[28px] max-h-[80vh] flex flex-col shadow-2xl">
+      <div className="w-full max-w-md bg-[#18272f] border border-white/10 rounded-t-[28px] md:rounded-[28px] max-h-[80vh] flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-white/5">
           <div className="flex items-center gap-2">
@@ -565,7 +565,7 @@ export default function AnalyzePage() {
   const progressPercent = Math.round(((analyzingStep + 1) / steps.length) * 100);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#050816] via-[#031b25] to-[#041f1a]">
+    <div className="min-h-screen bg-gradient-to-b from-[#101c24] via-[#031b25] to-[#041f1a]">
       <div className="max-w-4xl mx-auto space-y-5 pb-24 px-4 md:px-0 pt-6 animate-fade-in">
       
       {/* Team Picker Modals */}
@@ -587,7 +587,7 @@ export default function AnalyzePage() {
 
       {/* 2. MATCH À ANALYSER CARD */}
       {!result && (
-        <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 md:p-5 flex flex-col shadow-lg relative overflow-hidden">
+        <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 md:p-5 flex flex-col shadow-lg relative overflow-hidden">
         <div className="text-[9px] font-black text-white/25 uppercase tracking-[0.2em] mb-2">
           MATCH À ANALYSER
         </div>
@@ -646,7 +646,7 @@ export default function AnalyzePage() {
           {/* Premium Inline Error Card */}
           {analyzeError && !analyzing && (
             analyzeError === "PREMIUM_REQUIRED" ? (
-            <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#0B1A14] to-[#0A1118] border border-primary/25 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(16,185,129,0.10)] relative overflow-hidden">
+            <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#16242e] to-[#16242e] border border-primary/25 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(16,185,129,0.10)] relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
 
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-1">
@@ -670,7 +670,7 @@ export default function AnalyzePage() {
               </Link>
             </div>
             ) : (
-            <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#1A0B10] to-[#0A1118] border border-red-500/20 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(239,68,68,0.08)] relative overflow-hidden">
+            <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#1A0B10] to-[#16242e] border border-red-500/20 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(239,68,68,0.08)] relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500/50 to-transparent"></div>
 
               <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-1">
@@ -705,7 +705,7 @@ export default function AnalyzePage() {
 
       {/* 3. LOADING CARD WITH CIRCULAR SVG PROGRESS (Screenshots 2 & 3 layout) */}
       {analyzing && (
-        <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-8 text-center shadow-lg space-y-6 animate-pulse">
+        <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-8 text-center shadow-lg space-y-6 animate-pulse">
           {/* Circular SVG Ring */}
           <div className="relative w-36 h-36 flex items-center justify-center mx-auto">
             <svg className="w-full h-full transform -rotate-90">
@@ -713,7 +713,7 @@ export default function AnalyzePage() {
                 cx="72"
                 cy="72"
                 r="60"
-                stroke="#0A1118"
+                stroke="#16242e"
                 strokeWidth="8"
                 fill="transparent"
               />
@@ -763,7 +763,7 @@ export default function AnalyzePage() {
                 : "Historique des analyses"}
             </h4>
             {todayHistory.length === 0 ? (
-              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[18px] p-5 text-center shadow-sm">
+              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[18px] p-5 text-center shadow-sm">
                 <span className="block text-sm font-bold text-white mb-2">Aucun match analysé pour le moment</span>
                 <span className="block text-xs text-white/40">Analysez votre premier match pour commencer votre historique.</span>
               </div>
@@ -779,7 +779,7 @@ export default function AnalyzePage() {
                       {/* Full card — blurred entirely for non-premium */}
                       <button
                         onClick={() => isPremium ? handleQuickMatchSelect(hCl?.id || '', aCl?.id || '') : undefined}
-                        className={`w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[18px] flex flex-col p-4 shadow-sm text-left transition-all ${
+                        className={`w-full bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[18px] flex flex-col p-4 shadow-sm text-left transition-all ${
                           isPremium
                             ? 'hover:border-primary/20 active:scale-[0.99] cursor-pointer'
                             : 'blur-[5px] opacity-60 cursor-default select-none pointer-events-none'
@@ -824,7 +824,7 @@ export default function AnalyzePage() {
                           <Link
                             href="/pricing"
                             className="flex items-center gap-1.5 font-black text-[11px] py-2.5 px-6 rounded-full transition-all hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(45,212,191,0.4)]"
-                            style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#050816'}}
+                            style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#101c24'}}
                           >
                             🔒 Débloquer les résultats
                           </Link>
@@ -852,7 +852,7 @@ export default function AnalyzePage() {
                     <button 
                       key={m.id}
                       onClick={() => handleQuickMatchSelect(m.homeTeam, m.awayTeam)}
-                      className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 h-[56px] rounded-[18px] flex items-center px-4 shadow-sm transition-all group active:scale-[0.99]"
+                      className="w-full bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 h-[56px] rounded-[18px] flex items-center px-4 shadow-sm transition-all group active:scale-[0.99]"
                     >
                       {/* Date column — fixed width */}
                       <div className="w-[52px] shrink-0 text-center border-r border-white/5 pr-3 mr-3">
@@ -894,7 +894,7 @@ export default function AnalyzePage() {
             <div className="space-y-8">
               
               {/* Event Header & Scoreboard */}
-              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 flex flex-col items-center shadow-lg">
+              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 flex flex-col items-center shadow-lg">
                 <div className="bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-full px-3 py-1 text-[9px] font-black text-[#EF4444] uppercase tracking-widest mb-6">
                   ⚽ Match Terminé - Résultats Réels
                 </div>
@@ -938,7 +938,7 @@ export default function AnalyzePage() {
 
               {/* Match Events Timeline */}
               {result.events && result.events.length > 0 && (
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
+                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
                   <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
                     <Timer className="w-5 h-5 text-[#10B981]" />
                     <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -964,7 +964,7 @@ export default function AnalyzePage() {
                           </div>
 
                           {/* Central Minute Badge */}
-                          <div className="absolute left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#0B151E] border border-white/10 flex items-center justify-center text-[10px] font-bold text-white shadow">
+                          <div className="absolute left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#1d2f3a] border border-white/10 flex items-center justify-center text-[10px] font-bold text-white shadow">
                             {ev.minute}'
                           </div>
 
@@ -988,7 +988,7 @@ export default function AnalyzePage() {
 
               {/* Real Match Stats Comparison */}
               {result.stats && (
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
+                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
                   <div className="flex items-center gap-3 mb-6">
                     <BarChart3 className="w-5 h-5 text-[#10B981]" />
                     <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -1009,7 +1009,7 @@ export default function AnalyzePage() {
 
               {/* Match Detailed Summary */}
               {result.summary && (
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-6 shadow-md space-y-3">
+                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-6 shadow-md space-y-3">
                   <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                     Résumé de la rencontre
                   </h4>
@@ -1025,7 +1025,7 @@ export default function AnalyzePage() {
             <div className="space-y-8">
               
               {/* HEADER VISIFOOT STYLE FOR ANALYZED MATCH */}
-              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-6 rounded-[24px] space-y-5 shadow-md flex flex-col items-center">
+              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-6 rounded-[24px] space-y-5 shadow-md flex flex-col items-center">
                 <span className="text-[10px] uppercase tracking-widest text-white/40 mb-2 font-bold">Match analysé</span>
                 
                 <div className="flex flex-col items-center gap-4 w-full text-center">
@@ -1054,7 +1054,7 @@ export default function AnalyzePage() {
               </div>
 
               {/* Forme Récente - Visifoot Clone */}
-              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] shadow-md">
+              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] shadow-md">
                 <div className="flex justify-between items-center text-xs font-semibold text-white mb-6">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">📊</span>
@@ -1116,7 +1116,7 @@ export default function AnalyzePage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
+                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
                   <div className="flex items-center gap-2">
                     <img src={getClub(team1!).logo} className="w-5 h-5 object-contain" alt="" />
                     <span className="font-bold text-[13px] text-[#9ca3af]">{getClub(team1!).name}</span>
@@ -1133,7 +1133,7 @@ export default function AnalyzePage() {
                   </div>
                 </div>
 
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-3 shadow-md">
+                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-3 shadow-md">
                   <div className="flex items-center gap-2">
                     <img src={getClub(team2!).logo} className="w-5 h-5 object-contain" alt="" />
                     <span className="font-bold text-[13px] text-[#9ca3af]">{getClub(team2!).name}</span>
@@ -1170,7 +1170,7 @@ export default function AnalyzePage() {
                     <span className="text-lg">📌</span>
                     <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Scénario #1</h4>
                   </div>
-                  <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-5 rounded-[12px]">
+                  <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[12px]">
                     <p className="text-[13px] text-white/80 leading-relaxed font-medium">
                       {result.scenarios?.[0]?.content || "Le match devrait se dérouler selon un schéma tactique équilibré mais tendu."}
                     </p>
@@ -1180,7 +1180,7 @@ export default function AnalyzePage() {
 
               {/* Confiance - EXACT VISIFOOT STYLE */}
               {result.confidence && (
-                <div className="bg-[#111A24]/70 border border-white/10 rounded-[20px] p-4 space-y-2 mt-4">
+                <div className="bg-[#1d2f3a]/70 border border-white/10 rounded-[20px] p-4 space-y-2 mt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-lg">🎯</span>
                     <h5 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Confiance de l'IA</h5>
@@ -1207,7 +1207,7 @@ export default function AnalyzePage() {
                   // Voile volontairement semi-transparent : l'utilisateur doit
                   // DEVINER qu'une analyse riche existe dessous (barres, blocs,
                   // couleurs) sans pouvoir la lire. C'est ce qui crée l'envie.
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 py-10 text-center" style={{background: 'linear-gradient(to bottom, rgba(5,8,22,0) 0%, rgba(5,8,22,0.30) 18%, rgba(5,8,22,0.55) 42%, rgba(5,8,22,0.52) 100%)' }}>
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 py-10 text-center" style={{background: 'linear-gradient(to bottom, rgba(16,28,36,0) 0%, rgba(16,28,36,0.30) 18%, rgba(16,28,36,0.55) 42%, rgba(16,28,36,0.52) 100%)' }}>
                     
                     <h3 className="text-xl md:text-3xl font-black text-white mb-4" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
                     
@@ -1222,7 +1222,7 @@ export default function AnalyzePage() {
                     <Link 
                       href="/pricing"
                       className="inline-flex items-center justify-center gap-2 font-black py-4 px-10 rounded-full transition-all text-sm shadow-[0_8px_32px_rgba(45,212,191,0.4)] whitespace-nowrap hover:scale-105 active:scale-95"
-                      style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#050816'}}
+                      style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#101c24'}}
                     >
                       🔒 Débloquer l'analyse complète
                     </Link>
@@ -1237,7 +1237,7 @@ export default function AnalyzePage() {
                 <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[7px] opacity-[0.85]' : ''}`}>
                   {/* Score pill */}
                   {result.predictedScore && (
-                    <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
+                    <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
                       <div className="flex items-center gap-3 mb-6">
                         <Trophy className="w-5 h-5 text-[#10B981]" />
                         <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Score prédit par l'IA</h4>
@@ -1267,7 +1267,7 @@ export default function AnalyzePage() {
               )}
 
               {/* Win probabilities */}
-              <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-md">
+              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-md">
                 <div className="flex items-center gap-3">
                   <span className="text-lg">📊</span>
                   <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Probabilités exactes</h4>
@@ -1288,7 +1288,7 @@ export default function AnalyzePage() {
                   </div>
                   <div className="space-y-3.5">
                     {result.scenarios.slice(1).map((sc: any, idx: number) => (
-                      <div key={idx} className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] shadow-sm">
+                      <div key={idx} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] shadow-sm">
                         <h5 className="text-sm font-black text-[#10B981] mb-2">{sc.title}</h5>
                         <p className="text-xs text-white/70 leading-relaxed font-semibold">{sc.content}</p>
                       </div>
@@ -1299,7 +1299,7 @@ export default function AnalyzePage() {
 
               {/* Stats Comparison (Como vs Roma style) */}
               {result.comparison && (
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
+                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
                   <div className="flex items-center gap-3 mb-6">
                     <span className="text-lg">📊</span>
                     <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Comparaison statistique</h4>
@@ -1327,7 +1327,7 @@ export default function AnalyzePage() {
                     <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Nos prédictions</h4>
                   </div>
                   
-                  <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-sm">
+                  <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-sm">
                     <div>
                       <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-4">Buts attendus</h5>
                       <div className="space-y-3 bg-black/25 p-4 rounded-[20px] border border-white/5">
@@ -1352,7 +1352,7 @@ export default function AnalyzePage() {
                     </div>
                   </div>
 
-                  <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-sm">
+                  <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-sm">
                     <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-6">Probabilités sur le nombre de buts</h5>
                     <div className="space-y-5">
                        <DualBar label="" v1={result.predictions.overUnder.over05} v2={100 - result.predictions.overUnder.over05} suffix="%" customL1="Plus de 0.5 buts" customL2="Moins de 0.5 buts" hideTitle={true} isThin={true} />
@@ -1375,7 +1375,7 @@ export default function AnalyzePage() {
                      {[team1!, team2!].map((tid, idx) => {
                        const strengths = idx === 0 ? result.keyStrengths.team1 : result.keyStrengths.team2;
                        return (
-                         <div key={tid} className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] space-y-4 shadow-md">
+                         <div key={tid} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] space-y-4 shadow-md">
                            <div className="flex items-center gap-3">
                              <img src={getClub(tid).logo} className="w-6 h-6 object-contain" alt=""/>
                              <span className="font-extrabold text-sm text-white">{getClub(tid).name}</span>
@@ -1397,7 +1397,7 @@ export default function AnalyzePage() {
 
               {/* Advanced metrics */}
               {result.advancedMetrics && (
-                <div className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
+                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
                   <div className="flex items-center gap-3 mb-6">
                     <Zap className="w-5 h-5 text-[#10B981]" />
                     <div>
@@ -1421,7 +1421,7 @@ export default function AnalyzePage() {
                   const iconMap: any = { Brain, Zap, Shield, Target, Activity, History, Loader, BarChart3, Trophy, Award };
                   const IconComp = iconMap[section.icon] || Brain;
                   return (
-                    <div key={i} className="bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-[28px] p-5 md:p-6 shadow-md">
+                    <div key={i} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[28px] p-5 md:p-6 shadow-md">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-8 h-8 rounded-xl bg-black/40 border border-white/5 flex items-center justify-center text-[#10B981]">
                           <IconComp className="w-4 h-4" />
@@ -1503,7 +1503,7 @@ function DualBar({ label, v1, v2, suffix="", customL1="", customL2="", hideTitle
         </div>
         
         {/* Small gap/divider */}
-        <div className="w-[2px] h-full bg-[#0B151E] shrink-0 z-10" />
+        <div className="w-[2px] h-full bg-[#1d2f3a] shrink-0 z-10" />
 
         {/* Right Segment */}
         <div 
@@ -1529,9 +1529,9 @@ function ModernMetricBar({ label, description, val1, val2, suffix = "", invertCo
         <span className={`text-xl md:text-3xl font-black ${isV1Better ? 'text-[#10B981] drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-white/60'}`} style={{fontFamily:"'Space Grotesk',sans-serif"}}>{val1}{suffix}</span>
         
         <div className="absolute left-0 right-0 flex flex-col items-center justify-end bottom-0 z-10 pointer-events-none">
-          <span className="text-[9px] md:text-xs font-black uppercase tracking-[0.2em] text-white/40 bg-[#111A24] px-2">{label}</span>
+          <span className="text-[9px] md:text-xs font-black uppercase tracking-[0.2em] text-white/40 bg-[#1d2f3a] px-2">{label}</span>
           {description && (
-            <span className="text-[8.5px] font-bold text-[#10B981]/80 bg-[#111A24] px-2 mt-0.5 tracking-wide max-w-[180px] md:max-w-xs text-center leading-tight">
+            <span className="text-[8.5px] font-bold text-[#10B981]/80 bg-[#1d2f3a] px-2 mt-0.5 tracking-wide max-w-[180px] md:max-w-xs text-center leading-tight">
               {description}
             </span>
           )}
@@ -1541,7 +1541,7 @@ function ModernMetricBar({ label, description, val1, val2, suffix = "", invertCo
       </div>
       <div className="relative h-3 bg-black/45 rounded-full flex overflow-hidden border border-white/5 shadow-inner">
         <div className="h-full bg-gradient-to-r from-[#10B981]/70 to-[#10B981] transition-all duration-1000 ease-out" style={{ width: `${w1}%` }} />
-        <div className="w-[2px] h-full bg-[#0B151E] shrink-0 z-10" />
+        <div className="w-[2px] h-full bg-[#1d2f3a] shrink-0 z-10" />
         <div className="h-full bg-gradient-to-l from-[#EF4444]/70 to-[#EF4444] transition-all duration-1000 ease-out" style={{ width: `${w2}%` }} />
       </div>
     </div>

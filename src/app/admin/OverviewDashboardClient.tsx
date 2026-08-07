@@ -69,7 +69,7 @@ export default function OverviewDashboardClient({ data }: { data: any }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="lg:col-span-2 bg-[#101b23] border border-[#1a2a36] rounded-2xl p-6"
+          className="lg:col-span-2 bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6"
         >
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -88,7 +88,7 @@ export default function OverviewDashboardClient({ data }: { data: any }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="bg-[#101b23] border border-[#1a2a36] rounded-2xl p-6 flex flex-col"
+          className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6 flex flex-col"
         >
           <h3 className="text-lg font-bold text-white mb-6">Activité Récente</h3>
           <div className="space-y-4 flex-1">

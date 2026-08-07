@@ -62,8 +62,8 @@ export default function AnimatedChart({
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#101b23",
-              border: "1px solid #1a2a36",
+              backgroundColor: "#1d2f3a",
+              border: "1px solid #2e4757",
               borderRadius: "12px",
               boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
               color: "#fff",

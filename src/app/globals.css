@@ -4,12 +4,12 @@
 
 /* ── Dark theme (default) ── */
 :root {
-  --background: #070e13;
+  --background: #101c24;
   --foreground: #f8fafc;
 
-  --sidebar-bg: #0b1319;
-  --card-bg: #101b23;
-  --card-border: #1a2a36;
+  --sidebar-bg: #16242e;
+  --card-bg: #1d2f3a;
+  --card-border: #2e4757;
 
   --primary: #10b981;
   --primary-hover: #059669;

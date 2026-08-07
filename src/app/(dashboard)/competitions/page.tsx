@@ -7,7 +7,7 @@ export default function CompetitionsPage() {
   const championnats = competitions.filter(c => !["wc", "ucl", "caf", "can"].includes(c.id));
 
   return (
-    <div className="w-full max-w-2xl mx-auto pb-20 pt-8 px-4 font-sans bg-[#0B121C] min-h-screen">
+    <div className="w-full max-w-2xl mx-auto pb-20 pt-8 px-4 font-sans bg-[#16242e] min-h-screen">
       {/* Header */}
       <div className="text-center flex flex-col gap-2 mb-8">
         <h1 className="text-[28px] font-bold text-white tracking-tight">Compétitions</h1>
@@ -25,7 +25,7 @@ export default function CompetitionsPage() {
         <input 
           type="text"
           placeholder="Rechercher une compétition..."
-          className="w-full bg-[#1B2333] border border-transparent rounded-[16px] py-4 pl-14 pr-4 text-[15px] text-white placeholder:text-white/40 focus:outline-none focus:border-[#10B981]/50 transition-colors"
+          className="w-full bg-[#243542] border border-transparent rounded-[16px] py-4 pl-14 pr-4 text-[15px] text-white placeholder:text-white/40 focus:outline-none focus:border-[#10B981]/50 transition-colors"
         />
       </div>
 
@@ -63,7 +63,7 @@ export default function CompetitionsPage() {
 function CompetitionListItem({ comp }: { comp: any }) {
   return (
     <Link href={`/competitions/${comp.id}`} className="block group">
-      <div className="bg-[#1B2333] hover:bg-[#232D40] border border-transparent rounded-[20px] p-5 flex items-center gap-5 transition-colors">
+      <div className="bg-[#243542] hover:bg-[#232D40] border border-transparent rounded-[20px] p-5 flex items-center gap-5 transition-colors">
         <div className="w-[48px] h-[48px] shrink-0 bg-[#121824] rounded-[14px] flex items-center justify-center p-2.5">
           {comp.logo.startsWith('data:') || comp.logo.startsWith('http') ? (
             <img src={comp.logo} alt={comp.name} className="w-full h-full object-contain" />

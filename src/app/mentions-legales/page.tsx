@@ -8,9 +8,9 @@ export const metadata = {
 
 export default function MentionsLegalesPage() {
   return (
-    <div className="min-h-screen bg-[#070e13] text-white">
+    <div className="min-h-screen bg-[#101c24] text-white">
       {/* Header */}
-      <div className="border-b border-white/5 bg-[#070e13]/95 backdrop-blur-md sticky top-0 z-40">
+      <div className="border-b border-white/5 bg-[#101c24]/95 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-full overflow-hidden drop-shadow-[0_0_12px_rgba(16,185,129,0.5)]">

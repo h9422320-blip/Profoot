@@ -199,7 +199,7 @@ export default function ExpertAgentPage() {
           {/* Animated Glowing Background Orbs */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-[#10B981]/20 to-blue-500/20 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
           
-          <div className="bg-[#0A1018]/60 backdrop-blur-3xl border border-white/[0.08] rounded-[40px] p-10 md:p-14 text-center shadow-[0_0_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
+          <div className="bg-[#16242e]/60 backdrop-blur-3xl border border-white/[0.08] rounded-[40px] p-10 md:p-14 text-center shadow-[0_0_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
             {/* Inner top highlight */}
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#10B981]/50 to-transparent" />
             
@@ -244,7 +244,7 @@ export default function ExpertAgentPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-140px)] flex flex-col bg-[#0D1520]/80 backdrop-blur-xl border border-white/[0.06] rounded-[28px] shadow-2xl overflow-hidden animate-fade-in">
+    <div className="max-w-4xl mx-auto h-[calc(100vh-140px)] flex flex-col bg-[#18272f]/80 backdrop-blur-xl border border-white/[0.06] rounded-[28px] shadow-2xl overflow-hidden animate-fade-in">
 
       {/* Header */}
       <div className="px-5 py-4 border-b border-white/[0.06] bg-black/30 flex items-center justify-between shrink-0">
@@ -283,7 +283,7 @@ export default function ExpertAgentPage() {
             <div className={`max-w-[85%] md:max-w-[78%] rounded-[20px] px-5 py-4 ${
               m.role === 'user'
                 ? 'bg-gradient-to-br from-[#10B981] to-[#059669] rounded-br-sm shadow-[0_4px_20px_rgba(16,185,129,0.25)]'
-                : 'bg-[#111A24]/90 border border-white/[0.07] rounded-bl-sm shadow-lg'
+                : 'bg-[#1d2f3a]/90 border border-white/[0.07] rounded-bl-sm shadow-lg'
             }`}>
               {m.role === 'assistant' && m.id !== 'welcome' && (
                 <div className="flex items-center gap-1.5 mb-2.5 pb-2.5 border-b border-white/[0.07]">
@@ -301,7 +301,7 @@ export default function ExpertAgentPage() {
             <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0">
               <Image src="/logo.png" alt="AI" width={28} height={28} className="w-full h-full object-cover scale-[1.35]" />
             </div>
-            <div className="rounded-[20px] rounded-bl-sm px-5 py-4 bg-[#111A24]/90 border border-white/[0.07] flex items-center gap-3">
+            <div className="rounded-[20px] rounded-bl-sm px-5 py-4 bg-[#1d2f3a]/90 border border-white/[0.07] flex items-center gap-3">
               <div className="flex gap-1">
                 <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{animationDelay: '0ms'}} />
                 <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{animationDelay: '150ms'}} />
@@ -321,7 +321,7 @@ export default function ExpertAgentPage() {
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Posez votre question sur le football..."
-            className="w-full bg-[#0D1520] border border-white/[0.08] rounded-2xl py-3.5 pl-5 pr-14 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all font-medium"
+            className="w-full bg-[#18272f] border border-white/[0.08] rounded-2xl py-3.5 pl-5 pr-14 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all font-medium"
             style={{fontFamily: "'Inter', sans-serif"}}
           />
           <button

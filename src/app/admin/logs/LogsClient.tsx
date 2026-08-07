@@ -26,13 +26,13 @@ export default function LogsClient() {
         </div>
       </div>
 
-      <div className="flex bg-[#101b23] border border-[#1a2a36] rounded-xl p-1 shrink-0 w-fit">
+      <div className="flex bg-[#1d2f3a] border border-[#2e4757] rounded-xl p-1 shrink-0 w-fit">
         {(["all", "error", "warning", "info", "success"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${
-              filter === f ? "bg-[#1a2a36] text-white" : "text-white/40 hover:text-white"
+              filter === f ? "bg-[#2e4757] text-white" : "text-white/40 hover:text-white"
             }`}
           >
             {f === "all" ? "Tous" : f}
@@ -40,8 +40,8 @@ export default function LogsClient() {
         ))}
       </div>
 
-      <div className="bg-[#101b23] border border-[#1a2a36] rounded-2xl overflow-hidden shadow-2xl font-mono text-sm">
-        <div className="p-4 bg-[#0b1319] border-b border-[#1a2a36] flex items-center gap-2 text-white/50">
+      <div className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl overflow-hidden shadow-2xl font-mono text-sm">
+        <div className="p-4 bg-[#16242e] border-b border-[#2e4757] flex items-center gap-2 text-white/50">
           <TerminalSquare className="w-4 h-4" /> root@profoot-production ~
         </div>
         <div className="p-4 space-y-3">

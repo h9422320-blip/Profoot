@@ -40,7 +40,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#070e13] text-white flex overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#101c24] text-white flex overflow-hidden font-sans">
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {isMobileOpen && (
@@ -56,11 +56,11 @@ export default function AdminLayoutClient({ children, user }: { children: React.
 
       {/* Sidebar */}
       <motion.aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0b1319] border-r border-[#1a2a36] flex flex-col transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#16242e] border-r border-[#2e4757] flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         } lg:static lg:flex-shrink-0`}
       >
-        <div className="h-16 flex items-center px-6 border-b border-[#1a2a36] justify-between lg:justify-start">
+        <div className="h-16 flex items-center px-6 border-b border-[#2e4757] justify-between lg:justify-start">
           <Link href="/admin" className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#10b981] to-[#059669] flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
               <span className="font-bold text-black text-sm">PF</span>
@@ -80,7 +80,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
                 key={item.name}
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative group ${
-                  isActive ? "text-white bg-[#1a2a36]" : "text-white/60 hover:text-white hover:bg-white/5"
+                  isActive ? "text-white bg-[#2e4757]" : "text-white/60 hover:text-white hover:bg-white/5"
                 }`}
               >
                 {isActive && (
@@ -97,7 +97,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
           })}
         </div>
 
-        <div className="p-4 border-t border-[#1a2a36]">
+        <div className="p-4 border-t border-[#2e4757]">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center shrink-0">
               <span className="text-xs font-bold">{user?.email?.charAt(0).toUpperCase()}</span>
@@ -118,7 +118,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
         {/* Topbar */}
         <header
           className={`h-16 flex items-center justify-between px-4 sm:px-6 z-30 transition-all duration-200 sticky top-0 ${
-            scrolled ? "bg-[#070e13]/80 backdrop-blur-md border-b border-[#1a2a36]" : "bg-transparent"
+            scrolled ? "bg-[#101c24]/80 backdrop-blur-md border-b border-[#2e4757]" : "bg-transparent"
           }`}
         >
           <div className="flex items-center gap-4">
@@ -143,12 +143,12 @@ export default function AdminLayoutClient({ children, user }: { children: React.
               <input
                 type="text"
                 placeholder="Rechercher..."
-                className="w-64 bg-[#101b23] border border-[#1a2a36] rounded-full py-1.5 pl-9 pr-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
+                className="w-64 bg-[#1d2f3a] border border-[#2e4757] rounded-full py-1.5 pl-9 pr-4 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
               />
             </div>
             <button className="relative p-2 text-white/60 hover:text-white rounded-full hover:bg-white/5 transition-colors">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#10b981] rounded-full border border-[#070e13]" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#10b981] rounded-full border border-[#101c24]" />
             </button>
           </div>
         </header>

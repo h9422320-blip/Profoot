@@ -56,7 +56,7 @@ export default function SystemClient() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="lg:col-span-2 bg-[#101b23] border border-[#1a2a36] rounded-2xl p-6"
+          className="lg:col-span-2 bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6"
         >
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-lg font-bold text-white mb-1">Trafic API OpenAI (Dernières 24h)</h3>
@@ -68,7 +68,7 @@ export default function SystemClient() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="bg-[#101b23] border border-[#1a2a36] rounded-2xl p-6 flex flex-col"
+          className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6 flex flex-col"
         >
           <h3 className="text-lg font-bold text-white mb-6">Santé Système</h3>
           <div className="space-y-6 flex-1">
@@ -77,7 +77,7 @@ export default function SystemClient() {
                 <span className="text-white/60 flex items-center gap-2"><Cpu className="w-4 h-4" /> CPU Vercel</span>
                 <span className="text-white font-bold">42%</span>
               </div>
-              <div className="w-full bg-[#1a2a36] rounded-full h-2">
+              <div className="w-full bg-[#2e4757] rounded-full h-2">
                 <div className="bg-[#10b981] h-2 rounded-full" style={{ width: "42%" }}></div>
               </div>
             </div>
@@ -87,7 +87,7 @@ export default function SystemClient() {
                 <span className="text-white/60 flex items-center gap-2"><HardDrive className="w-4 h-4" /> RAM Utilisée</span>
                 <span className="text-white font-bold">68%</span>
               </div>
-              <div className="w-full bg-[#1a2a36] rounded-full h-2">
+              <div className="w-full bg-[#2e4757] rounded-full h-2">
                 <div className="bg-amber-500 h-2 rounded-full" style={{ width: "68%" }}></div>
               </div>
             </div>
@@ -97,7 +97,7 @@ export default function SystemClient() {
                 <span className="text-white/60 flex items-center gap-2"><Database className="w-4 h-4" /> DB Supabase</span>
                 <span className="text-white font-bold">12%</span>
               </div>
-              <div className="w-full bg-[#1a2a36] rounded-full h-2">
+              <div className="w-full bg-[#2e4757] rounded-full h-2">
                 <div className="bg-[#3b82f6] h-2 rounded-full" style={{ width: "12%" }}></div>
               </div>
             </div>

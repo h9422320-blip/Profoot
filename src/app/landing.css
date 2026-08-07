@@ -7,7 +7,7 @@
 .landing-root {
   width: 100%;
   min-height: 100vh;
-  background: #020806; /* Slightly lighter than pitch black */
+  background: #101c24; /* Slightly lighter than pitch black */
   color: #f8fafc;
   overflow-x: hidden;
   font-family: 'Inter', sans-serif;
@@ -185,7 +185,7 @@
 @media (max-width: 768px) { .showcase-section { padding: 60px 20px; min-height: 60vh; } }
 .showcase-bg { position: absolute; inset: 0; z-index: 0; }
 .showcase-bg-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.2; }
-.showcase-overlay { position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(2,8,6,0.3) 0%, #020806 100%); }
+.showcase-overlay { position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(16,28,36,0.3) 0%, #101c24 100%); }
 .showcase-inner { position: relative; z-index: 10; max-width: 800px; margin: 0 auto; }
 .showcase-match-label { font-size: 14px; font-weight: 700; color: #10b981; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 20px; }
 .showcase-title { font-size: 40px; font-weight: 800; line-height: 1.1; margin-bottom: 24px; letter-spacing: -0.02em; }
@@ -273,9 +273,9 @@
 .analysis-cta { display: inline-flex; align-items: center; gap: 8px; background: white; color: black; padding: 14px 28px; border-radius: 100px; font-weight: 700; text-decoration: none; transition: transform 0.2s; }
 .analysis-cta:hover { transform: scale(1.05); }
 .analysis-phone { flex: 1; display: flex; justify-content: center; position: relative; animation: float 7s ease-in-out infinite reverse; }
-.phone-frame { width: 100%; max-width: 380px; height: 720px; background: #050505; border: 3px solid rgba(255,255,255,0.12); border-radius: 48px; padding: 14px; box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05); position: relative; }
+.phone-frame { width: 100%; max-width: 380px; height: 720px; background: #101c24; border: 3px solid rgba(255,255,255,0.12); border-radius: 48px; padding: 14px; box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05); position: relative; }
 .phone-notch { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 110px; height: 28px; background: #000; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; z-index: 20; border: 1px solid rgba(255,255,255,0.05); border-top: none; }
-.phone-screen { background: #0a0a0a; border-radius: 36px; height: 100%; overflow: hidden; padding: 0; display: flex; flex-direction: column; }
+.phone-screen { background: #16242e; border-radius: 36px; height: 100%; overflow: hidden; padding: 0; display: flex; flex-direction: column; }
 @media (max-width: 768px) {
   .phone-frame { max-width: 320px; height: 600px; border-radius: 40px; padding: 10px; }
   .phone-screen { border-radius: 30px; }
@@ -455,7 +455,7 @@
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(16,185,129,0.10), transparent 60%),
     radial-gradient(ellipse 60% 40% at 85% 40%, rgba(6,182,212,0.06), transparent 60%),
     radial-gradient(ellipse 60% 40% at 10% 75%, rgba(139,92,246,0.05), transparent 60%),
-    #030a07;
+    #101c24;
 }
 .glow-orb-1, .glow-orb-2, .glow-orb-3 { opacity: 0.42; filter: blur(150px); }
 

@@ -21,7 +21,7 @@ export default function MatchesPage() {
           <input
             type="text"
             placeholder="Rechercher une équipe..."
-            className="w-full bg-[#111A24]/60 backdrop-blur-md border border-white/5 rounded-full pl-11 pr-5 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-primary/40 transition-colors shadow-inner"
+            className="w-full bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-full pl-11 pr-5 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-primary/40 transition-colors shadow-inner"
           />
         </div>
       </div>
@@ -58,7 +58,7 @@ export default function MatchesPage() {
 
 function MatchSection({ title, subtitle, icon, children }: { title: string; subtitle: string; icon: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#111A24]/40 backdrop-blur-md border border-white/5 rounded-[32px] overflow-hidden shadow-[0_15px_30px_rgba(0,0,0,0.2)]">
+    <div className="bg-[#1d2f3a]/40 backdrop-blur-md border border-white/5 rounded-[32px] overflow-hidden shadow-[0_15px_30px_rgba(0,0,0,0.2)]">
       <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-black/20">
         <div className="flex items-center gap-3">
           <span className="text-lg">{icon}</span>
@@ -91,7 +91,7 @@ function MatchCard({ match }: { match: Match }) {
 
   return (
     <Link href={`/match/${match.id}`} className="group block">
-      <div className="p-5 md:p-6 rounded-[28px] bg-[#111A24]/80 backdrop-blur-md border border-white/5 hover:bg-white/5 transition-all shadow-lg space-y-4">
+      <div className="p-5 md:p-6 rounded-[28px] bg-[#1d2f3a]/80 backdrop-blur-md border border-white/5 hover:bg-white/5 transition-all shadow-lg space-y-4">
         {/* Top bar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -153,7 +153,7 @@ function FinishedMatchRow({ match }: { match: Match }) {
   const displayDate = match.date.length > 5 ? match.date.substring(0, 5) : match.date;
 
   return (
-    <Link href={`/match/${match.id}`} className="block p-4 md:p-5 rounded-[24px] bg-[#111A24]/60 backdrop-blur-md border border-white/5 hover:bg-white/5 transition-all shadow-md group">
+    <Link href={`/match/${match.id}`} className="block p-4 md:p-5 rounded-[24px] bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 hover:bg-white/5 transition-all shadow-md group">
       <div className="grid grid-cols-[45px_1fr_24px_54px_24px_1fr_auto] md:grid-cols-[60px_1fr_32px_70px_32px_1fr_auto] items-center gap-2 md:gap-4 w-full">
         
         {/* Date */}

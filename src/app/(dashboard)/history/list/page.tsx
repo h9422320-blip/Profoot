@@ -91,7 +91,7 @@ export default function MobileHistoryListPage() {
       </div>
 
       {history.length === 0 ? (
-        <div className="bg-[#111A24]/60 border border-white/5 rounded-[24px] p-8 text-center flex flex-col items-center justify-center space-y-6 mt-8">
+        <div className="bg-[#1d2f3a]/60 border border-white/5 rounded-[24px] p-8 text-center flex flex-col items-center justify-center space-y-6 mt-8">
           <div className="w-20 h-20 rounded-full bg-[#10B981]/10 flex items-center justify-center border border-[#10B981]/20">
             <History className="w-8 h-8 text-[#10B981]" />
           </div>
@@ -110,7 +110,7 @@ export default function MobileHistoryListPage() {
         <div className="space-y-4">
           
           {/* FILTERS MOBILE */}
-          <div className="bg-[#111A24]/60 border border-white/5 rounded-2xl p-3 flex flex-col gap-3">
+          <div className="bg-[#1d2f3a]/60 border border-white/5 rounded-2xl p-3 flex flex-col gap-3">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
               <input
@@ -132,9 +132,9 @@ export default function MobileHistoryListPage() {
                 onChange={(e) => setFilterType(e.target.value)}
                 className="flex-1 bg-white/5 border border-white/5 rounded-xl px-3 py-2.5 text-[11px] font-semibold text-white outline-none focus:border-[#10B981]/40"
               >
-                <option value="all" className="bg-[#0D1520]">Tous les types</option>
-                <option value="future" className="bg-[#0D1520]">Prédictions IA</option>
-                <option value="past" className="bg-[#0D1520]">Résultats passés</option>
+                <option value="all" className="bg-[#18272f]">Tous les types</option>
+                <option value="future" className="bg-[#18272f]">Prédictions IA</option>
+                <option value="past" className="bg-[#18272f]">Résultats passés</option>
               </select>
             </div>
           </div>
@@ -154,7 +154,7 @@ export default function MobileHistoryListPage() {
                   <div
                     key={item.id}
                     onClick={() => setSelectedItem(item)}
-                    className="bg-gradient-to-b from-[#111A24] to-[#0A1118] border border-white/5 rounded-2xl p-4 shadow-xl relative overflow-hidden"
+                    className="bg-gradient-to-b from-[#1d2f3a] to-[#16242e] border border-white/5 rounded-2xl p-4 shadow-xl relative overflow-hidden"
                   >
                     {/* Top Bar */}
                     <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-white/5">
@@ -229,7 +229,7 @@ export default function MobileHistoryListPage() {
       {selectedItem && (
         <div className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-sm flex flex-col animate-fade-in">
           {/* Mobile Modal Header */}
-          <div className="flex items-center justify-between p-4 bg-[#0D1520] border-b border-white/5 shrink-0 pt-8">
+          <div className="flex items-center justify-between p-4 bg-[#18272f] border-b border-white/5 shrink-0 pt-8">
             <div className="flex items-center gap-3">
               <button onClick={() => setSelectedItem(null)} className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center">
                 <ChevronLeft className="w-5 h-5 text-white" />
@@ -243,7 +243,7 @@ export default function MobileHistoryListPage() {
             
             {/* PREMIUM LOCK OVERLAY for free users */}
             {!isPro && (
-              <div className="absolute inset-0 z-30 bg-[#0D1520]/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-6">
+              <div className="absolute inset-0 z-30 bg-[#18272f]/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-6">
                 <div className="w-14 h-14 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
                   <Lock className="w-7 h-7 text-orange-400" />
                 </div>
@@ -256,7 +256,7 @@ export default function MobileHistoryListPage() {
             )}
 
             {/* Score Banner Mobile */}
-            <div className="bg-[#111A24] rounded-2xl p-4 border border-white/5">
+            <div className="bg-[#1d2f3a] rounded-2xl p-4 border border-white/5">
               <div className="flex justify-between items-center text-center">
                 <div className="flex flex-col items-center gap-2 w-[35%]">
                   <img src={selectedItem.team1?.logo} className="w-12 h-12 object-contain" alt="" />
@@ -322,7 +322,7 @@ export default function MobileHistoryListPage() {
             )}
           </div>
           
-          <div className="p-4 border-t border-white/5 bg-[#0D1520] shrink-0">
+          <div className="p-4 border-t border-white/5 bg-[#18272f] shrink-0">
             <Link
               href={`/analyze?t1=${selectedItem.team1?.id}&t2=${selectedItem.team2?.id}`}
               className="w-full bg-[#10B981] hover:bg-[#059669] text-black font-black py-3.5 rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]"

@@ -32,7 +32,7 @@ export default function MetricCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.23, 1, 0.32, 1] }}
-      className="relative bg-[#101b23] border border-[#1a2a36] rounded-2xl p-6 overflow-hidden group hover:border-[#10b981]/30 transition-colors"
+      className="relative bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6 overflow-hidden group hover:border-[#10b981]/30 transition-colors"
     >
       {/* Subtle Glow on Hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#10b981]/0 to-[#10b981]/0 group-hover:from-[#10b981]/5 transition-all duration-500 pointer-events-none" />

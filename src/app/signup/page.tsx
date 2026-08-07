@@ -196,7 +196,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="hero-cta-primary group w-full justify-center !text-base disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[#030a07]"
+                className="hero-cta-primary group w-full justify-center !text-base disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[#101c24]"
               >
                 <span className="relative flex items-center gap-2">
                   {isLoading ? 'Création en cours...' : 'Créer mon compte'}
