@@ -81,6 +81,11 @@ export async function POST(req: Request) {
 
     const result = await activateSubscriptionFromSale(admin, sale, userId);
     if (!result.activated) {
+      // Vente déjà créditée : accusé de réception normal, sinon Chariow
+      // réessaierait pendant des heures pour rien.
+      if (result.reason === 'Vente déjà créditée.') {
+        return NextResponse.json({ received: true, status: 'already_credited' });
+      }
       console.error(`Vente ${sale.id} non activée : ${result.reason}`);
       return NextResponse.json({ error: result.reason }, { status: 422 });
     }

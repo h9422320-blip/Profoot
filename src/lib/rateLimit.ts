@@ -27,6 +27,28 @@ if (typeof setInterval !== 'undefined') {
 }
 
 /**
+ * Identifie l'appelant de façon non falsifiable.
+ *
+ * `x-forwarded-for` est une liste "client, proxy1, proxy2…" à laquelle un
+ * attaquant peut préfixer ce qu'il veut ; seule la valeur ajoutée par
+ * l'hébergeur fait foi. Sur Vercel, `x-vercel-forwarded-for` contient l'IP
+ * réelle et n'est pas modifiable par le client. À défaut, on prend la DERNIÈRE
+ * entrée de `x-forwarded-for` (celle écrite par le proxy le plus proche) plutôt
+ * que la première, qui est sous contrôle de l'attaquant.
+ */
+export function clientIp(req: Request): string {
+  const vercelIp = req.headers.get('x-vercel-forwarded-for');
+  if (vercelIp) return vercelIp.split(',')[0].trim();
+
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) {
+    const parts = xff.split(',').map(p => p.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return 'unknown-ip';
+}
+
+/**
  * Vérifie si l'utilisateur (ou l'IP) a dépassé sa limite de requêtes.
  * @param identifier Identifiant unique (ex: User ID ou Adresse IP)
  * @param action L'action effectuée (ex: 'analyze' ou 'agent')

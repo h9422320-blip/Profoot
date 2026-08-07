@@ -14,6 +14,14 @@ ALTER TABLE public.subscriptions ALTER COLUMN provider SET DEFAULT 'chariow';
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_active
     ON public.subscriptions(user_id, status, expires_at DESC);
 
+-- 2b. SÉCURITÉ : la politique héritée « Service role can manage subscriptions »
+-- avait été écrite sans clause TO ni FOR, ce qui en PostgreSQL équivaut à
+-- FOR ALL TO PUBLIC — soit un accès total en écriture pour anon/authenticated.
+-- Le service_role contourne la RLS de toute façon : cette politique est inutile
+-- et dangereuse. On la supprime, et on garantit qu'aucune écriture n'est
+-- possible en dehors du serveur.
+DROP POLICY IF EXISTS "Service role can manage subscriptions" ON public.subscriptions;
+
 -- 3. Idempotence des webhooks : chaque livraison Pulse (x-pulse-delivery-id) n'est traitée qu'une fois.
 CREATE TABLE IF NOT EXISTS public.webhook_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

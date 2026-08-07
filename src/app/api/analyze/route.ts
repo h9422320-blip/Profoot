@@ -1,4 +1,3 @@
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { requirePremium } from "@/lib/subscription";
@@ -116,7 +115,7 @@ function getCurrentSeason(): number {
   return month >= 8 ? now.getFullYear() : now.getFullYear() - 1;
 }
 
-import { isRateLimited } from "@/lib/rateLimit";
+import { isRateLimited, clientIp } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   // --- PERMISSIONS : l'analyseur IA est réservé aux abonnés Premium ---
@@ -124,7 +123,7 @@ export async function POST(req: Request) {
   if (!guard.ok) return guard.response;
 
   // --- BOUCLIER ANTI-SPAM (5 requêtes par minute) ---
-  const ip = req.headers.get('x-forwarded-for') || req.headers.get('remote-addr') || 'unknown-ip';
+  const ip = clientIp(req);
   if (isRateLimited(ip, 'analyze', 5, 60 * 1000)) {
     console.warn(`[ANTI-SPAM] IP ${ip} bloquée pour abus d'analyse.`);
     return NextResponse.json({ error: "Trop de requêtes. Veuillez patienter une minute." }, { status: 429 });

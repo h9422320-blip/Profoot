@@ -78,7 +78,12 @@ export async function computeEntitlements(
   let best: Entitlements = FREE_ENTITLEMENTS;
 
   for (const sub of subscriptions) {
-    const active = !sub.expires_at || new Date(sub.expires_at).getTime() > now;
+    // Une absence de date d'expiration ne vaut accès permanent que pour les
+    // anciens abonnements « lifetime » (héritage Moneroo). Pour tout le reste,
+    // une date valide et future est exigée.
+    const active = sub.expires_at
+      ? new Date(sub.expires_at).getTime() > now
+      : sub.plan === 'lifetime';
     if (!active) continue;
 
     if (sub.plan === 'yearly' || sub.plan === 'lifetime') {
@@ -92,6 +97,16 @@ export async function computeEntitlements(
   return best;
 }
 
+// Une session dont la dernière connexion remonte à plus de 24h n'est plus
+// valable. Contrôlé ici — point de passage unique de toutes les gardes — pour
+// que les routes API soient couvertes au même titre que les pages.
+const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000;
+
+function isSessionFresh(user: User): boolean {
+  const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
+  return lastSignIn > 0 && Date.now() - lastSignIn <= MAX_SESSION_AGE_MS;
+}
+
 /** Récupère l'utilisateur connecté et ses droits en une seule fois. */
 export async function getSessionEntitlements(): Promise<{
   user: User | null;
@@ -100,6 +115,7 @@ export async function getSessionEntitlements(): Promise<{
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return { user: null, entitlements: FREE_ENTITLEMENTS };
+  if (!isSessionFresh(user)) return { user: null, entitlements: FREE_ENTITLEMENTS };
   return { user, entitlements: await computeEntitlements(supabase, user) };
 }
 

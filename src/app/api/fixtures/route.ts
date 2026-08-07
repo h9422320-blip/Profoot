@@ -6,7 +6,7 @@ import {
   getRecentResults,
   normalizeFixture,
 } from "@/lib/api-football";
-import { isRateLimited } from "@/lib/rateLimit";
+import { isRateLimited, clientIp } from "@/lib/rateLimit";
 
 /**
  * GET /api/fixtures
@@ -21,7 +21,7 @@ import { isRateLimited } from "@/lib/rateLimit";
  */
 export async function GET(req: Request) {
   // Anti-abus : protège le quota API-Football (40 requêtes/min/IP).
-  const ip = req.headers.get('x-forwarded-for') || 'unknown-ip';
+  const ip = clientIp(req);
   if (isRateLimited(ip, 'fixtures', 40, 60 * 1000)) {
     return NextResponse.json({ error: 'Trop de requêtes, réessayez dans un instant.' }, { status: 429 });
   }

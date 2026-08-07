@@ -42,7 +42,9 @@ export async function updateSession(request: NextRequest) {
   if (user) {
     const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
     if (!lastSignIn || Date.now() - lastSignIn > MAX_SESSION_AGE_MS) {
-      await supabase.auth.signOut();
+      // Portée locale : n'invalide que cette session, pas celles des autres
+      // appareils de l'utilisateur.
+      await supabase.auth.signOut({ scope: 'local' });
       activeUser = null;
     }
   }
@@ -64,10 +66,12 @@ export async function updateSession(request: NextRequest) {
 
   // --- SECURITE ADMIN STRICTE ---
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!activeUser || activeUser.email !== 'h9422320@gmail.com') {
+    if (!activeUser || activeUser.email?.toLowerCase() !== 'h9422320@gmail.com') {
       const url = request.nextUrl.clone()
       url.pathname = '/analyze' // Rediriger les curieux vers la page d'analyse
-      return NextResponse.redirect(url)
+      const redirectResponse = NextResponse.redirect(url)
+      supabaseResponse.cookies.getAll().forEach(cookie => redirectResponse.cookies.set(cookie))
+      return redirectResponse
     }
   }
   // ------------------------------

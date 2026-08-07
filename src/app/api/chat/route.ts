@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { isRateLimited } from "@/lib/rateLimit";
+import { isRateLimited, clientIp } from "@/lib/rateLimit";
 import { requireVip } from "@/lib/subscription";
 
 export const maxDuration = 60;
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   if (!guard.ok) return guard.response;
 
   // --- BOUCLIER ANTI-SPAM (10 requêtes par minute pour l'agent IA) ---
-  const ip = req.headers.get('x-forwarded-for') || req.headers.get('remote-addr') || 'unknown-ip';
+  const ip = clientIp(req);
   if (isRateLimited(ip, 'agent', 10, 60 * 1000)) {
     console.warn(`[ANTI-SPAM] IP ${ip} bloquée pour abus du chat IA.`);
     return Response.json({ error: "Trop de requêtes à l'Agent IA. Veuillez patienter une minute." }, { status: 429 });

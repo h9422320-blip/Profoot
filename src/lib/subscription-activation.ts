@@ -40,23 +40,32 @@ export async function activateSubscriptionFromSale(
   const config = PLANS[plan];
   const expiresAt = new Date(Date.now() + config.durationDays * 24 * 60 * 60 * 1000).toISOString();
 
-  const { error } = await admin.from('subscriptions').upsert(
-    {
-      user_id: userId,
-      plan,
-      status: 'active',
-      provider: 'chariow',
-      chariow_sale_id: sale.id,
-      amount: sale.amount?.value ?? config.amountXof,
-      currency: sale.amount?.currency ?? 'XOF',
-      expires_at: expiresAt,
-    },
-    { onConflict: 'chariow_sale_id' }
-  );
+  // Une vente ne peut créditer QU'UNE SEULE FOIS. `ignoreDuplicates` produit un
+  // ON CONFLICT DO NOTHING : rejouer la même vente (réessai de webhook, appel
+  // répété de la réconciliation) ne repousse jamais la date d'expiration.
+  const { data, error } = await admin
+    .from('subscriptions')
+    .upsert(
+      {
+        user_id: userId,
+        plan,
+        status: 'active',
+        provider: 'chariow',
+        chariow_sale_id: sale.id,
+        amount: sale.amount?.value ?? config.amountXof,
+        currency: sale.amount?.currency ?? 'XOF',
+        expires_at: expiresAt,
+      },
+      { onConflict: 'chariow_sale_id', ignoreDuplicates: true }
+    )
+    .select('id');
 
   if (error) {
     console.error('Erreur activation abonnement:', error);
     return { activated: false, reason: 'Erreur base de données.' };
+  }
+  if (!data || data.length === 0) {
+    return { activated: false, reason: 'Vente déjà créditée.' };
   }
   return { activated: true, plan, expiresAt };
 }

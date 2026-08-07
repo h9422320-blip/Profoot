@@ -54,6 +54,11 @@ export function resolvePaidPlan(input: {
       ? planFromAmount(input.amountValue)
       : null;
 
+  // Un produit identifié qui n'appartient pas à ProFoot ne doit JAMAIS activer
+  // d'abonnement, même si ses métadonnées annoncent une offre : sinon l'achat
+  // d'un produit bon marché de la boutique pourrait débloquer le VIP.
+  if (input.productId && !byProduct) return null;
+
   const plan = byProduct ?? byMetadata ?? byAmount;
   if (!plan) return null;
 
