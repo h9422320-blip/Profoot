@@ -32,7 +32,8 @@ if (typeof setInterval !== 'undefined') {
  * être gonflé jusqu'à saturer la mémoire du serveur.
  */
 export function setBounded(cache: Map<string, any>, key: string, value: any, maxSize = 500) {
-  if (cache.size >= maxSize) {
+  // Rafraîchir une clé existante ne doit évincer personne.
+  if (!cache.has(key) && cache.size >= maxSize) {
     const oldest = cache.keys().next();
     if (!oldest.done) cache.delete(oldest.value);
   }
@@ -86,7 +87,16 @@ export function isRateLimited(
   const record = rateLimiterCache.get(key);
 
   if (!record || record.resetAt < now) {
-    // Première requête ou la fenêtre de temps a expiré (réinitialisation)
+    // Première requête ou la fenêtre de temps a expiré (réinitialisation).
+    // Ce cache est le seul dont les clés viennent du réseau : il doit être
+    // borné, sinon un attaquant peut le gonfler entre deux passes de nettoyage.
+    if (!rateLimiterCache.has(key) && rateLimiterCache.size >= 10000) {
+      cleanupCache();
+      if (rateLimiterCache.size >= 10000) {
+        const oldest = rateLimiterCache.keys().next();
+        if (!oldest.done) rateLimiterCache.delete(oldest.value);
+      }
+    }
     rateLimiterCache.set(key, { count: 1, resetAt: now + windowMs });
     return false;
   }

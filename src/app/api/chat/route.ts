@@ -10,9 +10,10 @@ export async function POST(req: Request) {
   if (!guard.ok) return guard.response;
 
   // --- BOUCLIER ANTI-SPAM (10 requêtes par minute pour l'agent IA) ---
-  const ip = clientIp(req);
+  // Clé = identifiant du compte (non renouvelable, contrairement à l'IP).
+  const ip = guard.user.id;
   if (isRateLimited(ip, 'agent', 10, 60 * 1000)) {
-    console.warn(`[ANTI-SPAM] IP ${ip} bloquée pour abus du chat IA.`);
+    console.warn(`[ANTI-SPAM] Compte ${ip} bloqué pour abus du chat IA.`);
     return Response.json({ error: "Trop de requêtes à l'Agent IA. Veuillez patienter une minute." }, { status: 429 });
   }
   // -------------------------------------------------------------------

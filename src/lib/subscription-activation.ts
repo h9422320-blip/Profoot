@@ -38,7 +38,22 @@ export async function activateSubscriptionFromSale(
   }
 
   const config = PLANS[plan];
-  const expiresAt = new Date(Date.now() + config.durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+  // Un réabonnement anticipé s'ajoute au temps restant plutôt que de l'écraser :
+  // sans cela, renouveler à J+10 ferait perdre au client ses 20 jours restants.
+  const { data: current } = await admin
+    .from('subscriptions')
+    .select('expires_at')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .order('expires_at', { ascending: false })
+    .limit(1);
+
+  const currentExpiry = current?.[0]?.expires_at
+    ? new Date(current[0].expires_at).getTime()
+    : 0;
+  const startFrom = Math.max(Date.now(), currentExpiry);
+  const expiresAt = new Date(startFrom + config.durationDays * 24 * 60 * 60 * 1000).toISOString();
 
   // Une vente ne peut créditer QU'UNE SEULE FOIS. `ignoreDuplicates` produit un
   // ON CONFLICT DO NOTHING : rejouer la même vente (réessai de webhook, appel

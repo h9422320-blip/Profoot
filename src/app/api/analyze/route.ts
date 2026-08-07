@@ -43,7 +43,7 @@ async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DA
       return null;
     }
     const data = await res.json();
-    apiFootballCache.set(cacheKey, { data, timestamp: Date.now() });
+    setBounded(apiFootballCache, cacheKey, { data, timestamp: Date.now() });
     return data;
   } catch (e: any) {
     console.error(`[BACKEND_ANALYZE] Exception on ${endpoint}:`, e.message);
@@ -124,9 +124,11 @@ export async function POST(req: Request) {
   if (!guard.ok) return guard.response;
 
   // --- BOUCLIER ANTI-SPAM (5 requêtes par minute) ---
-  const ip = clientIp(req);
+  // Clé = identifiant du compte : contrairement à l'IP, il n'est pas
+  // renouvelable à volonté par l'attaquant.
+  const ip = guard.user.id;
   if (isRateLimited(ip, 'analyze', 5, 60 * 1000)) {
-    console.warn(`[ANTI-SPAM] IP ${ip} bloquée pour abus d'analyse.`);
+    console.warn(`[ANTI-SPAM] Compte ${ip} bloqué pour abus d'analyse.`);
     return NextResponse.json({ error: "Trop de requêtes. Veuillez patienter une minute." }, { status: 429 });
   }
   // --------------------------------------------------
@@ -147,11 +149,17 @@ export async function POST(req: Request) {
   if (!rawTeam1?.id || !rawTeam2?.id) {
     return NextResponse.json({ error: "Équipes manquantes" }, { status: 400 });
   }
-  const team1 = clubs[String(rawTeam1.id)];
-  const team2 = clubs[String(rawTeam2.id)];
-  if (!team1 || !team2) {
+  // hasOwnProperty et non `clubs[id]` : un identifiant comme "constructor" ou
+  // "toString" remonte la chaîne de prototypes et passerait un simple test de
+  // vérité, avec un objet qui n'est pas une équipe.
+  const teamKey1 = String(rawTeam1.id);
+  const teamKey2 = String(rawTeam2.id);
+  const known = (id: string) => Object.prototype.hasOwnProperty.call(clubs, id);
+  if (!known(teamKey1) || !known(teamKey2)) {
     return NextResponse.json({ error: "Équipe inconnue" }, { status: 404 });
   }
+  const team1 = clubs[teamKey1];
+  const team2 = clubs[teamKey2];
 
   const today = new Date().toISOString().split('T')[0];
   const cacheKey = `${team1.id}-${team2.id}-${today}`;
