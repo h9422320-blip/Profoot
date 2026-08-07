@@ -26,7 +26,10 @@ export async function POST(req: Request) {
     }
 
     const currentDate = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const SYSTEM_PROMPT = `Tu es ProFoot Expert — l'intelligence artificielle football la plus pointue et la plus premium du marché. Tu es connecté en temps réel à internet via Google Search.
+    // Le prompt doit décrire les capacités RÉELLEMENT disponibles : demander à
+    // l'IA d'utiliser un outil de recherche qu'on ne lui fournit pas la fait
+    // échouer sur un appel de fonction invalide et renvoyer un texte vide.
+    const buildSystemPrompt = (withSearch: boolean) => `Tu es ProFoot Expert — l'intelligence artificielle football la plus pointue et la plus premium du marché.${withSearch ? ' Tu es connecté en temps réel à internet via Google Search.' : ''}
 
 DATE ACTUELLE : ${currentDate}. Nous sommes en 2026. La Coupe du Monde 2026 est terminée (finale jouée le 19 juillet 2026) — n'en parle que si on te pose la question. Le focus actuel : la préparation et le début de la saison 2026-2027 des grands championnats (Premier League, Liga, Serie A, Bundesliga, Ligue 1, coupes d'Europe).
 
@@ -40,7 +43,9 @@ Tu parles comme un directeur sportif de haut niveau croisé avec un grand journa
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. SUJET UNIQUE : Tu es 100% dédié au football. Joueurs, équipes, tactiques, transferts, matchs, compétitions, blessures, paris. Si on te parle d'autre chose, tu refuses avec élégance.
 
-2. INTERNET EN TEMPS RÉEL : Dès qu'une question porte sur un score, une actualité ou un événement récent → utilise immédiatement ton outil de recherche Google. Ne dis jamais "je n'ai pas accès aux données récentes", cherche-les.
+2. ${withSearch
+  ? `INTERNET EN TEMPS RÉEL : Dès qu'une question porte sur un score, une actualité ou un événement récent → utilise immédiatement ton outil de recherche Google. Ne dis jamais "je n'ai pas accès aux données récentes", cherche-les.`
+  : `CONNAISSANCES PROPRES : Tu n'as PAS d'outil de recherche disponible dans cet échange — n'essaie jamais d'en appeler un. Réponds à partir de ta vaste connaissance du football. Sur un résultat de tout dernière minute, dis simplement que le score en direct est à confirmer, puis apporte quand même ton analyse.`}
 
 3. STYLE DE RÉPONSE PREMIUM :
    • Commence chaque réponse avec une accroche percutante — une phrase qui donne immédiatement le ton.
@@ -64,7 +69,7 @@ Tu parles comme un directeur sportif de haut niveau croisé avec un grand journa
     const buildModel = (withSearch: boolean) =>
       genAI.getGenerativeModel({
         model: 'gemini-3.5-flash',
-        systemInstruction: SYSTEM_PROMPT,
+        systemInstruction: buildSystemPrompt(withSearch),
         ...(withSearch ? { tools: [{ googleSearch: {} } as any] } : {}),
       });
     let model = buildModel(true);
@@ -95,7 +100,7 @@ Tu parles comme un directeur sportif de haut niveau croisé avec un grand journa
     }
 
     const lastMessage = messages[messages.length - 1];
-    let text: string;
+    let text = '';
     try {
       const chat = model.startChat({ history });
       const result = await chat.sendMessage(lastMessage.content);
@@ -106,12 +111,23 @@ Tu parles comme un directeur sportif de haut niveau croisé avec un grand journa
         searchError?.message?.includes('quota') ||
         searchError?.message?.includes('RESOURCE_EXHAUSTED');
       if (!quotaExceeded) throw searchError;
+      console.warn('[AGENT VIP] Quota de recherche Google épuisé — bascule sans temps réel.');
+    }
 
-      console.warn('[AGENT VIP] Quota de recherche Google épuisé — réponse sans temps réel.');
+    // Une réponse vide compte aussi comme un échec : le modèle peut terminer
+    // sans erreur mais sans texte (appel d'outil invalide, filtre déclenché).
+    if (!text.trim()) {
       model = buildModel(false);
       const chat = model.startChat({ history });
       const result = await chat.sendMessage(lastMessage.content);
       text = result.response.text();
+    }
+
+    if (!text.trim()) {
+      return Response.json(
+        { error: "L'Agent IA n'a pas pu formuler de réponse. Reformulez votre question." },
+        { status: 502 }
+      );
     }
 
     return Response.json({ text });
