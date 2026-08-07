@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requirePremium } from "@/lib/subscription";
+import { requireUser } from "@/lib/subscription";
 import { setBounded } from "@/lib/rateLimit";
 
 // Plusieurs appels API-Football en chaîne : dépasse les 10 s par défaut.
@@ -28,7 +28,7 @@ async function fetchApiFootball(endpoint: string) {
 }
 
 export async function POST(req: Request) {
-  const guard = await requirePremium();
+  const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
   try {

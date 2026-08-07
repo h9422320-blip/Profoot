@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { clubs } from '@/lib/data';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { requirePremium } from '@/lib/subscription';
+import { requireUser } from '@/lib/subscription';
 
 // Appel Gemini : dépasse les 10 s accordées par défaut à une fonction serverless.
 export const maxDuration = 60;
@@ -9,7 +9,7 @@ export const maxDuration = 60;
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 export async function GET(request: Request) {
-  const guard = await requirePremium();
+  const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(request.url);

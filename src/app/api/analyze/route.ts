@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { requirePremium } from "@/lib/subscription";
+import { requireUser } from "@/lib/subscription";
 import { clubs } from "@/lib/data";
 
 // ============================================================================
@@ -125,8 +125,12 @@ import { isRateLimited, clientIp, setBounded } from "@/lib/rateLimit";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  // --- PERMISSIONS : l'analyseur IA est réservé aux abonnés Premium ---
-  const guard = await requirePremium();
+  // --- PERMISSIONS ---
+  // L'analyse est ouverte à tout utilisateur connecté : le modèle produit est
+  // un APERÇU gratuit (résultat partiel, reste flouté avec invitation à
+  // s'abonner). Exiger un abonnement ici supprimerait cet aperçu, qui est le
+  // principal levier de conversion.
+  const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
   // --- BOUCLIER ANTI-SPAM (5 requêtes par minute) ---

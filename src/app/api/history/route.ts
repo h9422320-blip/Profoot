@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { requirePremium } from '@/lib/subscription';
+import { requireUser } from '@/lib/subscription';
 
 // GET — Récupérer l'historique de l'utilisateur connecté (fonctionnalité Premium)
 export async function GET(req: Request) {
   try {
-    const guard = await requirePremium();
+    const guard = await requireUser();
     if (!guard.ok) return guard.response;
     const supabase = await createClient();
     const user = guard.user;
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
 // POST — Sauvegarder une nouvelle analyse (fonctionnalité Premium)
 export async function POST(req: Request) {
   try {
-    const guard = await requirePremium();
+    const guard = await requireUser();
     if (!guard.ok) return guard.response;
     const supabase = await createClient();
     const user = guard.user;
