@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isRateLimited } from '@/lib/rateLimit';
 
 const API_KEY = process.env.API_FOOTBALL_KEY || "";
 
@@ -30,6 +31,12 @@ async function fetchApiFootball(endpoint: string) {
 }
 
 export async function GET(request: Request) {
+  // Anti-abus : protège le quota API-Football (40 requêtes/min/IP).
+  const ip = request.headers.get('x-forwarded-for') || 'unknown-ip';
+  if (isRateLimited(ip, 'live', 40, 60 * 1000)) {
+    return NextResponse.json({ error: 'Trop de requêtes, réessayez dans un instant.' }, { status: 429 });
+  }
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 

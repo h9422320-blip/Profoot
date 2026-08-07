@@ -6,6 +6,7 @@ import {
   getRecentResults,
   normalizeFixture,
 } from "@/lib/api-football";
+import { isRateLimited } from "@/lib/rateLimit";
 
 /**
  * GET /api/fixtures
@@ -19,6 +20,12 @@ import {
  * The data format matches the existing frontend interface so no UI changes are needed.
  */
 export async function GET(req: Request) {
+  // Anti-abus : protège le quota API-Football (40 requêtes/min/IP).
+  const ip = req.headers.get('x-forwarded-for') || 'unknown-ip';
+  if (isRateLimited(ip, 'fixtures', 40, 60 * 1000)) {
+    return NextResponse.json({ error: 'Trop de requêtes, réessayez dans un instant.' }, { status: 429 });
+  }
+
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") || "all";
   const days = parseInt(searchParams.get("days") || "7", 10);

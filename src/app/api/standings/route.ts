@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStandings, normalizeStandingRow, LEAGUE_IDS } from "@/lib/api-football";
+import { isRateLimited } from "@/lib/rateLimit";
 
 /**
  * GET /api/standings?league=epl
@@ -7,6 +8,12 @@ import { getStandings, normalizeStandingRow, LEAGUE_IDS } from "@/lib/api-footba
  * Returns real-time standings from API-FOOTBALL for a given league.
  */
 export async function GET(req: Request) {
+  // Anti-abus : protège le quota API-Football (40 requêtes/min/IP).
+  const ip = req.headers.get('x-forwarded-for') || 'unknown-ip';
+  if (isRateLimited(ip, 'standings', 40, 60 * 1000)) {
+    return NextResponse.json({ error: 'Trop de requêtes, réessayez dans un instant.' }, { status: 429 });
+  }
+
   const { searchParams } = new URL(req.url);
   const leagueId = searchParams.get("league");
 

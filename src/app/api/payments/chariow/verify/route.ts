@@ -27,12 +27,21 @@ export async function POST() {
     const admin = createAdminClient();
 
     const results = [];
+    let unmatched = 0;
     for (const sale of sales) {
-      // Ne rattache que les ventes payées par cet email ; si la vente porte un
-      // user_id de checkout, il doit correspondre à la session.
+      // SÉCURITÉ : seul le user_id inscrit par NOTRE serveur au moment du
+      // checkout fait foi. L'email seul ne suffit pas : la création de compte
+      // n'exige pas de prouver la possession de l'adresse, donc n'importe qui
+      // pourrait s'inscrire avec l'email d'un acheteur et réclamer sa vente.
       const metaUserId = sale.custom_metadata?.user_id;
-      if (metaUserId && metaUserId !== user.id) continue;
-      if (sale.customer?.email?.toLowerCase() !== user.email.toLowerCase()) continue;
+      if (!metaUserId || metaUserId !== user.id) {
+        unmatched++;
+        continue;
+      }
+      if (sale.customer?.email?.toLowerCase() !== user.email.toLowerCase()) {
+        unmatched++;
+        continue;
+      }
 
       const result = await activateSubscriptionFromSale(admin, sale, user.id);
       if (result.activated) results.push({ saleId: sale.id, plan: result.plan });
@@ -41,6 +50,9 @@ export async function POST() {
     return NextResponse.json({
       checked: sales.length,
       activated: results,
+      // Ventes trouvées sur cet email mais non rattachables automatiquement
+      // (achat direct en boutique) : à traiter manuellement côté admin.
+      unmatched,
     });
   } catch (error) {
     console.error('Erreur réconciliation Chariow:', error);
