@@ -192,19 +192,23 @@ export async function POST(req: Request) {
     id1 = ids[0]; id2 = ids[1];
   } catch (e) {}
 
-  let t1Data: any = null, t2Data: any = null, h2hRes: any = null;
+  let t1Data: any = null, t2Data: any = null, h2hRes: any = null, nextH2H: any = null;
   const season = getCurrentSeason();
 
   if (id1 && id2) {
     console.log(`[BACKEND_ANALYZE] Fetching H2H and Fixtures...`);
-    const [t1Fixtures, t2Fixtures, h2hr] = await Promise.all([
+    // Sans le paramètre `next`, l'API ne renvoie que des confrontations
+    // PASSÉES : la rencontre à venir (date, heure, stade) était donc invisible.
+    const [t1Fixtures, t2Fixtures, h2hr, nextH2Hr] = await Promise.all([
       fetchApiFootball(`/fixtures?team=${id1}&season=${season}&last=10`, CACHE_TTL.TEAM_STATS),
       fetchApiFootball(`/fixtures?team=${id2}&season=${season}&last=10`, CACHE_TTL.TEAM_STATS),
-      fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}`)
+      fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}`),
+      fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}&next=1`, CACHE_TTL.API_DATA)
     ]);
     t1Data = { data: t1Fixtures, season };
     t2Data = { data: t2Fixtures, season };
     h2hRes = h2hr;
+    nextH2H = nextH2Hr?.response?.[0] || null;
   } else {
     console.warn(`[BACKEND_ANALYZE] API-Football IDs missing (Rate Limit or Unmapped). Bypassing API-Football for PURE AI analysis.`);
     t1Data = { data: { response: [] }, season };
@@ -480,6 +484,20 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
       responseText = jsonMatch[0];
     }
     const parsedData = JSON.parse(responseText);
+
+    // Informations réelles du match (compétition, coup d'envoi, stade, ville).
+    // Sans elles, l'en-tête affichait ses valeurs de repli — « Match
+    // International » et « Bientôt » — au lieu du contexte réel de la rencontre.
+    const fixtureSource = targetFutureMatch || nextH2H;
+    if (fixtureSource) {
+      const f = fixtureSource.fixture;
+      const kickoff = new Date(f.date);
+      parsedData.competition = fixtureSource.league?.name || parsedData.competition;
+      parsedData.date = kickoff.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      parsedData.time = kickoff.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      parsedData.venue = f.venue?.name || null;
+      parsedData.venueCity = f.venue?.city || null;
+    }
 
     // Merge API basic data to keep the interface working
     parsedData.isFinished = false;

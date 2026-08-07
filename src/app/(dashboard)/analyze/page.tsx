@@ -1047,9 +1047,24 @@ export default function AnalyzePage() {
                 </div>
                 <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold mb-2">Basée sur stats + actualité foot</span>
                 
-                <div className="w-full flex flex-col items-start gap-2 pt-4 border-t border-white/5 text-[11px] font-semibold text-white/50">
-                  <div className="flex items-center gap-2"><span className="text-sm">🏆</span> {result.competition || "Match International"} <span className="mx-2">•</span> {result.date || "Bientôt"}</div>
-                  <div className="flex items-center gap-2"><span className="text-sm">📍</span> {getClub(team1!).stadium || "Stade National"}</div>
+                {/* Contexte réel de la rencontre : compétition, coup d'envoi,
+                    stade et ville. Centré et sur une seule ligne fluide, comme
+                    un en-tête de match professionnel. */}
+                <div className="w-full flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-4 border-t border-white/5 text-[11px] md:text-xs font-semibold text-white/60">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-sm">🏆</span> {result.competition || "Match International"}
+                  </span>
+                  {result.date && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-sm">📅</span>
+                      {result.date}{result.time ? ` à ${result.time}` : ""}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-sm">📍</span>
+                    {result.venue || getClub(team1!).stadium || "Stade National"}
+                    {result.venueCity ? ` · ${result.venueCity}` : ""}
+                  </span>
                 </div>
               </div>
 
