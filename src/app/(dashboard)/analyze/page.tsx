@@ -1198,43 +1198,46 @@ export default function AnalyzePage() {
               )}
 
               {/* PAYWALL WRAPPER BEGIN */}
-              {/* La fenêtre descend jusqu'aux barres de « Comparaison
-                  statistique » : ce sont les seuls blocs vraiment colorés, donc
-                  les seuls perceptibles à travers le flou. Couper avant ne
-                  laissait voir que des cartes sombres — donc du noir. */}
-              <div className={`relative pt-6 ${!isPremium ? 'max-h-[1180px] overflow-hidden' : ''}`}>
+              {/* Rien n'est coupé : TOUTE l'analyse premium reste dans le flux,
+                  floutée. L'utilisateur fait défiler et mesure la richesse de ce
+                  qu'il achète (barres, cartes, sections) sans pouvoir rien lire.
+                  Une fenêtre courte donnait l'impression qu'il n'y avait presque
+                  rien à acheter. */}
+              <div className="relative pt-6">
                 {!isPremium && (
-                  // Voile volontairement semi-transparent : l'utilisateur doit
-                  // DEVINER qu'une analyse riche existe dessous (barres, blocs,
-                  // couleurs) sans pouvoir la lire. C'est ce qui crée l'envie.
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 py-10 text-center" style={{background: 'linear-gradient(to bottom, rgba(16,28,36,0) 0%, rgba(16,28,36,0.30) 18%, rgba(16,28,36,0.55) 42%, rgba(16,28,36,0.52) 100%)' }}>
-                    
-                    <h3 className="text-xl md:text-3xl font-black text-white mb-4" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
-                    
-                    <div className="w-56 h-1.5 bg-white/10 rounded-full mb-5 overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#10B981] to-[#2DD4BF] rounded-full" style={{ width: "15%" }}></div>
-                    </div>
+                  /* Bloc collant, placé dans le flux normal avec une hauteur
+                     nulle : il ne décale rien et reste au centre de l'écran
+                     pendant tout le défilement de la zone floutée. Un enfant de
+                     conteneur absolu ne peut PAS être collant, d'où ce montage. */
+                  <div className="sticky top-[32vh] z-30 h-0 px-4">
+                    <div className="w-full max-w-[340px] sm:max-w-[420px] mx-auto flex flex-col items-center rounded-[28px] px-5 py-7 sm:px-8 sm:py-9 border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.55)]" style={{background: 'rgba(22,36,46,0.94)', backdropFilter: 'blur(8px)'}}>
+                      <h3 className="text-[19px] leading-tight sm:text-2xl md:text-3xl font-black text-white mb-4 text-center" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
 
-                    <p className="text-[13px] md:text-[14px] text-white/80 font-medium mb-8 max-w-[300px] leading-relaxed">
-                      L'analyse complète contient les probabilités exactes, les scénarios restants et les insights premium.
-                    </p>
-                    
-                    <Link 
-                      href="/pricing"
-                      className="inline-flex items-center justify-center gap-2 font-black py-4 px-10 rounded-full transition-all text-sm shadow-[0_8px_32px_rgba(45,212,191,0.4)] whitespace-nowrap hover:scale-105 active:scale-95"
-                      style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#101c24'}}
-                    >
-                      🔒 Débloquer l'analyse complète
-                    </Link>
+                      <div className="w-full max-w-[220px] h-1.5 bg-white/10 rounded-full mb-5 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-[#10B981] to-[#2DD4BF] rounded-full" style={{ width: "15%" }}></div>
+                      </div>
+
+                      <p className="text-[13px] md:text-[14px] text-white/80 font-medium mb-7 max-w-[300px] leading-relaxed text-center">
+                        L'analyse complète contient les probabilités exactes, les scénarios restants et les insights premium.
+                      </p>
+
+                      <Link
+                        href="/pricing"
+                        className="w-full inline-flex items-center justify-center gap-2 font-black py-3.5 px-5 rounded-full transition-all text-[13px] sm:text-sm text-center shadow-[0_8px_32px_rgba(45,212,191,0.4)] hover:scale-[1.02] active:scale-95"
+                        style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#101c24'}}
+                      >
+                        🔒 Débloquer l'analyse complète
+                      </Link>
+                    </div>
                   </div>
                 )}
-                
+
                 {/*
-                  Flou calibré : assez fort pour rendre chiffres et textes
-                  illisibles, assez léger pour laisser voir les formes et les
-                  couleurs des blocs (barres vertes/rouges, cartes, titres).
+                  Flou fort : aucun chiffre, aucun score, aucun texte ne doit
+                  être lisible — sinon l'abonnement perd sa raison d'être. Seules
+                  les formes et les couleurs restent perceptibles.
                 */}
-                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[7px] opacity-[0.85]' : ''}`}>
+                <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[16px] opacity-[0.8] saturate-125' : ''}`}>
                   {/* Score pill */}
                   {result.predictedScore && (
                     <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
