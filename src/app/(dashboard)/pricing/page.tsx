@@ -68,7 +68,7 @@ export default function PricingPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
         {/* Free Plan */}
-        <div className="bg-card border border-border-card rounded-3xl p-8 space-y-8 flex flex-col">
+        <div className="bg-card border border-border-card rounded-[28px] p-8 space-y-8 flex flex-col">
           <div className="space-y-2">
             <h3 className="text-xl font-bold">Standard</h3>
             <div className="flex items-baseline gap-1">
@@ -83,21 +83,21 @@ export default function PricingPage() {
             <FeatureItem label="Classements et calendriers" />
             <FeatureItem label="Publicité discrète" />
           </ul>
-          <button className="w-full py-4 rounded-2xl bg-sidebar border border-border-card text-foreground/40 font-bold cursor-not-allowed">
+          <button className="w-full py-4 rounded-[20px] bg-sidebar border border-border-card text-foreground/40 font-bold cursor-not-allowed">
             {plan === 'FREE' ? 'Plan Actuel' : 'Plan de base'}
           </button>
         </div>
 
         {/* Premium Mensuel */}
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-primary to-info rounded-[2rem] blur opacity-25 group-hover:opacity-50 transition duration-1000" />
-          <div className="relative bg-card border-2 border-primary rounded-3xl p-8 space-y-8 flex flex-col h-full shadow-2xl shadow-primary/20">
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary to-info rounded-[32px] blur opacity-25 group-hover:opacity-50 transition duration-1000" />
+          <div className="relative bg-card border-2 border-primary rounded-[28px] p-8 space-y-8 flex flex-col h-full shadow-2xl shadow-primary/20">
             <div className="absolute top-4 right-4 px-3 py-1 bg-primary text-white text-[10px] font-black rounded-full uppercase tracking-widest">
               Populaire
             </div>
             <div className="space-y-2">
               <h3 className="text-xl font-bold flex items-center gap-2">
-                Premium <span className="bg-warning text-black text-[10px] px-2 py-0.5 rounded italic">MENSUEL</span>
+                Premium <span className="bg-warning text-black text-[10px] px-2 py-0.5 rounded-full italic">MENSUEL</span>
               </h3>
               <div className="flex items-baseline gap-1">
                 <span className="text-4xl font-black">15.000</span>
@@ -122,7 +122,7 @@ export default function PricingPage() {
             <button
               onClick={() => handleSubscribe('monthly')}
               disabled={loadingPlan !== null || checkingStatus || isMonthly || isYearly}
-              className={`w-full py-4 rounded-2xl font-black shadow-lg transition-all flex items-center justify-center gap-2 ${
+              className={`w-full py-4 rounded-[20px] font-black shadow-lg transition-all flex items-center justify-center gap-2 ${
                 isMonthly || isYearly
                   ? 'bg-success/20 text-success cursor-not-allowed'
                   : 'bg-primary hover:bg-primary-hover text-white shadow-primary/30'
@@ -142,10 +142,10 @@ export default function PricingPage() {
         </div>
 
         {/* Premium Annuel (VIP) */}
-        <div className="bg-card border border-warning/40 rounded-3xl p-8 space-y-8 flex flex-col">
+        <div className="bg-card border border-warning/40 rounded-[28px] p-8 space-y-8 flex flex-col">
           <div className="space-y-2">
             <h3 className="text-xl font-bold flex items-center gap-2">
-              Premium <span className="bg-success text-white text-[10px] px-2 py-0.5 rounded italic">ANNUEL</span>
+              Premium <span className="bg-success text-white text-[10px] px-2 py-0.5 rounded-full italic">ANNUEL</span>
               <Crown className="w-4 h-4 text-warning" />
             </h3>
             <div className="flex items-baseline gap-1">
@@ -165,7 +165,7 @@ export default function PricingPage() {
           <button
             onClick={() => handleSubscribe('yearly')}
             disabled={loadingPlan !== null || checkingStatus || isYearly}
-            className={`w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`w-full py-4 rounded-[20px] font-bold transition-all flex items-center justify-center gap-2 ${
               isYearly
                 ? 'bg-success/20 text-success cursor-not-allowed'
                 : 'bg-warning hover:bg-warning/90 text-black shadow-lg shadow-warning/20'
@@ -207,8 +207,8 @@ function FeatureItem({ label, pro }: { label: string; pro?: boolean }) {
 
 function ProBadge({ icon: Icon, title, desc }: any) {
   return (
-    <div className="p-6 rounded-2xl bg-sidebar/50 border border-border-card space-y-3">
-      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+    <div className="p-6 rounded-[20px] bg-sidebar/50 border border-border-card space-y-3">
+      <div className="w-10 h-10 rounded-[16px] bg-primary/10 flex items-center justify-center text-primary">
         <Icon className="w-6 h-6" />
       </div>
       <h4 className="font-bold text-sm uppercase tracking-widest">{title}</h4>

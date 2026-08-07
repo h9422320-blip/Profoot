@@ -29,7 +29,7 @@ export default function IACenterPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* How the IA works */}
-        <div className="lg:col-span-2 bg-card border border-border-card rounded-xl p-6">
+        <div className="lg:col-span-2 bg-card border border-border-card rounded-[16px] p-6">
           <h2 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
             <Brain className="w-5 h-5 text-primary" /> Comment fonctionne notre IA ?
           </h2>
@@ -43,7 +43,7 @@ export default function IACenterPage() {
 
         {/* Accuracy panel */}
         <div className="space-y-6">
-          <div className="bg-card border border-border-card rounded-xl p-6">
+          <div className="bg-card border border-border-card rounded-[16px] p-6">
             <h3 className="text-sm font-bold text-foreground mb-4">Récapitulatif récent</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -65,7 +65,7 @@ export default function IACenterPage() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-primary/10 via-card to-card border border-primary/20 rounded-xl p-6">
+          <div className="bg-gradient-to-br from-primary/10 via-card to-card border border-primary/20 rounded-[16px] p-6">
             <h3 className="text-sm font-bold text-primary mb-2">Niveau de confiance</h3>
             <p className="text-xs text-foreground/50 mb-4">L'IA n'affiche une prédiction que si sa confiance dépasse 50%. Plus la barre est haute, plus la prédiction est fiable.</p>
             <div className="space-y-3">
@@ -83,8 +83,8 @@ export default function IACenterPage() {
 
 function PerformanceCard({ icon: Icon, title, value, color, bgColor }: any) {
   return (
-    <div className="bg-card border border-border-card rounded-xl p-5">
-      <div className={`p-2.5 rounded-lg ${bgColor} w-fit mb-3`}>
+    <div className="bg-card border border-border-card rounded-[16px] p-5">
+      <div className={`p-2.5 rounded-[14px] ${bgColor} w-fit mb-3`}>
         <Icon className={`w-5 h-5 ${color}`} />
       </div>
       <div className="text-2xl font-black text-foreground">{value}</div>

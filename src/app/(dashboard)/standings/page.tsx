@@ -59,7 +59,7 @@ export default function StandingsPage() {
         const rows = standingsData[leagueId];
         if (!comp || !rows) return null;
         return (
-          <div key={leagueId} className="bg-card border border-border-card rounded-xl overflow-hidden">
+          <div key={leagueId} className="bg-card border border-border-card rounded-[16px] overflow-hidden">
             <Link href={`/competitions/${leagueId}`} className="px-5 py-4 border-b border-border-card flex items-center gap-3 hover:bg-sidebar/50 transition-colors">
               <img src={comp.logo} alt={comp.shortName} className="w-6 h-6 object-contain" />
               <h2 className="text-sm font-bold text-foreground">{comp.name}</h2>

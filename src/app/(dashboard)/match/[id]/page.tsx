@@ -25,7 +25,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
       </Link>
 
       {/* Main Scoreboard */}
-      <div className="relative overflow-hidden bg-card border border-border-card rounded-2xl p-8 md:p-12">
+      <div className="relative overflow-hidden bg-card border border-border-card rounded-[20px] p-8 md:p-12">
         {/* Background Decorative Element */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -ml-32 -mb-32" />
@@ -55,7 +55,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               <div className="flex flex-col items-center gap-1">
                 <span className="text-2xl md:text-4xl font-light text-foreground/20">-</span>
                 {match.status !== "finished" && (
-                  <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20">PREDICTED</span>
+                  <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full border border-primary/20">PREDICTED</span>
                 )}
               </div>
               <span className="text-5xl md:text-7xl font-black text-foreground tracking-tighter">
@@ -90,10 +90,10 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: Deep Insights */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-card border border-border-card rounded-2xl p-6 md:p-8">
+          <div className="bg-card border border-border-card rounded-[20px] p-6 md:p-8">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                <div className="p-2.5 rounded-[16px] bg-primary/10 text-primary">
                   <Brain className="w-6 h-6" />
                 </div>
                 <div>
@@ -134,7 +134,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               </div>
             </div>
 
-            <div className="mt-10 p-6 rounded-xl bg-sidebar/50 border border-border-card border-dashed">
+            <div className="mt-10 p-6 rounded-[16px] bg-sidebar/50 border border-border-card border-dashed">
               <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-primary" /> Résumé de la Prédiction
               </h4>
@@ -148,7 +148,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
           {/* Verification section if finished */}
           {match.status === "finished" && (
-            <div className={`bg-card border rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 ${precision?.scoreCorrect ? "border-primary/30" : precision?.winnerCorrect ? "border-warning/30" : "border-danger/30"}`}>
+            <div className={`bg-card border rounded-[20px] p-6 flex flex-col md:flex-row items-center justify-between gap-6 ${precision?.scoreCorrect ? "border-primary/30" : precision?.winnerCorrect ? "border-warning/30" : "border-danger/30"}`}>
               <div className="flex items-center gap-4">
                 <div className={`p-3 rounded-full ${precision?.scoreCorrect ? "bg-primary/10 text-primary" : precision?.winnerCorrect ? "bg-warning/10 text-warning" : "bg-danger/10 text-danger"}`}>
                   {precision?.winnerCorrect ? <CheckCircle2 className="w-8 h-8" /> : <XCircle className="w-8 h-8" />}
@@ -165,11 +165,11 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="text-center px-4 py-2 bg-sidebar rounded-lg border border-border-card">
+                <div className="text-center px-4 py-2 bg-sidebar rounded-[14px] border border-border-card">
                   <div className="text-[10px] text-foreground/40 uppercase font-bold">Prédit</div>
                   <div className="text-lg font-black text-foreground">{match.prediction!.score}</div>
                 </div>
-                <div className="text-center px-4 py-2 bg-sidebar rounded-lg border border-border-card">
+                <div className="text-center px-4 py-2 bg-sidebar rounded-[14px] border border-border-card">
                   <div className="text-[10px] text-foreground/40 uppercase font-bold">Réel</div>
                   <div className="text-lg font-black text-primary">{match.result?.home} - {match.result?.away}</div>
                 </div>
@@ -180,7 +180,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
         {/* Right: Odds and Win Probability */}
         <div className="space-y-6">
-          <div className="bg-card border border-border-card rounded-2xl p-6">
+          <div className="bg-card border border-border-card rounded-[20px] p-6">
             <h3 className="text-sm font-bold text-foreground mb-6 uppercase tracking-widest flex items-center gap-2">
               <Target className="w-4 h-4 text-primary" /> Probabilités de Victoire
             </h3>
@@ -191,14 +191,14 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-2xl p-6">
+          <div className="bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-[20px] p-6">
             <h3 className="text-sm font-bold text-primary mb-4 flex items-center gap-2">
               <Zap className="w-4 h-4" /> Conseil de l'IA
             </h3>
             <p className="text-xs text-foreground/70 leading-relaxed mb-4">
               "Compte tenu de la solidité défensive de {home.name} à domicile et de l'enjeu du match, le marché 'Moins de 2.5 buts' présente une valeur statistique intéressante."
             </p>
-            <div className="flex items-center justify-between p-3 bg-card/50 rounded-xl border border-primary/10">
+            <div className="flex items-center justify-between p-3 bg-card/50 rounded-[16px] border border-primary/10">
               <span className="text-[10px] font-bold text-foreground/50">VALEUR ESTIMÉE</span>
               <span className="text-sm font-black text-primary">+18.4%</span>
             </div>

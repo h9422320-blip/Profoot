@@ -8,7 +8,7 @@ import { Users, CreditCard, Activity, BrainCircuit, ArrowUpRight } from "lucide-
 export default function OverviewDashboardClient({ data }: { data: any }) {
   if (data.error) {
     return (
-      <div className="p-6 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl">
+      <div className="p-6 bg-red-500/10 border border-red-500/20 text-red-400 rounded-[16px]">
         <h2 className="font-bold mb-2">Erreur Serveur</h2>
         <p>{data.error}</p>
       </div>
@@ -69,14 +69,14 @@ export default function OverviewDashboardClient({ data }: { data: any }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="lg:col-span-2 bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6"
+          className="lg:col-span-2 bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] p-6"
         >
           <div className="flex items-center justify-between mb-8">
             <div>
               <h3 className="text-lg font-bold text-white mb-1">Croissance des Revenus</h3>
               <p className="text-sm text-white/40">Évolution sur les 7 derniers jours</p>
             </div>
-            <div className="px-3 py-1.5 bg-white/5 rounded-lg text-sm text-white/60 font-medium">
+            <div className="px-3 py-1.5 bg-white/5 rounded-[14px] text-sm text-white/60 font-medium">
               7 Derniers Jours
             </div>
           </div>
@@ -88,7 +88,7 @@ export default function OverviewDashboardClient({ data }: { data: any }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6 flex flex-col"
+          className="bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] p-6 flex flex-col"
         >
           <h3 className="text-lg font-bold text-white mb-6">Activité Récente</h3>
           <div className="space-y-4 flex-1">
@@ -109,7 +109,7 @@ export default function OverviewDashboardClient({ data }: { data: any }) {
               </div>
             ))}
           </div>
-          <button className="w-full mt-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-white transition-all flex items-center justify-center gap-2">
+          <button className="w-full mt-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-[16px] text-sm font-medium text-white transition-all flex items-center justify-center gap-2">
             Voir tous les utilisateurs <ArrowUpRight className="w-4 h-4" />
           </button>
         </motion.div>

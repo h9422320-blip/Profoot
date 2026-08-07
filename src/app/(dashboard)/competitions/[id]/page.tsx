@@ -115,7 +115,7 @@ export default function CompetitionPage() {
       </button>
 
       {/* Hero Card */}
-      <div className="bg-gradient-to-br from-[#1E2532] to-[#1d2f3a] border border-white/5 rounded-[24px] p-6 md:p-8 mb-6 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#1E2532] to-[#1d2f3a] border border-white/5 rounded-[28px] p-6 md:p-8 mb-6 relative overflow-hidden">
         <div className="flex items-start justify-between mb-4">
           <div className="w-[60px] h-[60px] md:w-[80px] md:h-[80px] bg-white/5 rounded-[16px] flex items-center justify-center border border-white/10 shadow-inner p-1">
             {competition.logo.startsWith('http') || competition.logo.startsWith('data:') ? (
@@ -143,14 +143,14 @@ export default function CompetitionPage() {
         </div>
         
         {id === "wc" ? (
-          <div className="inline-flex items-center gap-2 bg-[#1A222D] rounded-xl px-4 py-2 border border-white/5">
+          <div className="inline-flex items-center gap-2 bg-[#1A222D] rounded-[16px] px-4 py-2 border border-white/5">
             <span className="text-[11px] font-bold text-white/50 uppercase tracking-widest">COUP D'ENVOI DANS</span>
             <span className="text-[#10B981] font-bold text-[15px] tabular-nums">
               {timeLeft.days}j {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
             </span>
           </div>
         ) : (
-          <div className="inline-flex items-center gap-2 bg-[#1A222D] rounded-xl px-4 py-2 border border-white/5">
+          <div className="inline-flex items-center gap-2 bg-[#1A222D] rounded-[16px] px-4 py-2 border border-white/5">
             <span className="text-[11px] font-bold text-white/50 uppercase tracking-widest">STATUT</span>
             <span className="text-[#10B981] font-bold text-[13px] uppercase">{competition.status}</span>
           </div>
@@ -160,10 +160,10 @@ export default function CompetitionPage() {
       {/* Tabs (Only if Cup) */}
       {isCup && (
         <div className="flex items-center gap-1 mb-6 bg-[#243542] p-1.5 rounded-[16px] w-max border border-white/5 overflow-x-auto max-w-full">
-          <button onClick={() => setWcView("groups")} className={`px-5 py-2.5 rounded-[12px] text-[14px] font-medium transition-colors whitespace-nowrap ${wcView === 'groups' ? 'bg-[#064E3B]/80 text-[#10B981]' : 'text-white/40 hover:text-white/80'}`}>
+          <button onClick={() => setWcView("groups")} className={`px-5 py-2.5 rounded-[14px] text-[14px] font-medium transition-colors whitespace-nowrap ${wcView === 'groups' ? 'bg-[#064E3B]/80 text-[#10B981]' : 'text-white/40 hover:text-white/80'}`}>
             {id === 'ucl' ? 'Phase de Ligue' : 'Groupes'}
           </button>
-          <button onClick={() => setWcView("bracket")} className={`px-5 py-2.5 rounded-[12px] text-[14px] font-medium transition-colors whitespace-nowrap ${wcView === 'bracket' ? 'bg-[#064E3B]/80 text-[#10B981]' : 'text-white/40 hover:text-white/80'}`}>
+          <button onClick={() => setWcView("bracket")} className={`px-5 py-2.5 rounded-[14px] text-[14px] font-medium transition-colors whitespace-nowrap ${wcView === 'bracket' ? 'bg-[#064E3B]/80 text-[#10B981]' : 'text-white/40 hover:text-white/80'}`}>
             Éliminatoire
           </button>
         </div>
@@ -194,7 +194,7 @@ export default function CompetitionPage() {
                ))}
              </div>
            ) : (
-             <div className="bg-[#243542] border border-white/5 rounded-[24px] overflow-hidden shadow-xl">
+             <div className="bg-[#243542] border border-white/5 rounded-[28px] overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-[14px]">
                     <thead className="bg-[#1A222D] border-b border-white/5">
@@ -292,11 +292,11 @@ export default function CompetitionPage() {
             <div className={`px-3 py-1.5 flex justify-between items-center bg-transparent`}>
                <div className="flex items-center gap-2 overflow-hidden">
                  {isTbd ? (
-                   <div className="w-[14px] h-[10px] rounded-[2px] bg-[#2A3740]" />
+                   <div className="w-[14px] h-[10px] rounded-full bg-[#2A3740]" />
                  ) : logo ? (
-                   <img src={logo} alt={teamName} className="w-[14px] h-[10px] rounded-[2px] object-cover" />
+                   <img src={logo} alt={teamName} className="w-[14px] h-[10px] rounded-full object-cover" />
                  ) : (
-                   <div className="w-[14px] h-[10px] rounded-[2px] bg-[#2A3740]" />
+                   <div className="w-[14px] h-[10px] rounded-full bg-[#2A3740]" />
                  )}
                  <span className={`truncate text-[11px] ${displayWinner ? 'font-medium text-white' : 'text-[#8895A0]'}`}>{teamName}</span>
                </div>
@@ -307,7 +307,7 @@ export default function CompetitionPage() {
 
         const BracketCard = ({ match, rightConnector = false, halfConnector = null }: any) => {
           return (
-            <div className="relative w-[180px] h-[64px] flex flex-col justify-center bg-[#1A252C] rounded-xl z-10">
+            <div className="relative w-[180px] h-[64px] flex flex-col justify-center bg-[#1A252C] rounded-[16px] z-10">
               {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
               {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
               
@@ -330,7 +330,7 @@ export default function CompetitionPage() {
           <div className="flex flex-col relative z-10 w-[180px]" style={{ gap: gap, paddingTop: pt }}>
             <h4 className="text-center text-[10px] font-bold text-[#8895A0] uppercase tracking-widest mb-6 h-[15px]">{roundName}</h4>
             {matches.map((match: any, i: number) => (
-              <div key={i} className="relative w-[180px] h-[64px] flex flex-col justify-center bg-[#1A252C] rounded-xl z-10 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+              <div key={i} className="relative w-[180px] h-[64px] flex flex-col justify-center bg-[#1A252C] rounded-[16px] z-10 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
                 {renderTeam(match.t1, match.s1, match.s1 > match.s2 || match.s1 === "V")}
                 {renderTeam(match.t2, match.s2, match.s2 > match.s1 || match.s2 === "V")}
               </div>

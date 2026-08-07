@@ -25,11 +25,11 @@ export default function ClubPage() {
   return (
     <div className="space-y-8 pb-20">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-card border border-border-card p-8 md:p-12">
+      <div className="relative overflow-hidden rounded-[28px] bg-card border border-border-card p-8 md:p-12">
         <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-primary/10 to-transparent pointer-events-none" />
         
         <div className="relative flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-sidebar flex items-center justify-center p-6 shadow-xl border border-border-card">
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-[28px] bg-sidebar flex items-center justify-center p-6 shadow-xl border border-border-card">
             <img src={club.logo} alt={club.name} className="w-full h-full object-contain" />
           </div>
           
@@ -52,7 +52,7 @@ export default function ClubPage() {
 
             <div className="flex gap-2 justify-center md:justify-start">
               {club.form.map((res, i) => (
-                <span key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border ${
+                <span key={i} className={`w-8 h-8 rounded-[14px] flex items-center justify-center text-[10px] font-black border ${
                   res === "W" ? "bg-success/10 text-success border-success/20" : 
                   res === "D" ? "bg-warning/10 text-warning border-warning/20" : 
                   "bg-danger/10 text-danger border-danger/20"
@@ -63,7 +63,7 @@ export default function ClubPage() {
             </div>
           </div>
 
-          <Link href="/pricing" className="px-6 py-3 bg-warning text-black text-xs font-black rounded-xl uppercase tracking-tighter hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-warning/20">
+          <Link href="/pricing" className="px-6 py-3 bg-warning text-black text-xs font-black rounded-[16px] uppercase tracking-tighter hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-warning/20">
             <Brain className="w-4 h-4 fill-black" /> Analyse Pro Elite
           </Link>
         </div>
@@ -81,7 +81,7 @@ export default function ClubPage() {
           </div>
 
           {/* Squad Section */}
-          <div className="bg-card border border-border-card rounded-3xl overflow-hidden">
+          <div className="bg-card border border-border-card rounded-[28px] overflow-hidden">
             <div className="px-8 py-6 border-b border-border-card flex items-center justify-between">
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <Users className="w-5 h-5 text-primary" /> Effectif Clé
@@ -101,7 +101,7 @@ export default function ClubPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter ${
                       player.status === "starter" ? "bg-success/10 text-success" :
                       player.status === "injured" ? "bg-danger/10 text-danger" :
                       "bg-warning/10 text-warning"
@@ -117,7 +117,7 @@ export default function ClubPage() {
 
         {/* Right Column: AI Insights */}
         <div className="space-y-8">
-          <div className="bg-primary p-8 rounded-3xl text-white space-y-6 shadow-xl shadow-primary/20 relative overflow-hidden group">
+          <div className="bg-primary p-8 rounded-[28px] text-white space-y-6 shadow-xl shadow-primary/20 relative overflow-hidden group">
             <Brain className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10 group-hover:scale-110 transition-transform duration-500" />
             <h3 className="text-xl font-bold flex items-center gap-2">
                Insight Tactique <Info className="w-4 h-4 opacity-50" />
@@ -125,12 +125,12 @@ export default function ClubPage() {
             <p className="text-sm leading-relaxed text-white/80">
               Le système de {club.coach} privilégie une possession de {club.stats.possession}% avec un focus particulier sur les phases de transition. Avec un xG de {club.stats.xG}, {club.name} surperforme actuellement ses attentes offensives.
             </p>
-            <Link href="/pricing" className="block w-full py-4 bg-white text-primary text-center font-black rounded-2xl text-xs uppercase tracking-widest hover:bg-opacity-90 transition-opacity">
+            <Link href="/pricing" className="block w-full py-4 bg-white text-primary text-center font-black rounded-[20px] text-xs uppercase tracking-widest hover:bg-opacity-90 transition-opacity">
               Débloquer Analyse IA Avancée
             </Link>
           </div>
 
-          <div className="bg-card border border-border-card p-8 rounded-3xl space-y-6">
+          <div className="bg-card border border-border-card p-8 rounded-[28px] space-y-6">
             <h3 className="font-bold text-sm uppercase tracking-widest text-foreground/50">Performance IA</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-end">
@@ -150,8 +150,8 @@ export default function ClubPage() {
 
 function StatCard({ label, value, icon: Icon }: any) {
   return (
-    <div className="bg-card border border-border-card p-6 rounded-2xl space-y-3">
-      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+    <div className="bg-card border border-border-card p-6 rounded-[20px] space-y-3">
+      <div className="w-8 h-8 rounded-[14px] bg-primary/10 flex items-center justify-center text-primary">
         <Icon className="w-4 h-4" />
       </div>
       <div>

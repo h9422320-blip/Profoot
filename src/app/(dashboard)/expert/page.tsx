@@ -199,7 +199,7 @@ export default function ExpertAgentPage() {
           {/* Animated Glowing Background Orbs */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-[#10B981]/20 to-blue-500/20 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
           
-          <div className="bg-[#16242e]/60 backdrop-blur-3xl border border-white/[0.08] rounded-[40px] p-10 md:p-14 text-center shadow-[0_0_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
+          <div className="bg-[#16242e]/60 backdrop-blur-3xl border border-white/[0.08] rounded-[32px] p-10 md:p-14 text-center shadow-[0_0_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
             {/* Inner top highlight */}
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#10B981]/50 to-transparent" />
             
@@ -321,13 +321,13 @@ export default function ExpertAgentPage() {
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Posez votre question sur le football..."
-            className="w-full bg-[#18272f] border border-white/[0.08] rounded-2xl py-3.5 pl-5 pr-14 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all font-medium"
+            className="w-full bg-[#18272f] border border-white/[0.08] rounded-[20px] py-3.5 pl-5 pr-14 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all font-medium"
             style={{fontFamily: "'Inter', sans-serif"}}
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="absolute right-2 w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#059669] text-black flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:from-[#34D399] hover:to-primary transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] hover:scale-105"
+            className="absolute right-2 w-10 h-10 rounded-[16px] bg-gradient-to-br from-primary to-[#059669] text-black flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:from-[#34D399] hover:to-primary transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] hover:scale-105"
           >
             <Send className="w-4 h-4 translate-x-px" />
           </button>

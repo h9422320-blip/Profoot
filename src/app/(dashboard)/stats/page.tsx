@@ -21,7 +21,7 @@ export default function StatsPage() {
           const comp = competitions.find(c => c.id === league.id);
           const scorers = topScorers[league.id] || [];
           return (
-            <div key={league.id} className="bg-card border border-border-card rounded-xl overflow-hidden">
+            <div key={league.id} className="bg-card border border-border-card rounded-[16px] overflow-hidden">
               <div className="px-5 py-4 border-b border-border-card flex items-center gap-3">
                 {comp && <img src={comp.logo} alt={comp.shortName} className="w-5 h-5 object-contain" />}
                 <h2 className="text-sm font-bold text-foreground">{league.label}</h2>

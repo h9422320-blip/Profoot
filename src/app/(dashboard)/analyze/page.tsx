@@ -84,7 +84,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-white/5">
           <div className="flex items-center gap-2">
             {selectedLeague && (
-              <button onClick={() => setSelectedLeague(null)} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+              <button onClick={() => setSelectedLeague(null)} className="w-7 h-7 rounded-[14px] bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
                 <ChevronLeft className="w-4 h-4 text-white/70" />
               </button>
             )}
@@ -92,7 +92,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
               {selectedLeague ? leagueLabels[selectedLeague] : "Choisir une équipe"}
             </h3>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+          <button onClick={onClose} className="w-7 h-7 rounded-[14px] bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
             <X className="w-4 h-4 text-white/70" />
           </button>
         </div>
@@ -107,7 +107,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
                 placeholder="Rechercher une équipe..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-4 py-2.5 text-xs font-semibold text-white placeholder:text-white/25 outline-none focus:border-[#10B981]/40 transition-colors"
+                className="w-full bg-white/5 border border-white/5 rounded-[16px] pl-9 pr-4 py-2.5 text-xs font-semibold text-white placeholder:text-white/25 outline-none focus:border-[#10B981]/40 transition-colors"
               />
             </div>
           </div>
@@ -125,7 +125,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
                   <button
                     key={c.id}
                     onClick={() => { onSelect(c.id); onClose(); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[16px] transition-all text-left ${
                       c.id === currentTeamId ? "bg-[#10B981]/10 border border-[#10B981]/20" : "hover:bg-white/5 border border-transparent"
                     }`}
                   >
@@ -148,7 +148,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
                   <button
                     key={lid}
                     onClick={() => setSelectedLeague(lid)}
-                    className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 transition-all group"
+                    className="w-full flex items-center justify-between px-3 py-3 rounded-[16px] hover:bg-white/5 transition-all group"
                   >
                     <div className="flex items-center gap-3">
                       <img src={getLeagueLogo(lid)} className="w-6 h-6 object-contain shrink-0" alt="" />
@@ -169,7 +169,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
                 <button
                   key={c.id}
                   onClick={() => { onSelect(c.id); onClose(); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[16px] transition-all text-left ${
                     c.id === currentTeamId ? "bg-[#10B981]/10 border border-[#10B981]/20" : "hover:bg-white/5 border border-transparent"
                   }`}
                 >
@@ -187,7 +187,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
 }
 
 const WinIcon = () => (
-  <div className="w-[18px] h-[18px] bg-[#10B981] rounded-[3px] flex items-center justify-center shrink-0">
+  <div className="w-[18px] h-[18px] bg-[#10B981] rounded-full flex items-center justify-center shrink-0">
     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
   </div>
 );
@@ -197,12 +197,12 @@ const DrawIcon = () => (
   </div>
 );
 const LossIcon = () => (
-  <div className="w-[18px] h-[18px] bg-[#EF4444] rounded-[3px] flex items-center justify-center shrink-0">
+  <div className="w-[18px] h-[18px] bg-[#EF4444] rounded-full flex items-center justify-center shrink-0">
     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
   </div>
 );
 const EmptyIcon = () => (
-  <div className="w-[18px] h-[18px] bg-white/10 rounded-[3px] flex items-center justify-center shrink-0">
+  <div className="w-[18px] h-[18px] bg-white/10 rounded-full flex items-center justify-center shrink-0">
     <div className="w-2 h-0.5 bg-white/40"></div>
   </div>
 );
@@ -587,7 +587,7 @@ export default function AnalyzePage() {
 
       {/* 2. MATCH À ANALYSER CARD */}
       {!result && (
-        <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 md:p-5 flex flex-col shadow-lg relative overflow-hidden">
+        <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[28px] p-4 md:p-5 flex flex-col shadow-lg relative overflow-hidden">
         <div className="text-[9px] font-black text-white/25 uppercase tracking-[0.2em] mb-2">
           MATCH À ANALYSER
         </div>
@@ -664,7 +664,7 @@ export default function AnalyzePage() {
 
               <Link
                 href="/pricing"
-                className="mt-3 bg-primary hover:bg-primary-hover active:scale-95 text-white font-bold py-2.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest"
+                className="mt-3 bg-primary hover:bg-primary-hover active:scale-95 text-white font-bold py-2.5 px-6 rounded-[16px] transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest"
               >
                 Voir les offres <ArrowRight className="w-4 h-4" />
               </Link>
@@ -692,7 +692,7 @@ export default function AnalyzePage() {
 
               <button
                 onClick={() => { setAnalyzeError(null); handleAnalyze(); }}
-                className="mt-3 bg-red-500/10 hover:bg-red-500/20 active:scale-95 border border-red-500/30 text-red-400 font-bold py-2.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest"
+                className="mt-3 bg-red-500/10 hover:bg-red-500/20 active:scale-95 border border-red-500/30 text-red-400 font-bold py-2.5 px-6 rounded-[16px] transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest"
               >
                 <RefreshCcw className="w-4 h-4" /> Réessayer
               </button>
@@ -763,7 +763,7 @@ export default function AnalyzePage() {
                 : "Historique des analyses"}
             </h4>
             {todayHistory.length === 0 ? (
-              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[18px] p-5 text-center shadow-sm">
+              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[20px] p-5 text-center shadow-sm">
                 <span className="block text-sm font-bold text-white mb-2">Aucun match analysé pour le moment</span>
                 <span className="block text-xs text-white/40">Analysez votre premier match pour commencer votre historique.</span>
               </div>
@@ -774,12 +774,12 @@ export default function AnalyzePage() {
                   const aCl = typeof item.team2 === 'string' ? getClub(item.team2) : item.team2;
 
                   return (
-                    <div key={idx} className="relative rounded-[18px] overflow-hidden">
+                    <div key={idx} className="relative rounded-[20px] overflow-hidden">
 
                       {/* Full card — blurred entirely for non-premium */}
                       <button
                         onClick={() => isPremium ? handleQuickMatchSelect(hCl?.id || '', aCl?.id || '') : undefined}
-                        className={`w-full bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[18px] flex flex-col p-4 shadow-sm text-left transition-all ${
+                        className={`w-full bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[20px] flex flex-col p-4 shadow-sm text-left transition-all ${
                           isPremium
                             ? 'hover:border-primary/20 active:scale-[0.99] cursor-pointer'
                             : 'blur-[5px] opacity-60 cursor-default select-none pointer-events-none'
@@ -796,7 +796,7 @@ export default function AnalyzePage() {
                             {aCl?.name || "Inconnu"}
                           </span>
                         </div>
-                        <div className="flex flex-col gap-1 w-full bg-white/5 rounded-xl p-3">
+                        <div className="flex flex-col gap-1 w-full bg-white/5 rounded-[16px] p-3">
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-[10px] text-white/40 font-medium">
                               {item.date ? new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Récemment"}
@@ -820,7 +820,7 @@ export default function AnalyzePage() {
 
                       {/* Lock overlay floating above the blurred card */}
                       {!isPremium && (
-                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-[18px]">
+                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-[20px]">
                           <Link
                             href="/pricing"
                             className="flex items-center gap-1.5 font-black text-[11px] py-2.5 px-6 rounded-full transition-all hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(45,212,191,0.4)]"
@@ -852,7 +852,7 @@ export default function AnalyzePage() {
                     <button 
                       key={m.id}
                       onClick={() => handleQuickMatchSelect(m.homeTeam, m.awayTeam)}
-                      className="w-full bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 h-[56px] rounded-[18px] flex items-center px-4 shadow-sm transition-all group active:scale-[0.99]"
+                      className="w-full bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 hover:border-primary/20 h-[56px] rounded-[20px] flex items-center px-4 shadow-sm transition-all group active:scale-[0.99]"
                     >
                       {/* Date column — fixed width */}
                       <div className="w-[52px] shrink-0 text-center border-r border-white/5 pr-3 mr-3">
@@ -1009,7 +1009,7 @@ export default function AnalyzePage() {
 
               {/* Match Detailed Summary */}
               {result.summary && (
-                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-6 shadow-md space-y-3">
+                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[28px] p-6 shadow-md space-y-3">
                   <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                     Résumé de la rencontre
                   </h4>
@@ -1025,7 +1025,7 @@ export default function AnalyzePage() {
             <div className="space-y-8">
               
               {/* HEADER VISIFOOT STYLE FOR ANALYZED MATCH */}
-              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-6 rounded-[24px] space-y-5 shadow-md flex flex-col items-center">
+              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-6 rounded-[28px] space-y-5 shadow-md flex flex-col items-center">
                 <span className="text-[10px] uppercase tracking-widest text-white/40 mb-2 font-bold">Match analysé</span>
                 
                 <div className="flex flex-col items-center gap-4 w-full text-center">
@@ -1054,7 +1054,7 @@ export default function AnalyzePage() {
               </div>
 
               {/* Forme Récente - Visifoot Clone */}
-              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] shadow-md">
+              <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[28px] shadow-md">
                 <div className="flex justify-between items-center text-xs font-semibold text-white mb-6">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">📊</span>
@@ -1170,7 +1170,7 @@ export default function AnalyzePage() {
                     <span className="text-lg">📌</span>
                     <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Scénario #1</h4>
                   </div>
-                  <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[12px]">
+                  <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[14px]">
                     <p className="text-[13px] text-white/80 leading-relaxed font-medium">
                       {result.scenarios?.[0]?.content || "Le match devrait se dérouler selon un schéma tactique équilibré mais tendu."}
                     </p>
@@ -1291,7 +1291,7 @@ export default function AnalyzePage() {
                   </div>
                   <div className="space-y-3.5">
                     {result.scenarios.slice(1).map((sc: any, idx: number) => (
-                      <div key={idx} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] shadow-sm">
+                      <div key={idx} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[28px] shadow-sm">
                         <h5 className="text-sm font-black text-[#10B981] mb-2">{sc.title}</h5>
                         <p className="text-xs text-white/70 leading-relaxed font-semibold">{sc.content}</p>
                       </div>
@@ -1378,7 +1378,7 @@ export default function AnalyzePage() {
                      {[team1!, team2!].map((tid, idx) => {
                        const strengths = idx === 0 ? result.keyStrengths.team1 : result.keyStrengths.team2;
                        return (
-                         <div key={tid} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[24px] space-y-4 shadow-md">
+                         <div key={tid} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[28px] space-y-4 shadow-md">
                            <div className="flex items-center gap-3">
                              <img src={getClub(tid).logo} className="w-6 h-6 object-contain" alt=""/>
                              <span className="font-extrabold text-sm text-white">{getClub(tid).name}</span>
@@ -1426,7 +1426,7 @@ export default function AnalyzePage() {
                   return (
                     <div key={i} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[28px] p-5 md:p-6 shadow-md">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-8 h-8 rounded-xl bg-black/40 border border-white/5 flex items-center justify-center text-[#10B981]">
+                        <div className="w-8 h-8 rounded-[16px] bg-black/40 border border-white/5 flex items-center justify-center text-[#10B981]">
                           <IconComp className="w-4 h-4" />
                         </div>
                         <h4 className="text-sm font-black text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>{section.title}</h4>

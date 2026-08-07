@@ -21,7 +21,7 @@ export default function SettingsClient() {
           ].map((tab, i) => (
             <button
               key={i}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-[14px] text-sm font-medium transition-all ${
                 tab.active ? "bg-[#10b981]/10 text-[#10b981]" : "text-white/40 hover:text-white hover:bg-white/5"
               }`}
             >
@@ -37,7 +37,7 @@ export default function SettingsClient() {
           className="md:col-span-2 space-y-6"
         >
           {/* Section: General */}
-          <div className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6 space-y-6">
+          <div className="bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] p-6 space-y-6">
             <h3 className="text-lg font-bold text-white">Configuration Générale</h3>
             
             <div className="space-y-4">
@@ -46,7 +46,7 @@ export default function SettingsClient() {
                 <input
                   type="text"
                   defaultValue="ProFoot AI"
-                  className="w-full bg-[#16242e] border border-[#2e4757] rounded-xl py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
+                  className="w-full bg-[#16242e] border border-[#2e4757] rounded-[16px] py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
                 />
               </div>
 
@@ -55,7 +55,7 @@ export default function SettingsClient() {
                 <input
                   type="email"
                   defaultValue="support@profoot.ai"
-                  className="w-full bg-[#16242e] border border-[#2e4757] rounded-xl py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
+                  className="w-full bg-[#16242e] border border-[#2e4757] rounded-[16px] py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
                 />
               </div>
 
@@ -71,14 +71,14 @@ export default function SettingsClient() {
             </div>
             
             <div className="pt-4 flex justify-end">
-              <button className="flex items-center gap-2 px-6 py-2.5 bg-[#10b981] hover:bg-[#34d399] text-black font-bold rounded-xl text-sm transition-colors">
+              <button className="flex items-center gap-2 px-6 py-2.5 bg-[#10b981] hover:bg-[#34d399] text-black font-bold rounded-[16px] text-sm transition-colors">
                 <Save className="w-4 h-4" /> Enregistrer les modifications
               </button>
             </div>
           </div>
 
           {/* Section: Danger Zone */}
-          <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 space-y-4">
+          <div className="bg-red-500/5 border border-red-500/20 rounded-[20px] p-6 space-y-4">
             <h3 className="text-lg font-bold text-red-400 flex items-center gap-2">
               <Lock className="w-5 h-5" /> Zone de danger
             </h3>
@@ -86,7 +86,7 @@ export default function SettingsClient() {
               Ces actions sont irréversibles et peuvent impacter l'ensemble de la plateforme.
             </p>
             <div className="pt-2">
-              <button className="px-4 py-2 border border-red-500/30 hover:bg-red-500/10 text-red-400 font-medium rounded-lg text-sm transition-colors">
+              <button className="px-4 py-2 border border-red-500/30 hover:bg-red-500/10 text-red-400 font-medium rounded-[14px] text-sm transition-colors">
                 Purger le cache IA
               </button>
             </div>

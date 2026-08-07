@@ -33,15 +33,15 @@ export default function UsersClient({ users }: { users: any[] }) {
             placeholder="Rechercher par nom, email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#1d2f3a] border border-[#2e4757] rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
+            className="w-full bg-[#1d2f3a] border border-[#2e4757] rounded-[16px] py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all"
           />
         </div>
-        <div className="flex bg-[#1d2f3a] border border-[#2e4757] rounded-xl p-1 shrink-0">
+        <div className="flex bg-[#1d2f3a] border border-[#2e4757] rounded-[16px] p-1 shrink-0">
           {(["all", "premium", "free"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${
+              className={`px-4 py-1.5 rounded-[14px] text-sm font-medium capitalize transition-all ${
                 filter === f ? "bg-[#2e4757] text-white" : "text-white/40 hover:text-white"
               }`}
             >
@@ -52,7 +52,7 @@ export default function UsersClient({ users }: { users: any[] }) {
       </div>
 
       {/* Table */}
-      <div className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl overflow-hidden shadow-2xl">
+      <div className="bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-[#16242e]/50 border-b border-[#2e4757] text-white/50">
@@ -109,7 +109,7 @@ export default function UsersClient({ users }: { users: any[] }) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="p-2 text-white/30 hover:text-white hover:bg-white/10 rounded-lg transition-all">
+                      <button className="p-2 text-white/30 hover:text-white hover:bg-white/10 rounded-[14px] transition-all">
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </td>

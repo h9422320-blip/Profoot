@@ -62,7 +62,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
       >
         <div className="h-16 flex items-center px-6 border-b border-[#2e4757] justify-between lg:justify-start">
           <Link href="/admin" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#10b981] to-[#059669] flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <div className="w-8 h-8 rounded-[14px] bg-gradient-to-br from-[#10b981] to-[#059669] flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
               <span className="font-bold text-black text-sm">PF</span>
             </div>
             <span className="font-bold text-lg tracking-tight">ProFoot Admin</span>
@@ -79,7 +79,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative group ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-[14px] transition-all relative group ${
                   isActive ? "text-white bg-[#2e4757]" : "text-white/60 hover:text-white hover:bg-white/5"
                 }`}
               >
@@ -98,7 +98,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
         </div>
 
         <div className="p-4 border-t border-[#2e4757]">
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
+          <div className="flex items-center gap-3 p-3 rounded-[14px] bg-white/5 border border-white/10">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center shrink-0">
               <span className="text-xs font-bold">{user?.email?.charAt(0).toUpperCase()}</span>
             </div>
@@ -106,7 +106,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
               <p className="text-sm font-medium text-white truncate">{user?.email}</p>
               <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Super Admin</p>
             </div>
-            <Link href="/analyze" className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-md transition-colors">
+            <Link href="/analyze" className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-[14px] transition-colors">
               <LogOut className="w-4 h-4" />
             </Link>
           </div>
@@ -124,7 +124,7 @@ export default function AdminLayoutClient({ children, user }: { children: React.
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsMobileOpen(true)}
-              className="lg:hidden p-2 -ml-2 text-white/60 hover:text-white rounded-lg hover:bg-white/5"
+              className="lg:hidden p-2 -ml-2 text-white/60 hover:text-white rounded-[14px] hover:bg-white/5"
             >
               <Menu className="w-5 h-5" />
             </button>

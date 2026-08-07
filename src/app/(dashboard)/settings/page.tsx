@@ -145,7 +145,7 @@ export default function SettingsPage() {
           />
 
           <Link href="/pricing" className="block">
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all text-orange-400 hover:bg-orange-500/10 border border-transparent">
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 rounded-[16px] text-sm font-bold transition-all text-orange-400 hover:bg-orange-500/10 border border-transparent">
               <CreditCard className="w-4 h-4" />
               {t("settings.subscription")}
             </button>
@@ -157,20 +157,20 @@ export default function SettingsPage() {
           
           {/* TAB: PROFIL */}
           {activeTab === "profil" && (
-            <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-3xl p-8 shadow-2xl animate-fade-in">
+            <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-[28px] p-8 shadow-2xl animate-fade-in">
               <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.profileInfo")}</h2>
               
               {loading ? (
                 <div className="animate-pulse flex space-x-4">
-                  <div className="rounded-3xl bg-foreground/10 h-24 w-24"></div>
+                  <div className="rounded-[28px] bg-foreground/10 h-24 w-24"></div>
                   <div className="flex-1 space-y-6 py-1">
-                    <div className="h-2 bg-foreground/10 rounded"></div>
+                    <div className="h-2 bg-foreground/10 rounded-full"></div>
                     <div className="space-y-3">
                       <div className="grid grid-cols-3 gap-4">
-                        <div className="h-2 bg-foreground/10 rounded col-span-2"></div>
-                        <div className="h-2 bg-foreground/10 rounded col-span-1"></div>
+                        <div className="h-2 bg-foreground/10 rounded-full col-span-2"></div>
+                        <div className="h-2 bg-foreground/10 rounded-full col-span-1"></div>
                       </div>
-                      <div className="h-2 bg-foreground/10 rounded"></div>
+                      <div className="h-2 bg-foreground/10 rounded-full"></div>
                     </div>
                   </div>
                 </div>
@@ -178,7 +178,7 @@ export default function SettingsPage() {
                 <>
                   <div className="flex items-center gap-6 mb-10">
                     <div 
-                      className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center text-3xl font-black text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] bg-cover bg-center overflow-hidden"
+                      className="w-24 h-24 rounded-[28px] bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center text-3xl font-black text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] bg-cover bg-center overflow-hidden"
                       style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : {}}
                     >
                       {!avatarUrl && getInitials()}
@@ -194,7 +194,7 @@ export default function SettingsPage() {
                       <button 
                         onClick={() => fileInputRef.current?.click()}
                         disabled={saving}
-                        className="flex items-center gap-2 bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-foreground px-5 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-foreground px-5 py-2.5 rounded-[16px] text-sm font-bold transition-colors disabled:opacity-50"
                       >
                         <Upload className="w-4 h-4" />
                         {t("settings.changeAvatar")}
@@ -211,7 +211,7 @@ export default function SettingsPage() {
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
                           placeholder={t("settings.firstNamePlaceholder")} 
-                          className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:bg-foreground/10 transition-all" 
+                          className="w-full bg-foreground/5 border border-foreground/10 rounded-[16px] px-4 py-3.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:bg-foreground/10 transition-all" 
                         />
                       </div>
                       <div className="space-y-2">
@@ -221,20 +221,20 @@ export default function SettingsPage() {
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
                           placeholder={t("settings.lastNamePlaceholder")} 
-                          className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:bg-foreground/10 transition-all" 
+                          className="w-full bg-foreground/5 border border-foreground/10 rounded-[16px] px-4 py-3.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:bg-foreground/10 transition-all" 
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-foreground/50 uppercase tracking-widest">{t("settings.emailNonEditable")}</label>
-                      <input type="email" value={userEmail} disabled className="w-full bg-black/5 dark:bg-black/20 border border-foreground/5 rounded-xl px-4 py-3.5 text-sm text-foreground/50 cursor-not-allowed" />
+                      <input type="email" value={userEmail} disabled className="w-full bg-black/5 dark:bg-black/20 border border-foreground/5 rounded-[16px] px-4 py-3.5 text-sm text-foreground/50 cursor-not-allowed" />
                     </div>
                     
                     <div className="pt-6 border-t border-border-card flex justify-end">
                       <button 
                         type="submit" 
                         disabled={saving}
-                        className="bg-gradient-to-r from-primary to-primary-hover hover:brightness-110 active:scale-[0.98] text-white px-8 py-3 rounded-xl text-sm font-black transition-all shadow-[0_4px_20px_rgba(16,185,129,0.3)] disabled:opacity-50"
+                        className="bg-gradient-to-r from-primary to-primary-hover hover:brightness-110 active:scale-[0.98] text-white px-8 py-3 rounded-[16px] text-sm font-black transition-all shadow-[0_4px_20px_rgba(16,185,129,0.3)] disabled:opacity-50"
                       >
                         {saving ? t("settings.saving") : t("settings.saveChanges")}
                       </button>
@@ -257,7 +257,7 @@ function SettingsNavButton({ icon: Icon, label, active, onClick }: any) {
   return (
     <button 
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-[16px] text-sm font-bold transition-all ${
       active 
         ? 'bg-primary/10 text-primary border border-primary/20 scale-[1.02] shadow-sm' 
         : 'text-foreground/60 hover:bg-foreground/5 hover:text-foreground border border-transparent'

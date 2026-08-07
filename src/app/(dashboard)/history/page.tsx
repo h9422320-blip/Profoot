@@ -219,22 +219,22 @@ export default function HistoryPage() {
            </div>
            
            <div className="grid grid-cols-2 gap-4 mb-6">
-             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+             <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
                 <span className="text-2xl font-black text-white">{history.length}</span>
                 <span className="block text-[10px] text-white/40 uppercase tracking-widest mt-1">Analyses totales</span>
              </div>
-             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+             <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
                 <span className="text-2xl font-black text-[#10B981]">{history.filter(h => new Date(h.date).toDateString() === new Date().toDateString()).length}</span>
                 <span className="block text-[10px] text-white/40 uppercase tracking-widest mt-1">Aujourd'hui</span>
              </div>
            </div>
            
            <div className="space-y-2 mb-6">
-             <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5">
+             <div className="flex justify-between items-center bg-white/5 p-4 rounded-[20px] border border-white/5">
                 <span className="text-xs text-white/60 font-semibold">Date d'inscription</span>
                 <span className="text-xs font-bold text-white">{userProfile?.created_at ? new Date(userProfile.created_at).toLocaleDateString('fr-FR') : "Inconnue"}</span>
              </div>
-             <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5">
+             <div className="flex justify-between items-center bg-white/5 p-4 rounded-[20px] border border-white/5">
                 <span className="text-xs text-white/60 font-semibold">Dernière connexion</span>
                 <span className="text-xs font-bold text-[#10B981]">{userProfile?.last_sign_in_at ? new Date(userProfile.last_sign_in_at).toLocaleDateString('fr-FR') : "Inconnue"}</span>
              </div>
@@ -288,7 +288,7 @@ export default function HistoryPage() {
         {history.length > 0 && (
           <button
             onClick={handleClearAll}
-            className="self-start md:self-auto bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+            className="self-start md:self-auto bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 px-4 py-2 rounded-[16px] text-xs font-bold transition-all flex items-center gap-2"
           >
             <Trash2 className="w-4 h-4" />
             Vider l'historique
@@ -334,7 +334,7 @@ export default function HistoryPage() {
         <div className="space-y-6">
           
           {/* BARRE DE RECHERCHE ET FILTRES */}
-          <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[24px] p-4 shadow-lg flex flex-col md:flex-row items-center gap-4">
+          <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[28px] p-4 shadow-lg flex flex-col md:flex-row items-center gap-4">
             
             {/* Recherche */}
             <div className="relative w-full md:flex-1">
@@ -344,7 +344,7 @@ export default function HistoryPage() {
                 placeholder="Rechercher par équipe, compétition, résumé..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white/5 border border-white/5 rounded-xl pl-11 pr-4 py-3 text-xs font-semibold text-white placeholder:text-white/30 outline-none focus:border-[#10B981]/40 transition-colors"
+                className="w-full bg-white/5 border border-white/5 rounded-[16px] pl-11 pr-4 py-3 text-xs font-semibold text-white placeholder:text-white/30 outline-none focus:border-[#10B981]/40 transition-colors"
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white">
@@ -359,7 +359,7 @@ export default function HistoryPage() {
               <select
                 value={filterComp}
                 onChange={(e) => setFilterComp(e.target.value)}
-                className="w-full md:w-auto bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-xs font-semibold text-white outline-none focus:border-[#10B981]/40 transition-colors cursor-pointer"
+                className="w-full md:w-auto bg-white/5 border border-white/5 rounded-[16px] px-4 py-3 text-xs font-semibold text-white outline-none focus:border-[#10B981]/40 transition-colors cursor-pointer"
               >
                 <option value="all" className="bg-[#18272f]">Toutes les compétitions</option>
                 {competitionsList.map(c => (
@@ -373,7 +373,7 @@ export default function HistoryPage() {
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="w-full md:w-auto bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-xs font-semibold text-white outline-none focus:border-[#10B981]/40 transition-colors cursor-pointer"
+                className="w-full md:w-auto bg-white/5 border border-white/5 rounded-[16px] px-4 py-3 text-xs font-semibold text-white outline-none focus:border-[#10B981]/40 transition-colors cursor-pointer"
               >
                 <option value="all" className="bg-[#18272f]">Tous les types</option>
                 <option value="future" className="bg-[#18272f]">Prédictions IA (Futur)</option>
@@ -384,7 +384,7 @@ export default function HistoryPage() {
 
           {/* RÉSULTATS DU FILTRE */}
           {filteredHistory.length === 0 ? (
-            <div className="bg-[#1d2f3a]/40 border border-white/5 rounded-[24px] p-12 text-center text-white/50 font-medium text-sm">
+            <div className="bg-[#1d2f3a]/40 border border-white/5 rounded-[28px] p-12 text-center text-white/50 font-medium text-sm">
               Aucune analyse ne correspond à vos critères de recherche.
             </div>
           ) : (
@@ -397,7 +397,7 @@ export default function HistoryPage() {
                   <div
                     key={item.id}
                     onClick={() => setSelectedItem(item)}
-                    className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 hover:border-[#10B981]/30 rounded-[24px] p-5 flex flex-col justify-between shadow-lg transition-all hover:translate-y-[-2px] cursor-pointer group relative overflow-hidden"
+                    className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 hover:border-[#10B981]/30 rounded-[28px] p-5 flex flex-col justify-between shadow-lg transition-all hover:translate-y-[-2px] cursor-pointer group relative overflow-hidden"
                   >
                     {/* Top bar: Badge + Date + Trash */}
                     <div className="flex items-center justify-between gap-2 mb-4">
@@ -422,7 +422,7 @@ export default function HistoryPage() {
                         </span>
                         <button
                           onClick={(e) => handleDelete(item.id, e)}
-                          className="text-white/20 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-500/10"
+                          className="text-white/20 hover:text-red-400 transition-colors p-1 rounded-[14px] hover:bg-red-500/10"
                           title="Supprimer cette analyse"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -431,7 +431,7 @@ export default function HistoryPage() {
                     </div>
 
                     {/* Middle: Teams & Score/Prediction */}
-                    <div className="flex items-center justify-between my-2 py-3 bg-white/5 rounded-2xl px-4 border border-white/5 group-hover:border-white/10 transition-colors relative">
+                    <div className="flex items-center justify-between my-2 py-3 bg-white/5 rounded-[20px] px-4 border border-white/5 group-hover:border-white/10 transition-colors relative">
                       {/* Team 1 */}
                       <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
                         <img src={t1?.logo} className="w-10 h-10 object-contain drop-shadow" alt="" />
@@ -515,7 +515,7 @@ export default function HistoryPage() {
               </div>
               <button 
                 onClick={() => setSelectedItem(null)}
-                className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                className="w-8 h-8 rounded-[16px] bg-white/5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -539,7 +539,7 @@ export default function HistoryPage() {
               )}
 
               {/* Teams & Score Banner */}
-              <div className="bg-gradient-to-r from-[#1d2f3a] to-[#1A2636] border border-white/5 rounded-2xl p-6 flex items-center justify-between shadow-inner">
+              <div className="bg-gradient-to-r from-[#1d2f3a] to-[#1A2636] border border-white/5 rounded-[20px] p-6 flex items-center justify-between shadow-inner">
                 <div className="flex items-center gap-4 flex-1">
                   <img src={selectedItem.team1?.logo} className="w-14 h-14 object-contain drop-shadow" alt="" />
                   <div>
@@ -569,15 +569,15 @@ export default function HistoryPage() {
               {/* Confidence & Probabilities (if future) */}
               {!selectedItem.isFinished && selectedItem.data?.winProb && (
                 <div className={`grid grid-cols-3 gap-4 ${!isPro ? 'blur-lg select-none' : ''}`}>
-                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+                  <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">Victoire {selectedItem.team1?.name}</span>
                     <span className="text-xl font-black text-[#10B981]">{selectedItem.data.winProb}%</span>
                   </div>
-                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+                  <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">Match Nul</span>
                     <span className="text-xl font-black text-yellow-400">{selectedItem.data.drawProb}%</span>
                   </div>
-                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+                  <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">Victoire {selectedItem.team2?.name}</span>
                     <span className="text-xl font-black text-red-400">{selectedItem.data.loseProb}%</span>
                   </div>
@@ -585,7 +585,7 @@ export default function HistoryPage() {
               )}
 
               {/* Summary Section */}
-              <div className={`bg-white/5 border border-white/5 rounded-2xl p-5 space-y-3 ${!isPro ? 'blur-lg select-none' : ''}`}>
+              <div className={`bg-white/5 border border-white/5 rounded-[20px] p-5 space-y-3 ${!isPro ? 'blur-lg select-none' : ''}`}>
                 <h4 className="text-xs font-black text-white/40 uppercase tracking-widest flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-[#10B981]" /> Résumé Tactique
                 </h4>
@@ -600,7 +600,7 @@ export default function HistoryPage() {
                   <h4 className="text-xs font-black text-white/40 uppercase tracking-widest">Points Clés de l'Analyse</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {selectedItem.data.sections.map((sec: any, idx: number) => (
-                      <div key={idx} className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-2">
+                      <div key={idx} className="bg-white/5 border border-white/5 rounded-[20px] p-4 space-y-2">
                         <h5 className="text-xs font-bold text-[#10B981] flex items-center gap-2">
                           <Brain className="w-4 h-4" /> {sec.title}
                         </h5>
@@ -613,7 +613,7 @@ export default function HistoryPage() {
 
               {/* Real Match Stats if finished */}
               {selectedItem.isFinished && selectedItem.data?.stats && (
-                <div className={`bg-white/5 border border-white/5 rounded-2xl p-5 space-y-4 ${!isPro ? 'blur-lg select-none' : ''}`}>
+                <div className={`bg-white/5 border border-white/5 rounded-[20px] p-5 space-y-4 ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <h4 className="text-xs font-black text-white/40 uppercase tracking-widest text-center">Statistiques du Match</h4>
                   <div className="space-y-3 max-w-md mx-auto">
                     {[
@@ -638,14 +638,14 @@ export default function HistoryPage() {
             <div className="flex items-center justify-between px-6 py-4 border-t border-white/5 bg-[#1d2f3a]">
               <Link
                 href={`/analyze?t1=${selectedItem.team1?.id}&t2=${selectedItem.team2?.id}`}
-                className="bg-[#10B981] hover:bg-[#059669] text-black font-black px-6 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-2"
+                className="bg-[#10B981] hover:bg-[#059669] text-black font-black px-6 py-2.5 rounded-[16px] text-xs uppercase tracking-wider transition-all flex items-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" /> Relancer l'analyse
               </Link>
 
               <button
                 onClick={() => setSelectedItem(null)}
-                className="bg-white/5 hover:bg-white/10 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition-colors"
+                className="bg-white/5 hover:bg-white/10 text-white font-bold px-6 py-2.5 rounded-[16px] text-xs transition-colors"
               >
                 Fermer
               </button>

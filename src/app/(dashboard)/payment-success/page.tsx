@@ -47,7 +47,7 @@ export default function PaymentSuccessPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
-      <div className="bg-card border border-border-card rounded-3xl p-10 max-w-md w-full text-center space-y-6">
+      <div className="bg-card border border-border-card rounded-[28px] p-10 max-w-md w-full text-center space-y-6">
         <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto">
           {state === 'checking' ? (
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -86,7 +86,7 @@ export default function PaymentSuccessPage() {
 
         <Link
           href="/analyze"
-          className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-white rounded-[16px] font-bold hover:bg-primary-hover transition-colors"
         >
           Commencer l'analyse <ArrowRight className="w-4 h-4" />
         </Link>

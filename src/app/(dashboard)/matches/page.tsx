@@ -153,7 +153,7 @@ function FinishedMatchRow({ match }: { match: Match }) {
   const displayDate = match.date.length > 5 ? match.date.substring(0, 5) : match.date;
 
   return (
-    <Link href={`/match/${match.id}`} className="block p-4 md:p-5 rounded-[24px] bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 hover:bg-white/5 transition-all shadow-md group">
+    <Link href={`/match/${match.id}`} className="block p-4 md:p-5 rounded-[28px] bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 hover:bg-white/5 transition-all shadow-md group">
       <div className="grid grid-cols-[45px_1fr_24px_54px_24px_1fr_auto] md:grid-cols-[60px_1fr_32px_70px_32px_1fr_auto] items-center gap-2 md:gap-4 w-full">
         
         {/* Date */}

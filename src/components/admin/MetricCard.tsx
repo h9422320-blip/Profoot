@@ -32,7 +32,7 @@ export default function MetricCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.23, 1, 0.32, 1] }}
-      className="relative bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6 overflow-hidden group hover:border-[#10b981]/30 transition-colors"
+      className="relative bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] p-6 overflow-hidden group hover:border-[#10b981]/30 transition-colors"
     >
       {/* Subtle Glow on Hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#10b981]/0 to-[#10b981]/0 group-hover:from-[#10b981]/5 transition-all duration-500 pointer-events-none" />
@@ -40,18 +40,18 @@ export default function MetricCard({
       {loading ? (
         <div className="animate-pulse space-y-4">
           <div className="flex items-center justify-between">
-            <div className="h-4 bg-white/10 rounded w-1/3"></div>
-            <div className="w-8 h-8 bg-white/10 rounded-lg"></div>
+            <div className="h-4 bg-white/10 rounded-full w-1/3"></div>
+            <div className="w-8 h-8 bg-white/10 rounded-[14px]"></div>
           </div>
-          <div className="h-8 bg-white/10 rounded w-1/2"></div>
-          <div className="h-3 bg-white/10 rounded w-1/4"></div>
+          <div className="h-8 bg-white/10 rounded-full w-1/2"></div>
+          <div className="h-3 bg-white/10 rounded-full w-1/4"></div>
         </div>
       ) : (
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-white/60 tracking-wide">{title}</h3>
             {icon && (
-              <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60">
+              <div className="w-8 h-8 rounded-[14px] bg-white/5 border border-white/10 flex items-center justify-center text-white/60">
                 {icon}
               </div>
             )}
@@ -64,7 +64,7 @@ export default function MetricCard({
             
             {trend !== undefined && (
               <div
-                className={`flex items-center text-xs font-bold px-1.5 py-0.5 rounded-md ${
+                className={`flex items-center text-xs font-bold px-1.5 py-0.5 rounded-[14px] ${
                   isPositive
                     ? "text-[#10b981] bg-[#10b981]/10"
                     : isNegative

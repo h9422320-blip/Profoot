@@ -56,7 +56,7 @@ export default function SystemClient() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="lg:col-span-2 bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6"
+          className="lg:col-span-2 bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] p-6"
         >
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-lg font-bold text-white mb-1">Trafic API OpenAI (Dernières 24h)</h3>
@@ -68,7 +68,7 @@ export default function SystemClient() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6 flex flex-col"
+          className="bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] p-6 flex flex-col"
         >
           <h3 className="text-lg font-bold text-white mb-6">Santé Système</h3>
           <div className="space-y-6 flex-1">

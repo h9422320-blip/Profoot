@@ -26,12 +26,12 @@ export default function LogsClient() {
         </div>
       </div>
 
-      <div className="flex bg-[#1d2f3a] border border-[#2e4757] rounded-xl p-1 shrink-0 w-fit">
+      <div className="flex bg-[#1d2f3a] border border-[#2e4757] rounded-[16px] p-1 shrink-0 w-fit">
         {(["all", "error", "warning", "info", "success"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${
+            className={`px-4 py-1.5 rounded-[14px] text-sm font-medium capitalize transition-all ${
               filter === f ? "bg-[#2e4757] text-white" : "text-white/40 hover:text-white"
             }`}
           >
@@ -40,7 +40,7 @@ export default function LogsClient() {
         ))}
       </div>
 
-      <div className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl overflow-hidden shadow-2xl font-mono text-sm">
+      <div className="bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] overflow-hidden shadow-2xl font-mono text-sm">
         <div className="p-4 bg-[#16242e] border-b border-[#2e4757] flex items-center gap-2 text-white/50">
           <TerminalSquare className="w-4 h-4" /> root@profoot-production ~
         </div>
@@ -53,7 +53,7 @@ export default function LogsClient() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2, delay: idx * 0.05 }}
-                className="flex items-start gap-4 p-2 hover:bg-white/[0.02] rounded-lg transition-colors"
+                className="flex items-start gap-4 p-2 hover:bg-white/[0.02] rounded-[14px] transition-colors"
               >
                 <div className="shrink-0 pt-0.5">
                   {log.type === "error" && <AlertCircle className="w-4 h-4 text-red-400" />}

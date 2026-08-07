@@ -78,7 +78,7 @@ export function Sidebar() {
     pathname === href || pathname.startsWith(href + "/");
 
   const linkClass = (href: string, special?: boolean) =>
-    `flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-[15px] font-semibold ${
+    `flex items-center gap-3 px-4 py-3 rounded-[16px] transition-all text-[15px] font-semibold ${
       isActive(href)
         ? "bg-primary/20 text-primary"
         : special
@@ -155,12 +155,12 @@ export function Sidebar() {
               <History className="w-5 h-5" />
               <span>{t("sidebar.history")}</span>
             </Link>
-            <Link href="/pricing" className={`flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all text-[14px] font-bold text-foreground/70 border border-border-card hover:bg-card/80`}>
+            <Link href="/pricing" className={`flex items-center justify-between px-4 py-3.5 rounded-[20px] transition-all text-[14px] font-bold text-foreground/70 border border-border-card hover:bg-card/80`}>
               <div className="flex items-center gap-3">
                 <CreditCard className="w-5 h-5" />
                 <span>{t("sidebar.pricing")}</span>
               </div>
-              <span className="bg-warning/20 text-warning text-[10px] px-2 py-1 rounded-lg font-black uppercase tracking-wider">{t("sidebar.pro")}</span>
+              <span className="bg-warning/20 text-warning text-[10px] px-2 py-1 rounded-[14px] font-black uppercase tracking-wider">{t("sidebar.pro")}</span>
             </Link>
           </div>
         </nav>
@@ -194,7 +194,7 @@ export function Sidebar() {
             </div>
             
             <form action={logout}>
-              <button type="submit" className="w-full flex items-center justify-between gap-3 px-4 py-2 mt-2 rounded-xl text-xs font-bold text-foreground/50 hover:bg-foreground/5 hover:text-foreground transition-all border border-transparent hover:border-border-card">
+              <button type="submit" className="w-full flex items-center justify-between gap-3 px-4 py-2 mt-2 rounded-[16px] text-xs font-bold text-foreground/50 hover:bg-foreground/5 hover:text-foreground transition-all border border-transparent hover:border-border-card">
                 <div className="flex items-center gap-3">
                   <LogOut className="w-4 h-4" />
                   <span>{t("sidebar.logout")}</span>

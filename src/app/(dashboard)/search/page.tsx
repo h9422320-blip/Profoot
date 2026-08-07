@@ -200,8 +200,8 @@ export default function SearchPage() {
       {/* SEARCH BAR CONTAINER */}
       <div className="max-w-4xl mx-auto mb-12">
         <form onSubmit={onSubmit} className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-primary via-emerald-500 to-teal-500 rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition duration-500" />
-          <div className="relative flex items-center bg-[#1d2f3a] border border-white/10 rounded-3xl shadow-2xl px-4 py-3 lg:py-4 transition-all focus-within:border-primary/50">
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary via-emerald-500 to-teal-500 rounded-[28px] blur-lg opacity-25 group-hover:opacity-40 transition duration-500" />
+          <div className="relative flex items-center bg-[#1d2f3a] border border-white/10 rounded-[28px] shadow-2xl px-4 py-3 lg:py-4 transition-all focus-within:border-primary/50">
             <Search className="w-6 h-6 text-foreground/40 ml-2 mr-4 flex-shrink-0" />
             <input
               type="text"
@@ -213,7 +213,7 @@ export default function SearchPage() {
             <button
               type="submit"
               disabled={loading || !query.trim()}
-              className="flex items-center gap-2 bg-gradient-to-r from-primary to-emerald-500 text-[#16242e] font-black text-sm px-6 py-3 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none flex-shrink-0"
+              className="flex items-center gap-2 bg-gradient-to-r from-primary to-emerald-500 text-[#16242e] font-black text-sm px-6 py-3 rounded-[20px] shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none flex-shrink-0"
             >
               <span>Rechercher</span>
               <ArrowRight className="w-4 h-4" />
@@ -229,7 +229,7 @@ export default function SearchPage() {
               <button
                 key={f.id}
                 onClick={() => setActiveFilter(f.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-[16px] text-xs font-bold transition-all border ${
                   active 
                     ? `${f.color} shadow-lg scale-105` 
                     : "border-border-card bg-card/40 text-foreground/60 hover:bg-card/80 hover:text-white"
@@ -251,10 +251,10 @@ export default function SearchPage() {
           
           {/* LOADING STATE (STREAMING STEPS) */}
           {loading && (
-            <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-8 shadow-xl relative overflow-hidden">
+            <div className="bg-[#1d2f3a] border border-border-card rounded-[28px] p-8 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-emerald-400 to-teal-500 animate-pulse" />
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary animate-spin">
+                <div className="w-12 h-12 rounded-[20px] bg-primary/10 border border-primary/30 flex items-center justify-center text-primary animate-spin">
                   <RefreshCw className="w-6 h-6" />
                 </div>
                 <div>
@@ -283,7 +283,7 @@ export default function SearchPage() {
 
           {/* ERROR STATE */}
           {error && !loading && (
-            <div className="bg-danger/10 border border-danger/30 rounded-3xl p-6 flex items-start gap-4 text-danger">
+            <div className="bg-danger/10 border border-danger/30 rounded-[28px] p-6 flex items-start gap-4 text-danger">
               <ShieldAlert className="w-6 h-6 flex-shrink-0 mt-0.5" />
               <div>
                 <h4 className="font-bold text-lg mb-1">Erreur de la recherche</h4>
@@ -294,8 +294,8 @@ export default function SearchPage() {
 
           {/* EMPTY STATE / INITIAL PROMPT */}
           {!result && !loading && !error && (
-            <div className="bg-[#1d2f3a]/60 border border-border-card rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[350px]">
-              <div className="w-16 h-16 rounded-3xl bg-card border border-border-card flex items-center justify-center text-foreground/40 mb-6 shadow-inner">
+            <div className="bg-[#1d2f3a]/60 border border-border-card rounded-[28px] p-12 text-center flex flex-col items-center justify-center min-h-[350px]">
+              <div className="w-16 h-16 rounded-[28px] bg-card border border-border-card flex items-center justify-center text-foreground/40 mb-6 shadow-inner">
                 <Globe className="w-8 h-8" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Aucune recherche active</h3>
@@ -303,14 +303,14 @@ export default function SearchPage() {
                 Utilisez la barre de recherche ci-dessus ou sélectionnez l'un de nos filtres pour interroger les bases de données mondiales du football.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg text-left">
-                <button onClick={() => handleSearch("Quelles sont les dernières rumeurs de transfert au PSG ?", "mercato")} className="p-4 rounded-2xl bg-card/50 border border-border-card hover:border-primary/40 hover:bg-card transition-all group flex items-start gap-3">
+                <button onClick={() => handleSearch("Quelles sont les dernières rumeurs de transfert au PSG ?", "mercato")} className="p-4 rounded-[20px] bg-card/50 border border-border-card hover:border-primary/40 hover:bg-card transition-all group flex items-start gap-3">
                   <Flame className="w-5 h-5 text-danger mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-xs font-bold text-white group-hover:text-primary transition-colors mb-1">Mercato PSG</p>
                     <p className="text-[11px] text-foreground/50 line-clamp-1">Dernières rumeurs de transfert</p>
                   </div>
                 </button>
-                <button onClick={() => handleSearch("Liste des blessés au Real Madrid et Manchester City", "injuries")} className="p-4 rounded-2xl bg-card/50 border border-border-card hover:border-primary/40 hover:bg-card transition-all group flex items-start gap-3">
+                <button onClick={() => handleSearch("Liste des blessés au Real Madrid et Manchester City", "injuries")} className="p-4 rounded-[20px] bg-card/50 border border-border-card hover:border-primary/40 hover:bg-card transition-all group flex items-start gap-3">
                   <Activity className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-xs font-bold text-white group-hover:text-primary transition-colors mb-1">Point Infirmerie</p>
@@ -326,12 +326,12 @@ export default function SearchPage() {
             <div className="space-y-8 animate-fade-in">
               
               {/* ANSWER CARD */}
-              <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-6 lg:p-8 shadow-2xl relative overflow-hidden">
+              <div className="bg-[#1d2f3a] border border-border-card rounded-[28px] p-6 lg:p-8 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-primary via-emerald-500 to-teal-500" />
                 
                 <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary shadow-lg shadow-primary/10">
+                    <div className="w-10 h-10 rounded-[20px] bg-primary/10 border border-primary/30 flex items-center justify-center text-primary shadow-lg shadow-primary/10">
                       <Brain className="w-5 h-5" />
                     </div>
                     <div>
@@ -342,7 +342,7 @@ export default function SearchPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-xl text-primary text-xs font-bold">
+                  <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-[16px] text-primary text-xs font-bold">
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>Sources Vérifiées</span>
                   </div>
@@ -356,7 +356,7 @@ export default function SearchPage() {
 
               {/* WEB SOURCES SECTION */}
               {result.sources && result.sources.length > 0 && (
-                <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-6 lg:p-8 shadow-xl">
+                <div className="bg-[#1d2f3a] border border-border-card rounded-[28px] p-6 lg:p-8 shadow-xl">
                   <h4 className="font-black text-base text-white mb-6 flex items-center gap-2">
                     <Globe className="w-5 h-5 text-primary" />
                     <span>Sources Web & Citations (Mai 2026)</span>
@@ -368,11 +368,11 @@ export default function SearchPage() {
                         href={src.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="bg-card/50 border border-border-card hover:border-primary/50 rounded-2xl p-4 flex flex-col justify-between transition-all group hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5"
+                        className="bg-card/50 border border-border-card hover:border-primary/50 rounded-[20px] p-4 flex flex-col justify-between transition-all group hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5"
                       >
                         <div>
                           <div className="flex items-center justify-between gap-2 mb-3">
-                            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 bg-white/5 rounded-lg text-foreground/60 group-hover:text-primary transition-colors truncate max-w-[120px]">
+                            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 bg-white/5 rounded-[14px] text-foreground/60 group-hover:text-primary transition-colors truncate max-w-[120px]">
                               {src.domain || "web"}
                             </span>
                             <ExternalLink className="w-3.5 h-3.5 text-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
@@ -396,7 +396,7 @@ export default function SearchPage() {
 
               {/* RELATED QUESTIONS */}
               {result.relatedQuestions && result.relatedQuestions.length > 0 && (
-                <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-6 lg:p-8 shadow-xl">
+                <div className="bg-[#1d2f3a] border border-border-card rounded-[28px] p-6 lg:p-8 shadow-xl">
                   <h4 className="font-black text-base text-white mb-6 flex items-center gap-2">
                     <HelpCircle className="w-5 h-5 text-info" />
                     <span>Questions Connexes & Approfondissement</span>
@@ -406,10 +406,10 @@ export default function SearchPage() {
                       <button
                         key={idx}
                         onClick={() => handleSearch(q, activeFilter)}
-                        className="w-full bg-card/40 border border-border-card hover:border-info/40 rounded-2xl p-4 flex items-center justify-between text-left transition-all group hover:bg-card hover:shadow-md"
+                        className="w-full bg-card/40 border border-border-card hover:border-info/40 rounded-[20px] p-4 flex items-center justify-between text-left transition-all group hover:bg-card hover:shadow-md"
                       >
                         <div className="flex items-center gap-3 pr-4">
-                          <div className="w-8 h-8 rounded-xl bg-info/10 text-info flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <div className="w-8 h-8 rounded-[16px] bg-info/10 text-info flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                             <Search className="w-4 h-4" />
                           </div>
                           <span className="text-sm font-semibold text-foreground/80 group-hover:text-white transition-colors">{q}</span>
@@ -428,7 +428,7 @@ export default function SearchPage() {
 
         {/* RIGHT: SEARCH HISTORY & RECENT SEARCHES (1 COL) */}
         <div className="space-y-8">
-          <div className="bg-[#1d2f3a] border border-border-card rounded-3xl p-6 lg:p-8 shadow-xl sticky top-24">
+          <div className="bg-[#1d2f3a] border border-border-card rounded-[28px] p-6 lg:p-8 shadow-xl sticky top-24">
             <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
               <div className="flex items-center gap-2.5">
                 <Clock className="w-5 h-5 text-primary" />
@@ -457,9 +457,9 @@ export default function SearchPage() {
                   <button
                     key={item.id}
                     onClick={() => handleSelectHistory(item)}
-                    className="w-full bg-card/40 border border-border-card hover:border-primary/40 rounded-2xl p-3.5 flex items-start gap-3 text-left transition-all group hover:bg-card"
+                    className="w-full bg-card/40 border border-border-card hover:border-primary/40 rounded-[20px] p-3.5 flex items-start gap-3 text-left transition-all group hover:bg-card"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-[14px] bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
                       <Search className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -468,7 +468,7 @@ export default function SearchPage() {
                       </p>
                       <div className="flex items-center gap-2 text-[10px] text-foreground/50">
                         {item.filter && item.filter !== "all" && (
-                          <span className="px-1.5 py-0.5 rounded bg-white/5 uppercase tracking-wider font-bold">
+                          <span className="px-1.5 py-0.5 rounded-full bg-white/5 uppercase tracking-wider font-bold">
                             {item.filter}
                           </span>
                         )}

@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function PaymentFailedPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
-      <div className="bg-card border border-border-card rounded-3xl p-10 max-w-md w-full text-center space-y-6">
+      <div className="bg-card border border-border-card rounded-[28px] p-10 max-w-md w-full text-center space-y-6">
         <div className="w-20 h-20 bg-danger/10 rounded-full flex items-center justify-center mx-auto">
           <XCircle className="w-10 h-10 text-danger" />
         </div>
@@ -18,7 +18,7 @@ export default function PaymentFailedPage() {
 
         <Link 
           href="/pricing" 
-          className="w-full flex items-center justify-center gap-2 py-4 bg-sidebar border border-border-card text-foreground rounded-xl font-bold hover:bg-sidebar-hover transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-4 bg-sidebar border border-border-card text-foreground rounded-[16px] font-bold hover:bg-sidebar-hover transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Réessayer
         </Link>

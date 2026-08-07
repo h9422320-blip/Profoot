@@ -65,14 +65,14 @@ export default function FinancesClient({ data }: { data: any }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
-        className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl p-6"
+        className="bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] p-6"
       >
         <div className="flex items-center justify-between mb-8">
           <div>
             <h3 className="text-lg font-bold text-white mb-1">Croissance du MRR</h3>
             <p className="text-sm text-white/40">Évolution sur les 30 derniers jours</p>
           </div>
-          <div className="px-3 py-1.5 bg-white/5 rounded-lg text-sm text-white/60 font-medium">
+          <div className="px-3 py-1.5 bg-white/5 rounded-[14px] text-sm text-white/60 font-medium">
             30 Derniers Jours
           </div>
         </div>
@@ -84,7 +84,7 @@ export default function FinancesClient({ data }: { data: any }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.6 }}
-        className="bg-[#1d2f3a] border border-[#2e4757] rounded-2xl overflow-hidden"
+        className="bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] overflow-hidden"
       >
         <div className="p-6 border-b border-[#2e4757]">
           <h3 className="text-lg font-bold text-white">Transactions Récentes</h3>
