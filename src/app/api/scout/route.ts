@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { requirePremium } from "@/lib/subscription";
 import { setBounded } from "@/lib/rateLimit";
 
+// Plusieurs appels API-Football en chaîne : dépasse les 10 s par défaut.
+export const maxDuration = 60;
+
 const scoutCache = new Map<string, any>();
 
 async function fetchApiFootball(endpoint: string) {

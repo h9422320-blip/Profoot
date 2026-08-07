@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { isRateLimited, clientIp, setBounded } from "@/lib/rateLimit";
 
+// Plusieurs appels API-Football en chaîne : dépasse les 10 s par défaut.
+export const maxDuration = 60;
+
 const searchCache = new Map<string, any>();
 
 async function fetchApiFootball(endpoint: string) {

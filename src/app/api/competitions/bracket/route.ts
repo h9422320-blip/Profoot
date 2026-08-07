@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { requirePremium } from '@/lib/subscription';
 
+// Appel Gemini : dépasse les 10 s accordées par défaut à une fonction serverless.
+export const maxDuration = 60;
+
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 // Cache the bracket data for 30 minutes to avoid hammering Gemini

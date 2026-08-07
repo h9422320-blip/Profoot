@@ -118,6 +118,12 @@ function getCurrentSeason(): number {
 
 import { isRateLimited, clientIp, setBounded } from "@/lib/rateLimit";
 
+// L'analyse enchaîne plusieurs appels API-Football puis un appel Gemini : bien
+// au-delà des 10 s accordées par défaut à une fonction serverless. Sans cette
+// déclaration, l'hébergeur interrompt la requête et le client voit une
+// « erreur de connexion au modèle IA ».
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   // --- PERMISSIONS : l'analyseur IA est réservé aux abonnés Premium ---
   const guard = await requirePremium();
