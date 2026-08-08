@@ -309,6 +309,103 @@ async function lireTousLesComptes(supabase: ReturnType<typeof createAdminClient>
   return comptes;
 }
 
+export interface Alerte {
+  id: string;
+  niveau: 'info' | 'attention' | 'urgent';
+  titre: string;
+  detail: string;
+  lien?: string;
+}
+
+/**
+ * Alertes affichées dans l'en-tête de l'administration.
+ *
+ * Requête volontairement légère : elle s'exécute sur chaque page de l'admin.
+ * Chaque alerte correspond à un fait vérifiable en base — aucune notification
+ * décorative.
+ */
+export async function getAlertes(): Promise<Alerte[]> {
+  const alertes: Alerte[] = [];
+
+  try {
+    const supabase = createAdminClient();
+    const maintenant = Date.now();
+    const dansSeptJours = new Date(maintenant + 7 * 86400000).toISOString();
+
+    const [abosRes, comptesRes] = await Promise.all([
+      supabase
+        .from('subscriptions')
+        .select('user_id, plan, expires_at')
+        .eq('status', 'active')
+        .not('expires_at', 'is', null)
+        .lte('expires_at', dansSeptJours)
+        .gte('expires_at', new Date(maintenant).toISOString()),
+      supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ]);
+
+    const expirants = abosRes.data ?? [];
+    if (expirants.length > 0) {
+      alertes.push({
+        id: 'expirations',
+        niveau: 'urgent',
+        titre: `${expirants.length} abonnement${expirants.length > 1 ? 's' : ''} expire${expirants.length > 1 ? 'nt' : ''} sous 7 jours`,
+        detail: 'Pensez à relancer ces clients avant la coupure de leur accès.',
+        lien: '/admin/finances',
+      });
+    }
+
+    const comptes = comptesRes.data?.users ?? [];
+    const debutDuJour = new Date();
+    debutDuJour.setHours(0, 0, 0, 0);
+
+    const nouveauxAujourdhui = comptes.filter(
+      (u) => new Date(u.created_at) >= debutDuJour
+    ).length;
+    if (nouveauxAujourdhui > 0) {
+      alertes.push({
+        id: 'nouveaux',
+        niveau: 'info',
+        titre: `${nouveauxAujourdhui} nouvelle${nouveauxAujourdhui > 1 ? 's' : ''} inscription${nouveauxAujourdhui > 1 ? 's' : ''} aujourd'hui`,
+        detail: "Consultez la liste des comptes pour voir qui vient d'arriver.",
+        lien: '/admin/users',
+      });
+    }
+
+    const nonConfirmes = comptes.filter((u) => !u.email_confirmed_at).length;
+    if (nonConfirmes > 0) {
+      alertes.push({
+        id: 'non-confirmes',
+        niveau: 'attention',
+        titre: `${nonConfirmes} adresse${nonConfirmes > 1 ? 's' : ''} e-mail non confirmée${nonConfirmes > 1 ? 's' : ''}`,
+        detail: 'Ces comptes ne pourront pas récupérer leur mot de passe.',
+        lien: '/admin/users?filtre=non-confirmes',
+      });
+    }
+
+    // Configuration manquante : mieux vaut l'apprendre ici qu'au moment où un
+    // client tente de payer.
+    const manquantes: string[] = [];
+    if (!process.env.CHARIOW_API_KEY) manquantes.push('clé API Chariow');
+    if (!process.env.CHARIOW_WEBHOOK_SECRET) manquantes.push('secret des webhooks');
+    if (!process.env.CHARIOW_PRODUCT_ID_ESSENTIAL) manquantes.push('produit Essentiel');
+    if (!process.env.GEMINI_API_KEY) manquantes.push('clé Gemini');
+    if (manquantes.length > 0) {
+      alertes.push({
+        id: 'config',
+        niveau: 'urgent',
+        titre: 'Configuration incomplète',
+        detail: `Manquant : ${manquantes.join(', ')}.`,
+        lien: '/admin/settings',
+      });
+    }
+  } catch {
+    // Une erreur de lecture ne doit pas empêcher l'administration de s'afficher.
+    return alertes;
+  }
+
+  return alertes;
+}
+
 export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
   const supabase = createAdminClient();
   const avertissements: string[] = [];

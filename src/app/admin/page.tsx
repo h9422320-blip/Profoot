@@ -1,7 +1,9 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import SelecteurPeriode from "./_components/SelecteurPeriode";
 import { Courbe, Barres, Camembert } from "./_components/Graphique";
-import { Panneau, Indicateur, Etiquette, Vide, Classement, montant, dateCourte, ilYA } from "./_components/Ui";
+import { Etiquette, Vide, montant, dateCourte, ilYA } from "./_components/Ui";
+import { Panneau, Classement } from "./_components/Panneaux";
+import { Indicateur } from "./_components/Indicateur";
 import { AlertTriangle, Users, CreditCard, Brain, Wallet } from "lucide-react";
 import Link from "next/link";
 

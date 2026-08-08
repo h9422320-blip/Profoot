@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { maintenanceActive } from '@/lib/app-settings'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -72,6 +73,33 @@ export async function updateSession(request: NextRequest) {
       const redirectResponse = NextResponse.redirect(url)
       supabaseResponse.cookies.getAll().forEach(cookie => redirectResponse.cookies.set(cookie))
       return redirectResponse
+    }
+  }
+  // ------------------------------
+
+  // --- MODE MAINTENANCE ---
+  // Piloté depuis /admin/settings. L'administrateur garde l'accès complet,
+  // sans quoi il ne pourrait plus désactiver la maintenance qu'il vient
+  // d'activer. Les webhooks de paiement restent ouverts : un paiement encaissé
+  // pendant la maintenance doit tout de même activer l'abonnement, sinon le
+  // client paie sans rien recevoir.
+  const cheminsToujoursOuverts = [
+    '/maintenance', '/admin', '/a/', '/login', '/api/payments', '/_next', '/favicon',
+  ];
+  const estAdministrateur = activeUser?.email?.toLowerCase() === 'h9422320@gmail.com';
+  const cheminOuvert = cheminsToujoursOuverts.some((p) => request.nextUrl.pathname.startsWith(p));
+
+  if (!estAdministrateur && !cheminOuvert) {
+    const { active } = await maintenanceActive(supabase)
+    if (active) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/maintenance'
+      // Réécriture plutôt que redirection : l'adresse demandée reste dans la
+      // barre du navigateur, donc un simple rechargement suffit une fois la
+      // maintenance terminée.
+      const reponse = NextResponse.rewrite(url)
+      supabaseResponse.cookies.getAll().forEach(cookie => reponse.cookies.set(cookie))
+      return reponse
     }
   }
   // ------------------------------

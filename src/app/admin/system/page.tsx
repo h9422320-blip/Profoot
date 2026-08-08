@@ -1,7 +1,9 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { Courbe } from "../_components/Graphique";
-import { Panneau, Indicateur, Classement, Vide, dateHeure } from "../_components/Ui";
+import { Vide, dateHeure } from "../_components/Ui";
+import { Panneau, Classement } from "../_components/Panneaux";
+import { Indicateur } from "../_components/Indicateur";
 import { CheckCircle2, Clock } from "lucide-react";
 
 export const dynamic = "force-dynamic";

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, ShieldCheck, MailWarning, Download } from "lucide-react";
 import type { LigneUtilisateur } from "@/lib/admin-metrics";
 import { Etiquette, Vide, dateCourte, ilYA, montant } from "../_components/Ui";
@@ -10,14 +11,23 @@ const FILTRES = [
   { cle: "payants", libelle: "Abonnés" },
   { cle: "gratuits", libelle: "Gratuits" },
   { cle: "inactifs", libelle: "Jamais connectés" },
+  { cle: "non-confirmes", libelle: "E-mail non confirmé" },
 ];
 
 type Tri = "recents" | "anciens" | "analyses" | "montant";
 
 export default function UsersClient({ utilisateurs }: { utilisateurs: LigneUtilisateur[] }) {
-  const [recherche, setRecherche] = useState("");
-  const [filtre, setFiltre] = useState("tous");
+  // La recherche de l'en-tête et les alertes arrivent par l'URL : cet écran
+  // doit donc partir de ce qu'elle contient, pas d'un état vide.
+  const params = useSearchParams();
+  const [recherche, setRecherche] = useState(params.get("q") ?? "");
+  const [filtre, setFiltre] = useState(params.get("filtre") ?? "tous");
   const [tri, setTri] = useState<Tri>("recents");
+
+  useEffect(() => {
+    setRecherche(params.get("q") ?? "");
+    setFiltre(params.get("filtre") ?? "tous");
+  }, [params]);
 
   const liste = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
@@ -26,6 +36,7 @@ export default function UsersClient({ utilisateurs }: { utilisateurs: LigneUtili
       if (filtre === "payants") return u.offre !== "FREE";
       if (filtre === "gratuits") return u.offre === "FREE";
       if (filtre === "inactifs") return !u.derniereConnexion;
+      if (filtre === "non-confirmes") return !u.emailConfirme;
       return true;
     });
 

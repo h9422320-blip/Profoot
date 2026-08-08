@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import AdminLayoutClient from "./AdminLayoutClient";
 import { COOKIE_ADMIN, cleAdminAttendue, cleValide } from "@/lib/admin-access";
+import { getAlertes } from "@/lib/admin-metrics";
+import { lireReglages } from "@/lib/app-settings";
 
 const ADMIN_EMAIL = "h9422320@gmail.com";
 
@@ -38,5 +40,11 @@ export default async function AdminLayout({
     }
   }
 
-  return <AdminLayoutClient user={user}>{children}</AdminLayoutClient>;
+  const [alertes, reglages] = await Promise.all([getAlertes(), lireReglages()]);
+
+  return (
+    <AdminLayoutClient user={user} alertes={alertes} appName={reglages.appName} maintenance={reglages.maintenance}>
+      {children}
+    </AdminLayoutClient>
+  );
 }

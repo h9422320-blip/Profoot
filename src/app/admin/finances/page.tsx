@@ -1,7 +1,9 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { Barres, Camembert } from "../_components/Graphique";
-import { Panneau, Indicateur, montant } from "../_components/Ui";
+import { montant } from "../_components/Ui";
+import { Panneau } from "../_components/Panneaux";
+import { Indicateur } from "../_components/Indicateur";
 import FinancesClient from "./FinancesClient";
 
 export const dynamic = "force-dynamic";
