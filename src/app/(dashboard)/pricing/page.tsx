@@ -87,8 +87,6 @@ export default function PricingPage() {
           <ul className="space-y-4 flex-1">
             <FeatureItem label="10 analyses IA par mois" pro />
             <FeatureItem label="Analyses Premium" pro />
-            <FeatureItem label="Statistiques avancées" pro />
-            <FeatureItem label="Analyse des compétitions" pro />
             <FeatureItem label="Historique des analyses" pro />
             <FeatureItem label="Fonctionnalités Premium standards" pro />
             <ExcludedItem label="Agent IA VIP non inclus" />
@@ -132,8 +130,6 @@ export default function PricingPage() {
             <ul className="space-y-4 flex-1">
               <FeatureItem label="20 analyses IA par mois" pro />
               <FeatureItem label="Analyses Premium" pro />
-              <FeatureItem label="Statistiques avancées" pro />
-              <FeatureItem label="Analyse des compétitions" pro />
               <FeatureItem label="Historique complet des analyses" pro />
               <FeatureItem label="Fonctionnalités Premium standards" pro />
               <FeatureItem label="Mises à jour Premium" pro />

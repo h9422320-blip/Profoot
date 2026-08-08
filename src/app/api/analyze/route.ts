@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
+import { toTeaser } from "@/lib/analysis-teaser";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
 
@@ -218,12 +219,25 @@ export async function POST(req: Request) {
     }
   }
 
+  /**
+   * Seule sortie de cette route. Un compte sans abonnement ne reçoit que
+   * l'aperçu : le contenu payant est retiré ICI et ne quitte jamais le serveur.
+   * Flouter côté navigateur ne protégeait rien, la réponse complète étant déjà
+   * lisible dans les outils de développement.
+   */
+  const respond = (data: Record<string, any>) =>
+    NextResponse.json(
+      guard.entitlements.premium
+        ? { ...data, quota }
+        : { ...toTeaser(data), quota }
+    );
+
   const today = new Date().toISOString().split('T')[0];
   const cacheKey = `${team1.id}-${team2.id}-${today}`;
   const cachedAnalysis = analysisCache.get(cacheKey);
   if (cachedAnalysis && Date.now() - cachedAnalysis.timestamp < CACHE_TTL.ANALYSIS) {
     console.log(`[BACKEND_ANALYZE] Returning CACHED analysis for ${team1.name} vs ${team2.name}`);
-    return NextResponse.json({ ...cachedAnalysis.data, quota });
+    return respond(cachedAnalysis.data);
   }
 
   console.log(`[BACKEND_ANALYZE] Starting analysis for ${team1.name} vs ${team2.name}`);
@@ -331,7 +345,7 @@ export async function POST(req: Request) {
       summary: `Score final certifié via API-Football. ${targetPastMatch.teams.home.name} ${hScore} - ${aScore} ${targetPastMatch.teams.away.name}.`
     };
     setBounded(analysisCache, cacheKey, { data: realMatchResult, timestamp: Date.now() });
-    return NextResponse.json({ ...realMatchResult, quota });
+    return respond(realMatchResult);
   }
 
   // ============================================================================
@@ -556,7 +570,7 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     console.log(`[BACKEND_ANALYZE] Gemini analysis & prediction completed successfully.`);
     setBounded(analysisCache, cacheKey, { data: parsedData, timestamp: Date.now() });
     
-    return NextResponse.json({ ...parsedData, quota });
+    return respond(parsedData);
 
   } catch (e: any) {
     console.error("[BACKEND_ANALYZE] Gemini failed:", e.message);
@@ -605,6 +619,6 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     };
     
     setBounded(analysisCache, cacheKey, { data: fallbackData, timestamp: Date.now() });
-    return NextResponse.json({ ...fallbackData, quota });
+    return respond(fallbackData);
   }
 }

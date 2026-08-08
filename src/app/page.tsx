@@ -63,6 +63,21 @@ function useCounter(end: number, duration: number = 2000, startOnView: boolean =
 }
 
 // Fade-in on scroll hook
+/**
+ * Destination du bouton d'appel à l'action.
+ * Un visiteur qui n'a pas encore de compte doit arriver sur l'INSCRIPTION —
+ * l'envoyer vers la connexion lui demandait des identifiants qu'il n'a pas.
+ * Ceux qui ont déjà un compte entrent directement dans l'application.
+ */
+function useStartHref() {
+  const [href, setHref] = useState('/signup');
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => setHref(user ? '/analyze' : '/signup'));
+  }, []);
+  return href;
+}
+
 function useFadeIn() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -187,7 +202,7 @@ export default function LandingPage() {
                 </Link>
               )}
             </div>
-            <Link href="/analyze" className="nav-cta !flex">
+            <Link href={user ? "/analyze" : "/signup"} className="nav-cta !flex">
               <Zap className="w-4 h-4" /> Analyser
             </Link>
           </div>
@@ -229,7 +244,7 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-col md:flex-row gap-4 mb-8 w-full md:w-auto px-4 md:px-0">
-              <Link href="/analyze" className="hero-cta-primary w-full md:w-auto justify-center">
+              <Link href={user ? "/analyze" : "/signup"} className="hero-cta-primary w-full md:w-auto justify-center">
                 Démarrer l'analyse <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -376,7 +391,7 @@ export default function LandingPage() {
             <p className="final-cta-sub">
               Explorez vos scénarios et anticipez les résultats dès maintenant.
             </p>
-            <Link href="/analyze" className="final-cta-btn w-full md:w-auto">
+            <Link href={user ? "/analyze" : "/signup"} className="final-cta-btn w-full md:w-auto">
               <Zap className="w-5 h-5" /> Accéder aux analyses
             </Link>
           </div>
@@ -400,7 +415,7 @@ export default function LandingPage() {
           <div className="footer-links-group">
             <div className="footer-col">
               <h4>Produit</h4>
-              <Link href="/analyze">Analyse IA</Link>
+              <Link href={user ? "/analyze" : "/signup"}>Analyse IA</Link>
               <Link href="/matches">Matchs du jour</Link>
               <Link href="/standings">Classements</Link>
               <Link href="/support">Support</Link>
@@ -490,6 +505,7 @@ function TestimonialsSection() {
 }
 
 function ShowcaseContent() {
+  const startHref = useStartHref();
   const { ref, visible } = useFadeIn();
   return (
     <div ref={ref} className={`showcase-inner relative z-10 ${visible ? "fade-in-up" : "fade-hidden"}`}>
@@ -519,7 +535,7 @@ function ShowcaseContent() {
         </div>
       </div>
 
-      <Link href="/analyze" className="showcase-cta">
+      <Link href={startHref} className="showcase-cta">
         <Cpu className="w-4 h-4" /> Explorer la technologie
       </Link>
     </div>
@@ -619,6 +635,7 @@ function StatsContent() {
 }
 
 function AnalysisContent() {
+  const startHref = useStartHref();
   const { ref, visible } = useFadeIn();
   return (
     <div ref={ref} className={`analysis-inner relative z-10 ${visible ? "fade-in-up" : "fade-hidden"}`}>
@@ -629,7 +646,7 @@ function AnalysisContent() {
         <p className="analysis-desc text-center">
           Plus de devinettes. Notre moteur analyse des millions de données pour prédire l'issue de chaque rencontre.
         </p>
-        <Link href="/analyze" className="analysis-cta w-full md:w-auto justify-center">
+        <Link href={startHref} className="analysis-cta w-full md:w-auto justify-center">
           <Zap className="w-4 h-4" /> Accéder à la plateforme
         </Link>
       </div>

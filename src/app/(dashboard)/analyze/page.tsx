@@ -1404,6 +1404,16 @@ export default function AnalyzePage() {
                   les formes et les couleurs restent perceptibles.
                 */}
                 <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[16px] opacity-[0.8] saturate-125' : ''}`}>
+                  {/* Le serveur ne transmet plus le contenu payant à un compte
+                      gratuit : il n'y a donc rien à afficher ici, seulement la
+                      silhouette de ce que contient l'analyse complète. */}
+                  {result.locked ? (
+                    <LockedAnalysisPreview
+                      scenarios={result.lockedScenarios}
+                      sections={result.lockedSections}
+                    />
+                  ) : (
+                  <>
                   {/* Score pill */}
                   {result.predictedScore && (
                     <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
@@ -1603,6 +1613,8 @@ export default function AnalyzePage() {
                 })}
               </div>
               
+                  </>
+                  )}
               {/* PAYWALL WRAPPER END */}
               </div>
               </div>
@@ -1713,6 +1725,124 @@ function ModernMetricBar({ label, description, val1, val2, suffix = "", invertCo
         <div className="w-[2px] h-full bg-[#1d2f3a] shrink-0 z-10" />
         <div className="h-full bg-gradient-to-l from-[#EF4444]/70 to-[#EF4444] transition-all duration-1000 ease-out" style={{ width: `${w2}%` }} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Silhouette de l'analyse complète, affichée aux comptes sans abonnement.
+ *
+ * Le serveur ne transmet plus les probabilités, le score prédit, les métriques
+ * ni les sections détaillées : il n'y a donc plus rien de payant à flouter.
+ * Ce bloc reproduit la STRUCTURE de l'analyse — les titres réels des rubriques
+ * et des blocs vides — pour que le visiteur mesure le volume de ce qu'il
+ * achète. Aucune valeur inventée n'y figure : les emplacements sont vides,
+ * volontairement.
+ */
+function LockedAnalysisPreview({ scenarios, sections }: { scenarios?: number; sections?: number }) {
+  const bar = "h-3 rounded-full bg-white/10";
+  const line = "h-2.5 rounded-full bg-white/10";
+
+  return (
+    <div className="space-y-8" aria-hidden="true">
+      {/* Score prédit */}
+      <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg space-y-6">
+        <div className="flex items-center gap-3">
+          <Trophy className="w-5 h-5 text-[#10B981]" />
+          <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+            Score prédit par l'IA
+          </h4>
+        </div>
+        <div className="flex items-center justify-center gap-6 py-4">
+          <div className="w-16 h-12 rounded-[16px] bg-white/10" />
+          <span className="text-white/20 text-2xl font-black">-</span>
+          <div className="w-16 h-12 rounded-[16px] bg-white/10" />
+        </div>
+      </div>
+
+      {/* Probabilités */}
+      <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md space-y-5">
+        <div className="flex items-center gap-3">
+          <BarChart3 className="w-5 h-5 text-[#10B981]" />
+          <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+            Probabilités du match
+          </h4>
+        </div>
+        {[68, 42, 55].map((w, i) => (
+          <div key={i} className="space-y-2">
+            <div className={`${line} w-1/3`} />
+            <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/5">
+              <div className={bar} style={{ width: `${w}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Métriques avancées */}
+      <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md space-y-5">
+        <div className="flex items-center gap-3">
+          <Activity className="w-5 h-5 text-[#10B981]" />
+          <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+            Métriques avancées
+          </h4>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-black/20 rounded-[20px] p-4 space-y-3">
+              <div className={`${line} w-2/3`} />
+              <div className={`${bar} w-1/2`} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Points forts */}
+      <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md space-y-4">
+        <div className="flex items-center gap-3">
+          <Target className="w-5 h-5 text-[#10B981]" />
+          <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+            Points forts et faiblesses
+          </h4>
+        </div>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className={`${line} ${i % 2 === 0 ? "w-11/12" : "w-4/5"}`} />
+        ))}
+      </div>
+
+      {/* Scénarios restants */}
+      {Array.from({ length: Math.max(1, scenarios ?? 2) }).map((_, i) => (
+        <div key={i} className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📌</span>
+            <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+              Scénario #{i + 2}
+            </h4>
+          </div>
+          <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[14px] space-y-3">
+            <div className={`${line} w-full`} />
+            <div className={`${line} w-10/12`} />
+            <div className={`${line} w-2/3`} />
+          </div>
+        </div>
+      ))}
+
+      {/* Analyse détaillée */}
+      <h4 className="font-black text-lg px-2 font-[Space Grotesk] text-white">Analyse Détaillée &amp; Explications</h4>
+      {Array.from({ length: Math.max(2, sections ?? 4) }).map((_, i) => (
+        <div key={i} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[28px] p-5 md:p-6 shadow-md space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-[16px] bg-black/40 border border-white/5 flex items-center justify-center text-[#10B981]">
+              <Brain className="w-4 h-4" />
+            </div>
+            <div className={`${line} w-1/3`} />
+          </div>
+          <div className="space-y-2.5">
+            <div className={`${line} w-full`} />
+            <div className={`${line} w-11/12`} />
+            <div className={`${line} w-3/4`} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
