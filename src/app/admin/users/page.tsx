@@ -1,61 +1,52 @@
-import { createClient as createServerClient } from "@/utils/supabase/server";
-import { createClient } from "@supabase/supabase-js";
+import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
+import SelecteurPeriode from "../_components/SelecteurPeriode";
+import { Courbe } from "../_components/Graphique";
+import { Panneau, Indicateur } from "../_components/Ui";
 import UsersClient from "./UsersClient";
-import { redirect } from "next/navigation";
 
-const ADMIN_EMAIL = "h9422320@gmail.com";
+export const dynamic = "force-dynamic";
 
-async function getUsers() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+export default async function AdminUsers({
+  searchParams,
+}: {
+  searchParams: Promise<{ periode?: string; du?: string; au?: string }>;
+}) {
+  const params = await searchParams;
+  const periode = resoudrePeriode(params);
+  const m = await getAdminMetrics(periode);
 
-  if (!serviceKey || !supabaseUrl) {
-    return [];
-  }
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-white tracking-tight">Utilisateurs</h1>
+          <p className="text-sm text-white/40 mt-1">
+            {m.utilisateurs.total} compte{m.utilisateurs.total > 1 ? "s" : ""} au total — {m.periode.libelle.toLowerCase()}
+          </p>
+        </div>
+        <SelecteurPeriode />
+      </div>
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <Indicateur libelle="Total des comptes" valeur={m.utilisateurs.total} />
+        <Indicateur
+          libelle="Nouveaux"
+          valeur={m.utilisateurs.nouveaux}
+          precedent={m.periode.cle === "tout" ? undefined : m.utilisateurs.nouveauxPrecedent}
+        />
+        <Indicateur libelle="Actifs sur la période" valeur={m.utilisateurs.actifs} accent />
+        <Indicateur
+          libelle="Jamais connectés"
+          valeur={m.utilisateurs.jamaisConnectes}
+          aide="Comptes créés mais jamais utilisés"
+        />
+      </div>
 
-  const { data: usersData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-  const allUsers = usersData?.users || [];
+      <Panneau titre="Inscriptions" sousTitre={`Nouveaux comptes — ${m.periode.libelle.toLowerCase()}`}>
+        <Courbe donnees={m.utilisateurs.serie} suffixe="inscription(s)" />
+      </Panneau>
 
-  let allActivityLogs: any[] = [];
-  try {
-    const { data: actData, error: actErr } = await supabaseAdmin
-      .from("activity_logs")
-      .select("id, user_id, country, created_at")
-      .order("created_at", { ascending: false })
-      .limit(1000);
-    if (!actErr && actData) allActivityLogs = actData;
-  } catch (e) {}
-
-  return allUsers
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .map(u => {
-      const userLogs = allActivityLogs.filter(l => l.user_id === u.id);
-      const realCountry = userLogs.find(l => l.country)?.country || u.user_metadata?.country || "Inconnu";
-
-      return {
-        id: u.id,
-        email: u.email || "—",
-        name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split("@")[0] || "Utilisateur",
-        isPro: u.user_metadata?.is_pro === true || u.app_metadata?.is_pro === true,
-        createdAt: u.created_at,
-        country: realCountry,
-      };
-    });
-}
-
-export default async function UsersPage() {
-  const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user || user.email !== ADMIN_EMAIL) {
-    redirect("/analyze");
-  }
-
-  const users = await getUsers();
-
-  return <UsersClient users={users} />;
+      <UsersClient utilisateurs={m.listeUtilisateurs} />
+    </div>
+  );
 }

@@ -1,124 +1,155 @@
 "use client";
 
-import { motion } from "framer-motion";
-import MetricCard from "@/components/admin/MetricCard";
-import AnimatedChart from "@/components/admin/AnimatedChart";
-import { CreditCard, TrendingUp, Users, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Download, CheckCircle2, XCircle } from "lucide-react";
+import type { LigneAbonnement, EvenementPaiement } from "@/lib/admin-metrics";
+import { Vide, dateCourte, dateHeure, montant } from "../_components/Ui";
 
-export default function FinancesClient({ data }: { data: any }) {
-  // Generate a fake 30-day MRR chart data for the demo based on current MRR
-  const chartData = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (29 - i));
-    
-    // Simulate growth towards the current MRR
-    const growthFactor = (i / 30);
-    const simulatedMrr = data.mrr * 0.7 + (data.mrr * 0.3 * growthFactor) + (Math.random() * 50000 - 25000);
-    
-    return {
-      date: d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
-      mrr: Math.max(0, Math.round(simulatedMrr)),
-    };
-  });
+const FILTRES = [
+  { cle: "tous", libelle: "Tous" },
+  { cle: "actifs", libelle: "Actifs" },
+  { cle: "expires", libelle: "Expirés" },
+];
+
+export default function FinancesClient({
+  abonnements,
+  paiements,
+}: {
+  abonnements: LigneAbonnement[];
+  paiements: EvenementPaiement[];
+}) {
+  const [filtre, setFiltre] = useState("tous");
+
+  const liste = useMemo(
+    () =>
+      abonnements.filter((s) =>
+        filtre === "actifs" ? s.actif : filtre === "expires" ? !s.actif : true
+      ),
+    [abonnements, filtre]
+  );
+
+  function exporter() {
+    const entetes = ["Email", "Offre", "Montant", "Devise", "Statut", "Souscrit le", "Expire le", "Fournisseur"];
+    const lignes = liste.map((s) => [
+      s.email, s.offreLibelle, String(s.montant), s.devise,
+      s.actif ? "actif" : "expire",
+      new Date(s.souscritLe).toLocaleDateString("fr-FR"),
+      s.expireLe ? new Date(s.expireLe).toLocaleDateString("fr-FR") : "",
+      s.fournisseur ?? "",
+    ]);
+    const csv = [entetes, ...lignes]
+      .map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `profoot-abonnements-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Finances & Revenus</h1>
-        <p className="text-sm text-white/50">Suivez la performance financière de ProFoot en temps réel.</p>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard
-          title="MRR (Revenu Mensuel)"
-          value={`${data.mrr.toLocaleString()} CFA`}
-          trend={12.5}
-          icon={<CreditCard className="w-5 h-5" />}
-          delay={0.1}
-        />
-        <MetricCard
-          title="ARR (Revenu Annuel)"
-          value={`${(data.mrr * 12).toLocaleString()} CFA`}
-          trend={15.2}
-          icon={<TrendingUp className="w-5 h-5" />}
-          delay={0.2}
-        />
-        <MetricCard
-          title="Abonnés Actifs"
-          value={data.premiumUsers}
-          trend={8.4}
-          icon={<Users className="w-5 h-5" />}
-          delay={0.3}
-        />
-        <MetricCard
-          title="ARPU (Revenu moyen/user)"
-          value={`${Math.round(data.arpu).toLocaleString()} CFA`}
-          trend={-1.2}
-          icon={<CreditCard className="w-5 h-5" />}
-          delay={0.4}
-        />
-      </div>
-
-      {/* Main Chart */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        className="bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] p-6"
-      >
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h3 className="text-lg font-bold text-white mb-1">Croissance du MRR</h3>
-            <p className="text-sm text-white/40">Évolution sur les 30 derniers jours</p>
-          </div>
-          <div className="px-3 py-1.5 bg-white/5 rounded-[14px] text-sm text-white/60 font-medium">
-            30 Derniers Jours
-          </div>
+    <div className="space-y-6">
+      <div className="bg-[#16242e] border border-[#2e4757] rounded-[20px] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#2e4757] flex flex-wrap items-center gap-3">
+          <h3 className="font-bold text-white text-sm mr-auto">Tous les abonnements</h3>
+          {FILTRES.map((f) => (
+            <button
+              key={f.cle}
+              onClick={() => setFiltre(f.cle)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                filtre === f.cle
+                  ? "bg-[#10b981] text-black border-[#10b981]"
+                  : "bg-[#1d2f3a] text-white/60 border-[#2e4757] hover:text-white"
+              }`}
+            >
+              {f.libelle}
+            </button>
+          ))}
+          <button
+            onClick={exporter}
+            className="inline-flex items-center gap-2 bg-[#1d2f3a] border border-[#2e4757] rounded-full py-1.5 px-3 text-xs font-bold text-white/70 hover:text-white hover:border-[#10b981]/40 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" /> Exporter
+          </button>
         </div>
-        <AnimatedChart data={chartData} xKey="date" yKey="mrr" color="#3b82f6" height={350} delay={0.6} />
-      </motion.div>
 
-      {/* Recent Transactions (Simulated for UI showcase) */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.6 }}
-        className="bg-[#1d2f3a] border border-[#2e4757] rounded-[20px] overflow-hidden"
-      >
-        <div className="p-6 border-b border-[#2e4757]">
-          <h3 className="text-lg font-bold text-white">Transactions Récentes</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-[#16242e]/50 border-b border-[#2e4757] text-white/50">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Client</th>
-                <th className="px-6 py-4 font-semibold">Plan</th>
-                <th className="px-6 py-4 font-semibold">Montant</th>
-                <th className="px-6 py-4 font-semibold">Date</th>
-                <th className="px-6 py-4 font-semibold">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Fake transaction data for display */}
-              {[1, 2, 3, 4, 5].map((_, idx) => (
-                <tr key={idx} className="border-b border-[#2e4757] last:border-0 hover:bg-white/[0.02] transition-colors">
-                  <td className="px-6 py-4 text-white font-medium">user{idx + 1}@example.com</td>
-                  <td className="px-6 py-4 text-white/70">Pro Mensuel</td>
-                  <td className="px-6 py-4 text-white font-bold">20 000 CFA</td>
-                  <td className="px-6 py-4 text-white/50">Il y a {idx * 2 + 1} heures</td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#10b981]/10 text-[#10b981]">
-                      Succès
-                    </span>
-                  </td>
+        {liste.length === 0 ? (
+          <Vide message="Aucun abonnement pour ce filtre." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[760px]">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-widest text-white/35 border-b border-[#2e4757]">
+                  <th className="font-bold px-5 py-3">Compte</th>
+                  <th className="font-bold px-5 py-3">Offre</th>
+                  <th className="font-bold px-5 py-3 text-right">Montant</th>
+                  <th className="font-bold px-5 py-3">Souscrit le</th>
+                  <th className="font-bold px-5 py-3">Expire le</th>
+                  <th className="font-bold px-5 py-3">État</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {liste.map((s) => (
+                  <tr key={s.id} className="border-b border-[#2e4757]/50 last:border-0 hover:bg-white/[0.02]">
+                    <td className="px-5 py-3 text-white truncate max-w-[240px]">{s.email}</td>
+                    <td className="px-5 py-3 text-white/70">
+                      {s.offreLibelle}
+                      {s.offre !== s.offreLibelle && (
+                        <span className="block text-[10px] text-white/25">clé : {s.offre}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-right font-bold text-white">{montant(s.montant, s.devise)}</td>
+                    <td className="px-5 py-3 text-white/60">{dateCourte(s.souscritLe)}</td>
+                    <td className="px-5 py-3 text-white/60">{dateCourte(s.expireLe)}</td>
+                    <td className="px-5 py-3">
+                      {s.actif ? (
+                        <span className="inline-flex items-center gap-1.5 text-[#10b981] text-xs font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Actif
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-white/35 text-xs font-bold">
+                          <XCircle className="w-3.5 h-3.5" /> Expiré
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-[#16242e] border border-[#2e4757] rounded-[20px] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#2e4757]">
+          <h3 className="font-bold text-white text-sm">Événements de paiement reçus</h3>
+          <p className="text-[11px] text-white/40 mt-0.5">
+            Notifications envoyées par Chariow, dans l'ordre d'arrivée
+          </p>
         </div>
-      </motion.div>
+
+        {paiements.length === 0 ? (
+          <Vide message="Aucun événement de paiement enregistré." />
+        ) : (
+          <div className="divide-y divide-[#2e4757]/50">
+            {paiements.slice(0, 25).map((p) => (
+              <div key={p.id} className="px-5 py-3 flex flex-wrap items-center gap-3">
+                <span className="text-xs font-bold text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/25 rounded-full px-2.5 py-0.5">
+                  {p.evenement}
+                </span>
+                <span className="text-sm text-white/70 flex-1 min-w-[160px] truncate">
+                  {p.email ?? "(adresse non transmise)"}
+                </span>
+                {p.montant !== null && (
+                  <span className="text-sm font-bold text-white">{montant(p.montant, p.devise ?? "XOF")}</span>
+                )}
+                <span className="text-[11px] text-white/35">{dateHeure(p.recuLe)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
