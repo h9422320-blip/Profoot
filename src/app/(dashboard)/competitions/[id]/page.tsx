@@ -28,6 +28,7 @@ export default function CompetitionPage() {
   // État réel de la compétition : le statut du référentiel datait de la saison
   // passée et affichait de faux résultats (« Terminé — PSG Champion »).
   const [liveStatus, setLiveStatus] = useState<string>('');
+  const [liveSeason, setLiveSeason] = useState<string>('');
 
   useEffect(() => {
     fetch('/api/competitions/status')
@@ -35,6 +36,7 @@ export default function CompetitionPage() {
       .then(({ statuses }) => {
         const s = statuses?.[String(id)];
         if (s?.status) setLiveStatus(s.status);
+        if (s?.season) setLiveSeason(s.season);
       })
       .catch(() => { /* le statut reste vide plutôt que faux */ });
   }, [id]);
@@ -122,7 +124,9 @@ export default function CompetitionPage() {
     );
   }
 
-  const dateStr = `Saison ${getSeasonLabel(String(id))}`;
+  // Le millésime vient du serveur : lui seul sait si l'édition en cours est
+  // terminée et doit donc afficher celle à venir.
+  const dateStr = `Saison ${liveSeason || getSeasonLabel(String(id))}`;
   const locationStr = competition.country;
 
   return (

@@ -132,10 +132,14 @@ export async function getCompetitionStatus(
     status = `En cours — ${played}/${all.length} matchs joués`;
   }
 
+  // Entre deux éditions, le millésime affiché doit être celui de l'édition À
+  // VENIR : montrer « Saison 2025 » désignait celle qui est déjà terminée.
+  const entreEditions = Boolean(prochaineEdition) && upcoming.length === 0;
+
   const data: CompetitionStatus = {
     id: leagueKey,
     status,
-    season: getSeasonLabel(leagueKey),
+    season: entreEditions ? String(prochaineEdition) : getSeasonLabel(leagueKey),
     played,
     total: all.length,
     nextMatch: upcoming[0]?.fixture?.date || null,

@@ -1,9 +1,22 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Search, Trophy, Globe, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { competitions } from "@/lib/data";
 import { getSeasonLabel } from "@/lib/api-football";
 
 export default function CompetitionsPage() {
+  // Millésime et statut viennent du serveur : lui seul sait si une édition est
+  // terminée et doit donc afficher la suivante.
+  const [statuts, setStatuts] = useState<Record<string, any>>({});
+  useEffect(() => {
+    fetch("/api/competitions/status")
+      .then(r => (r.ok ? r.json() : { statuses: {} }))
+      .then(({ statuses }) => setStatuts(statuses || {}))
+      .catch(() => { /* on retombe sur le calcul local */ });
+  }, []);
+
   const coupes = competitions.filter(c => ["ucl", "uel", "uecl", "can"].includes(c.id));
   const championnats = competitions.filter(c => !["ucl", "uel", "uecl", "can"].includes(c.id));
 
@@ -39,7 +52,7 @@ export default function CompetitionsPage() {
         
         <div className="flex flex-col gap-3">
           {coupes.map(c => (
-            <CompetitionListItem key={c.id} comp={c} />
+            <CompetitionListItem key={c.id} comp={c} statut={statuts[(c).id]} />
           ))}
         </div>
       </div>
@@ -53,7 +66,7 @@ export default function CompetitionsPage() {
         
         <div className="flex flex-col gap-3">
           {championnats.map(c => (
-            <CompetitionListItem key={c.id} comp={c} />
+            <CompetitionListItem key={c.id} comp={c} statut={statuts[(c).id]} />
           ))}
         </div>
       </div>
@@ -61,7 +74,7 @@ export default function CompetitionsPage() {
   );
 }
 
-function CompetitionListItem({ comp }: { comp: any }) {
+function CompetitionListItem({ comp, statut }: { comp: any; statut?: any }) {
   return (
     <Link href={`/competitions/${comp.id}`} className="block group">
       <div className="bg-[#243542] hover:bg-[#232D40] border border-transparent rounded-[20px] p-5 flex items-center gap-5 transition-colors">
@@ -72,7 +85,7 @@ function CompetitionListItem({ comp }: { comp: any }) {
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
           <h3 className="text-white font-bold text-[16px] truncate">{comp.name}</h3>
-          <p className="text-white/50 text-[13px] truncate">{comp.country} • {getSeasonLabel(comp.id)}</p>
+          <p className="text-white/50 text-[13px] truncate">{comp.country} • {statut?.season || getSeasonLabel(comp.id)}</p>
         </div>
         <ChevronRight className="w-5 h-5 text-white/30 group-hover:text-white/60 shrink-0" />
       </div>
