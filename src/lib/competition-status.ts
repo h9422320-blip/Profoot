@@ -103,11 +103,23 @@ export async function getCompetitionStatus(
   // Un classement à 0 point ne désigne aucun leader : la saison n'a pas commencé.
   const leader = top && top.points > 0 ? top.team.name : null;
 
+  // Les coupes d'Europe commencent par des tours préliminaires en juillet-août.
+  // Annoncer « En cours » ferait croire que la compétition proprement dite a
+  // démarré, alors que la phase de ligue n'a pas encore eu lieu.
+  const estQualif = (f: any) => /qualifying|preliminary|play-?off/i.test(f?.league?.round || '');
+  const joues = all.filter((f) => FINISHED.includes(f.fixture.status.short));
+  const uniquementQualifs = joues.length > 0 && joues.every(estQualif);
+  const premierMatchPrincipal = upcoming.find((f) => !estQualif(f));
+
   let status: string;
   if (played === 0 && upcoming.length > 0) {
     status = `Débute le ${formatDate(upcoming[0].fixture.date)}`;
   } else if (upcoming.length === 0) {
     status = leader ? `Terminé — ${leader} champion` : 'Saison terminée';
+  } else if (uniquementQualifs) {
+    status = premierMatchPrincipal
+      ? `Qualifications en cours — phase principale le ${formatDate(premierMatchPrincipal.fixture.date)}`
+      : 'Qualifications en cours';
   } else if (leader) {
     status = `En cours — ${leader} en tête`;
   } else {
@@ -128,15 +140,29 @@ export async function getCompetitionStatus(
   return data;
 }
 
-/** État de plusieurs compétitions en une fois. */
+/**
+ * État de plusieurs compétitions.
+ *
+ * Traité par petits lots : lancer les 17 compétitions d'un coup faisait
+ * 34 requêtes simultanées vers API-Football, dont une partie était refusée.
+ * Des championnats affichaient alors « calendrier à paraître » alors qu'ils
+ * ont bien un calendrier.
+ */
 export async function getAllCompetitionStatuses(
   keys: string[],
   force = false
 ): Promise<Record<string, CompetitionStatus>> {
-  const results = await Promise.all(keys.map((k) => getCompetitionStatus(k, force)));
+  const TAILLE_LOT = 3;
   const map: Record<string, CompetitionStatus> = {};
-  results.forEach((r) => {
-    if (r) map[r.id] = r;
-  });
+
+  for (let i = 0; i < keys.length; i += TAILLE_LOT) {
+    const lot = keys.slice(i, i + TAILLE_LOT);
+    const results = await Promise.all(lot.map((k) => getCompetitionStatus(k, force)));
+    results.forEach((r) => {
+      if (r) map[r.id] = r;
+    });
+    if (i + TAILLE_LOT < keys.length) await new Promise((r) => setTimeout(r, 250));
+  }
+
   return map;
 }
