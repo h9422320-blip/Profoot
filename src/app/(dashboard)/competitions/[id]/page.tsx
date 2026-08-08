@@ -21,6 +21,19 @@ export default function CompetitionPage() {
 
   const [activeClubs, setActiveClubs] = useState<any[]>(leagueClubs);
   const [liveBracket, setLiveBracket] = useState<any>(null);
+  // État réel de la compétition : le statut du référentiel datait de la saison
+  // passée et affichait de faux résultats (« Terminé — PSG Champion »).
+  const [liveStatus, setLiveStatus] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/competitions/status')
+      .then(r => (r.ok ? r.json() : { statuses: {} }))
+      .then(({ statuses }) => {
+        const s = statuses?.[String(id)];
+        if (s?.status) setLiveStatus(s.status);
+      })
+      .catch(() => { /* le statut reste vide plutôt que faux */ });
+  }, [id]);
 
   useEffect(() => {
     setActiveClubs(leagueClubs);
@@ -153,7 +166,7 @@ export default function CompetitionPage() {
         ) : (
           <div className="inline-flex items-center gap-2 bg-[#1A222D] rounded-[16px] px-4 py-2 border border-white/5">
             <span className="text-[11px] font-bold text-white/50 uppercase tracking-widest">STATUT</span>
-            <span className="text-[#10B981] font-bold text-[13px] uppercase">{competition.status}</span>
+            <span className="text-[#10B981] font-bold text-[13px] uppercase">{liveStatus || 'Chargement…'}</span>
           </div>
         )}
       </div>
