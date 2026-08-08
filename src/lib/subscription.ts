@@ -7,29 +7,65 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
  * Toute décision d'accès (Premium, VIP) DOIT passer par ce module, côté serveur.
  */
 
-export type PlanTier = 'FREE' | 'MONTHLY' | 'YEARLY';
+export type PlanTier = 'FREE' | 'ESSENTIAL' | 'PRO' | 'VIP';
+
+/** Quota illimité — évite un `null` ambigu dans les comparaisons. */
+export const UNLIMITED = Infinity;
 
 export interface Entitlements {
   plan: PlanTier;
   premium: boolean;   // Analyseur IA, stats avancées, compétitions, historique…
   vip: boolean;       // Agent IA VIP + exclusivités
+  /** Analyses autorisées par période. `UNLIMITED` pour le VIP annuel. */
+  analysisLimit: number;
   expiresAt: string | null;
+  /** Début de la période de quota en cours (null si aucun abonnement). */
+  periodStart: string | null;
   isAdmin: boolean;
 }
 
 // Configuration des offres — montants en FCFA (XOF), source de vérité pour le
 // checkout ET la validation des webhooks. Ne jamais dupliquer ces montants ailleurs.
 export const PLANS = {
-  monthly: { amountXof: 15000, durationDays: 30, tier: 'MONTHLY' as PlanTier, vip: false, label: 'Mensuel' },
-  yearly: { amountXof: 60000, durationDays: 365, tier: 'YEARLY' as PlanTier, vip: true, label: 'Annuel' },
+  essential_monthly: {
+    amountXof: 9000, durationDays: 30, tier: 'ESSENTIAL' as PlanTier,
+    vip: false, analysisLimit: 10, label: 'Essentiel',
+  },
+  pro_monthly: {
+    amountXof: 15000, durationDays: 30, tier: 'PRO' as PlanTier,
+    vip: false, analysisLimit: 20, label: 'Pro',
+  },
+  vip_yearly: {
+    amountXof: 60000, durationDays: 365, tier: 'VIP' as PlanTier,
+    vip: true, analysisLimit: UNLIMITED, label: 'VIP Annuel',
+  },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;
 
+/**
+ * Correspondance des anciens identifiants vers les nouveaux.
+ * Les abonnements déjà vendus (« monthly » à 15 000, « yearly », « lifetime »
+ * hérité de Moneroo) doivent continuer de fonctionner sans intervention.
+ */
+const LEGACY_PLANS: Record<string, PlanKey> = {
+  monthly: 'pro_monthly',
+  yearly: 'vip_yearly',
+  lifetime: 'vip_yearly',
+};
+
+/** Normalise un identifiant stocké en base vers une offre courante. */
+export function normalizePlan(stored: string | null | undefined): PlanKey | null {
+  if (!stored) return null;
+  if (stored in PLANS) return stored as PlanKey;
+  return LEGACY_PLANS[stored] ?? null;
+}
+
 export function planFromAmount(amountXof: number): PlanKey | null {
-  if (amountXof === PLANS.monthly.amountXof) return 'monthly';
-  if (amountXof === PLANS.yearly.amountXof) return 'yearly';
-  return null;
+  const found = (Object.keys(PLANS) as PlanKey[]).find(
+    (k) => PLANS[k].amountXof === amountXof
+  );
+  return found ?? null;
 }
 
 // Comptes avec droits permanents (fondateur/équipe). Les admins ont tous les accès.
@@ -40,9 +76,30 @@ const FREE_ENTITLEMENTS: Entitlements = {
   plan: 'FREE',
   premium: false,
   vip: false,
+  analysisLimit: 0,
   expiresAt: null,
+  periodStart: null,
   isAdmin: false,
 };
+
+/**
+ * Début de la période de quota en cours.
+ *
+ * Le quota se renouvelle tous les 30 jours à compter de la souscription — et
+ * non le 1er du mois : un abonné du 20 doit retrouver ses analyses le 20, pas
+ * dix jours plus tard. Un simple compteur global, jamais réinitialisé, aurait
+ * bloqué l'utilisateur définitivement une fois sa limite atteinte.
+ */
+export function currentPeriodStart(
+  subscribedAt: string,
+  durationDays: number,
+  now: Date = new Date()
+): Date {
+  const anchor = new Date(subscribedAt).getTime();
+  const cycle = durationDays * 24 * 60 * 60 * 1000;
+  const elapsed = Math.max(0, now.getTime() - anchor);
+  return new Date(anchor + Math.floor(elapsed / cycle) * cycle);
+}
 
 /**
  * Calcule les droits d'un utilisateur à partir de la table subscriptions.
@@ -59,15 +116,21 @@ export async function computeEntitlements(
   const email = user.email?.toLowerCase() ?? '';
 
   if (ADMIN_EMAILS.includes(email)) {
-    return { plan: 'YEARLY', premium: true, vip: true, expiresAt: null, isAdmin: true };
+    return {
+      plan: 'VIP', premium: true, vip: true, analysisLimit: UNLIMITED,
+      expiresAt: null, periodStart: null, isAdmin: true,
+    };
   }
   if (PERMANENT_PREMIUM_EMAILS.includes(email)) {
-    return { plan: 'MONTHLY', premium: true, vip: false, expiresAt: null, isAdmin: false };
+    return {
+      plan: 'PRO', premium: true, vip: false, analysisLimit: PLANS.pro_monthly.analysisLimit,
+      expiresAt: null, periodStart: null, isAdmin: false,
+    };
   }
 
   const { data: subscriptions, error } = await supabase
     .from('subscriptions')
-    .select('plan, status, expires_at')
+    .select('plan, status, expires_at, created_at')
     .eq('user_id', user.id)
     .eq('status', 'active')
     .order('created_at', { ascending: false });
@@ -75,23 +138,38 @@ export async function computeEntitlements(
   if (error || !subscriptions?.length) return FREE_ENTITLEMENTS;
 
   const now = Date.now();
+  // Classement par niveau : un abonné qui cumule plusieurs abonnements actifs
+  // bénéficie toujours du plus avantageux.
+  const RANK: Record<PlanTier, number> = { FREE: 0, ESSENTIAL: 1, PRO: 2, VIP: 3 };
   let best: Entitlements = FREE_ENTITLEMENTS;
 
   for (const sub of subscriptions) {
     // Une absence de date d'expiration ne vaut accès permanent que pour les
     // anciens abonnements « lifetime » (héritage Moneroo). Pour tout le reste,
-    // une date valide et future est exigée.
+    // une date valide et future est exigée : un abonnement expiré ne donne
+    // plus aucun droit.
     const active = sub.expires_at
       ? new Date(sub.expires_at).getTime() > now
       : sub.plan === 'lifetime';
     if (!active) continue;
 
-    if (sub.plan === 'yearly' || sub.plan === 'lifetime') {
-      return { plan: 'YEARLY', premium: true, vip: true, expiresAt: sub.expires_at, isAdmin: false };
-    }
-    if (sub.plan === 'monthly' && best.plan === 'FREE') {
-      best = { plan: 'MONTHLY', premium: true, vip: false, expiresAt: sub.expires_at, isAdmin: false };
-    }
+    const key = normalizePlan(sub.plan);
+    if (!key) continue;
+    const config = PLANS[key];
+
+    if (RANK[config.tier] <= RANK[best.plan]) continue;
+
+    best = {
+      plan: config.tier,
+      premium: true,
+      vip: config.vip,
+      analysisLimit: config.analysisLimit,
+      expiresAt: sub.expires_at,
+      periodStart: sub.created_at
+        ? currentPeriodStart(sub.created_at, config.durationDays).toISOString()
+        : null,
+      isAdmin: false,
+    };
   }
 
   return best;

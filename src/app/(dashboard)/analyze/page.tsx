@@ -344,6 +344,11 @@ export default function AnalyzePage() {
   const [pickerOpen, setPickerOpen] = useState<1 | 2 | null>(null);
   const [todayHistory, setTodayHistory] = useState<any[]>([]);
   const [isPremium, setIsPremium] = useState(false); // Default false to prevent data leaking before check finishes
+  // Consommation d'analyses telle que renvoyée par le serveur.
+  const [quota, setQuota] = useState<{
+    used: number; limit: number | null; remaining: number | null;
+    unlimited: boolean; periodEnd: string | null;
+  } | null>(null);
   const [teamsVersion, setTeamsVersion] = useState(0);
 
   // Équipes de la saison en cours, chargées depuis API-Football et fusionnées
@@ -399,21 +404,20 @@ export default function AnalyzePage() {
     const checkPremium = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         setIsPremium(false);
         return;
       }
-      
-      if (user.email === 'h9422320@gmail.com' || user.email === 'abdoulayecamara2708@gmail.com') {
-        setIsPremium(true);
-        return;
-      }
-      
+
       try {
+        // Droits ET consommation viennent du serveur — jamais recalculés ici.
+        // Les comptes de l'équipe sont reconnus par le backend, inutile de
+        // dupliquer cette liste dans le navigateur.
         const res = await fetch('/api/payments/status');
         const data = await res.json();
-        setIsPremium(data.isPro);
+        setIsPremium(!!data.premium);
+        if (data.analyses) setQuota(data.analyses);
       } catch {
         setIsPremium(false);
       }
@@ -514,6 +518,29 @@ export default function AnalyzePage() {
           setAnalyzeError("PREMIUM_REQUIRED");
           return;
         }
+        // 429 couvre deux cas distincts : le quota mensuel épuisé (code dédié)
+        // et le simple anti-spam. Les confondre afficherait « limite atteinte »
+        // à un abonné qui a juste cliqué trop vite.
+        if (res.status === 429) {
+          const info = await res.json().catch(() => ({}));
+          clearInterval(interval);
+          setAnalyzing(false);
+          if (info?.code === 'ANALYSIS_LIMIT_REACHED') {
+            if (info.quota) {
+              setQuota({
+                used: info.quota.used,
+                limit: info.quota.limit,
+                remaining: info.quota.remaining,
+                unlimited: false,
+                periodEnd: info.quota.periodEnd ?? null,
+              });
+            }
+            setAnalyzeError("LIMIT_REACHED");
+          } else {
+            setAnalyzeError("Trop de requêtes");
+          }
+          return;
+        }
         if (res.status === 401) {
           window.location.href = "/login";
           return;
@@ -523,7 +550,19 @@ export default function AnalyzePage() {
 
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      
+
+      // Le serveur renvoie la consommation à jour avec chaque analyse : le
+      // compteur affiché reste synchronisé sans requête supplémentaire.
+      if (data.quota) {
+        setQuota({
+          used: data.quota.used,
+          limit: data.quota.unlimited ? null : data.quota.limit,
+          remaining: data.quota.unlimited ? null : data.quota.remaining,
+          unlimited: !!data.quota.unlimited,
+          periodEnd: data.quota.periodEnd ?? null,
+        });
+      }
+
       clearInterval(interval);
       setAnalyzingStep(steps.length - 1);
       
@@ -693,9 +732,71 @@ export default function AnalyzePage() {
           <span className="text-[8px] text-white/25 uppercase tracking-widest font-bold mt-1">
             Basé sur stats réelles + actualités foot 2026
           </span>
+
+          {/* Compteur d'analyses — valeurs fournies par le serveur, jamais
+              calculées ici. Masqué pour les comptes gratuits, qui relèvent du
+              paywall et non d'un quota. */}
+          {isPremium && quota && (
+            <div className="w-full max-w-[280px] mt-3">
+              {quota.unlimited ? (
+                <p className="text-[11px] text-center font-bold text-[#10B981] uppercase tracking-widest">
+                  Analyses illimitées
+                </p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-[11px] font-bold mb-1.5">
+                    <span className="text-white/50 uppercase tracking-widest">Ce mois-ci</span>
+                    <span className={quota.remaining === 0 ? 'text-red-400' : 'text-white/70'}>
+                      {quota.used} / {quota.limit} analyses
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        quota.remaining === 0
+                          ? 'bg-red-500'
+                          : 'bg-gradient-to-r from-[#10B981] to-[#2DD4BF]'
+                      }`}
+                      style={{
+                        width: `${Math.min(100, quota.limit ? (quota.used / quota.limit) * 100 : 0)}%`,
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {/* Premium Inline Error Card */}
           {analyzeError && !analyzing && (
-            analyzeError === "PREMIUM_REQUIRED" ? (
+            analyzeError === "LIMIT_REACHED" ? (
+            <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#1A150B] to-[#0A1118] border border-warning/25 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(234,179,8,0.10)] relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-warning/50 to-transparent"></div>
+
+              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center mb-1">
+                <Timer className="w-6 h-6 text-warning drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[13px] font-black text-white tracking-[0.1em] uppercase">
+                  Limite mensuelle atteinte
+                </h4>
+                <p className="text-xs text-white/50 font-medium leading-relaxed max-w-[300px] mx-auto">
+                  Vous avez utilisé vos {quota?.limit ?? ''} analyses de ce mois.
+                  {quota?.periodEnd
+                    ? ` Votre compteur repart le ${new Date(quota.periodEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}.`
+                    : ''}
+                  {' '}Passez au VIP Annuel pour des analyses illimitées.
+                </p>
+              </div>
+
+              <Link
+                href="/pricing"
+                className="mt-3 bg-warning hover:bg-warning/90 active:scale-95 text-black font-bold py-2.5 px-6 rounded-full transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest"
+              >
+                Voir les offres <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+            ) : analyzeError === "PREMIUM_REQUIRED" ? (
             <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#16242e] to-[#16242e] border border-primary/25 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(16,185,129,0.10)] relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
 

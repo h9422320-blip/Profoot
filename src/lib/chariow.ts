@@ -1,4 +1,4 @@
-import { PLANS, PlanKey, planFromAmount } from '@/lib/subscription';
+import { PLANS, PlanKey, planFromAmount, normalizePlan } from '@/lib/subscription';
 
 /**
  * Client de l'API Chariow (https://chariow.dev).
@@ -74,21 +74,40 @@ function apiKey(): string {
 }
 
 /** ID du produit Chariow correspondant à chaque offre ProFoot. */
+/**
+ * Identifiant du produit Chariow pour chaque offre.
+ *
+ * Les anciens noms de variables (MONTHLY / YEARLY) restent acceptés en repli :
+ * l'offre Pro et l'offre VIP correspondent aux deux produits déjà créés dans la
+ * boutique, il n'y a donc rien à reconfigurer pour elles.
+ */
+function productIdEnv(plan: PlanKey): string | undefined {
+  switch (plan) {
+    case 'essential_monthly':
+      return process.env.CHARIOW_PRODUCT_ID_ESSENTIAL;
+    case 'pro_monthly':
+      return process.env.CHARIOW_PRODUCT_ID_PRO || process.env.CHARIOW_PRODUCT_ID_MONTHLY;
+    case 'vip_yearly':
+      return process.env.CHARIOW_PRODUCT_ID_VIP || process.env.CHARIOW_PRODUCT_ID_YEARLY;
+  }
+}
+
 export function productIdForPlan(plan: PlanKey): string {
-  const id =
-    plan === 'monthly'
-      ? process.env.CHARIOW_PRODUCT_ID_MONTHLY
-      : process.env.CHARIOW_PRODUCT_ID_YEARLY;
-  if (!id) throw new Error(`CHARIOW_PRODUCT_ID_${plan.toUpperCase()} manquante.`);
+  const id = productIdEnv(plan);
+  if (!id) {
+    throw new Error(
+      `Produit Chariow non configuré pour l'offre « ${PLANS[plan].label} ». ` +
+        `Renseignez la variable d'environnement correspondante.`
+    );
+  }
   return id;
 }
 
 /** Retrouve l'offre à partir d'un ID produit Chariow (source primaire). */
 export function planFromProductId(productId: string | undefined): PlanKey | null {
   if (!productId) return null;
-  if (productId === process.env.CHARIOW_PRODUCT_ID_MONTHLY) return 'monthly';
-  if (productId === process.env.CHARIOW_PRODUCT_ID_YEARLY) return 'yearly';
-  return null;
+  const plans = Object.keys(PLANS) as PlanKey[];
+  return plans.find((p) => productIdEnv(p) === productId) ?? null;
 }
 
 /**
@@ -103,10 +122,9 @@ export function resolvePaidPlan(input: {
   amountCurrency?: string;
 }): PlanKey | null {
   const byProduct = planFromProductId(input.productId);
-  const byMetadata =
-    input.metadataPlan === 'monthly' || input.metadataPlan === 'yearly'
-      ? (input.metadataPlan as PlanKey)
-      : null;
+  // `normalizePlan` accepte aussi les anciens libellés : un paiement lancé
+  // avant cette mise à jour et confirmé après reste correctement rattaché.
+  const byMetadata = normalizePlan(input.metadataPlan);
   const byAmount =
     input.amountCurrency?.toUpperCase() === 'XOF' && typeof input.amountValue === 'number'
       ? planFromAmount(input.amountValue)

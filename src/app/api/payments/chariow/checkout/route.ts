@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireUser, PLANS, PlanKey } from '@/lib/subscription';
+import { requireUser, PLANS, PlanKey, normalizePlan } from '@/lib/subscription';
 import { initCheckout } from '@/lib/chariow';
 
 export async function POST(req: Request) {
@@ -9,15 +9,19 @@ export async function POST(req: Request) {
     const { user, entitlements } = guard;
 
     const body = await req.json().catch(() => ({}));
-    const plan = body?.plan as PlanKey;
-    if (plan !== 'monthly' && plan !== 'yearly') {
+    // Le plan demandé est validé contre la liste officielle : le client ne peut
+    // pas inventer une offre, et les anciens libellés restent acceptés le temps
+    // que les pages en cache se rafraîchissent.
+    const plan = normalizePlan(body?.plan) as PlanKey | null;
+    if (!plan) {
       return NextResponse.json({ error: 'Plan invalide.' }, { status: 400 });
     }
 
-    // Un abonné annuel actif n'a rien de plus à acheter.
-    if (entitlements.plan === 'YEARLY' && plan === 'yearly') {
+    // Un abonné VIP actif n'a rien de plus à acheter : c'est l'offre la plus
+    // complète, lui revendre une offre inférieure n'aurait aucun sens.
+    if (entitlements.plan === 'VIP' && plan === 'vip_yearly') {
       return NextResponse.json(
-        { error: 'Votre abonnement Annuel est déjà actif.', code: 'ALREADY_SUBSCRIBED' },
+        { error: 'Votre abonnement VIP Annuel est déjà actif.', code: 'ALREADY_SUBSCRIBED' },
         { status: 409 }
       );
     }

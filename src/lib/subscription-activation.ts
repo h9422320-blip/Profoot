@@ -1,9 +1,9 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { PLANS } from '@/lib/subscription';
+import { PLANS, PlanKey } from '@/lib/subscription';
 import { ChariowSale, resolvePaidPlan } from '@/lib/chariow';
 
 export type ActivationResult =
-  | { activated: true; plan: 'monthly' | 'yearly'; expiresAt: string }
+  | { activated: true; plan: PlanKey; expiresAt: string }
   | { activated: false; reason: string };
 
 /**

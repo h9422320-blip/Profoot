@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getSessionEntitlements } from '@/lib/subscription';
+import { getSessionEntitlements, PLANS, UNLIMITED } from '@/lib/subscription';
+import { getQuotaState } from '@/lib/analysis-quota';
 
 /**
- * Droits d'accès de l'utilisateur connecté — seule source que le frontend
- * consulte. Le frontend AFFICHE ces droits ; il ne les décide jamais :
- * chaque route API refait sa propre vérification serveur.
+ * Droits d'accès et consommation de l'utilisateur connecté — seule source que
+ * le frontend consulte. Le frontend AFFICHE ces valeurs ; il ne les décide
+ * jamais et ne les recalcule pas : chaque route API refait sa propre
+ * vérification côté serveur.
  */
 export async function GET() {
   try {
@@ -13,14 +15,29 @@ export async function GET() {
       return NextResponse.json({ isPro: false, error: 'Non autorisé' }, { status: 401 });
     }
 
+    const quota = await getQuotaState(user.id, entitlements);
+
     return NextResponse.json({
       // isPro conservé pour compatibilité avec l'interface existante.
       isPro: entitlements.premium,
       premium: entitlements.premium,
       vip: entitlements.vip,
       plan: entitlements.plan,
+      planLabel:
+        entitlements.plan === 'FREE'
+          ? 'Gratuit'
+          : (Object.values(PLANS).find((p) => p.tier === entitlements.plan)?.label ?? entitlements.plan),
       expiresAt: entitlements.expiresAt,
       isAdmin: entitlements.isAdmin,
+      analyses: {
+        used: quota.used,
+        // `Infinity` ne survit pas au JSON : on l'exprime par un booléen.
+        limit: quota.unlimited ? null : quota.limit,
+        remaining: quota.unlimited ? null : quota.remaining,
+        unlimited: quota.unlimited,
+        periodStart: quota.periodStart,
+        periodEnd: quota.periodEnd,
+      },
     });
   } catch (error) {
     console.error('Erreur API statut:', error);

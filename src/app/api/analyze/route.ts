@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { requireUser } from "@/lib/subscription";
+import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
 
@@ -189,12 +190,40 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Équipe inconnue" }, { status: 404 });
   }
 
+  // --- QUOTA MENSUEL ---
+  // Contrôlé AVANT le cache : sinon un abonné ayant épuisé sa limite obtiendrait
+  // gratuitement une analyse déjà mise en cache par quelqu'un d'autre.
+  // Les comptes gratuits ne sont pas décomptés : ils reçoivent l'aperçu
+  // partiel, verrouillé par le paywall — c'est le levier de conversion.
+  const quotaMatchKey = buildMatchKey(team1.id, team2.id);
+  let quota: QuotaState | null = null;
+
+  if (guard.entitlements.premium) {
+    const consumption = await consumeAnalysis(
+      guard.user.id,
+      guard.entitlements,
+      quotaMatchKey
+    );
+    quota = consumption.state;
+
+    if (!consumption.allowed) {
+      return NextResponse.json(
+        {
+          error: `Limite mensuelle atteinte : ${consumption.state.limit} analyses pour votre offre.`,
+          code: 'ANALYSIS_LIMIT_REACHED',
+          quota: consumption.state,
+        },
+        { status: 429 }
+      );
+    }
+  }
+
   const today = new Date().toISOString().split('T')[0];
   const cacheKey = `${team1.id}-${team2.id}-${today}`;
   const cachedAnalysis = analysisCache.get(cacheKey);
   if (cachedAnalysis && Date.now() - cachedAnalysis.timestamp < CACHE_TTL.ANALYSIS) {
     console.log(`[BACKEND_ANALYZE] Returning CACHED analysis for ${team1.name} vs ${team2.name}`);
-    return NextResponse.json(cachedAnalysis.data);
+    return NextResponse.json({ ...cachedAnalysis.data, quota });
   }
 
   console.log(`[BACKEND_ANALYZE] Starting analysis for ${team1.name} vs ${team2.name}`);
@@ -302,7 +331,7 @@ export async function POST(req: Request) {
       summary: `Score final certifié via API-Football. ${targetPastMatch.teams.home.name} ${hScore} - ${aScore} ${targetPastMatch.teams.away.name}.`
     };
     setBounded(analysisCache, cacheKey, { data: realMatchResult, timestamp: Date.now() });
-    return NextResponse.json(realMatchResult);
+    return NextResponse.json({ ...realMatchResult, quota });
   }
 
   // ============================================================================
@@ -527,7 +556,7 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     console.log(`[BACKEND_ANALYZE] Gemini analysis & prediction completed successfully.`);
     setBounded(analysisCache, cacheKey, { data: parsedData, timestamp: Date.now() });
     
-    return NextResponse.json(parsedData);
+    return NextResponse.json({ ...parsedData, quota });
 
   } catch (e: any) {
     console.error("[BACKEND_ANALYZE] Gemini failed:", e.message);
@@ -576,6 +605,6 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     };
     
     setBounded(analysisCache, cacheKey, { data: fallbackData, timestamp: Date.now() });
-    return NextResponse.json(fallbackData);
+    return NextResponse.json({ ...fallbackData, quota });
   }
 }
