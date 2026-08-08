@@ -19,7 +19,11 @@ export default function CompetitionPage() {
     .sort((a, b) => a.ranking - b.ranking);
   const isCup = leagueClubs.some(c => c.group) || id === "wc" || id === "ucl" || id === "can" || id === "euro" || id === "copa_america";
 
-  const [activeClubs, setActiveClubs] = useState<any[]>(leagueClubs);
+  // Le tableau démarre VIDE : le pré-remplir avec le référentiel affichait les
+  // classements et les points de la saison passée en attendant les données
+  // réelles — et les laissait à l'écran si l'appel échouait.
+  const [activeClubs, setActiveClubs] = useState<any[]>([]);
+  const [chargementTable, setChargementTable] = useState(true);
   const [liveBracket, setLiveBracket] = useState<any>(null);
   // État réel de la compétition : le statut du référentiel datait de la saison
   // passée et affichait de faux résultats (« Terminé — PSG Champion »).
@@ -36,7 +40,7 @@ export default function CompetitionPage() {
   }, [id]);
 
   useEffect(() => {
-    setActiveClubs(leagueClubs);
+    setChargementTable(true);
     fetch(`/api/competitions/live?id=${id}`)
       .then(res => res.json())
       .then(data => {
@@ -67,7 +71,8 @@ export default function CompetitionPage() {
           setLiveBracket(data.bracket);
         }
       })
-      .catch(err => console.error("Error fetching live competition data:", err));
+      .catch(err => console.error("Error fetching live competition data:", err))
+      .finally(() => setChargementTable(false));
 
     // For cup competitions: fetch REAL bracket from Gemini + Google Search intelligence
     const isCupComp = ["wc", "ucl", "euro", "can", "copa"].includes(id as string);
@@ -183,7 +188,22 @@ export default function CompetitionPage() {
         </div>
       )}
 
-      {(!isCup || wcView === "groups") ? (
+      {/* Rien à afficher tant que les données réelles ne sont pas arrivées :
+          mieux vaut l'annoncer que montrer le classement de la saison passée. */}
+      {chargementTable ? (
+        <div className="flex items-center justify-center gap-3 py-16 text-white/50">
+          <div className="w-4 h-4 border-2 border-white/20 border-t-[#10B981] rounded-full animate-spin" />
+          <span className="text-sm">Récupération des données officielles…</span>
+        </div>
+      ) : activeClubs.length === 0 ? (
+        <div className="flex flex-col items-center text-center gap-2 py-16 px-6">
+          <Calendar className="w-7 h-7 text-white/25" />
+          <p className="text-sm font-semibold text-white/70">Aucun classement disponible</p>
+          <p className="text-xs text-white/40 max-w-sm">
+            {liveStatus ? `${liveStatus}. ` : ''}Le classement apparaîtra dès les premiers matchs joués.
+          </p>
+        </div>
+      ) : (!isCup || wcView === "groups") ? (
         <div className="space-y-6">
            {isCup && activeClubs.some((c: any) => c.group) ? (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

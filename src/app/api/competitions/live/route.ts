@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
 import { isRateLimited, clientIp } from '@/lib/rateLimit';
+import { getSeason } from '@/lib/api-football';
 
 const API_KEY = process.env.API_FOOTBALL_KEY || "";
 
-const LEAGUE_MAP: Record<string, { id: number, season: number }> = {
-  "ucl": { id: 2, season: 2025 },
-  "wc": { id: 1, season: 2026 },
-  "euro": { id: 4, season: 2024 },
-  "can": { id: 34, season: 2025 },
-  "copa": { id: 9, season: 2024 },
-  "epl": { id: 39, season: 2025 },
-  "ligue1": { id: 61, season: 2025 },
-  "laliga": { id: 140, season: 2025 },
-  "seriea": { id: 135, season: 2025 },
-  "bundesliga": { id: 78, season: 2025 },
+/**
+ * Les saisons étaient écrites en dur à 2025 : cette route renvoyait donc les
+ * classements de la SAISON PASSÉE (la phase de ligue 2025-26 de la Ligue des
+ * Champions, avec Arsenal à 24 points), affichés comme s'ils étaient actuels.
+ * La saison est désormais calculée.
+ */
+const LEAGUE_MAP: Record<string, number> = {
+  ucl: 2, uel: 3, uecl: 848,
+  epl: 39, ligue1: 61, laliga: 140, seriea: 135, bundesliga: 78,
+  eredivisie: 88, ligaportugal: 94, proleague: 144, premiership: 179, superlig: 203,
+  euro: 4, can: 6, copa: 9, caf: 12, nations_league: 5,
 };
 
 async function fetchApiFootball(endpoint: string) {
@@ -44,7 +45,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Invalid or missing competition ID' }, { status: 400 });
   }
 
-  const { id: apiLeagueId, season } = LEAGUE_MAP[id];
+  const apiLeagueId = LEAGUE_MAP[id];
+  const season = getSeason(id);
 
   try {
     let groups: any[] = [];
@@ -56,45 +58,6 @@ export async function GET(request: Request) {
       third_place: null as any,
       final: null as any
     };
-
-    if (id === 'wc') {
-      const wcGroups = [
-        { name: "Groupe A", teams: ["Mexique", "Afrique du Sud", "Corée du Sud", "République Tchèque"] },
-        { name: "Groupe B", teams: ["Suisse", "Canada", "Bosnie-Herzégovine", "Qatar"] },
-        { name: "Groupe C", teams: ["Brésil", "Maroc", "Ecosse", "Haïti"] },
-        { name: "Groupe D", teams: ["USA", "Australie", "Paraguay", "Turquie"] },
-        { name: "Groupe E", teams: ["Allemagne", "Côte d'Ivoire", "Equateur", "Curaçao"] },
-        { name: "Groupe F", teams: ["Pays-Bas", "Japon", "Suède", "Tunisie"] },
-        { name: "Groupe G", teams: ["Belgique", "Egypte", "Iran", "Nouvelle-Zélande"] },
-        { name: "Groupe H", teams: ["Espagne", "Iles du Cap-Vert", "Uruguay", "Arabie Saoudite"] },
-        { name: "Groupe I", teams: ["France", "Norvège", "Sénégal", "Irak"] },
-        { name: "Groupe J", teams: ["Argentine", "Autriche", "Algérie", "Jordanie"] },
-        { name: "Groupe K", teams: ["Colombie", "Portugal", "Rép. Dém. du Congo", "Ouzbékistan"] },
-        { name: "Groupe L", teams: ["Angleterre", "Croatie", "Ghana", "Panama"] }
-      ];
-
-      wcGroups.forEach(g => {
-        g.teams.forEach((teamName, i) => {
-          let pts = 0;
-          if (teamName === "Mexique" || teamName === "Argentine" || teamName === "France") pts = 9;
-          else if (teamName === "Brésil" || teamName === "Suisse" || teamName === "Pays-Bas" || teamName === "Espagne" || teamName === "Colombie" || teamName === "Angleterre") pts = 7;
-          else if (teamName === "Allemagne") pts = 6;
-          else if (teamName === "Belgique" || teamName === "Portugal") pts = 5;
-          else if (teamName === "Afrique du Sud" || teamName === "Australie" || teamName === "Paraguay" || teamName === "Canada") pts = 4;
-          else pts = Math.max(0, 4 - i);
-
-          groups.push({
-            rank: i + 1,
-            team: { id: teamName.toLowerCase(), name: teamName, logo: `https://flagcdn.com/w40/${getTeamFlag(teamName)}.png` },
-            points: pts,
-            goalsDiff: 0,
-            group: g.name,
-            all: { played: 3, win: 0, draw: 0, lose: 0, goals: { for: 0, against: 0 } }
-          });
-        });
-      });
-      return NextResponse.json({ groups, bracket });
-    }
 
     // 1. Fetch Standings
     const standingsRes = await fetchApiFootball(`/standings?league=${apiLeagueId}&season=${season}`);
@@ -140,22 +103,4 @@ export async function GET(request: Request) {
     console.error("Live fetch error:", error);
     return NextResponse.json({ error: 'Failed to fetch live data' }, { status: 500 });
   }
-}
-
-function getTeamFlag(name: string) {
-  const map: any = {
-    "Mexique": "mx", "Afrique du Sud": "za", "Corée du Sud": "kr", "République Tchèque": "cz",
-    "Suisse": "ch", "Canada": "ca", "Bosnie-Herzégovine": "ba", "Qatar": "qa",
-    "Brésil": "br", "Maroc": "ma", "Ecosse": "gb-sct", "Haïti": "ht",
-    "USA": "us", "Australie": "au", "Paraguay": "py", "Turquie": "tr",
-    "Allemagne": "de", "Côte d'Ivoire": "ci", "Equateur": "ec", "Curaçao": "cw",
-    "Pays-Bas": "nl", "Japon": "jp", "Suède": "se", "Tunisie": "tn",
-    "Belgique": "be", "Egypte": "eg", "Iran": "ir", "Nouvelle-Zélande": "nz",
-    "Espagne": "es", "Iles du Cap-Vert": "cv", "Uruguay": "uy", "Arabie Saoudite": "sa",
-    "France": "fr", "Norvège": "no", "Sénégal": "sn", "Irak": "iq",
-    "Argentine": "ar", "Autriche": "at", "Algérie": "dz", "Jordanie": "jo",
-    "Colombie": "co", "Portugal": "pt", "Rép. Dém. du Congo": "cd", "Ouzbékistan": "uz",
-    "Angleterre": "gb-eng", "Croatie": "hr", "Ghana": "gh", "Panama": "pa"
-  };
-  return map[name] || "un";
 }
