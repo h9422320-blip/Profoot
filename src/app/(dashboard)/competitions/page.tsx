@@ -4,8 +4,8 @@ import { competitions } from "@/lib/data";
 import { getSeasonLabel } from "@/lib/api-football";
 
 export default function CompetitionsPage() {
-  const coupes = competitions.filter(c => ["ucl", "uel", "uecl", "supercup", "can"].includes(c.id));
-  const championnats = competitions.filter(c => !["ucl", "uel", "uecl", "supercup", "can"].includes(c.id));
+  const coupes = competitions.filter(c => ["ucl", "uel", "uecl", "can"].includes(c.id));
+  const championnats = competitions.filter(c => !["ucl", "uel", "uecl", "can"].includes(c.id));
 
   return (
     <div className="w-full max-w-2xl mx-auto pb-20 pt-8 px-4 font-sans bg-[#16242e] min-h-screen">

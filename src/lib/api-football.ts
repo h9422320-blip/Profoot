@@ -124,6 +124,16 @@ export function getClubSeason(now: Date = new Date()): number {
   return now.getMonth() + 1 >= 8 ? now.getFullYear() : now.getFullYear() - 1;
 }
 
+/**
+ * Année de la prochaine édition d'un tournoi qui ne se joue pas chaque année.
+ * Entre deux éditions, on annonce la suivante plutôt que d'afficher le vainqueur
+ * de la précédente comme si la compétition était d'actualité.
+ */
+export function getNextEdition(leagueKey: string, now: Date = new Date()): number | null {
+  if (leagueKey !== 'can') return null;
+  return getSeason('can', now) + 2; // la CAN se joue tous les deux ans
+}
+
 /** Compétitions internationales : leur millésime ne suit pas le cycle des clubs. */
 const INTERNATIONAL_SEASONS: Record<string, (y: number) => number> = {
   // CAN : années impaires depuis 2025

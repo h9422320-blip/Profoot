@@ -1,4 +1,4 @@
-import { LEAGUE_IDS, getSeason, getSeasonLabel } from '@/lib/api-football';
+import { LEAGUE_IDS, getSeason, getSeasonLabel, getNextEdition } from '@/lib/api-football';
 
 /**
  * État réel d'une compétition, calculé depuis API-Football.
@@ -111,9 +111,15 @@ export async function getCompetitionStatus(
   const uniquementQualifs = joues.length > 0 && joues.every(estQualif);
   const premierMatchPrincipal = upcoming.find((f) => !estQualif(f));
 
+  // Un tournoi bisannuel terminé n'est plus d'actualité : on annonce la
+  // prochaine édition au lieu d'afficher le vainqueur de la précédente.
+  const prochaineEdition = getNextEdition(leagueKey);
+
   let status: string;
   if (played === 0 && upcoming.length > 0) {
     status = `Débute le ${formatDate(upcoming[0].fixture.date)}`;
+  } else if (upcoming.length === 0 && prochaineEdition) {
+    status = `Prochaine édition en ${prochaineEdition}`;
   } else if (upcoming.length === 0) {
     status = leader ? `Terminé — ${leader} champion` : 'Saison terminée';
   } else if (uniquementQualifs) {

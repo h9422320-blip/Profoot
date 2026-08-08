@@ -21,7 +21,6 @@ export const competitions:Competition[]=[
 {id:"ucl",name:"UEFA Champions League",shortName:"UCL",country:"Europe",logo:L(2),region:"europe",matchesPerSeason:189,iaAccuracy:84,iaTrend:"up",currentSeason:"",status:""},
 {id:"uel",name:"UEFA Europa League",shortName:"UEL",country:"Europe",logo:L(3),region:"europe",matchesPerSeason:189,iaAccuracy:80,iaTrend:"stable",currentSeason:"",status:""},
 {id:"uecl",name:"UEFA Conference League",shortName:"UECL",country:"Europe",logo:L(848),region:"europe",matchesPerSeason:153,iaAccuracy:78,iaTrend:"stable",currentSeason:"",status:""},
-{id:"supercup",name:"Supercoupe UEFA",shortName:"USC",country:"Europe",logo:L(531),region:"europe",matchesPerSeason:1,iaAccuracy:85,iaTrend:"stable",currentSeason:"",status:""},
 {id:"epl",name:"Premier League",shortName:"PL",country:"Angleterre",logo:L(39),region:"europe",matchesPerSeason:380,iaAccuracy:78,iaTrend:"up",currentSeason:"",status:""},
 {id:"laliga",name:"La Liga",shortName:"Liga",country:"Espagne",logo:L(140),region:"europe",matchesPerSeason:380,iaAccuracy:81,iaTrend:"up",currentSeason:"",status:""},
 {id:"seriea",name:"Serie A",shortName:"Serie A",country:"Italie",logo:L(135),region:"europe",matchesPerSeason:380,iaAccuracy:77,iaTrend:"up",currentSeason:"",status:""},

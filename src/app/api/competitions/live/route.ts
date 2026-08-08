@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isRateLimited, clientIp } from '@/lib/rateLimit';
-import { getSeason } from '@/lib/api-football';
+import { getSeason, getNextEdition } from '@/lib/api-football';
 
 const API_KEY = process.env.API_FOOTBALL_KEY || "";
 
@@ -97,6 +97,13 @@ export async function GET(request: Request) {
         bracket.final = matchData;
       }
     });
+
+    // Tournoi bisannuel dont l'édition est terminée : ne rien afficher plutôt
+    // que le classement final de l'édition passée, qui n'est plus d'actualité.
+    const aVenir = fixtures.filter((f: any) => ['NS', 'TBD', 'PST'].includes(f.fixture.status.short));
+    if (getNextEdition(id) && aVenir.length === 0) {
+      return NextResponse.json({ groups: [], bracket });
+    }
 
     return NextResponse.json({ groups, bracket });
   } catch (error) {
