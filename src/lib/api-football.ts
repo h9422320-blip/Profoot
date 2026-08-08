@@ -108,10 +108,7 @@ export const LEAGUE_IDS: Record<string, number> = {
   proleague: 144,
   premiership: 179,
   superlig: 203,
-  wc: 1,
   can: 6,
-  caf: 12,
-  nations_league: 5,
 };
 
 /**
@@ -129,12 +126,9 @@ export function getClubSeason(now: Date = new Date()): number {
 
 /** Compétitions internationales : leur millésime ne suit pas le cycle des clubs. */
 const INTERNATIONAL_SEASONS: Record<string, (y: number) => number> = {
-  // Coupe du monde : tous les 4 ans (2026, 2030…)
-  wc: (y) => y - ((y - 2026) % 4 + 4) % 4,
   // CAN : années impaires depuis 2025
   can: (y) => (y % 2 === 1 ? y : y - 1),
   // Ligue des nations : cycle bisannuel depuis 2024
-  nations_league: (y) => (y % 2 === 0 ? y : y - 1),
 };
 
 /**

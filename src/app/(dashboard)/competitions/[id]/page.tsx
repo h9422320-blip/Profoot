@@ -17,7 +17,7 @@ export default function CompetitionPage() {
   const leagueClubs = Object.values(clubs)
     .filter(c => c.league === id || (cupParticipants[id as string] && cupParticipants[id as string].includes(c.id)))
     .sort((a, b) => a.ranking - b.ranking);
-  const isCup = leagueClubs.some(c => c.group) || id === "wc" || id === "ucl" || id === "can" || id === "euro" || id === "copa_america";
+  const isCup = leagueClubs.some(c => c.group) || id === "ucl" || id === "uel" || id === "uecl" || id === "can";
 
   // Le tableau démarre VIDE : le pré-remplir avec le référentiel affichait les
   // classements et les points de la saison passée en attendant les données
@@ -75,7 +75,7 @@ export default function CompetitionPage() {
       .finally(() => setChargementTable(false));
 
     // For cup competitions: fetch REAL bracket from Gemini + Google Search intelligence
-    const isCupComp = ["wc", "ucl", "euro", "can", "copa"].includes(id as string);
+    const isCupComp = ["ucl", "uel", "uecl", "can"].includes(id as string);
     if (isCupComp) {
       fetch(`/api/competitions/bracket?id=${id}`)
         .then(res => res.json())

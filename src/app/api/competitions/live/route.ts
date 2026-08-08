@@ -14,7 +14,7 @@ const LEAGUE_MAP: Record<string, number> = {
   ucl: 2, uel: 3, uecl: 848,
   epl: 39, ligue1: 61, laliga: 140, seriea: 135, bundesliga: 78,
   eredivisie: 88, ligaportugal: 94, proleague: 144, premiership: 179, superlig: 203,
-  euro: 4, can: 6, copa: 9, caf: 12, nations_league: 5,
+  can: 6,
 };
 
 async function fetchApiFootball(endpoint: string) {

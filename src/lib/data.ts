@@ -34,15 +34,9 @@ export const competitions:Competition[]=[
 {id:"superlig",name:"Süper Lig",shortName:"Süper Lig",country:"Turquie",logo:L(203),region:"europe",matchesPerSeason:380,iaAccuracy:72,iaTrend:"down",currentSeason:"",status:""},
 
 // MONDE
-{id:"nations_league",name:"UEFA Nations League",shortName:"UNL",country:"Europe",logo:L(5),region:"international",matchesPerSeason:162,iaAccuracy:76,iaTrend:"up",currentSeason:"",status:""},
-{id:"copa_america",name:"Copa America",shortName:"Copa",country:"Am. Sud",logo:L(9),region:"international",matchesPerSeason:32,iaAccuracy:74,iaTrend:"stable",currentSeason:"",status:""},
-{id:"euro",name:"UEFA Euro",shortName:"Euro",country:"Europe",logo:L(4),region:"international",matchesPerSeason:51,iaAccuracy:82,iaTrend:"stable",currentSeason:"",status:""},
 
 // AFRIQUE
 {id:"can",name:"Coupe d'Afrique des Nations",shortName:"CAN",country:"Afrique",logo:L(21),region:"africa",matchesPerSeason:52,iaAccuracy:72,iaTrend:"up",currentSeason:"",status:""},
-{id:"can_qual",name:"Qualifications CAN",shortName:"Qual. CAN",country:"Afrique",logo:L(21),region:"africa",matchesPerSeason:150,iaAccuracy:68,iaTrend:"stable",currentSeason:"",status:""},
-{id:"caf",name:"Ligue des Champions CAF",shortName:"CAF CL",country:"Afrique",logo:L(12),region:"africa",matchesPerSeason:120,iaAccuracy:70,iaTrend:"stable",currentSeason:"",status:""},
-{id:"caf_cc",name:"Coupe de la Confédération CAF",shortName:"CAF CC",country:"Afrique",logo:L(18),region:"africa",matchesPerSeason:120,iaAccuracy:65,iaTrend:"up",currentSeason:"",status:""},
 ];
 
 export const clubs:Record<string,Club>={};

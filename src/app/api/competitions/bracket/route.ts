@@ -13,9 +13,7 @@ const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 const COMPETITION_NAMES: Record<string, string> = {
   "ucl": "Ligue des Champions UEFA 2026-2027",
-  "euro": "Euro 2024 (Allemagne)",
   "can": "Coupe d'Afrique des Nations CAN 2025 (Maroc)",
-  "copa": "Copa América 2024"
 };
 
 export async function GET(request: Request) {

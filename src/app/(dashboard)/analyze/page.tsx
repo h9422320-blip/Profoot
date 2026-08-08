@@ -10,7 +10,7 @@ import { clubs, getClub, matches, competitions } from "@/lib/data";
 const futureMatches = matches.filter(m => m.status === "upcoming");
 
 // Group clubs by league for the picker
-const leagueOrder = ["ucl", "epl", "laliga", "ligue1", "seriea", "bundesliga", "eredivisie", "ligaportugal", "proleague", "premiership", "superlig", "can", "caf"];
+const leagueOrder = ["ucl", "epl", "laliga", "ligue1", "seriea", "bundesliga", "eredivisie", "ligaportugal", "proleague", "premiership", "superlig", "can"];
 const leagueLabels: Record<string, string> = {
   epl: "Premier League",
   laliga: "La Liga",
