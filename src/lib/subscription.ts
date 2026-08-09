@@ -72,6 +72,21 @@ export function planFromAmount(amountXof: number): PlanKey | null {
 const ADMIN_EMAILS = ['h9422320@gmail.com'];
 const PERMANENT_PREMIUM_EMAILS = ['abdoulayecamara2708@gmail.com'];
 
+/**
+ * Partenaires : accès VIP offert, sans échéance et sans paiement.
+ *
+ * Réservé aux influenceurs et partenaires du lancement. Ils obtiennent tout ce
+ * que donne l'abonnement VIP annuel — Analyseur, Agent IA, analyses illimitées —
+ * mais AUCUN droit d'administration : l'accès admin reste attaché au seul
+ * ADMIN_EMAILS ci-dessus.
+ *
+ * L'accès est accordé sur l'adresse e-mail, donc avant même la création du
+ * compte : le partenaire s'inscrit quand il le souhaite et se retrouve VIP dès
+ * sa première connexion, sans intervention. Pour retirer l'accès, supprimer la
+ * ligne et redéployer.
+ */
+const PERMANENT_VIP_EMAILS = ['chrisbillalbabou@icloud.com'];
+
 const FREE_ENTITLEMENTS: Entitlements = {
   plan: 'FREE',
   premium: false,
@@ -119,6 +134,12 @@ export async function computeEntitlements(
     return {
       plan: 'VIP', premium: true, vip: true, analysisLimit: UNLIMITED,
       expiresAt: null, periodStart: null, isAdmin: true,
+    };
+  }
+  if (PERMANENT_VIP_EMAILS.includes(email)) {
+    return {
+      plan: 'VIP', premium: true, vip: true, analysisLimit: UNLIMITED,
+      expiresAt: null, periodStart: null, isAdmin: false,
     };
   }
   if (PERMANENT_PREMIUM_EMAILS.includes(email)) {
