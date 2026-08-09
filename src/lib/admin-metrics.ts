@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase-admin';
-import { normalizePlan, PLANS, PlanKey, PlanTier } from '@/lib/subscription';
+import { ACCES_OFFERTS, niveauOffert, normalizePlan, PLANS, PlanKey, PlanTier } from '@/lib/subscription';
 
 /**
  * Statistiques réelles de ProFoot AI, lues directement dans la base.
@@ -113,6 +113,16 @@ export interface LigneUtilisateur {
   nbAnalyses: number;
 }
 
+export interface LignePartenaire {
+  email: string;
+  niveau: 'VIP' | 'PRO';
+  /** Faux tant que l'adresse n'a pas servi à créer un compte. */
+  inscrit: boolean;
+  inscritLe: string | null;
+  derniereConnexion: string | null;
+  nbAnalyses: number;
+}
+
 export interface LigneAbonnement {
   id: string;
   email: string;
@@ -200,6 +210,23 @@ export interface AdminMetrics {
     topClubs: Classement[];
     topUtilisateurs: Classement[];
     dernieres: LigneAnalyse[];
+  };
+
+  /**
+   * Accès offerts (influenceurs, partenaires du lancement).
+   *
+   * Ils ne paient pas, donc ils n'apparaissent ni dans les revenus ni dans les
+   * abonnements. Ce bloc existe pour qu'ils cessent d'être invisibles : combien
+   * ont été accordés, combien ont réellement créé leur compte, et ce qu'ils
+   * font du produit.
+   */
+  partenaires: {
+    total: number;
+    inscrits: number;
+    /** Accès accordés à des adresses qui n'ont pas encore créé de compte. */
+    enAttente: number;
+    analysesCumulees: number;
+    liste: LignePartenaire[];
   };
 
   paiements: EvenementPaiement[];
@@ -576,7 +603,11 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
       const estAdmin = ADMIN_EMAILS.includes(c.email.toLowerCase());
       const abo = meilleurAboParCompte.get(c.id);
       const cle = abo ? normalizePlan(abo.offre) : null;
-      const tier: PlanTier = estAdmin ? 'VIP' : cle ? PLANS[cle].tier : 'FREE';
+      // Un accès offert ne laisse aucune trace dans les abonnements : sans ce
+      // rattrapage, un partenaire apparaîtrait ici en « Gratuit » alors qu'il
+      // dispose de tout le produit.
+      const offert = estAdmin ? null : niveauOffert(c.email);
+      const tier: PlanTier = estAdmin ? 'VIP' : offert ?? (cle ? PLANS[cle].tier : 'FREE');
       return {
         id: c.id,
         email: c.email,
@@ -584,7 +615,13 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
         derniereConnexion: c.last_sign_in_at,
         emailConfirme: !!c.email_confirmed_at,
         offre: tier,
-        offreLibelle: estAdmin ? 'Administrateur' : cle ? PLANS[cle].label : 'Gratuit',
+        offreLibelle: estAdmin
+          ? 'Administrateur'
+          : offert
+            ? `Partenaire (${offert})`
+            : cle
+              ? PLANS[cle].label
+              : 'Gratuit',
         estAdmin,
         expireLe: abo?.expireLe ?? null,
         montantPaye: abosEnrichis
@@ -594,6 +631,32 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
       };
     })
     .sort((a, b) => +new Date(b.inscritLe) - +new Date(a.inscritLe));
+
+  // ── Partenaires ──
+  // On part de la liste des accès accordés, et non des comptes existants :
+  // c'est le seul moyen de voir un accès accordé mais jamais utilisé, qui est
+  // précisément l'information utile pour relancer un partenaire.
+  const compteParEmail = new Map(comptes.map((c) => [c.email.toLowerCase(), c]));
+
+  const listePartenaires: LignePartenaire[] = ACCES_OFFERTS.map(({ email, niveau }) => {
+    const compte = compteParEmail.get(email);
+    return {
+      email,
+      niveau,
+      inscrit: !!compte,
+      inscritLe: compte?.created_at ?? null,
+      derniereConnexion: compte?.last_sign_in_at ?? null,
+      nbAnalyses: compte ? analysesParCompte.get(compte.id) ?? 0 : 0,
+    };
+  }).sort((a, b) => Number(b.inscrit) - Number(a.inscrit) || a.email.localeCompare(b.email));
+
+  const partenaires = {
+    total: listePartenaires.length,
+    inscrits: listePartenaires.filter((p) => p.inscrit).length,
+    enAttente: listePartenaires.filter((p) => !p.inscrit).length,
+    analysesCumulees: listePartenaires.reduce((t, p) => t + p.nbAnalyses, 0),
+    liste: listePartenaires,
+  };
 
   // ── Paiements ──
   const paiements: EvenementPaiement[] = webhooks.map((w) => {
@@ -677,6 +740,7 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
       })),
     },
 
+    partenaires,
     paiements,
     listeUtilisateurs,
     avertissements,

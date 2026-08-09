@@ -145,6 +145,49 @@ export default async function AdminOverview({
           )}
         </Panneau>
 
+        <Panneau
+          titre="Partenaires"
+          sousTitre={
+            m.partenaires.total === 0
+              ? "Aucun accès offert"
+              : `${m.partenaires.total} accès offert${m.partenaires.total > 1 ? "s" : ""} — ` +
+                `${m.partenaires.inscrits} inscrit${m.partenaires.inscrits > 1 ? "s" : ""}` +
+                (m.partenaires.enAttente > 0 ? `, ${m.partenaires.enAttente} en attente` : "")
+          }
+        >
+          {m.partenaires.total === 0 ? (
+            <Vide message="Aucun accès partenaire accordé." />
+          ) : (
+            <div className="space-y-3">
+              {m.partenaires.liste.map((p) => (
+                <div key={p.email} className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 ${
+                      p.inscrit
+                        ? "bg-[#1d2f3a] border-[#2e4757]"
+                        : "bg-amber-500/10 border-amber-500/30"
+                    }`}
+                  >
+                    <span className={`text-xs font-bold ${p.inscrit ? "text-white/70" : "text-amber-300"}`}>
+                      {p.email.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white truncate">{p.email}</p>
+                    <p className="text-[11px] text-white/35">
+                      {p.inscrit
+                        ? `Inscrit ${ilYA(p.inscritLe!)} — ${p.nbAnalyses} analyse${p.nbAnalyses > 1 ? "s" : ""}` +
+                          (p.derniereConnexion ? ` — vu ${ilYA(p.derniereConnexion)}` : " — jamais connecté")
+                        : "Accès prêt, compte pas encore créé"}
+                    </p>
+                  </div>
+                  <Etiquette tier={p.niveau} />
+                </div>
+              ))}
+            </div>
+          )}
+        </Panneau>
+
         <Panneau titre="Compétitions les plus analysées" sousTitre={m.periode.libelle}>
           <Classement lignes={m.analyses.topCompetitions} unite="analyses" />
         </Panneau>

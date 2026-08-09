@@ -87,6 +87,24 @@ const PERMANENT_PREMIUM_EMAILS = ['abdoulayecamara2708@gmail.com'];
  */
 const PERMANENT_VIP_EMAILS = ['chrisbillalbabou@icloud.com'];
 
+/**
+ * Accès offerts, tous niveaux confondus, exposés pour l'administration.
+ *
+ * Ces comptes ne génèrent aucune ligne dans la table des abonnements — ils ne
+ * paient pas. Sans cette liste, l'administration les afficherait en « Gratuit »
+ * et ils resteraient invisibles dans le suivi.
+ */
+export const ACCES_OFFERTS: { email: string; niveau: Extract<PlanTier, 'VIP' | 'PRO'> }[] = [
+  ...PERMANENT_VIP_EMAILS.map((email) => ({ email, niveau: 'VIP' as const })),
+  ...PERMANENT_PREMIUM_EMAILS.map((email) => ({ email, niveau: 'PRO' as const })),
+];
+
+/** Niveau offert à cette adresse, ou null si elle n'en a aucun. */
+export function niveauOffert(email: string | null | undefined) {
+  if (!email) return null;
+  return ACCES_OFFERTS.find((a) => a.email === email.toLowerCase())?.niveau ?? null;
+}
+
 const FREE_ENTITLEMENTS: Entitlements = {
   plan: 'FREE',
   premium: false,
