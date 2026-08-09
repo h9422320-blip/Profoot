@@ -48,11 +48,18 @@ export async function POST(req: Request) {
       );
     }
 
+    // La trace journalise le nombre de recherches web : c'est la seule preuve
+    // qu'une réponse s'appuie sur l'actualité et non sur la mémoire du modèle.
+    // Une réponse à zéro recherche doit être considérée comme suspecte.
     console.log(
-      `[AGENT VIP] ${resultat.dureeMs} ms — outils : ${resultat.outilsAppeles.join(', ') || 'aucun'} — ` +
+      `[AGENT VIP] ${resultat.dureeMs} ms — ${resultat.recherchesWeb} recherche(s) web — ` +
+        `outils : ${resultat.outilsAppeles.join(', ') || 'aucun'} — ` +
         `${resultat.jetonsEntrants} jetons entrants (${resultat.jetonsLusEnCache} lus en cache), ` +
         `${resultat.jetonsSortants} sortants.`
     );
+    if (resultat.recherchesWeb === 0) {
+      console.warn('[AGENT VIP] ALERTE : réponse produite sans aucune recherche web.');
+    }
 
     return Response.json({ text: resultat.texte });
   } catch (erreur: any) {

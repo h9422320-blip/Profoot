@@ -181,6 +181,15 @@ export function preparerHistorique(messages: any[]): Anthropic.MessageParam[] {
 export interface ResultatAgent {
   texte: string;
   outilsAppeles: string[];
+  /**
+   * Nombre de recherches web réellement effectuées.
+   *
+   * La recherche web s'exécute côté serveur : elle n'apparaît donc pas dans
+   * `outilsAppeles`, qui ne recense que nos propres outils. Sans ce compteur,
+   * rien ne permettait de distinguer une réponse fondée sur une recherche
+   * réelle d'une réponse écrite de mémoire.
+   */
+  recherchesWeb: number;
   jetonsEntrants: number;
   jetonsSortants: number;
   jetonsLusEnCache: number;
@@ -241,8 +250,22 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
   let entrants = 0;
   let sortants = 0;
   let cache = 0;
+  let recherchesWeb = 0;
 
-  const demander = (messages: Anthropic.MessageParam[], sansOutils = false) =>
+  /**
+   * `forcerRecherche` impose une recherche web avant toute autre chose.
+   *
+   * Une consigne, même insistante, reste une consigne : le modèle peut juger
+   * qu'il sait déjà et répondre de mémoire. Or il ne sait pas — sa mémoire a
+   * des mois de retard. Sur le premier appel, la recherche n'est donc plus
+   * suggérée, elle est imposée par le paramètre `tool_choice`. Aucune réponse
+   * ne peut plus être produite sans être passée par le web.
+   */
+  const demander = (
+    messages: Anthropic.MessageParam[],
+    sansOutils = false,
+    forcerRecherche = false
+  ) =>
     client.messages
       .stream({
         model: MODELE,
@@ -255,19 +278,26 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
         system: instructions,
         tools: outils,
         messages,
-        ...(sansOutils ? { tool_choice: { type: 'none' as const } } : {}),
+        ...(sansOutils
+          ? { tool_choice: { type: 'none' as const } }
+          : forcerRecherche
+            ? { tool_choice: { type: 'tool' as const, name: 'web_search' } }
+            : {}),
       })
       .finalMessage();
 
-  /** Cumule la consommation de chaque appel pour la trace de la route. */
+  /** Cumule la consommation et compte les recherches web réellement lancées. */
   const enregistrer = (m: Anthropic.Message) => {
+    recherchesWeb += m.content.filter(
+      (bloc: any) => bloc.type === 'server_tool_use' && bloc.name === 'web_search'
+    ).length;
     entrants += m.usage.input_tokens;
     sortants += m.usage.output_tokens;
     cache += m.usage.cache_read_input_tokens ?? 0;
     return m;
   };
 
-  let reponse = enregistrer(await demander(historique));
+  let reponse = enregistrer(await demander(historique, false, true));
 
   // ── Boucle d'outils ──
   // L'agent demande des données, on les lui fournit, il affine, et ainsi de
@@ -353,6 +383,7 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
   return {
     texte,
     outilsAppeles,
+    recherchesWeb,
     jetonsEntrants: entrants,
     jetonsSortants: sortants,
     jetonsLusEnCache: cache,
