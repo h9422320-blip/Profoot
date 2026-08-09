@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Lock, AlertCircle, Eye, EyeOff, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { ArrowRight, Lock, AlertCircle, Eye, EyeOff, Loader2, CheckCircle2, ArrowLeft, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 /**
@@ -15,25 +15,27 @@ import { createClient } from '@/utils/supabase/client'
  * `updateUser` échouerait et l'utilisateur croirait avoir changé son mot de
  * passe alors que rien n'aurait été enregistré.
  */
-type Step = 'verification' | 'formulaire' | 'lien-invalide' | 'termine'
+type Step = 'verification' | 'attente-confirmation' | 'formulaire' | 'lien-invalide' | 'termine'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
   const [step, setStep] = useState<Step>('verification')
+  const [jeton, setJeton] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  /** Efface les jetons de la barre d'adresse : ils ne doivent pas rester dans l'historique. */
+  const nettoyerUrl = () =>
+    window.history.replaceState({}, '', window.location.pathname)
+
   useEffect(() => {
     const supabase = createClient()
     let annule = false
 
-    async function ouvrirSession() {
-      // Le jeton du lien est appliqué EXPLICITEMENT. Se reposer sur la détection
-      // automatique de Supabase ne suffit pas : selon la configuration, elle
-      // ignore les jetons placés dans le fragment d'URL.
+    async function analyserLien() {
       const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
       const requete = new URLSearchParams(window.location.search)
 
@@ -46,14 +48,30 @@ export default function ResetPasswordPage() {
         return
       }
 
+      // ── Cas normal : le lien porte un jeton à usage unique ──
+      //
+      // On NE le vérifie PAS ici. Les messageries et les navigateurs ouvrent
+      // automatiquement les liens contenus dans les e-mails pour détecter
+      // l'hameçonnage ; comme un jeton se consume à la première ouverture, le
+      // robot le brûlerait avant l'utilisateur, qui verrait « lien expiré »
+      // quelques secondes après avoir reçu son e-mail.
+      // La vérification n'a donc lieu qu'au clic sur le bouton : un robot
+      // n'appuie sur aucun bouton.
+      const tokenHash = requete.get('token_hash')
+      if (tokenHash) {
+        if (!annule) {
+          setJeton(tokenHash)
+          setStep('attente-confirmation')
+        }
+        return
+      }
+
+      // ── Anciens liens, déjà envoyés avant cette correction ──
+      // Ils portent la session directement dans l'adresse. On continue de les
+      // accepter pour ne pas laisser sans solution ceux qui en ont un en attente.
       const accessToken = fragment.get('access_token')
       const refreshToken = fragment.get('refresh_token')
       const code = requete.get('code')
-
-      // Les jetons sont retirés de la barre d'adresse dès qu'ils sont utilisés :
-      // ils ne doivent pas rester dans l'historique du navigateur.
-      const nettoyerUrl = () =>
-        window.history.replaceState({}, '', window.location.pathname)
 
       if (accessToken && refreshToken) {
         const { error } = await supabase.auth.setSession({
@@ -78,12 +96,29 @@ export default function ResetPasswordPage() {
       if (!annule) setStep('lien-invalide')
     }
 
-    ouvrirSession()
+    analyserLien()
 
     return () => {
       annule = true
     }
   }, [])
+
+  /** Consomme le jeton — déclenché uniquement par un clic humain. */
+  async function confirmerIdentite() {
+    if (!jeton) return
+    setIsLoading(true)
+    setError(null)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: jeton,
+      type: 'recovery',
+    })
+
+    nettoyerUrl()
+    setIsLoading(false)
+    setStep(error ? 'lien-invalide' : 'formulaire')
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -179,6 +214,44 @@ export default function ResetPasswordPage() {
                 Vous êtes connecté. Redirection vers l'application...
               </p>
             </div>
+          </div>
+        )}
+
+        {step === 'attente-confirmation' && (
+          <div className="text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-7 h-7 text-emerald-400" />
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-2xl font-black text-white tracking-tight">Confirmez que c'est bien vous</h2>
+              <p className="text-zinc-400 font-medium leading-relaxed">
+                Cliquez ci-dessous pour choisir votre nouveau mot de passe.
+              </p>
+            </div>
+
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 text-left">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-200">{error}</p>
+              </div>
+            )}
+
+            <button
+              onClick={confirmerIdentite}
+              disabled={isLoading}
+              className="hero-cta-primary group w-full justify-center !text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="relative flex items-center gap-2">
+                {isLoading ? 'Vérification...' : 'Choisir un nouveau mot de passe'}
+                {!isLoading && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+              </span>
+            </button>
+
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              Cette étape protège votre compte : elle garantit qu'une personne, et non un
+              programme automatique, est à l'origine de la demande.
+            </p>
           </div>
         )}
 
