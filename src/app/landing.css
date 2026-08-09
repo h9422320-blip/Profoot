@@ -758,27 +758,43 @@
 .hero-app-mockup-inner,
 .phone-frame {
   position: relative;
-  /* Reflet de tranche : clair sur les arêtes, sombre sur les faces. */
-  background:
-    linear-gradient(145deg, #46586a 0%, #1b2831 14%, #131e26 50%, #1b2831 86%, #46586a 100%);
-  border: none;
+  /* Corps noir de l'appareil, épais : c'est lui qui fait la bordure visible
+     autour de l'écran, comme sur un vrai téléphone. */
+  background: #07080a;
+  padding: 12px;
+  border-radius: 56px;
+
+  /* Arête métallique. La bordure est transparente et reçoit un dégradé :
+     deux fonds superposés, l'un limité à l'intérieur, l'autre débordant sur
+     la bordure. C'est la seule façon d'obtenir un contour en dégradé — une
+     couleur unie donnait un trait plat qui se confondait avec le fond sombre
+     de la page, et le téléphone devenait invisible. */
+  border: 3px solid transparent;
+  background-image:
+    linear-gradient(#07080a, #07080a),
+    linear-gradient(135deg,
+      #f2f6fa 0%, #9ba7b5 9%, #4a5560 24%,
+      #232a32 45%, #2c343d 58%, #66727f 78%,
+      #b8c3cf 90%, #f7fafc 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+
   box-shadow:
-    0 40px 80px rgba(0, 0, 0, 0.75),
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 1px 1px rgba(255, 255, 255, 0.18);
+    0 45px 90px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(0, 0, 0, 0.6);
 }
 
-/* Boutons physiques sur les tranches. */
+/* Boutons physiques, posés sur la tranche. */
 .phone-btn {
   position: absolute;
   z-index: 4;
-  background: linear-gradient(180deg, #55697a 0%, #26333d 40%, #26333d 60%, #55697a 100%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(180deg, #cdd6e0 0%, #7c8794 18%, #39424c 50%, #7c8794 82%, #d6dee7 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
 }
-.phone-btn-silent   { left: -3px;  top: 92px;  width: 3px; height: 26px; border-radius: 3px 0 0 3px; }
-.phone-btn-vol-up   { left: -4px;  top: 140px; width: 4px; height: 54px; border-radius: 3px 0 0 3px; }
-.phone-btn-vol-down { left: -4px;  top: 206px; width: 4px; height: 54px; border-radius: 3px 0 0 3px; }
-.phone-btn-power    { right: -4px; top: 172px; width: 4px; height: 88px; border-radius: 0 3px 3px 0; }
+.phone-btn-silent   { left: -5px;  top: 104px; width: 5px; height: 28px; border-radius: 3px 0 0 3px; }
+.phone-btn-vol-up   { left: -6px;  top: 152px; width: 6px; height: 56px; border-radius: 3px 0 0 3px; }
+.phone-btn-vol-down { left: -6px;  top: 220px; width: 6px; height: 56px; border-radius: 3px 0 0 3px; }
+.phone-btn-power    { right: -6px; top: 186px; width: 6px; height: 92px; border-radius: 0 3px 3px 0; }
 
 /* ── BARRE D'ÉTAT ── */
 .mockup-statusbar {
@@ -854,4 +870,69 @@
   .phone-btn-vol-down { top: 174px; height: 46px; }
   .phone-btn-power    { top: 146px; height: 74px; }
   .mockup-statusbar   { height: 30px; padding: 0 18px; }
+}
+
+/* Écran : rayon accordé au nouveau corps, et encoche DÉCOUPÉE dans l'écran
+   plutôt que posée par-dessus le cadre — c'est ce décalage qui donnait
+   l'impression d'une barre noire flottante en haut de la maquette. */
+.mockup-screen,
+.phone-screen {
+  border-radius: 44px;
+  position: relative;
+  overflow: hidden;
+}
+
+.mockup-notch,
+.phone-notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 132px;
+  height: 30px;
+  background: #000;
+  border: none;
+  border-radius: 0 0 20px 20px;
+  z-index: 40;
+}
+/* Haut-parleur et capteur, comme sur l'appareil réel. */
+.mockup-notch::before,
+.phone-notch::before {
+  content: '';
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-60%);
+  width: 34px;
+  height: 4px;
+  background: #1b1d21;
+  border-radius: 2px;
+}
+.mockup-notch::after,
+.phone-notch::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 26px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #12161c;
+  box-shadow: inset 0 0 0 1px rgba(90, 130, 170, 0.35);
+}
+
+/* La barre d'état contourne l'encoche : l'heure à gauche, les icônes à
+   droite, avec assez de marge pour ne jamais passer dessous. */
+.mockup-statusbar {
+  height: 30px;
+  padding: 0 26px;
+}
+
+@media (max-width: 640px) {
+  .hero-app-mockup-inner,
+  .phone-frame { padding: 9px; border-radius: 46px; }
+  .mockup-screen,
+  .phone-screen { border-radius: 38px; }
+  .mockup-notch,
+  .phone-notch { width: 112px; height: 26px; border-radius: 0 0 16px 16px; }
 }

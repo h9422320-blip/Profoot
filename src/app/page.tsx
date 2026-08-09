@@ -269,12 +269,12 @@ export default function LandingPage() {
               </div>
 
               <div className="hero-app-mockup-inner">
-                {/* Notch */}
-                <div className="mockup-notch" />
                 <BoutonsLateraux />
 
                 {/* App Content */}
                 <div className="mockup-screen">
+                  {/* Encoche découpée dans l'écran, pas posée sur le cadre */}
+                  <div className="mockup-notch" />
                   <BarreEtat />
                   <AppMockupContent />
                 </div>
@@ -655,9 +655,9 @@ function AnalysisContent() {
       </div>
       <div className="analysis-phone">
         <div className="phone-frame">
-          <div className="phone-notch" />
           <BoutonsLateraux />
           <div className="phone-screen">
+            <div className="phone-notch" />
             <BarreEtat />
             <AppMockupContent />
           </div>
