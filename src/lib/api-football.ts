@@ -278,6 +278,48 @@ export async function getStandings(leagueId: string) {
 }
 
 /**
+ * Position réelle d'un club dans son championnat, aujourd'hui.
+ *
+ * Le référentiel statique fige un rang, un total de points et une série de
+ * résultats pour 98 clubs. Ces valeurs datent de leur saisie et ne bougent
+ * plus jamais.
+ *
+ * Renvoie `null` quand le club n'est pas trouvé, et `joues: 0` quand la saison
+ * n'a pas encore démarré — l'appelant doit alors annoncer une saison à venir
+ * plutôt qu'afficher un rang et des points à zéro.
+ */
+export async function getClassementClub(
+  leagueKey: string,
+  nomClub: string
+): Promise<{ rang: number; points: number; joues: number; forme: ('W' | 'D' | 'L')[] } | null> {
+  const ligue = LEAGUE_IDS[leagueKey];
+  if (!ligue) return null;
+
+  const data = await apiFootballFetch<any>(
+    `/standings?league=${ligue}&season=${getSeason(leagueKey)}`,
+    TTL.STANDINGS
+  );
+  const lignes = (data?.response?.[0]?.league?.standings ?? []).flat();
+  if (!lignes.length) return null;
+
+  const cible = nomClub.toLowerCase();
+  const ligne =
+    lignes.find((r: any) => r.team?.name?.toLowerCase() === cible) ??
+    lignes.find((r: any) => {
+      const n = r.team?.name?.toLowerCase() ?? '';
+      return n.includes(cible) || cible.includes(n);
+    });
+  if (!ligne) return null;
+
+  return {
+    rang: ligne.rank ?? 0,
+    points: ligne.points ?? 0,
+    joues: ligne.all?.played ?? 0,
+    forme: (ligne.form ?? '').split('').slice(-5) as ('W' | 'D' | 'L')[],
+  };
+}
+
+/**
  * Meilleurs buteurs réels d'un championnat sur la saison en cours.
  *
  * Remplace une liste écrite à la main, figée sur une saison passée : elle

@@ -14,6 +14,38 @@ export default function ClubPage() {
   const { id } = useParams();
   const club = getClub(id as string);
 
+  // Rang, points et forme viennent du classement en cours, pas du référentiel
+  // où ils sont figés depuis leur saisie. Tant que rien n'est chargé — ou tant
+  // que la saison n'a pas démarré — on n'affiche ni rang ni points plutôt qu'un
+  // « Rang #0 • 0 pts » qui ressemble à une donnée manquante.
+  const [classement, setClassement] = useState<{
+    rang: number;
+    points: number;
+    joues: number;
+    forme: ("W" | "D" | "L")[];
+  } | null>(null);
+  const [saison, setSaison] = useState<string | null>(null);
+
+  useEffect(() => {
+    const nom = club?.name;
+    const ligue = club?.league;
+    if (!nom || nom === "Inconnu" || !ligue || ligue === "N/A") return;
+    let annule = false;
+    fetch(`/api/club/classement?nom=${encodeURIComponent(nom)}&ligue=${encodeURIComponent(ligue)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (annule || !d) return;
+        setClassement(d.classement ?? null);
+        setSaison(d.saison ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      annule = true;
+    };
+  }, [club?.name, club?.league]);
+
+  const saisonDemarree = !!classement && classement.joues > 0;
+
   if (!club || club.name === "Inconnu") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
@@ -37,7 +69,12 @@ export default function ClubPage() {
           <div className="space-y-4 flex-1">
             <div className="space-y-1">
               <div className="flex items-center justify-center md:justify-start gap-2 text-primary font-bold text-sm uppercase tracking-widest">
-                <Trophy className="w-4 h-4" /> Rang #{club.ranking} • {club.points} pts
+                <Trophy className="w-4 h-4" />{" "}
+                {saisonDemarree
+                  ? `Rang #${classement!.rang} • ${classement!.points} pts`
+                  : saison
+                    ? `Saison ${saison} à venir`
+                    : "Chargement…"}
               </div>
               <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground">{club.name}</h1>
             </div>
@@ -57,7 +94,9 @@ export default function ClubPage() {
             </div>
 
             <div className="flex gap-2 justify-center md:justify-start">
-              {club.form.map((res, i) => (
+              {/* La forme vient du classement en cours. Celle du référentiel
+                  était figée à la saisie du fichier. */}
+              {(classement?.forme ?? []).map((res, i) => (
                 <span key={i} className={`w-8 h-8 rounded-[14px] flex items-center justify-center text-[10px] font-black border ${
                   res === "W" ? "bg-success/10 text-success border-success/20" : 
                   res === "D" ? "bg-warning/10 text-warning border-warning/20" : 
