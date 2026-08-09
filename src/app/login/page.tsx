@@ -30,7 +30,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="landing-root min-h-screen flex w-full relative">
+    <div className="landing-root auth-page min-h-screen flex w-full relative">
       {/* Halos lumineux aurora (mêmes que la landing) */}
       <div className="ambient-lighting">
         <div className="glow-orb-1" />

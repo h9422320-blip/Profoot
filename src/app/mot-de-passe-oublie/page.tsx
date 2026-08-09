@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="landing-root min-h-screen flex w-full relative items-center justify-center px-6 py-12">
+    <div className="landing-root auth-page min-h-screen flex w-full relative items-center justify-center px-6 py-12">
       <div className="ambient-lighting">
         <div className="glow-orb-1" />
         <div className="glow-orb-2" />
