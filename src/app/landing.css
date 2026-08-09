@@ -747,3 +747,111 @@
     radial-gradient(ellipse 60% 40% at 85% 40%, rgba(6,182,212,0.05), transparent 60%),
     #0e1a22;
 }
+
+/* ── CHÂSSIS DES TÉLÉPHONES DE DÉMONSTRATION ───────────────────────────────
+   Les maquettes n'étaient qu'un rectangle arrondi : aucune tranche, aucun
+   bouton, aucune barre d'état. On lisait une capture d'écran posée sur la
+   page, pas un appareil. Le cadre reçoit donc une tranche métallique, ses
+   boutons physiques et une barre d'état — l'écran et son contenu restent
+   exactement les mêmes. */
+
+.hero-app-mockup-inner,
+.phone-frame {
+  position: relative;
+  /* Reflet de tranche : clair sur les arêtes, sombre sur les faces. */
+  background:
+    linear-gradient(145deg, #46586a 0%, #1b2831 14%, #131e26 50%, #1b2831 86%, #46586a 100%);
+  border: none;
+  box-shadow:
+    0 40px 80px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 0.18);
+}
+
+/* Boutons physiques sur les tranches. */
+.phone-btn {
+  position: absolute;
+  z-index: 4;
+  background: linear-gradient(180deg, #55697a 0%, #26333d 40%, #26333d 60%, #55697a 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.phone-btn-silent   { left: -3px;  top: 92px;  width: 3px; height: 26px; border-radius: 3px 0 0 3px; }
+.phone-btn-vol-up   { left: -4px;  top: 140px; width: 4px; height: 54px; border-radius: 3px 0 0 3px; }
+.phone-btn-vol-down { left: -4px;  top: 206px; width: 4px; height: 54px; border-radius: 3px 0 0 3px; }
+.phone-btn-power    { right: -4px; top: 172px; width: 4px; height: 88px; border-radius: 0 3px 3px 0; }
+
+/* ── BARRE D'ÉTAT ── */
+.mockup-statusbar {
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #16242e;
+  color: #fff;
+  position: relative;
+  z-index: 22;
+}
+.statusbar-heure {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+}
+.statusbar-droite {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Réseau : quatre barres de hauteur croissante. */
+.statusbar-reseau { display: flex; align-items: flex-end; gap: 1.5px; height: 11px; }
+.statusbar-reseau i { width: 3px; background: #fff; border-radius: 1px; display: block; }
+.statusbar-reseau i:nth-child(1) { height: 4px; }
+.statusbar-reseau i:nth-child(2) { height: 6px; }
+.statusbar-reseau i:nth-child(3) { height: 8.5px; }
+.statusbar-reseau i:nth-child(4) { height: 11px; }
+
+.statusbar-pourcent {
+  font-size: 11.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Batterie : coque, téton, et remplissage à 84 %. */
+.statusbar-batterie {
+  position: relative;
+  width: 23px;
+  height: 11.5px;
+  border: 1.4px solid rgba(255, 255, 255, 0.55);
+  border-radius: 3.5px;
+  padding: 1.2px;
+  display: block;
+}
+.statusbar-batterie::after {
+  content: '';
+  position: absolute;
+  right: -3.4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 4.5px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 0 1.5px 1.5px 0;
+}
+.statusbar-batterie-niveau {
+  display: block;
+  width: 84%;
+  height: 100%;
+  background: #fff;
+  border-radius: 1.5px;
+}
+
+@media (max-width: 640px) {
+  .phone-btn-silent   { top: 78px;  height: 22px; }
+  .phone-btn-vol-up   { top: 118px; height: 46px; }
+  .phone-btn-vol-down { top: 174px; height: 46px; }
+  .phone-btn-power    { top: 146px; height: 74px; }
+  .mockup-statusbar   { height: 30px; padding: 0 18px; }
+}

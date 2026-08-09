@@ -23,6 +23,7 @@ import {
   Database,
   Quote,
   MessageCircle,
+  Wifi,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -270,9 +271,11 @@ export default function LandingPage() {
               <div className="hero-app-mockup-inner">
                 {/* Notch */}
                 <div className="mockup-notch" />
-                
+                <BoutonsLateraux />
+
                 {/* App Content */}
                 <div className="mockup-screen">
+                  <BarreEtat />
                   <AppMockupContent />
                 </div>
               </div>
@@ -653,13 +656,57 @@ function AnalysisContent() {
       <div className="analysis-phone">
         <div className="phone-frame">
           <div className="phone-notch" />
+          <BoutonsLateraux />
           <div className="phone-screen">
+            <BarreEtat />
             <AppMockupContent />
-            
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Barre d'état du téléphone de démonstration.
+ *
+ * L'heure et le niveau de batterie sont FIXES : une horloge qui avance
+ * attirerait l'œil sur le décor plutôt que sur le produit, et une valeur
+ * calculée à l'affichage ferait diverger le rendu du serveur et celui du
+ * navigateur.
+ */
+function BarreEtat() {
+  return (
+    <div className="mockup-statusbar">
+      <span className="statusbar-heure">10:30</span>
+
+      <div className="statusbar-droite">
+        {/* Réseau : quatre barres croissantes, comme sur un vrai appareil */}
+        <span className="statusbar-reseau">
+          <i /><i /><i /><i />
+        </span>
+
+        <Wifi className="w-[14px] h-[14px]" strokeWidth={2.6} />
+
+        <span className="statusbar-pourcent">84</span>
+
+        <span className="statusbar-batterie">
+          <span className="statusbar-batterie-niveau" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Boutons physiques sur les tranches : volume et silencieux à gauche, veille à droite. */
+function BoutonsLateraux() {
+  return (
+    <>
+      <span className="phone-btn phone-btn-silent" />
+      <span className="phone-btn phone-btn-vol-up" />
+      <span className="phone-btn phone-btn-vol-down" />
+      <span className="phone-btn phone-btn-power" />
+    </>
   );
 }
 
