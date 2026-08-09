@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/subscription';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { listCompletedSalesByEmail } from '@/lib/chariow';
 import { activateSubscriptionFromSale } from '@/lib/subscription-activation';
+import { trouverAcheteur, marquerIntentionHonoree } from '@/lib/payment-intents';
 
 /**
  * Réconciliation : filet de sécurité si un webhook a été manqué (panne,
@@ -29,12 +30,13 @@ export async function POST() {
     const results = [];
     let unmatched = 0;
     for (const sale of sales) {
-      // SÉCURITÉ : seul le user_id inscrit par NOTRE serveur au moment du
-      // checkout fait foi. L'email seul ne suffit pas : la création de compte
-      // n'exige pas de prouver la possession de l'adresse, donc n'importe qui
-      // pourrait s'inscrire avec l'email d'un acheteur et réclamer sa vente.
-      const metaUserId = sale.custom_metadata?.user_id;
-      if (!metaUserId || metaUserId !== user.id) {
+      // SÉCURITÉ : seule une preuve enregistrée par NOTRE serveur au moment du
+      // checkout fait foi — métadonnées si Chariow les rend, sinon la table des
+      // intentions. L'e-mail seul ne suffit pas : la création de compte n'exige
+      // pas de prouver la possession de l'adresse, donc n'importe qui pourrait
+      // s'inscrire avec l'e-mail d'un acheteur et réclamer sa vente.
+      const acheteur = await trouverAcheteur(admin, sale);
+      if (acheteur?.userId !== user.id) {
         unmatched++;
         continue;
       }
@@ -44,7 +46,10 @@ export async function POST() {
       }
 
       const result = await activateSubscriptionFromSale(admin, sale, user.id);
-      if (result.activated) results.push({ saleId: sale.id, plan: result.plan });
+      if (result.activated) {
+        await marquerIntentionHonoree(admin, sale.id);
+        results.push({ saleId: sale.id, plan: result.plan });
+      }
     }
 
     return NextResponse.json({

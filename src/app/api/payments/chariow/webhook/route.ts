@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { ChariowSale } from '@/lib/chariow';
 import { activateSubscriptionFromSale } from '@/lib/subscription-activation';
+import { trouverAcheteur, marquerIntentionHonoree } from '@/lib/payment-intents';
 
 /**
  * Webhook Chariow (Pulse). Point d'entrée principal de l'activation
@@ -71,15 +72,17 @@ export async function POST(req: Request) {
     }
     sale.product = sale.product ?? event?.product;
 
-    const userId = sale.custom_metadata?.user_id;
-    if (!userId) {
-      // Vente hors application (achat direct sur la boutique) : sera rattachée
-      // par la route de réconciliation quand l'utilisateur se connectera.
-      console.warn(`Vente Chariow ${sale.id} sans user_id — en attente de réconciliation.`);
+    const acheteur = await trouverAcheteur(admin, sale);
+    if (!acheteur) {
+      // Achat direct sur la boutique Chariow, sans passer par l'application :
+      // aucune intention n'a été enregistrée. Sera rattaché par la route de
+      // réconciliation quand l'utilisateur se connectera.
+      console.warn(`Vente Chariow ${sale.id} sans acheteur identifiable — en attente de réconciliation.`);
       return NextResponse.json({ received: true, status: 'unmatched' });
     }
 
-    const result = await activateSubscriptionFromSale(admin, sale, userId);
+    const result = await activateSubscriptionFromSale(admin, sale, acheteur.userId);
+    if (result.activated) await marquerIntentionHonoree(admin, sale.id);
     if (!result.activated) {
       // Vente déjà créditée : accusé de réception normal, sinon Chariow
       // réessaierait pendant des heures pour rien.

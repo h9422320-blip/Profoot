@@ -147,6 +147,12 @@ export function resolvePaidPlan(input: {
 export interface ChariowCheckoutSession {
   step: 'payment' | 'completed' | 'already_purchased';
   checkoutUrl?: string;
+  /**
+   * Identifiant de la vente, renvoyé par Chariow dès la création du paiement.
+   * C'est la seule référence stable entre notre application et Chariow :
+   * `custom_metadata` n'est pas conservé de leur côté.
+   */
+  saleId?: string;
 }
 
 /** Crée une session de paiement Chariow pour un utilisateur ProFoot. */
@@ -232,6 +238,7 @@ export async function initCheckout(params: {
   return {
     step: payload?.step ?? 'payment',
     checkoutUrl,
+    saleId: payload?.purchase?.id ?? payload?.id ?? payload?.sale?.id,
   };
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser, PLANS, PlanKey, normalizePlan } from '@/lib/subscription';
 import { initCheckout } from '@/lib/chariow';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 export async function POST(req: Request) {
   try {
@@ -49,6 +50,33 @@ export async function POST(req: Request) {
     if (!session.checkoutUrl) {
       console.error('Réponse Chariow sans checkout_url:', session);
       return NextResponse.json({ error: 'Réponse invalide de Chariow.' }, { status: 502 });
+    }
+
+    // On enregistre QUI achète QUOI, avant même le paiement.
+    //
+    // Chariow ne conserve pas les métadonnées qu'on lui transmet : sans cette
+    // trace, une vente payée revient sans aucun moyen de savoir à quel compte
+    // l'attribuer, et le client se retrouve débité sans abonnement.
+    if (session.saleId) {
+      const { error } = await createAdminClient()
+        .from('payment_intents')
+        .upsert(
+          {
+            sale_id: session.saleId,
+            user_id: user.id,
+            plan,
+            email: user.email,
+            amount: PLANS[plan].amountXof,
+          },
+          { onConflict: 'sale_id' }
+        );
+      if (error) {
+        // On n'interrompt pas l'achat : la réconciliation par e-mail reste
+        // possible. Mais la trace doit être visible dans les journaux.
+        console.error('Intention de paiement non enregistrée:', session.saleId, error.message);
+      }
+    } else {
+      console.error('Chariow n\'a pas renvoyé d\'identifiant de vente au checkout.');
     }
 
     return NextResponse.json({
