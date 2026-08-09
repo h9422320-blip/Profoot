@@ -85,7 +85,10 @@ const PERMANENT_PREMIUM_EMAILS = ['abdoulayecamara2708@gmail.com'];
  * sa première connexion, sans intervention. Pour retirer l'accès, supprimer la
  * ligne et redéployer.
  */
-const PERMANENT_VIP_EMAILS = ['chrisbillalbabou@icloud.com'];
+const PERMANENT_VIP_EMAILS = [
+  'chrisbillalbabou@icloud.com',
+  'traoreismaela753@gmail.com',
+];
 
 /**
  * Accès offerts, tous niveaux confondus, exposés pour l'administration.
