@@ -231,6 +231,42 @@ function calculateVND(form: ("W" | "D" | "L")[]) {
   return `${w}-${d}-${l}`;
 }
 
+type MatchRecent = { opponent: string; score: string; result: "W" | "D" | "L" };
+
+/**
+ * Derniers matchs réellement joués par une équipe, tels que le serveur les a
+ * lus chez API-Football : adversaire, score et issue.
+ *
+ * L'ancien affichage prenait la forme dans un fichier de données figé, où la
+ * plupart des clubs n'existent pas : Villarreal ou le Racing Santander
+ * s'affichaient avec cinq tirets et un bilan 0-0-0. Un abonné payait pour voir
+ * des cases vides.
+ *
+ * Le tableau arrive du plus récent au plus ancien.
+ */
+function matchsRecents(result: any, cote: "team1" | "team2"): MatchRecent[] {
+  const m = result?.globalForm?.[cote]?.recentMatches;
+  if (!Array.isArray(m)) return [];
+  return m
+    .filter((x: any) => x && typeof x.result === "string")
+    .slice(0, 5);
+}
+
+/** Suite de résultats pour les pastilles, du plus ancien au plus récent (sens de lecture). */
+function lettresForme(matchs: MatchRecent[]): ("W" | "D" | "L")[] {
+  return [...matchs].reverse().map((m) => m.result);
+}
+
+/** Résumé lisible de la dynamique, calculé sur les matchs réels. */
+function dynamique(matchs: MatchRecent[]) {
+  if (!matchs.length) return { icone: "⏳", ligne1: "Aucun match", ligne2: "récent trouvé" };
+  const v = matchs.filter((m) => m.result === "W").length;
+  const d = matchs.filter((m) => m.result === "L").length;
+  if (v >= 3) return { icone: "🔥", ligne1: "En grande", ligne2: "forme" };
+  if (d >= 3) return { icone: "📉", ligne1: "Forme", ligne2: "fragile" };
+  return { icone: "⚡", ligne1: "Forme", ligne2: "moyenne" };
+}
+
 function CompetitionCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const displayComps = competitions.filter(c => c.region === "europe" || c.id === "can");
@@ -1236,17 +1272,12 @@ export default function AnalyzePage() {
                     <div className="flex items-center gap-3">
                       <img src={getClub(team1!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
                       {(() => {
-                        const form = getClub(team1!).form;
-                        const w = form.filter(x=>x==='W').length;
-                        const l = form.filter(x=>x==='L').length;
-                        const icon = w >= 3 ? '🔥' : l >= 3 ? '📉' : '⚡';
-                        const t1 = w >= 3 ? 'En grande' : 'Forme';
-                        const t2 = w >= 3 ? 'forme' : l >= 3 ? 'fragile' : 'moyenne';
+                        const d = dynamique(matchsRecents(result, 'team1'));
                         return (
                           <div className="flex flex-col items-start leading-tight">
-                            <span className="text-lg mb-0.5">{icon}</span>
-                            <span className="text-[10px] font-semibold text-white/50">{t1}</span>
-                            <span className="text-[10px] font-semibold text-white/50">{t2}</span>
+                            <span className="text-lg mb-0.5">{d.icone}</span>
+                            <span className="text-[10px] font-semibold text-white/50">{d.ligne1}</span>
+                            <span className="text-[10px] font-semibold text-white/50">{d.ligne2}</span>
                           </div>
                         );
                       })()}
@@ -1258,17 +1289,12 @@ export default function AnalyzePage() {
                     <div className="flex items-center gap-3">
                       <img src={getClub(team2!).logo} className="w-8 h-8 object-contain shrink-0" alt="" />
                       {(() => {
-                        const form = getClub(team2!).form;
-                        const w = form.filter(x=>x==='W').length;
-                        const l = form.filter(x=>x==='L').length;
-                        const icon = w >= 3 ? '🔥' : l >= 3 ? '📉' : '⚡';
-                        const t1 = w >= 3 ? 'En grande' : 'Forme';
-                        const t2 = w >= 3 ? 'forme' : l >= 3 ? 'fragile' : 'moyenne';
+                        const d = dynamique(matchsRecents(result, 'team2'));
                         return (
                           <div className="flex flex-col items-start leading-tight">
-                            <span className="text-lg mb-0.5">{icon}</span>
-                            <span className="text-[10px] font-semibold text-white/50">{t1}</span>
-                            <span className="text-[10px] font-semibold text-white/50">{t2}</span>
+                            <span className="text-lg mb-0.5">{d.icone}</span>
+                            <span className="text-[10px] font-semibold text-white/50">{d.ligne1}</span>
+                            <span className="text-[10px] font-semibold text-white/50">{d.ligne2}</span>
                           </div>
                         );
                       })()}
@@ -1281,40 +1307,64 @@ export default function AnalyzePage() {
                 </button>
               </div>
 
+              {/* Les cinq derniers matchs réellement joués, adversaire et score à
+                  l'appui : un abonné doit pouvoir vérifier lui-même ce qu'on lui
+                  annonce, pas lire une suite de pastilles sans source. */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
-                  <div className="flex items-center gap-2">
-                    <img src={getClub(team1!).logo} className="w-5 h-5 object-contain" alt="" />
-                    <span className="font-bold text-[13px] text-[#9ca3af]">{getClub(team1!).name}</span>
-                  </div>
-                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center text-[12px] font-semibold text-white pt-1">
-                    <span className="whitespace-nowrap">Forme :</span>
-                    <div className="flex">{renderFormEmojis(getClub(team1!).form)}</div>
-                    
-                    <div className="w-full flex justify-center text-[11px] opacity-80">⏳</div>
-                    <span></span>
+                {([
+                  { cote: 'team1' as const, club: getClub(team1!) },
+                  { cote: 'team2' as const, club: getClub(team2!) },
+                ]).map(({ cote, club }) => {
+                  const matchs = matchsRecents(result, cote);
+                  const lettres = lettresForme(matchs);
+                  return (
+                    <div key={cote} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-4 shadow-md">
+                      <div className="flex items-center gap-2">
+                        <img src={club.logo} className="w-5 h-5 object-contain" alt="" />
+                        <span className="font-bold text-[13px] text-[#9ca3af]">{club.name}</span>
+                      </div>
 
-                    <span className="whitespace-nowrap">V-N-D :</span>
-                    <span className="font-medium tracking-wide">{calculateVND(getClub(team1!).form)}</span>
-                  </div>
-                </div>
+                      {matchs.length === 0 ? (
+                        <p className="text-[12px] text-white/40 leading-relaxed">
+                          Aucun match récent enregistré pour cette équipe sur la saison en cours.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-2 items-center text-[12px] font-semibold text-white">
+                            <span className="whitespace-nowrap">Forme :</span>
+                            <div className="flex">{renderFormEmojis(lettres)}</div>
 
-                <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-4 rounded-[20px] space-y-3 shadow-md">
-                  <div className="flex items-center gap-2">
-                    <img src={getClub(team2!).logo} className="w-5 h-5 object-contain" alt="" />
-                    <span className="font-bold text-[13px] text-[#9ca3af]">{getClub(team2!).name}</span>
-                  </div>
-                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 items-center text-[12px] font-semibold text-white pt-1">
-                    <span className="whitespace-nowrap">Forme :</span>
-                    <div className="flex">{renderFormEmojis(getClub(team2!).form)}</div>
-                    
-                    <div className="w-full flex justify-center text-[11px] opacity-80">⏳</div>
-                    <span></span>
+                            <span className="whitespace-nowrap">V-N-D :</span>
+                            <span className="font-medium tracking-wide">{calculateVND(lettres)}</span>
+                          </div>
 
-                    <span className="whitespace-nowrap">V-N-D :</span>
-                    <span className="font-medium tracking-wide">{calculateVND(getClub(team2!).form)}</span>
-                  </div>
-                </div>
+                          <div className="pt-2 border-t border-white/5 space-y-1.5">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+                              {matchs.length} dernier{matchs.length > 1 ? 's' : ''} match{matchs.length > 1 ? 's' : ''}
+                            </p>
+                            {matchs.map((m, i) => (
+                              <div key={i} className="flex items-center gap-2 text-[11.5px]">
+                                <span
+                                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${
+                                    m.result === 'W'
+                                      ? 'bg-[#10B981]/20 text-[#10B981]'
+                                      : m.result === 'L'
+                                      ? 'bg-red-500/20 text-red-400'
+                                      : 'bg-white/10 text-white/50'
+                                  }`}
+                                >
+                                  {m.result === 'W' ? 'V' : m.result === 'L' ? 'D' : 'N'}
+                                </span>
+                                <span className="text-white/70 truncate flex-1">{m.opponent}</span>
+                                <span className="font-bold text-white/90 tabular-nums">{m.score}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Résumé & Scénarios - EXACT VISIFOOT STYLE */}
