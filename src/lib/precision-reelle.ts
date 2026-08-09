@@ -16,6 +16,17 @@
 import { apiFootball, CACHE_TTL } from './api-football';
 import { createAdminClient } from './supabase-admin';
 
+/**
+ * Nombre de matchs vérifiés en dessous duquel aucun pourcentage n'est publié.
+ *
+ * Le premier match vérifié était un échec : le taux serait tombé à 0 %. Un
+ * chiffre calculé sur une poignée d'observations ne décrit pas une performance,
+ * il décrit le hasard — et il induit en erreur dans un sens comme dans l'autre.
+ * En dessous de ce seuil, on annonce le nombre de matchs déjà vérifiés sans en
+ * tirer de taux.
+ */
+export const ECHANTILLON_MINIMUM = 10;
+
 export interface PrecisionReelle {
   /** Analyses effectivement confrontées à un résultat. */
   verifiees: number;
@@ -235,11 +246,16 @@ export async function getPrecisionReelle(): Promise<PrecisionReelle> {
     serie++;
   }
 
+  // En dessous du seuil, on renvoie le décompte mais aucun taux : publier un
+  // pourcentage sur deux ou trois matchs reviendrait à présenter du hasard
+  // comme une performance.
+  const assezDeMatchs = total >= ECHANTILLON_MINIMUM;
+
   return {
     verifiees: total,
     enAttente: attente.count ?? 0,
-    vainqueurCorrect: Math.round((bonsVainqueurs / total) * 1000) / 10,
-    scoreExact: Math.round((bonsScores / total) * 1000) / 10,
+    vainqueurCorrect: assezDeMatchs ? Math.round((bonsVainqueurs / total) * 1000) / 10 : null,
+    scoreExact: assezDeMatchs ? Math.round((bonsScores / total) * 1000) / 10 : null,
     serieEnCours: serie,
     derniereVerification: (lignes[0] as any)?.verified_at ?? null,
   };

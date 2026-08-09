@@ -1,6 +1,6 @@
 import { Brain, Target, TrendingUp, BarChart3, CheckCircle2, XCircle, Activity } from "lucide-react";
 import { getClub } from "@/lib/data";
-import { getPrecisionReelle } from "@/lib/precision-reelle";
+import { ECHANTILLON_MINIMUM, getPrecisionReelle } from "@/lib/precision-reelle";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +19,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function IACenterPage() {
   const precision = await getPrecisionReelle();
-  const mesure = precision.verifiees > 0;
-  const valeur = (v: number | null) => (mesure && v !== null ? `${v}%` : "—");
+  // Un taux n'est publié qu'à partir d'un échantillon suffisant : sur un ou deux
+  // matchs, le pourcentage décrit le hasard, pas la performance.
+  const mesure = precision.vainqueurCorrect !== null;
+  const valeur = (v: number | null) => (v !== null ? `${v}%` : "—");
 
   return (
     <div className="space-y-8">
@@ -31,12 +33,17 @@ export default async function IACenterPage() {
 
       {!mesure && (
         <div className="bg-warning/10 border border-warning/25 rounded-[16px] p-5">
-          <p className="text-sm text-warning font-bold mb-1">Pas encore de précision mesurée</p>
+          <p className="text-sm text-warning font-bold mb-1">
+            {precision.verifiees > 0
+              ? `Mesure en cours — ${precision.verifiees} match${precision.verifiees > 1 ? "s" : ""} vérifié${precision.verifiees > 1 ? "s" : ""} sur ${ECHANTILLON_MINIMUM}`
+              : "Pas encore de précision mesurée"}
+          </p>
           <p className="text-xs text-foreground/60 leading-relaxed">
-            {precision.enAttente > 0
-              ? `${precision.enAttente} pronostic${precision.enAttente > 1 ? "s" : ""} en attente : les matchs concernés n'ont pas encore été joués. Chaque résultat est comparé automatiquement à la prédiction dès qu'il tombe, et les taux ci-dessous apparaîtront à ce moment-là.`
+            {precision.verifiees > 0
+              ? `Un taux calculé sur si peu de matchs décrirait le hasard, pas une performance. Les pourcentages s'afficheront à partir de ${ECHANTILLON_MINIMUM} matchs vérifiés.`
               : "Les taux apparaîtront dès que des pronostics auront été confrontés à des résultats réels."}{" "}
-            Aucun chiffre n'est affiché tant qu'il n'est pas constaté.
+            {precision.enAttente > 0 &&
+              `${precision.enAttente} pronostic${precision.enAttente > 1 ? "s" : ""} en attente : les matchs concernés n'ont pas encore été joués. Chaque résultat est comparé automatiquement à la prédiction dès qu'il tombe.`}
           </p>
         </div>
       )}
