@@ -36,7 +36,7 @@ export const OUTILS_FOOTBALL = [
   {
     name: 'fiche_club',
     description:
-      "L'entraîneur ACTUELLEMENT en poste dans un club, sa date de prise de fonction, plus le stade et le pays. À appeler dès qu'une question touche à l'entraîneur, au staff ou à l'identité d'un club — ne jamais répondre de mémoire sur un entraîneur, ils changent constamment.",
+      "L'entraîneur enregistré comme en poste, sa date de prise de fonction, le stade et le pays. ATTENTION : cette base enregistre les changements de banc avec du retard. Un entraîneur limogé ou nommé cette semaine peut ne pas y figurer. Sur une question d'entraîneur, croise toujours avec une recherche web récente, et fais confiance au web en cas de désaccord.",
     input_schema: {
       type: 'object' as const,
       properties: { equipe_id: { type: 'number', description: "Identifiant renvoyé par chercher_equipe" } },
@@ -46,7 +46,7 @@ export const OUTILS_FOOTBALL = [
   {
     name: 'effectif_club',
     description:
-      "L'effectif actuel d'un club : joueurs, âges, postes, numéros. À appeler pour toute question sur qui joue dans un club, la profondeur de banc, ou pour vérifier qu'un joueur y est encore.",
+      "L'effectif enregistré d'un club : joueurs, âges, postes, numéros. Utile pour juger la profondeur de banc. Comme le reste de cette base, il intègre les mouvements récents avec du retard : une recrue de la semaine peut manquer, un partant peut y figurer encore.",
     input_schema: {
       type: 'object' as const,
       properties: { equipe_id: { type: 'number' } },
@@ -66,7 +66,7 @@ export const OUTILS_FOOTBALL = [
   {
     name: 'transferts_club',
     description:
-      "Les transferts OFFICIELS d'un club (arrivées et départs), du plus récent au plus ancien. À appeler pour toute question de mercato. Ne contient que les transferts officialisés : pour les rumeurs non confirmées, utiliser la recherche web.",
+      "Les transferts déjà enregistrés pour un club, du plus récent au plus ancien. ATTENTION : cette base est SYSTÉMATIQUEMENT EN RETARD sur le mercato — un transfert conclu, annoncé et même un joueur qui s'entraîne déjà avec son nouveau club peuvent n'y apparaître que des jours ou des semaines plus tard. Ne conclus JAMAIS qu'un transfert n'est pas fait parce qu'il manque ici. Sur toute question de mercato, la recherche web fait foi ; cet outil ne sert qu'à récupérer les montants et les dates de ce qui y est déjà consigné.",
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -150,7 +150,7 @@ export const OUTILS_FOOTBALL = [
   {
     name: 'chercher_joueur',
     description:
-      "Retrouve un joueur et renvoie son club ACTUEL, son âge, son poste et ses statistiques de la saison (matchs, buts, passes, cartons). À appeler pour toute question sur un joueur — ne jamais affirmer de mémoire dans quel club évolue un joueur.",
+      "Retrouve un joueur : âge, nationalité, poste, et ses statistiques par compétition (matchs, buts, passes, cartons). Excellent pour les chiffres. En revanche le club rattaché peut être périmé si le joueur vient de changer d'air — sur un joueur récemment transféré, c'est la recherche web qui dit où il est vraiment.",
     input_schema: {
       type: 'object' as const,
       properties: { nom: { type: 'string', description: 'Nom du joueur, ex. « Mbappé », « Haaland »' } },
@@ -234,8 +234,8 @@ async function ficheClub({ equipe_id }: Entrees) {
     capacite: info?.venue?.capacity,
     entraineur: enPoste ?? null,
     note_entraineur: enPoste
-      ? "Entraîneur confirmé en poste par API-Football à cette date."
-      : "API-Football ne renvoie aucun entraîneur en poste : le dire à l'utilisateur, ne pas en inventer un.",
+      ? "Entraîneur enregistré comme en poste. Cette base retarde sur les changements de banc : vérifier par une recherche web qu'il n'a pas été remplacé depuis."
+      : "Aucun entraîneur enregistré en poste. Ne pas en déduire qu'il n'y en a pas : chercher sur le web.",
   };
 }
 
@@ -272,7 +272,10 @@ async function blessuresClub({ equipe_id }: Entrees) {
   }
 
   if (!lignes.length) {
-    return { absents: [], note: "Aucune absence signalée par API-Football pour ce club actuellement." };
+    return {
+      absents: [],
+      note: "Aucune absence enregistrée ici. Cette base retarde beaucoup sur l'infirmerie : vérifier par une recherche web avant d'affirmer que tout le monde est disponible.",
+    };
   }
 
   // L'API renvoie une ligne par match concerné : un même joueur apparaît
@@ -320,7 +323,7 @@ async function transfertsClub({ equipe_id, limite }: Entrees) {
   tous.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return {
-    note: "Transferts OFFICIELS uniquement, tels qu'enregistrés par API-Football.",
+    note: "Transferts déjà consignés dans la base. Liste incomplète par nature : le mercato en cours y arrive avec du retard. L'absence d'un transfert ici ne veut pas dire qu'il n'a pas eu lieu.",
     transferts: tous.slice(0, Math.min(Number(limite) || 15, 30)).map((t) => ({
       ...t,
       date: dateCourte(t.date),
