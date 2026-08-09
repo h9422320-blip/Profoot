@@ -422,7 +422,11 @@ export function getMatchesByStatus(s:MatchStatus){return matches.filter(m=>m.sta
 export function getMatchesByCompetition(cid:string){return matches.filter(m=>m.competition===cid);}
 export function getMatchesByClub(cid:string){return matches.filter(m=>m.homeTeam===cid||m.awayTeam===cid);}
 export function calculateIAPrecision(match:Match){if(!match.result||!match.prediction)return null;const{home:h,away:a}=match.result;const actual=h>a?"home":a>h?"away":"draw";const wc=match.prediction.winner===actual;const sc=match.prediction.score===`${h}-${a}`;return{winnerCorrect:wc,scoreCorrect:sc,label:sc?"Score Exact":wc?"Vainqueur Correct":"Échec"};}
-export const iaStats={totalAnalyses:2847,todayAnalyses:8,globalAccuracy:79.2,winnerAccuracy:79.2,exactScoreAccuracy:23.4,overUnderAccuracy:84.1,bttsAccuracy:71.5,streak:11};
+// Les taux de reussite vivaient ici, ecrits a la main : 79,2 % de vainqueurs
+// corrects, 23,4 % de scores exacts, une serie de 11 matchs. Aucune mesure
+// derriere, et ces chiffres etaient montres a des abonnes payants.
+// La precision reelle est desormais calculee dans src/lib/precision-reelle.ts,
+// a partir des pronostics confrontes aux resultats des matchs.
 // Le classement des buteurs vivait ici, ecrit a la main et fige sur une saison
 // revolue. Il s'affichait comme s'il etait celui du moment. Les vrais chiffres
 // viennent desormais de /api/topscorers/live.

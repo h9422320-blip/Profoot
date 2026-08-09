@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { LEAGUE_IDS } from '@/lib/api-football';
 import { getAllCompetitionStatuses } from '@/lib/competition-status';
 import { getLiveTeams } from '@/lib/teams-live';
+import { verifierPronostics } from '@/lib/precision-reelle';
 
 export const maxDuration = 300;
 // Jamais de mise en cache : la tâche doit réellement s'exécuter à chaque appel.
@@ -43,9 +44,15 @@ export async function GET(request: Request) {
       joues: `${s.played}/${s.total}`,
     }));
 
+    // Confronte les pronostics passés aux résultats réels. C'est ce passage
+    // quotidien qui alimente la précision affichée : sans lui, aucun taux ne
+    // pourrait être mesuré et il faudrait en inventer un.
+    const precision = await verifierPronostics();
+
     console.log(
       `[CRON] Rafraîchissement terminé en ${Date.now() - debut}ms — ` +
-      `${Object.keys(statuses).length} compétitions, ${teams.length} équipes.`
+      `${Object.keys(statuses).length} compétitions, ${teams.length} équipes, ` +
+      `${precision.verifiees} pronostic(s) vérifié(s).`
     );
 
     return NextResponse.json({
@@ -53,6 +60,7 @@ export async function GET(request: Request) {
       dureeMs: Date.now() - debut,
       competitions: Object.keys(statuses).length,
       equipes: teams.length,
+      pronostics: precision,
       resume,
       horodatage: new Date().toISOString(),
     });

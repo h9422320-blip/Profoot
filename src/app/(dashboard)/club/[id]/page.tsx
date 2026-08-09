@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getClub, iaStats } from "@/lib/data";
+import { getClub } from "@/lib/data";
 import { 
   Trophy, Users, MapPin, Activity, 
   ChevronRight, Brain, Target, Shield, 
@@ -22,6 +22,11 @@ export default function ClubPage() {
     rang: number;
     points: number;
     joues: number;
+    victoires: number;
+    nuls: number;
+    defaites: number;
+    butsMarques: number;
+    butsEncaisses: number;
     forme: ("W" | "D" | "L")[];
   } | null>(null);
   const [saison, setSaison] = useState<string | null>(null);
@@ -118,11 +123,17 @@ export default function ClubPage() {
         {/* Left Column: Stats & Squad */}
         <div className="lg:col-span-2 space-y-8">
           {/* Stats Overview */}
+          {/* Ces quatre cartes affichaient un xG, une possession, des buts et des
+              clean sheets tirés du référentiel figé — à zéro pour la plupart des
+              clubs. Elles montrent maintenant ce que le classement en cours
+              permet de constater. xG et possession ont disparu : le classement ne
+              les fournit pas, et il n'y a aucune raison d'afficher un chiffre
+              qu'on ne mesure pas. */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="xG Moyen" value={club.stats.xG.toString()} icon={Target} />
-            <StatCard label="Possession" value={`${club.stats.possession}%`} icon={Activity} />
-            <StatCard label="Buts Marqués" value={club.stats.goalsScored.toString()} icon={TrendingUp} />
-            <StatCard label="Clean Sheets" value={club.stats.cleanSheets.toString()} icon={Shield} />
+            <StatCard label="Matchs joués" value={saisonDemarree ? String(classement!.joues) : "—"} icon={Activity} />
+            <StatCard label="Victoires" value={saisonDemarree ? String(classement!.victoires) : "—"} icon={Target} />
+            <StatCard label="Buts marqués" value={saisonDemarree ? String(classement!.butsMarques) : "—"} icon={TrendingUp} />
+            <StatCard label="Buts encaissés" value={saisonDemarree ? String(classement!.butsEncaisses) : "—"} icon={Shield} />
           </div>
 
           {/* Squad Section */}
@@ -131,7 +142,9 @@ export default function ClubPage() {
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <Users className="w-5 h-5 text-primary" /> Effectif Clé
               </h3>
-              <span className="text-xs text-foreground/40 font-medium">Saison 2024-25</span>
+              {/* Le libellé de saison était écrit en dur et affichait encore
+                  2024-25. Il suit désormais la saison réellement en cours. */}
+              {saison && <span className="text-xs text-foreground/40 font-medium">Saison {saison}</span>}
             </div>
             <div className="divide-y divide-border-card">
               {club.squad.map((player, i) => (
@@ -182,15 +195,21 @@ export default function ClubPage() {
           </div>
 
           <div className="bg-card border border-border-card p-8 rounded-[28px] space-y-6">
+            {/* Ce bloc annonçait « Précision des prédictions : 82 % », valeur
+                écrite directement dans le code, avec une barre de progression
+                calée dessus. Aucune mesure derrière. La précision réelle est
+                calculée à partir des pronostics confrontés aux résultats, et
+                elle est présentée sur la page IA Center — elle est globale, pas
+                propre à un club, donc elle n'a pas sa place ici. */}
             <h3 className="font-bold text-sm uppercase tracking-widest text-foreground/50">Performance IA</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-end">
-                <span className="text-sm font-bold text-foreground/70">Précision des prédictions</span>
-                <span className="text-2xl font-black text-primary">82%</span>
-              </div>
-              <div className="w-full h-2 bg-sidebar rounded-full overflow-hidden">
-                <div className="h-full bg-primary" style={{ width: '82%' }} />
-              </div>
+            <div className="space-y-3">
+              <p className="text-sm text-foreground/60 leading-relaxed">
+                Chaque pronostic est confronté au résultat réel du match une fois
+                celui-ci joué.
+              </p>
+              <Link href="/ia-center" className="inline-block text-xs font-bold text-primary hover:underline">
+                Voir la précision constatée
+              </Link>
             </div>
           </div>
         </div>

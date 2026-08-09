@@ -1,16 +1,26 @@
 import { Brain, Target, TrendingUp, BarChart3, CheckCircle2, XCircle, Activity } from "lucide-react";
-import { iaStats, matches, getClub, calculateIAPrecision } from "@/lib/data";
+import { getClub } from "@/lib/data";
+import { getPrecisionReelle } from "@/lib/precision-reelle";
 
-export default function IACenterPage() {
-  const finishedMatches = matches.filter(m => m.status === "finished");
-  const correctPredictions = finishedMatches.filter(m => {
-    const p = calculateIAPrecision(m);
-    return p?.winnerCorrect;
-  }).length;
-  const exactPredictions = finishedMatches.filter(m => {
-    const p = calculateIAPrecision(m);
-    return p?.scoreCorrect;
-  }).length;
+export const dynamic = "force-dynamic";
+
+/**
+ * Cette page annonçait « 79,2 % de vainqueurs corrects », « 23,4 % de scores
+ * exacts » et une série de 11 matchs. Ces chiffres étaient écrits en dur dans
+ * le code et ne reposaient sur aucune mesure — une promesse de performance
+ * chiffrée montrée à des abonnés qui paient sur cette base.
+ *
+ * Ils viennent maintenant de la confrontation entre chaque pronostic passé et
+ * le résultat réel du match. Tant qu'aucun match n'a été vérifié, la page le
+ * dit au lieu d'afficher un pourcentage.
+ *
+ * Over/Under et BTTS ont disparu : rien dans ce qui est enregistré ne permet de
+ * les mesurer. Mieux vaut trois chiffres vrais que cinq dont deux inventés.
+ */
+export default async function IACenterPage() {
+  const precision = await getPrecisionReelle();
+  const mesure = precision.verifiees > 0;
+  const valeur = (v: number | null) => (mesure && v !== null ? `${v}%` : "—");
 
   return (
     <div className="space-y-8">
@@ -19,12 +29,24 @@ export default function IACenterPage() {
         <p className="text-foreground/50 text-sm mt-1">Performance, transparence et explications de notre intelligence artificielle football.</p>
       </div>
 
+      {!mesure && (
+        <div className="bg-warning/10 border border-warning/25 rounded-[16px] p-5">
+          <p className="text-sm text-warning font-bold mb-1">Pas encore de précision mesurée</p>
+          <p className="text-xs text-foreground/60 leading-relaxed">
+            {precision.enAttente > 0
+              ? `${precision.enAttente} pronostic${precision.enAttente > 1 ? "s" : ""} en attente : les matchs concernés n'ont pas encore été joués. Chaque résultat est comparé automatiquement à la prédiction dès qu'il tombe, et les taux ci-dessous apparaîtront à ce moment-là.`
+              : "Les taux apparaîtront dès que des pronostics auront été confrontés à des résultats réels."}{" "}
+            Aucun chiffre n'est affiché tant qu'il n'est pas constaté.
+          </p>
+        </div>
+      )}
+
       {/* Performance Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <PerformanceCard icon={Target} title="Vainqueur correct" value={`${iaStats.winnerAccuracy}%`} color="text-primary" bgColor="bg-primary/10" />
-        <PerformanceCard icon={Brain} title="Score exact" value={`${iaStats.exactScoreAccuracy}%`} color="text-info" bgColor="bg-info/10" />
-        <PerformanceCard icon={Activity} title="Over/Under" value={`${iaStats.overUnderAccuracy}%`} color="text-warning" bgColor="bg-warning/10" />
-        <PerformanceCard icon={BarChart3} title="BTTS" value={`${iaStats.bttsAccuracy}%`} color="text-danger" bgColor="bg-danger/10" />
+        <PerformanceCard icon={Target} title="Vainqueur correct" value={valeur(precision.vainqueurCorrect)} color="text-primary" bgColor="bg-primary/10" />
+        <PerformanceCard icon={Brain} title="Score exact" value={valeur(precision.scoreExact)} color="text-info" bgColor="bg-info/10" />
+        <PerformanceCard icon={CheckCircle2} title="Matchs vérifiés" value={String(precision.verifiees)} color="text-warning" bgColor="bg-warning/10" />
+        <PerformanceCard icon={Activity} title="En attente de résultat" value={String(precision.enAttente)} color="text-danger" bgColor="bg-danger/10" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -44,23 +66,33 @@ export default function IACenterPage() {
         {/* Accuracy panel */}
         <div className="space-y-6">
           <div className="bg-card border border-border-card rounded-[16px] p-6">
-            <h3 className="text-sm font-bold text-foreground mb-4">Récapitulatif récent</h3>
+            <h3 className="text-sm font-bold text-foreground mb-4">Récapitulatif</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-foreground/50">Matchs analysés</span>
-                <span className="text-sm font-bold text-foreground">{finishedMatches.length}</span>
+                <span className="text-xs text-foreground/50">Pronostics vérifiés</span>
+                <span className="text-sm font-bold text-foreground">{precision.verifiees}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-foreground/50">Vainqueurs corrects</span>
-                <span className="text-sm font-bold text-primary">{correctPredictions}/{finishedMatches.length}</span>
+                <span className="text-sm font-bold text-primary">
+                  {mesure && precision.vainqueurCorrect !== null
+                    ? `${Math.round((precision.vainqueurCorrect / 100) * precision.verifiees)}/${precision.verifiees}`
+                    : "—"}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-foreground/50">Scores exacts</span>
-                <span className="text-sm font-bold text-info">{exactPredictions}/{finishedMatches.length}</span>
+                <span className="text-sm font-bold text-info">
+                  {mesure && precision.scoreExact !== null
+                    ? `${Math.round((precision.scoreExact / 100) * precision.verifiees)}/${precision.verifiees}`
+                    : "—"}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-foreground/50">Série en cours</span>
-                <span className="text-sm font-bold text-warning">🔥 {iaStats.streak} matchs</span>
+                <span className="text-sm font-bold text-warning">
+                  {precision.serieEnCours > 0 ? `🔥 ${precision.serieEnCours} matchs` : "—"}
+                </span>
               </div>
             </div>
           </div>

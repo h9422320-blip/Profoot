@@ -291,7 +291,17 @@ export async function getStandings(leagueId: string) {
 export async function getClassementClub(
   leagueKey: string,
   nomClub: string
-): Promise<{ rang: number; points: number; joues: number; forme: ('W' | 'D' | 'L')[] } | null> {
+): Promise<{
+  rang: number;
+  points: number;
+  joues: number;
+  victoires: number;
+  nuls: number;
+  defaites: number;
+  butsMarques: number;
+  butsEncaisses: number;
+  forme: ('W' | 'D' | 'L')[];
+} | null> {
   const ligue = LEAGUE_IDS[leagueKey];
   if (!ligue) return null;
 
@@ -315,6 +325,11 @@ export async function getClassementClub(
     rang: ligne.rank ?? 0,
     points: ligne.points ?? 0,
     joues: ligne.all?.played ?? 0,
+    victoires: ligne.all?.win ?? 0,
+    nuls: ligne.all?.draw ?? 0,
+    defaites: ligne.all?.lose ?? 0,
+    butsMarques: ligne.all?.goals?.for ?? 0,
+    butsEncaisses: ligne.all?.goals?.against ?? 0,
     forme: (ligne.form ?? '').split('').slice(-5) as ('W' | 'D' | 'L')[],
   };
 }
