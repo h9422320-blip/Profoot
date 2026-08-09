@@ -1326,41 +1326,19 @@ export default function AnalyzePage() {
 
                       {matchs.length === 0 ? (
                         <p className="text-[12px] text-white/40 leading-relaxed">
-                          Aucun match récent enregistré pour cette équipe sur la saison en cours.
+                          Aucun match joué récemment pour cette équipe.
                         </p>
                       ) : (
-                        <>
-                          <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-2 items-center text-[12px] font-semibold text-white">
-                            <span className="whitespace-nowrap">Forme :</span>
-                            <div className="flex">{renderFormEmojis(lettres)}</div>
-
-                            <span className="whitespace-nowrap">V-N-D :</span>
-                            <span className="font-medium tracking-wide">{calculateVND(lettres)}</span>
+                        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-2 items-center text-[12px] font-semibold text-white">
+                          <span className="whitespace-nowrap">Forme :</span>
+                          <div className="flex items-center gap-1.5">
+                            {renderFormEmojis(lettres)}
+                            <span className="text-[11px] opacity-70" title="Prochain match à venir">⏳</span>
                           </div>
 
-                          <div className="pt-2 border-t border-white/5 space-y-1.5">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
-                              {matchs.length} dernier{matchs.length > 1 ? 's' : ''} match{matchs.length > 1 ? 's' : ''}
-                            </p>
-                            {matchs.map((m, i) => (
-                              <div key={i} className="flex items-center gap-2 text-[11.5px]">
-                                <span
-                                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${
-                                    m.result === 'W'
-                                      ? 'bg-[#10B981]/20 text-[#10B981]'
-                                      : m.result === 'L'
-                                      ? 'bg-red-500/20 text-red-400'
-                                      : 'bg-white/10 text-white/50'
-                                  }`}
-                                >
-                                  {m.result === 'W' ? 'V' : m.result === 'L' ? 'D' : 'N'}
-                                </span>
-                                <span className="text-white/70 truncate flex-1">{m.opponent}</span>
-                                <span className="font-bold text-white/90 tabular-nums">{m.score}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </>
+                          <span className="whitespace-nowrap">V-N-D :</span>
+                          <span className="font-medium tracking-wide">{calculateVND(lettres)}</span>
+                        </div>
                       )}
                     </div>
                   );

@@ -254,20 +254,37 @@ export async function POST(req: Request) {
   } catch (e) {}
 
   let t1Data: any = null, t2Data: any = null, h2hRes: any = null, nextH2H: any = null;
+  // Derniers matchs joués, indépendamment de la saison — voir plus bas.
+  let t1Recent: any = { response: [] }, t2Recent: any = { response: [] };
   const season = getCurrentSeason();
 
   if (id1 && id2) {
     console.log(`[BACKEND_ANALYZE] Fetching H2H and Fixtures...`);
     // Sans le paramètre `next`, l'API ne renvoie que des confrontations
     // PASSÉES : la rencontre à venir (date, heure, stade) était donc invisible.
-    const [t1Fixtures, t2Fixtures, h2hr, nextH2Hr] = await Promise.all([
+    //
+    // Deux requêtes distinctes pour les matchs d'une équipe :
+    //
+    //  - AVEC la saison : sert à identifier le championnat de l'équipe.
+    //
+    //  - SANS la saison : sert à la forme récente. En début d'exercice, une
+    //    équipe n'a joué que deux ou trois matchs amicaux dans la saison en
+    //    cours ; filtrer dessus ne renvoyait donc que ces deux matchs et
+    //    l'affichage se remplissait de cases vides. La forme d'une équipe ne
+    //    s'arrête pas au 1er juillet : les dernières journées de l'exercice
+    //    précédent en font partie.
+    const [t1Fixtures, t2Fixtures, h2hr, nextH2Hr, r1, r2] = await Promise.all([
       fetchApiFootball(`/fixtures?team=${id1}&season=${season}&last=10`, CACHE_TTL.TEAM_STATS),
       fetchApiFootball(`/fixtures?team=${id2}&season=${season}&last=10`, CACHE_TTL.TEAM_STATS),
       fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}`),
-      fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}&next=1`, CACHE_TTL.API_DATA)
+      fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}&next=1`, CACHE_TTL.API_DATA),
+      fetchApiFootball(`/fixtures?team=${id1}&last=12`, CACHE_TTL.TEAM_STATS),
+      fetchApiFootball(`/fixtures?team=${id2}&last=12`, CACHE_TTL.TEAM_STATS)
     ]);
     t1Data = { data: t1Fixtures, season };
     t2Data = { data: t2Fixtures, season };
+    t1Recent = r1 ?? { response: [] };
+    t2Recent = r2 ?? { response: [] };
     h2hRes = h2hr;
     nextH2H = nextH2Hr?.response?.[0] || null;
   } else {
@@ -426,8 +443,17 @@ export async function POST(req: Request) {
       return { opponent: isHome ? f.teams?.away?.name : f.teams?.home?.name, score: `${gh}-${ga}`, result: res };
     });
   };
-  const recent1 = getRecentMatches(t1Fixtures?.response, id1);
-  const recent2 = getRecentMatches(t2Fixtures?.response, id2);
+  // La forme se lit sur les derniers matchs RÉELLEMENT joués, toutes
+  // compétitions et toutes saisons confondues. Repli sur les matchs de la
+  // saison en cours si la requête sans saison n'a rien renvoyé.
+  const recent1 = getRecentMatches(
+    (t1Recent?.response?.length ? t1Recent.response : t1Fixtures?.response),
+    id1
+  );
+  const recent2 = getRecentMatches(
+    (t2Recent?.response?.length ? t2Recent.response : t2Fixtures?.response),
+    id2
+  );
 
   // Base Fallback Metrics (Just for basic display if Gemini fails completely)
   const s1r = t1Stats?.response || {};
