@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { avecBasculeDeModele } from "@/lib/gemini-models";
 import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
 import { toTeaser } from "@/lib/analysis-teaser";
@@ -562,7 +563,14 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
   ]
 }`;
 
-    const result = await model.generateContent(prompt, { signal: controller.signal } as any);
+    // Chaque modèle a son propre quota journalier : si le premier est épuisé,
+    // le suivant prend le relais. Mieux vaut une analyse rédigée par un modèle
+    // plus léger qu'un texte de secours identique pour tous les matchs.
+    const result = await avecBasculeDeModele((modele) =>
+      genAI
+        .getGenerativeModel({ model: modele, generationConfig: { responseMimeType: 'application/json' } })
+        .generateContent(prompt, { signal: controller.signal } as any)
+    );
     clearTimeout(timeoutId);
     
     let responseText = result.response.text();
