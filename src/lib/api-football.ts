@@ -278,6 +278,38 @@ export async function getStandings(leagueId: string) {
 }
 
 /**
+ * Meilleurs buteurs réels d'un championnat sur la saison en cours.
+ *
+ * Remplace une liste écrite à la main, figée sur une saison passée : elle
+ * annonçait des totaux de buts comme s'ils étaient ceux du moment.
+ *
+ * Renvoie un tableau vide tant que la saison n'a pas produit de statistiques —
+ * un classement vide est honnête, un classement périmé ne l'est pas.
+ */
+export async function getTopScorers(leagueKey: string): Promise<
+  { nom: string; club: string; logoClub: string | null; buts: number; passes: number }[]
+> {
+  const ligue = LEAGUE_IDS[leagueKey];
+  if (!ligue) return [];
+
+  const data = await apiFootballFetch<any>(
+    `/players/topscorers?league=${ligue}&season=${getSeason(leagueKey)}`,
+    TTL.STANDINGS
+  );
+
+  return (data?.response ?? []).slice(0, 5).map((p: any) => {
+    const stat = p.statistics?.[0];
+    return {
+      nom: p.player?.name ?? '—',
+      club: stat?.team?.name ?? '—',
+      logoClub: stat?.team?.logo ?? null,
+      buts: stat?.goals?.total ?? 0,
+      passes: stat?.goals?.assists ?? 0,
+    };
+  });
+}
+
+/**
  * Get fixture details by fixture ID
  */
 export async function getFixtureById(fixtureId: number) {

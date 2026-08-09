@@ -423,7 +423,10 @@ export function getMatchesByCompetition(cid:string){return matches.filter(m=>m.c
 export function getMatchesByClub(cid:string){return matches.filter(m=>m.homeTeam===cid||m.awayTeam===cid);}
 export function calculateIAPrecision(match:Match){if(!match.result||!match.prediction)return null;const{home:h,away:a}=match.result;const actual=h>a?"home":a>h?"away":"draw";const wc=match.prediction.winner===actual;const sc=match.prediction.score===`${h}-${a}`;return{winnerCorrect:wc,scoreCorrect:sc,label:sc?"Score Exact":wc?"Vainqueur Correct":"Échec"};}
 export const iaStats={totalAnalyses:2847,todayAnalyses:8,globalAccuracy:79.2,winnerAccuracy:79.2,exactScoreAccuracy:23.4,overUnderAccuracy:84.1,bttsAccuracy:71.5,streak:11};
-export const topScorers:any={epl:[{name:"Erling Haaland",club:"mancity",goals:29,assists:6},{name:"Alexander Isak",club:"newcastle",goals:22,assists:5},{name:"Bukayo Saka",club:"arsenal",goals:19,assists:14},{name:"Cole Palmer",club:"chelsea",goals:18,assists:10},{name:"Bryan Mbeumo",club:"brentford",goals:17,assists:8}],laliga:[{name:"Robert Lewandowski",club:"barcelona",goals:26,assists:8},{name:"Kylian Mbappé",club:"realmadrid",goals:22,assists:6},{name:"Raphinha",club:"barcelona",goals:18,assists:11},{name:"Antoine Griezmann",club:"atletico",goals:16,assists:7}],seriea:[{name:"Lautaro Martínez",club:"inter",goals:24,assists:5},{name:"Dušan Vlahović",club:"juventus",goals:18,assists:4},{name:"Marcus Thuram",club:"inter",goals:16,assists:6}],ligue1:[{name:"Bradley Barcola",club:"psg",goals:22,assists:10},{name:"Ousmane Dembélé",club:"psg",goals:18,assists:12},{name:"Jonathan David",club:"lille",goals:17,assists:4}]};
+// Le classement des buteurs vivait ici, ecrit a la main et fige sur une saison
+// revolue. Il s'affichait comme s'il etait celui du moment. Les vrais chiffres
+// viennent desormais de /api/topscorers/live.
+export const topScorers: Record<string, never[]> = {};
 
 export const tactiques: Record<string, any> = {
   "psg": { style: "possession agressive et attaques placées", force: "la foudre de leurs ailiers en 1v1", faiblesse: "leur gestion des transitions défensives face aux blocs bas", motCle: "domination athlétique" },

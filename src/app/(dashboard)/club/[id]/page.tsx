@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { getClub, iaStats } from "@/lib/data";
 import { 
   Trophy, Users, MapPin, Activity, 
@@ -45,9 +46,14 @@ export default function ClubPage() {
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-primary" /> {club.stadium}
               </div>
-              <div className="flex items-center gap-2">
-                <UserCircle className="w-4 h-4 text-primary" /> Coach: <span className="text-foreground font-bold">{club.coach}</span>
-              </div>
+              {/* L'entraîneur n'est plus affiché ici, et c'est délibéré.
+                  Le référentiel donnait un nom écrit en dur, faux pour trois
+                  clubs sur cinq testés. La base sportive n'est pas fiable non
+                  plus sur ce champ : vérifié le 9 août 2026, elle donnait encore
+                  Guardiola à Manchester City alors qu'il était parti depuis
+                  juin. Aucune source bon marché n'étant sûre, mieux vaut ne rien
+                  afficher. L'agent VIP, lui, croise la recherche web et répond
+                  correctement à la question. */}
             </div>
 
             <div className="flex gap-2 justify-center md:justify-start">
@@ -122,8 +128,14 @@ export default function ClubPage() {
             <h3 className="text-xl font-bold flex items-center gap-2">
                Insight Tactique <Info className="w-4 h-4 opacity-50" />
             </h3>
+            {/* Ce bloc affirmait un style de jeu, un pourcentage de possession et
+                un xG tirés du référentiel statique — des valeurs à zéro pour la
+                plupart des clubs, et attribuées à un entraîneur souvent parti.
+                Une accroche ne doit rien affirmer qu'on n'a pas mesuré. */}
             <p className="text-sm leading-relaxed text-white/80">
-              Le système de {club.coach} privilégie une possession de {club.stats.possession}% avec un focus particulier sur les phases de transition. Avec un xG de {club.stats.xG}, {club.name} surperforme actuellement ses attentes offensives.
+              L'analyse complète de {club.name} — forme réelle, absents, confrontations
+              directes et lecture tactique — est calculée à la demande sur les données
+              du moment, match par match.
             </p>
             <Link href="/pricing" className="block w-full py-4 bg-white text-primary text-center font-black rounded-[20px] text-xs uppercase tracking-widest hover:bg-opacity-90 transition-opacity">
               Débloquer Analyse IA Avancée
