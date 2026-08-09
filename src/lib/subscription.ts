@@ -88,6 +88,7 @@ const PERMANENT_PREMIUM_EMAILS = ['abdoulayecamara2708@gmail.com'];
 const PERMANENT_VIP_EMAILS = [
   'chrisbillalbabou@icloud.com',
   'traoreismaela753@gmail.com',
+  'kbeken099@gmail.com',
 ];
 
 /**
