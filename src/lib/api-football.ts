@@ -91,6 +91,20 @@ async function apiFootballFetch<T = any>(endpoint: string, ttl: number = TTL.FIX
   }
 }
 
+/**
+ * Accès brut à l'API, avec le cache partagé.
+ *
+ * Les fonctions ci-dessous couvrent les besoins de l'interface. L'Agent VIP,
+ * lui, compose ses propres requêtes selon la question posée : il lui faut donc
+ * ce point d'entrée générique plutôt qu'une fonction par écran.
+ */
+export async function apiFootball<T = any>(endpoint: string, ttlMs?: number): Promise<T | null> {
+  return apiFootballFetch<T>(endpoint, ttlMs ?? TTL.FIXTURES_TODAY);
+}
+
+/** Durées de cache réutilisables par les appelants externes. */
+export const CACHE_TTL = TTL;
+
 // ---------------------------------------------------------------------------
 // Major League IDs (API-Football)
 // ---------------------------------------------------------------------------
