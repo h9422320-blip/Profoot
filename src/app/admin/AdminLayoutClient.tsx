@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, CreditCard, Brain, Settings, Bell, Search,
   Menu, X, ChevronRight, LogOut, ExternalLink, Wrench, AlertTriangle,
-  Info, CheckCircle2, ArrowRight,
+  Info, CheckCircle2, ArrowRight, Megaphone,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import type { Alerte } from "@/lib/admin-metrics";
@@ -16,6 +16,7 @@ import type { Alerte } from "@/lib/admin-metrics";
 const SIDEBAR_ITEMS = [
   { name: "Vue d'ensemble", href: "/admin", icon: LayoutDashboard },
   { name: "Utilisateurs", href: "/admin/users", icon: Users },
+  { name: "Partenaires", href: "/admin/partenaires", icon: Megaphone },
   { name: "Finances", href: "/admin/finances", icon: CreditCard },
   { name: "Analyses IA", href: "/admin/system", icon: Brain },
   { name: "Paiements", href: "/admin/logs", icon: ExternalLink },
