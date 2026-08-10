@@ -1,5 +1,7 @@
 import { createAdminClient } from '@/lib/supabase-admin';
 import { ACCES_OFFERTS, niveauOffert, normalizePlan, PLANS, PlanKey, PlanTier } from '@/lib/subscription';
+import { TAUX_POUR_MILLE_USD, TAUX_XOF } from '@/lib/partenaires';
+import { getPrecisionReelle } from '@/lib/precision-reelle';
 
 /**
  * Statistiques réelles de ProFoot AI, lues directement dans la base.
@@ -227,6 +229,45 @@ export interface AdminMetrics {
     enAttente: number;
     analysesCumulees: number;
     liste: LignePartenaire[];
+  };
+
+  /**
+   * Les rapports entre les chiffres.
+   *
+   * Pris isolément, « 20 comptes » et « 20 000 FCFA » ne disent rien : c'est
+   * leur rapport qui informe. Ce bloc rassemble les liens que chaque page
+   * affichait jusqu'ici séparément, ou pas du tout — combien de visiteurs
+   * deviennent abonnés, ce que rapporte un compte, si l'assurance affichée par
+   * l'IA correspond à sa précision constatée, et ce qu'il reste une fois les
+   * partenaires payés.
+   */
+  liens: {
+    /** Part des comptes inscrits qui ont souscrit. */
+    tauxConversion: number;
+    /** Part des comptes qui se sont déjà connectés au moins une fois. */
+    tauxActivation: number;
+    /** Recette moyenne par compte inscrit, abonnés ou non. */
+    revenuParCompte: number;
+    /** Recette moyenne par abonné actif. */
+    revenuParAbonne: number;
+    /** Analyses lancées rapportées au nombre d'abonnés actifs. */
+    analysesParAbonne: number;
+    /** Part des comptes ayant lancé au moins une analyse. */
+    tauxUsage: number;
+    /** Assurance que l'IA s'attribue à elle-même. */
+    confianceIA: number | null;
+    /** Précision réellement constatée, une fois les matchs joués. */
+    precisionReelle: number | null;
+    /** Nombre de pronostics déjà confrontés à un résultat. */
+    pronosticsVerifies: number;
+    /** Écart entre l'assurance affichée et la précision constatée. */
+    ecartConfiance: number | null;
+    /** Coût des partenaires influenceurs, forfaits et vues confondus. */
+    coutPartenairesXof: number;
+    /** Recettes encaissées moins coût des partenaires. */
+    resultatNetXof: number;
+    /** Part des événements de paiement qui ont produit un abonnement. */
+    tauxAboutissementPaiements: number;
   };
 
   paiements: EvenementPaiement[];
@@ -658,6 +699,61 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
     liste: listePartenaires,
   };
 
+  // ── Les rapports entre les chiffres ──
+  // Un total isolé ne dit rien. « 20 comptes » prend son sens rapporté aux
+  // 3 abonnés, et « 20 000 FCFA » rapporté au coût des partenaires.
+
+  // Coût des partenaires : lu directement plutôt que via le module dédié, qui
+  // recharge toute la liste des comptes — déjà chargée ici.
+  let coutPartenairesXof = 0;
+  try {
+    const [{ data: contrats }, { data: relevesPartenaires }] = await Promise.all([
+      supabase.from('partners').select('amount, currency'),
+      supabase.from('partner_reports').select('views'),
+    ]);
+    for (const c of contrats ?? []) {
+      coutPartenairesXof += Number((c as any).amount ?? 0) * (TAUX_XOF[(c as any).currency] ?? 0);
+    }
+    const vues = (relevesPartenaires ?? []).reduce((t, r: any) => t + (r.views ?? 0), 0);
+    coutPartenairesXof += (vues / 1000) * TAUX_POUR_MILLE_USD * (TAUX_XOF.USD ?? 0);
+  } catch {
+    // Table absente : le coût reste nul, aucune page ne doit tomber pour ça.
+  }
+
+  const precision = await getPrecisionReelle().catch(() => null);
+  const confianceIA = confiances.length
+    ? Math.round((confiances.reduce((t, c) => t + c, 0) / confiances.length) * 10) / 10
+    : null;
+
+  const comptesAyantAnalyse = new Set(analyses.map((a) => a.user_id)).size;
+  const abonnesActifs = abosActifs.length;
+
+  const pourcent = (part: number, total: number) =>
+    total > 0 ? Math.round((part / total) * 1000) / 10 : 0;
+
+  const liens = {
+    tauxConversion: pourcent(abonnesActifs, comptes.length),
+    tauxActivation: pourcent(comptes.length - comptes.filter((c) => !c.last_sign_in_at).length, comptes.length),
+    revenuParCompte: comptes.length ? Math.round(totalCumule / comptes.length) : 0,
+    revenuParAbonne: abonnesActifs ? Math.round(totalCumule / abonnesActifs) : 0,
+    analysesParAbonne: abonnesActifs
+      ? Math.round((analyses.length / abonnesActifs) * 10) / 10
+      : 0,
+    tauxUsage: pourcent(comptesAyantAnalyse, comptes.length),
+    confianceIA,
+    precisionReelle: precision?.vainqueurCorrect ?? null,
+    pronosticsVerifies: precision?.verifiees ?? 0,
+    // L'écart n'a de sens qu'une fois la précision mesurée : comparer une
+    // assurance déclarée à une valeur inexistante produirait un faux constat.
+    ecartConfiance:
+      confianceIA !== null && precision?.vainqueurCorrect != null
+        ? Math.round((confianceIA - precision.vainqueurCorrect) * 10) / 10
+        : null,
+    coutPartenairesXof: Math.round(coutPartenairesXof),
+    resultatNetXof: Math.round(totalCumule - coutPartenairesXof),
+    tauxAboutissementPaiements: pourcent(abosEnrichis.length, webhooks.length),
+  };
+
   // ── Paiements ──
   const paiements: EvenementPaiement[] = webhooks.map((w) => {
     const p: any = w.payload ?? {};
@@ -741,6 +837,7 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
     },
 
     partenaires,
+    liens,
     paiements,
     listeUtilisateurs,
     avertissements,

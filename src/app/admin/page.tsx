@@ -4,7 +4,11 @@ import { Courbe, Barres, Camembert } from "./_components/Graphique";
 import { Etiquette, Vide, montant, dateCourte, ilYA } from "./_components/Ui";
 import { Panneau, Classement } from "./_components/Panneaux";
 import { Indicateur } from "./_components/Indicateur";
-import { AlertTriangle, Users, CreditCard, Brain, Wallet } from "lucide-react";
+import { EnTete, Rapport } from "./_components/EnTete";
+import {
+  AlertTriangle, Users, CreditCard, Brain, Wallet, LayoutDashboard,
+  Target, Megaphone, Activity, TrendingUp,
+} from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -20,16 +24,22 @@ export default async function AdminOverview({
 
   return (
     <div className="space-y-6">
-      {/* En-tête */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Vue d'ensemble</h1>
-          <p className="text-sm text-white/40 mt-1">
-            {m.periode.libelle} — données réelles lues dans la base
-          </p>
-        </div>
-        <SelecteurPeriode />
-      </div>
+      {/* En-tête : les trois rapports qui résument l'état du produit. */}
+      <EnTete
+        titre="Vue d'ensemble"
+        sousTitre={`${m.periode.libelle} — données réelles lues dans la base`}
+        icone={<LayoutDashboard className="w-6 h-6" />}
+        action={<SelecteurPeriode />}
+        reperes={[
+          { libelle: "Conversion", valeur: `${m.liens.tauxConversion} %`, accent: true },
+          { libelle: "Revenu par compte", valeur: `${m.liens.revenuParCompte.toLocaleString("fr-FR")} FCFA` },
+          { libelle: "Analyses par abonné", valeur: String(m.liens.analysesParAbonne) },
+          {
+            libelle: "Résultat net",
+            valeur: `${m.liens.resultatNetXof >= 0 ? "+" : ""}${m.liens.resultatNetXof.toLocaleString("fr-FR")} FCFA`,
+          },
+        ]}
+      />
 
       {m.avertissements.length > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/25 rounded-[16px] p-4 space-y-1">
@@ -47,25 +57,111 @@ export default async function AdminOverview({
         <Indicateur
           libelle="Comptes inscrits"
           valeur={m.utilisateurs.total}
-          aide={`${m.utilisateurs.nouveaux} nouveau${m.utilisateurs.nouveaux > 1 ? "x" : ""} sur la période`}
+          teinte="violet"
+          icone={<Users className="w-4 h-4" />}
+          aide={`${m.utilisateurs.nouveaux} nouveau${m.utilisateurs.nouveaux > 1 ? "x" : ""} sur la période • ${m.liens.tauxActivation} % se sont déjà connectés`}
+          delai={0.05}
         />
         <Indicateur
           libelle="Nouveaux inscrits"
           valeur={m.utilisateurs.nouveaux}
           precedent={m.periode.cle === "tout" ? undefined : m.utilisateurs.nouveauxPrecedent}
+          teinte="cyan"
+          icone={<TrendingUp className="w-4 h-4" />}
+          delai={0.1}
         />
         <Indicateur
           libelle="Abonnés actifs"
           valeur={m.abonnements.actifs}
-          accent
-          aide={`${m.abonnements.nouveaux} nouvel abonnement sur la période`}
+          teinte="vert"
+          icone={<Target className="w-4 h-4" />}
+          aide={`${m.liens.tauxConversion} % des ${m.utilisateurs.total} comptes • ${m.abonnements.nouveaux} nouvel abonnement sur la période`}
+          delai={0.15}
         />
         <Indicateur
           libelle="Revenus de la période"
           valeur={montant(m.revenus.surPeriode, m.revenus.devise)}
-          aide={`${montant(m.revenus.totalCumule, m.revenus.devise)} encaissés depuis le début`}
+          teinte="or"
+          icone={<Wallet className="w-4 h-4" />}
+          aide={`${montant(m.revenus.totalCumule, m.revenus.devise)} depuis le début • ${m.liens.revenuParAbonne.toLocaleString("fr-FR")} FCFA par abonné`}
+          delai={0.2}
         />
       </div>
+
+      {/* Les rapports entre les chiffres : chacun met deux valeurs en relation,
+          parce qu'un total isolé ne dit rien de la santé du produit. */}
+      <Panneau
+        titre="Ce que les chiffres disent ensemble"
+        sousTitre="Chaque valeur est le rapport de deux autres, pas un compteur isolé"
+        icone={<Activity className="w-4 h-4" />}
+        teinte="cyan"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <Rapport
+            libelle="Conversion"
+            valeur={`${m.liens.tauxConversion} %`}
+            pourcentage={m.liens.tauxConversion}
+            detail={`${m.abonnements.actifs} abonnés sur ${m.utilisateurs.total} comptes inscrits`}
+          />
+          <Rapport
+            libelle="Activation"
+            valeur={`${m.liens.tauxActivation} %`}
+            pourcentage={m.liens.tauxActivation}
+            teinte="#a78bfa"
+            detail={`${m.utilisateurs.jamaisConnectes} compte${m.utilisateurs.jamaisConnectes > 1 ? "s" : ""} créé${m.utilisateurs.jamaisConnectes > 1 ? "s" : ""} mais jamais utilisé${m.utilisateurs.jamaisConnectes > 1 ? "s" : ""}`}
+          />
+          <Rapport
+            libelle="Usage"
+            valeur={`${m.liens.tauxUsage} %`}
+            pourcentage={m.liens.tauxUsage}
+            teinte="#22d3ee"
+            detail={`des comptes ont lancé au moins une analyse • ${m.liens.analysesParAbonne} par abonné`}
+          />
+          <Rapport
+            libelle="Revenu par compte"
+            valeur={`${m.liens.revenuParCompte.toLocaleString("fr-FR")} FCFA`}
+            teinte="#fbbf24"
+            detail={`${montant(m.revenus.totalCumule, m.revenus.devise)} ÷ ${m.utilisateurs.total} comptes`}
+          />
+        </div>
+      </Panneau>
+
+      {/* Rentabilité : les recettes confrontées au coût des influenceurs. */}
+      {m.liens.coutPartenairesXof > 0 && (
+        <div
+          className={`relative overflow-hidden rounded-[22px] border p-6 bg-gradient-to-r ${
+            m.liens.resultatNetXof >= 0
+              ? "border-[#10b981]/30 from-[#10b981]/12 via-[#16242e] to-[#16242e]"
+              : "border-amber-500/30 from-amber-500/10 via-[#16242e] to-[#16242e]"
+          }`}
+        >
+          <Megaphone className="pointer-events-none absolute -right-5 -bottom-5 w-28 h-28 text-white/[0.04]" />
+          <div className="relative flex flex-wrap items-center gap-x-10 gap-y-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">Résultat net</p>
+              <p className={`text-3xl font-black tabular-nums mt-1 ${m.liens.resultatNetXof >= 0 ? "text-[#10b981]" : "text-amber-400"}`}>
+                {m.liens.resultatNetXof >= 0 ? "+" : ""}
+                {m.liens.resultatNetXof.toLocaleString("fr-FR")} <span className="text-base text-white/30">FCFA</span>
+              </p>
+            </div>
+            <div className="text-[11px] text-white/40 leading-relaxed">
+              <p>
+                Recettes <span className="text-white/70 font-bold">{montant(m.revenus.totalCumule, m.revenus.devise)}</span>
+              </p>
+              <p>
+                Coût des partenaires{" "}
+                <span className="text-white/70 font-bold">−{m.liens.coutPartenairesXof.toLocaleString("fr-FR")} FCFA</span>
+              </p>
+            </div>
+            <Link
+              href="/admin/partenaires"
+              className="ml-auto text-xs font-bold text-[#10b981] hover:underline shrink-0"
+            >
+              Voir le détail des partenaires
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Courbes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

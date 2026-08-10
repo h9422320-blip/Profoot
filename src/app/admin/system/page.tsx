@@ -4,7 +4,8 @@ import { Courbe } from "../_components/Graphique";
 import { Vide, dateHeure } from "../_components/Ui";
 import { Panneau, Classement } from "../_components/Panneaux";
 import { Indicateur } from "../_components/Indicateur";
-import { CheckCircle2, Clock } from "lucide-react";
+import { EnTete, Rapport } from "../_components/EnTete";
+import { Brain, CheckCircle2, Clock, Gauge, Target } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -19,33 +20,128 @@ export default async function AdminSystem({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Analyses IA</h1>
-          <p className="text-sm text-white/40 mt-1">
-            {m.analyses.total} analyse{m.analyses.total > 1 ? "s" : ""} enregistrée{m.analyses.total > 1 ? "s" : ""} au total — {m.periode.libelle.toLowerCase()}
-          </p>
-        </div>
-        <SelecteurPeriode />
-      </div>
+      <EnTete
+        titre="Analyses IA"
+        sousTitre={`${m.analyses.total} analyse${m.analyses.total > 1 ? "s" : ""} enregistrée${m.analyses.total > 1 ? "s" : ""} au total — ${m.periode.libelle.toLowerCase()}`}
+        icone={<Brain className="w-6 h-6" />}
+        teinte="cyan"
+        action={<SelecteurPeriode />}
+        reperes={[
+          { libelle: "Par abonné", valeur: String(m.liens.analysesParAbonne) },
+          { libelle: "Confiance affichée", valeur: m.liens.confianceIA === null ? "—" : `${m.liens.confianceIA} %` },
+          {
+            libelle: "Précision constatée",
+            valeur: m.liens.precisionReelle === null ? "—" : `${m.liens.precisionReelle} %`,
+            accent: true,
+          },
+          { libelle: "Pronostics vérifiés", valeur: String(m.liens.pronosticsVerifies) },
+        ]}
+      />
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <Indicateur
           libelle="Analyses sur la période"
           valeur={m.analyses.surPeriode}
           precedent={m.periode.cle === "tout" ? undefined : m.analyses.surPeriodePrecedente}
-          accent
+          teinte="cyan"
+          icone={<Brain className="w-4 h-4" />}
+          aide={`${m.liens.analysesParAbonne} par abonné actif`}
+          delai={0.05}
         />
-        <Indicateur libelle="Moyenne par jour" valeur={m.analyses.moyenneParJour} />
-        <Indicateur libelle="Total historique" valeur={m.analyses.total} aide="Toutes périodes confondues" />
         <Indicateur
-          libelle="Confiance moyenne de l'IA"
-          valeur={m.analyses.confianceMoyenne === null ? "—" : `${m.analyses.confianceMoyenne} %`}
-          aide="Indice que l'IA attribue elle-même à ses analyses"
+          libelle="Moyenne par jour"
+          valeur={m.analyses.moyenneParJour}
+          teinte="violet"
+          icone={<Clock className="w-4 h-4" />}
+          aide={`${m.liens.tauxUsage} % des comptes ont déjà analysé`}
+          delai={0.1}
+        />
+        <Indicateur
+          libelle="Total historique"
+          valeur={m.analyses.total}
+          teinte="neutre"
+          icone={<CheckCircle2 className="w-4 h-4" />}
+          aide="Toutes périodes confondues"
+          delai={0.15}
+        />
+        <Indicateur
+          libelle="Précision constatée"
+          valeur={m.liens.precisionReelle === null ? "—" : `${m.liens.precisionReelle} %`}
+          teinte={m.liens.precisionReelle === null ? "neutre" : "vert"}
+          icone={<Target className="w-4 h-4" />}
+          aide={
+            m.liens.precisionReelle === null
+              ? `${m.liens.pronosticsVerifies} pronostic${m.liens.pronosticsVerifies > 1 ? "s" : ""} vérifié${m.liens.pronosticsVerifies > 1 ? "s" : ""} — pas encore assez pour un taux fiable`
+              : `Mesurée sur ${m.liens.pronosticsVerifies} matchs réellement joués`
+          }
+          delai={0.2}
         />
       </div>
 
-      <Panneau titre="Volume d'analyses" sousTitre={`Analyses lancées — ${m.periode.libelle.toLowerCase()}`}>
+      {/* Le rapprochement qui manquait : l'IA s'attribue une assurance, on la
+          confronte à ce qu'elle réussit vraiment. Un chiffre de confiance seul
+          ne dit rien — c'est l'écart qui informe. */}
+      <Panneau
+        titre="L'IA est-elle aussi sûre qu'elle le prétend ?"
+        sousTitre="L'assurance qu'elle s'attribue, confrontée à ses résultats réels"
+        icone={<Gauge className="w-4 h-4" />}
+        teinte={m.liens.ecartConfiance === null ? "cyan" : m.liens.ecartConfiance > 10 ? "or" : "vert"}
+      >
+        {m.liens.precisionReelle === null ? (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              <p className="text-sm text-white/70 leading-relaxed">
+                L&apos;IA s&apos;attribue une confiance moyenne de{" "}
+                <span className="font-black text-cyan-400">
+                  {m.liens.confianceIA === null ? "—" : `${m.liens.confianceIA} %`}
+                </span>
+                . Impossible de dire pour l&apos;instant si elle est justifiée :{" "}
+                {m.liens.pronosticsVerifies === 0
+                  ? "aucun pronostic n'a encore été confronté à un résultat."
+                  : `seulement ${m.liens.pronosticsVerifies} pronostic${m.liens.pronosticsVerifies > 1 ? "s ont" : " a"} été vérifié${m.liens.pronosticsVerifies > 1 ? "s" : ""}.`}
+              </p>
+              <p className="text-[11px] text-white/30 mt-2">
+                Les matchs analysés se jouent dans les jours qui viennent. La comparaison apparaîtra d&apos;elle-même.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Rapport
+              libelle="Confiance affichée"
+              valeur={`${m.liens.confianceIA} %`}
+              pourcentage={m.liens.confianceIA ?? 0}
+              teinte="#22d3ee"
+              detail="Indice que l'IA s'attribue à elle-même sur ses analyses"
+            />
+            <Rapport
+              libelle="Précision réelle"
+              valeur={`${m.liens.precisionReelle} %`}
+              pourcentage={m.liens.precisionReelle}
+              detail={`Vainqueur correct sur ${m.liens.pronosticsVerifies} matchs joués`}
+            />
+            <Rapport
+              libelle="Écart"
+              valeur={`${m.liens.ecartConfiance! > 0 ? "+" : ""}${m.liens.ecartConfiance} pts`}
+              teinte={m.liens.ecartConfiance! > 10 ? "#fbbf24" : "#10b981"}
+              detail={
+                m.liens.ecartConfiance! > 10
+                  ? "L'IA se surestime : elle annonce plus de certitude qu'elle n'en mérite."
+                  : m.liens.ecartConfiance! < -10
+                    ? "L'IA se sous-estime : elle réussit mieux qu'elle ne l'annonce."
+                    : "L'assurance affichée correspond aux résultats."
+              }
+            />
+          </div>
+        )}
+      </Panneau>
+
+      <Panneau
+        titre="Volume d'analyses"
+        sousTitre={`Analyses lancées — ${m.periode.libelle.toLowerCase()}`}
+        icone={<Brain className="w-4 h-4" />}
+        teinte="cyan"
+      >
         <Courbe donnees={m.analyses.serie} suffixe="analyse(s)" hauteur={280} />
       </Panneau>
 

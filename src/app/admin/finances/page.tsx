@@ -4,6 +4,8 @@ import { Barres, Camembert } from "../_components/Graphique";
 import { montant } from "../_components/Ui";
 import { Panneau } from "../_components/Panneaux";
 import { Indicateur } from "../_components/Indicateur";
+import { EnTete, Rapport } from "../_components/EnTete";
+import { Scale, Wallet } from "lucide-react";
 import FinancesClient from "./FinancesClient";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +22,57 @@ export default async function AdminFinances({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Finances</h1>
-          <p className="text-sm text-white/40 mt-1">
-            {montant(m.revenus.totalCumule, d)} encaissés depuis le début — {m.periode.libelle.toLowerCase()}
-          </p>
+      <EnTete
+        titre="Finances"
+        sousTitre={`${montant(m.revenus.totalCumule, d)} encaissés depuis le début — ${m.periode.libelle.toLowerCase()}`}
+        icone={<Wallet className="w-6 h-6" />}
+        teinte="or"
+        action={<SelecteurPeriode />}
+        reperes={[
+          { libelle: "Par abonné", valeur: `${m.liens.revenuParAbonne.toLocaleString("fr-FR")} FCFA` },
+          { libelle: "Par compte inscrit", valeur: `${m.liens.revenuParCompte.toLocaleString("fr-FR")} FCFA` },
+          { libelle: "Coût partenaires", valeur: `${m.liens.coutPartenairesXof.toLocaleString("fr-FR")} FCFA` },
+          {
+            libelle: "Résultat net",
+            valeur: `${m.liens.resultatNetXof >= 0 ? "+" : ""}${m.liens.resultatNetXof.toLocaleString("fr-FR")} FCFA`,
+            accent: m.liens.resultatNetXof >= 0,
+          },
+        ]}
+      />
+
+      {/* Ce que l'argent encaissé devient une fois les partenaires payés. Les
+          recettes affichées seules donnaient une image incomplète. */}
+      <Panneau
+        titre="Des recettes au résultat"
+        sousTitre="Ce qui reste une fois la campagne d'influence déduite"
+        icone={<Scale className="w-4 h-4" />}
+        teinte={m.liens.resultatNetXof >= 0 ? "vert" : "or"}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Rapport
+            libelle="Encaissé"
+            valeur={montant(m.revenus.totalCumule, d)}
+            teinte="#fbbf24"
+            detail={`${m.abonnements.total} abonnement${m.abonnements.total > 1 ? "s" : ""} souscrit${m.abonnements.total > 1 ? "s" : ""} depuis le début`}
+          />
+          <Rapport
+            libelle="Coût des partenaires"
+            valeur={`−${m.liens.coutPartenairesXof.toLocaleString("fr-FR")} FCFA`}
+            teinte="#fb7185"
+            detail="Forfaits versés et dû sur les vues, convertis en francs CFA"
+          />
+          <Rapport
+            libelle="Résultat net"
+            valeur={`${m.liens.resultatNetXof >= 0 ? "+" : ""}${m.liens.resultatNetXof.toLocaleString("fr-FR")} FCFA`}
+            teinte={m.liens.resultatNetXof >= 0 ? "#10b981" : "#fbbf24"}
+            detail={
+              m.liens.resultatNetXof >= 0
+                ? "La campagne est couverte par les recettes."
+                : `Il manque ${Math.abs(m.liens.resultatNetXof).toLocaleString("fr-FR")} FCFA pour l'équilibre.`
+            }
+          />
         </div>
-        <SelecteurPeriode />
-      </div>
+      </Panneau>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <Indicateur
@@ -41,13 +85,27 @@ export default async function AdminFinances({
               : `Période précédente : ${montant(m.revenus.surPeriodePrecedente, d)}`
           }
         />
-        <Indicateur libelle="Total encaissé" valeur={montant(m.revenus.totalCumule, d)} aide="Depuis la création de l'application" />
+        <Indicateur
+          libelle="Total encaissé"
+          valeur={montant(m.revenus.totalCumule, d)}
+          teinte="or"
+          aide={`${m.liens.revenuParCompte.toLocaleString("fr-FR")} FCFA par compte inscrit`}
+          delai={0.1}
+        />
         <Indicateur
           libelle="Revenu mensuel récurrent"
           valeur={montant(m.revenus.revenuMensuelRecurrent, d)}
+          teinte="cyan"
           aide="Abonnements actifs ramenés à 30 jours : le VIP annuel compte pour un douzième"
+          delai={0.15}
         />
-        <Indicateur libelle="Panier moyen" valeur={montant(m.revenus.panierMoyen, d)} aide="Par abonnement souscrit" />
+        <Indicateur
+          libelle="Panier moyen"
+          valeur={montant(m.revenus.panierMoyen, d)}
+          teinte="violet"
+          aide={`Par abonnement souscrit • ${m.liens.revenuParAbonne.toLocaleString("fr-FR")} FCFA par abonné actif`}
+          delai={0.2}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

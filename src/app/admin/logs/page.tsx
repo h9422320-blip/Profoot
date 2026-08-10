@@ -3,7 +3,8 @@ import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { Vide, dateHeure, montant } from "../_components/Ui";
 import { Panneau } from "../_components/Panneaux";
 import { Indicateur } from "../_components/Indicateur";
-import { Info } from "lucide-react";
+import { EnTete } from "../_components/EnTete";
+import { AlertTriangle, Info, Receipt } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -21,22 +22,75 @@ export default async function AdminLogs({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Journal des paiements</h1>
-          <p className="text-sm text-white/40 mt-1">
-            Notifications reçues de Chariow, telles qu'enregistrées par l'application
-          </p>
-        </div>
-        <SelecteurPeriode />
-      </div>
+      <EnTete
+        titre="Journal des paiements"
+        sousTitre="Notifications reçues de Chariow, telles qu'enregistrées par l'application"
+        icone={<Receipt className="w-6 h-6" />}
+        teinte="or"
+        action={<SelecteurPeriode />}
+        reperes={[
+          { libelle: "Événements reçus", valeur: String(m.paiements.length) },
+          { libelle: "Abonnements créés", valeur: String(m.abonnements.total) },
+          {
+            libelle: "Aboutissement",
+            valeur: `${m.liens.tauxAboutissementPaiements} %`,
+            accent: m.liens.tauxAboutissementPaiements >= 80,
+          },
+          { libelle: "Encaissé", valeur: montant(m.revenus.totalCumule, m.revenus.devise) },
+        ]}
+      />
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <Indicateur libelle="Événements reçus" valeur={m.paiements.length} aide="100 plus récents" />
-        <Indicateur libelle="Abonnements créés" valeur={m.abonnements.total} />
-        <Indicateur libelle="Abonnements actifs" valeur={m.abonnements.actifs} accent />
-        <Indicateur libelle="Total encaissé" valeur={montant(m.revenus.totalCumule, m.revenus.devise)} />
+        <Indicateur
+          libelle="Événements reçus"
+          valeur={m.paiements.length}
+          teinte="cyan"
+          icone={<Info className="w-4 h-4" />}
+          aide="100 plus récents"
+          delai={0.05}
+        />
+        <Indicateur
+          libelle="Abonnements créés"
+          valeur={m.abonnements.total}
+          teinte="violet"
+          aide={`${m.liens.tauxAboutissementPaiements} % des notifications ont produit un abonnement`}
+          delai={0.1}
+        />
+        <Indicateur
+          libelle="Abonnements actifs"
+          valeur={m.abonnements.actifs}
+          teinte="vert"
+          aide={`${m.abonnements.expires} expiré${m.abonnements.expires > 1 ? "s" : ""} • ${m.abonnements.expirentBientot} à relancer sous 7 jours`}
+          delai={0.15}
+        />
+        <Indicateur
+          libelle="Total encaissé"
+          valeur={montant(m.revenus.totalCumule, m.revenus.devise)}
+          teinte="or"
+          aide={`${m.liens.revenuParAbonne.toLocaleString("fr-FR")} FCFA par abonné actif`}
+          delai={0.2}
+        />
       </div>
+
+      {/* Un paiement notifié qui ne devient pas un abonnement est un client qui
+          a payé sans rien recevoir. C'est le seul chiffre de cette page qui
+          demande une action immédiate. */}
+      {m.paiements.length > 0 && m.liens.tauxAboutissementPaiements < 80 && (
+        <div className="flex items-start gap-3 p-4 rounded-[18px] bg-amber-500/10 border border-amber-500/25">
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-amber-300">
+              {m.liens.tauxAboutissementPaiements} % des notifications ont abouti à un abonnement
+            </p>
+            <p className="text-xs text-white/50 mt-1 leading-relaxed">
+              {m.paiements.length} événement{m.paiements.length > 1 ? "s" : ""} reçu{m.paiements.length > 1 ? "s" : ""} pour{" "}
+              {m.abonnements.total} abonnement{m.abonnements.total > 1 ? "s" : ""} créé{m.abonnements.total > 1 ? "s" : ""}. Toutes les
+              notifications ne sont pas des ventes — annulations et tests en font partie — mais un écart durable
+              signale des clients qui ont payé sans rien recevoir.
+            </p>
+          </div>
+        </div>
+      )}
 
       {parEvenement.size > 0 && (
         <div className="flex flex-wrap gap-2">
