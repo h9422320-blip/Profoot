@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { interrogerAgentVip } from '@/lib/agent-vip';
+import { MODELE as MODELE_AGENT, interrogerAgentVip } from '@/lib/agent-vip';
+import { enregistrerEchange } from '@/lib/conversations-vip';
 import { isRateLimited } from '@/lib/rateLimit';
 import { requireVip } from '@/lib/subscription';
 
@@ -60,6 +61,25 @@ export async function POST(req: Request) {
     if (resultat.recherchesWeb === 0) {
       console.warn('[AGENT VIP] ALERTE : réponse produite sans aucune recherche web.');
     }
+
+    // Enregistrement de l'échange. Rien n'était conservé jusqu'ici : chaque
+    // conversation disparaissait à la fermeture de l'onglet, et il était donc
+    // impossible de savoir ce qu'on demande à l'agent ni comment il répond.
+    // L'écriture ne peut pas faire échouer la réponse : elle est encapsulée.
+    const derniere = Array.isArray(messages) ? messages[messages.length - 1] : null;
+    await enregistrerEchange({
+      userId: guard.user.id,
+      question: typeof derniere?.content === 'string' ? derniere.content : '',
+      reponse: resultat.texte,
+      recherchesWeb: resultat.recherchesWeb,
+      outilsAppeles: resultat.outilsAppeles,
+      modele: MODELE_AGENT,
+      dureeMs: resultat.dureeMs,
+      jetonsEntrants: resultat.jetonsEntrants,
+      jetonsSortants: resultat.jetonsSortants,
+      jetonsCache: resultat.jetonsLusEnCache,
+      motifArret: resultat.motifArret,
+    });
 
     return Response.json({ text: resultat.texte });
   } catch (erreur: any) {

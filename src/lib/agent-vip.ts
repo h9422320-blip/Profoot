@@ -10,7 +10,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { OUTILS_FOOTBALL, executerOutil } from './outils-football';
 
-const MODELE = 'claude-sonnet-5';
+export const MODELE = 'claude-sonnet-5';
 const JETONS_MAX = 16000;
 
 // Nombre d'allers-retours d'outils autorisés. L'agent enchaîne souvent
