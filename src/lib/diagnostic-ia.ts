@@ -1,0 +1,389 @@
+/**
+ * Diagnostic de l'analyseur : ce qu'il annonce, ce qui arrive vraiment.
+ *
+ * Tout ici est calculé à partir de la base, sans aucun appel extérieur et sans
+ * aucun coût. Les résultats réels sont déjà récupérés par la vérification
+ * quotidienne ; il ne reste qu'à les confronter aux prédictions et à en tirer
+ * des constats.
+ *
+ * Le parti pris : ne rien faire juger par une intelligence artificielle. Un
+ * avis ponctuel sur un match raté n'apprend rien — c'est la répétition qui
+ * révèle un défaut. Un modèle qui annonce 80 % de certitude et n'en réussit que
+ * 55 % ne se voit pas match par match ; il saute aux yeux sur cinquante.
+ *
+ * Chaque recommandation est donc une règle appliquée à un écart chiffré, et
+ * elle porte toujours les nombres qui la justifient.
+ */
+
+import { createAdminClient } from './supabase-admin';
+
+/** Issue d'un match. */
+type Issue = 'team1' | 'team2' | 'draw';
+
+export interface TrancheConfiance {
+  libelle: string;
+  min: number;
+  max: number;
+  nombre: number;
+  /** Réussite réellement constatée dans cette tranche. */
+  reussite: number | null;
+  /** Confiance moyenne annoncée dans cette tranche. */
+  confianceMoyenne: number | null;
+  /** Confiance annoncée moins réussite constatée. Positif = surestimation. */
+  ecart: number | null;
+}
+
+export interface PerformanceCompetition {
+  competition: string;
+  nombre: number;
+  reussite: number;
+  scoresExacts: number;
+}
+
+export interface TypeErreur {
+  libelle: string;
+  nombre: number;
+  part: number;
+  explication: string;
+}
+
+export interface Recommandation {
+  /** Gravité : ce qui pèse le plus sur la fiabilité passe en premier. */
+  gravite: 'critique' | 'important' | 'mineur';
+  titre: string;
+  /** Le constat chiffré qui déclenche la recommandation. */
+  constat: string;
+  /** Ce qu'il faut changer, formulé pour être appliqué tel quel. */
+  correction: string;
+}
+
+export interface DiagnosticIA {
+  /** Analyses confrontées à un résultat réel. */
+  verifiees: number;
+  enAttente: number;
+  /** Vrai tant que l'échantillon ne permet aucune conclusion. */
+  echantillonInsuffisant: boolean;
+
+  reussiteVainqueur: number | null;
+  reussiteScoreExact: number | null;
+  confianceMoyenne: number | null;
+  /** Confiance annoncée moins réussite réelle, sur l'ensemble. */
+  surconfiance: number | null;
+
+  tranches: TrancheConfiance[];
+  competitions: PerformanceCompetition[];
+  typesErreurs: TypeErreur[];
+
+  /** Ce que l'application prédit, comparé à ce qui arrive. */
+  repartition: {
+    predit: Record<Issue, number>;
+    reel: Record<Issue, number>;
+  };
+
+  /** Buts annoncés contre buts marqués. */
+  butsMoyens: { predits: number | null; reels: number | null };
+
+  recommandations: Recommandation[];
+}
+
+/** Seuil en dessous duquel aucun pourcentage n'est publié. */
+export const MINIMUM_DIAGNOSTIC = 10;
+
+const TRANCHES: { libelle: string; min: number; max: number }[] = [
+  { libelle: 'Moins de 60 %', min: 0, max: 60 },
+  { libelle: '60 à 70 %', min: 60, max: 70 },
+  { libelle: '70 à 80 %', min: 70, max: 80 },
+  { libelle: '80 à 90 %', min: 80, max: 90 },
+  { libelle: '90 % et plus', min: 90, max: 101 },
+];
+
+function pourcent(part: number, total: number): number {
+  return total > 0 ? Math.round((part / total) * 1000) / 10 : 0;
+}
+
+function lireButs(score: string | null): [number, number] | null {
+  const m = (score ?? '').match(/(\d+)\s*[-–]\s*(\d+)/);
+  return m ? [Number(m[1]), Number(m[2])] : null;
+}
+
+/**
+ * Établit le diagnostic complet.
+ *
+ * Ne renvoie aucun pourcentage tant que l'échantillon est trop mince : une
+ * réussite calculée sur trois matchs décrit le hasard, et une recommandation
+ * fondée dessus enverrait corriger un défaut inexistant.
+ */
+export async function getDiagnosticIA(): Promise<DiagnosticIA> {
+  const sb = createAdminClient();
+
+  const [{ data: verifiees, error }, attente] = await Promise.all([
+    sb
+      .from('analysis_history')
+      .select('score, real_score, predicted_winner, real_winner, winner_correct, score_correct, confidence, competition')
+      .not('verified_at', 'is', null)
+      .limit(2000),
+    sb.from('analysis_history').select('id', { count: 'exact', head: true }).is('verified_at', null),
+  ]);
+
+  const vide: DiagnosticIA = {
+    verifiees: 0,
+    enAttente: attente.count ?? 0,
+    echantillonInsuffisant: true,
+    reussiteVainqueur: null,
+    reussiteScoreExact: null,
+    confianceMoyenne: null,
+    surconfiance: null,
+    tranches: [],
+    competitions: [],
+    typesErreurs: [],
+    repartition: { predit: { team1: 0, team2: 0, draw: 0 }, reel: { team1: 0, team2: 0, draw: 0 } },
+    butsMoyens: { predits: null, reels: null },
+    recommandations: [],
+  };
+
+  if (error) {
+    console.warn('[DIAGNOSTIC] Lecture impossible :', error.message);
+    return vide;
+  }
+
+  const lignes = (verifiees ?? []) as any[];
+  const total = lignes.length;
+  if (!total) return vide;
+
+  const insuffisant = total < MINIMUM_DIAGNOSTIC;
+
+  // ── Réussite d'ensemble ──
+  const bonsVainqueurs = lignes.filter((l) => l.winner_correct).length;
+  const bonsScores = lignes.filter((l) => l.score_correct).length;
+  const reussiteVainqueur = pourcent(bonsVainqueurs, total);
+
+  const confiances = lignes
+    .map((l) => (typeof l.confidence === 'number' ? l.confidence : null))
+    .filter((c): c is number => c !== null);
+  const confianceMoyenne = confiances.length
+    ? Math.round((confiances.reduce((t, c) => t + c, 0) / confiances.length) * 10) / 10
+    : null;
+
+  // ── Calibration : l'assurance annoncée tient-elle ses promesses ? ──
+  // C'est le diagnostic le plus utile. Un modèle peut se tromper souvent sans
+  // que ce soit grave, tant qu'il annonce lui-même son incertitude. Ce qui nuit
+  // à un abonné qui parie, c'est une certitude affichée qui ne se vérifie pas.
+  const tranches: TrancheConfiance[] = TRANCHES.map((t) => {
+    const dedans = lignes.filter(
+      (l) => typeof l.confidence === 'number' && l.confidence >= t.min && l.confidence < t.max
+    );
+    if (!dedans.length) {
+      return { ...t, nombre: 0, reussite: null, confianceMoyenne: null, ecart: null };
+    }
+    const reussite = pourcent(dedans.filter((l) => l.winner_correct).length, dedans.length);
+    const moyenne =
+      Math.round((dedans.reduce((s, l) => s + l.confidence, 0) / dedans.length) * 10) / 10;
+    return {
+      ...t,
+      nombre: dedans.length,
+      reussite,
+      confianceMoyenne: moyenne,
+      ecart: Math.round((moyenne - reussite) * 10) / 10,
+    };
+  });
+
+  // ── Par compétition ──
+  const parCompetition = new Map<string, any[]>();
+  for (const l of lignes) {
+    const c = l.competition || 'Non précisée';
+    parCompetition.set(c, [...(parCompetition.get(c) ?? []), l]);
+  }
+  const competitions: PerformanceCompetition[] = [...parCompetition.entries()]
+    .map(([competition, items]) => ({
+      competition,
+      nombre: items.length,
+      reussite: pourcent(items.filter((l) => l.winner_correct).length, items.length),
+      scoresExacts: items.filter((l) => l.score_correct).length,
+    }))
+    .sort((a, b) => b.nombre - a.nombre);
+
+  // ── Répartition des issues ──
+  const predit: Record<Issue, number> = { team1: 0, team2: 0, draw: 0 };
+  const reel: Record<Issue, number> = { team1: 0, team2: 0, draw: 0 };
+  for (const l of lignes) {
+    if (l.predicted_winner in predit) predit[l.predicted_winner as Issue]++;
+    if (l.real_winner in reel) reel[l.real_winner as Issue]++;
+  }
+
+  // ── Typologie des échecs ──
+  const rates = lignes.filter((l) => !l.winner_correct);
+  const nulsRates = rates.filter((l) => l.real_winner === 'draw').length;
+  const inversions = rates.filter(
+    (l) => l.real_winner !== 'draw' && l.predicted_winner !== 'draw'
+  ).length;
+  const nulsPredits = rates.filter((l) => l.predicted_winner === 'draw').length;
+
+  const typesErreurs: TypeErreur[] = [
+    {
+      libelle: 'Le match a fini sur un nul',
+      nombre: nulsRates,
+      part: pourcent(nulsRates, rates.length || 1),
+      explication: "Un vainqueur était annoncé, les deux équipes se sont neutralisées.",
+    },
+    {
+      libelle: 'Vainqueur inversé',
+      nombre: inversions,
+      part: pourcent(inversions, rates.length || 1),
+      explication: "C'est l'autre équipe qui l'a emporté. L'erreur de lecture est complète.",
+    },
+    {
+      libelle: 'Un nul était annoncé',
+      nombre: nulsPredits,
+      part: pourcent(nulsPredits, rates.length || 1),
+      explication: 'Le match a été tranché alors que le partage était prévu.',
+    },
+  ].filter((t) => t.nombre > 0);
+
+  // ── Buts annoncés contre buts marqués ──
+  const butsPredits: number[] = [];
+  const butsReels: number[] = [];
+  for (const l of lignes) {
+    const p = lireButs(l.score);
+    const r = lireButs(l.real_score);
+    if (p) butsPredits.push(p[0] + p[1]);
+    if (r) butsReels.push(r[0] + r[1]);
+  }
+  const moyenne = (t: number[]) =>
+    t.length ? Math.round((t.reduce((s, v) => s + v, 0) / t.length) * 100) / 100 : null;
+
+  const surconfiance =
+    confianceMoyenne !== null ? Math.round((confianceMoyenne - reussiteVainqueur) * 10) / 10 : null;
+
+  const diagnostic: DiagnosticIA = {
+    verifiees: total,
+    enAttente: attente.count ?? 0,
+    echantillonInsuffisant: insuffisant,
+    reussiteVainqueur: insuffisant ? null : reussiteVainqueur,
+    reussiteScoreExact: insuffisant ? null : pourcent(bonsScores, total),
+    confianceMoyenne,
+    surconfiance: insuffisant ? null : surconfiance,
+    tranches,
+    competitions,
+    typesErreurs,
+    repartition: { predit, reel },
+    butsMoyens: { predits: moyenne(butsPredits), reels: moyenne(butsReels) },
+    recommandations: [],
+  };
+
+  diagnostic.recommandations = construireRecommandations(diagnostic, lignes.length);
+  return diagnostic;
+}
+
+/**
+ * Traduit les écarts constatés en corrections applicables.
+ *
+ * Chaque règle exige un écart net ET un nombre d'observations suffisant : une
+ * anomalie sur quatre matchs n'est pas un défaut, c'est du bruit. Corriger un
+ * défaut inexistant abîmerait le modèle au lieu de l'améliorer.
+ */
+function construireRecommandations(d: DiagnosticIA, echantillon: number): Recommandation[] {
+  const reco: Recommandation[] = [];
+  if (d.echantillonInsuffisant) return reco;
+
+  // 1. Surconfiance globale — le défaut qui nuit le plus à un parieur.
+  if (d.surconfiance !== null && d.surconfiance >= 10) {
+    reco.push({
+      gravite: d.surconfiance >= 20 ? 'critique' : 'important',
+      titre: "L'analyseur annonce plus de certitude qu'il n'en mérite",
+      constat: `Confiance moyenne annoncée : ${d.confianceMoyenne} %. Réussite réelle : ${d.reussiteVainqueur} %. Écart de ${d.surconfiance} points sur ${echantillon} matchs.`,
+      correction: `Dans les consignes de l'analyseur, imposer que l'indice de confiance reflète la réussite constatée : « Ta confiance doit correspondre à ta réussite réelle. Sur les cent derniers matchs, une confiance de ${d.confianceMoyenne} % a donné ${d.reussiteVainqueur} % de réussite : abaisse tes indices d'environ ${Math.round(d.surconfiance)} points. »`,
+    });
+  } else if (d.surconfiance !== null && d.surconfiance <= -10) {
+    reco.push({
+      gravite: 'mineur',
+      titre: "L'analyseur se sous-estime",
+      constat: `Il annonce ${d.confianceMoyenne} % de confiance et réussit ${d.reussiteVainqueur} %.`,
+      correction:
+        "L'analyseur est plus fiable qu'il ne le dit. Relever ses indices de confiance rendrait ses verdicts plus utiles pour un abonné qui parie.",
+    });
+  }
+
+  // 2. Tranches de confiance qui ne tiennent pas leur promesse.
+  const trancheFautive = d.tranches
+    .filter((t) => t.nombre >= 5 && t.ecart !== null && t.ecart >= 15)
+    .sort((a, b) => (b.ecart ?? 0) - (a.ecart ?? 0))[0];
+  if (trancheFautive) {
+    reco.push({
+      gravite: 'important',
+      titre: `Les pronostics annoncés à ${trancheFautive.libelle.toLowerCase()} ne tiennent pas`,
+      constat: `${trancheFautive.nombre} pronostics dans cette tranche : ${trancheFautive.confianceMoyenne} % annoncés, ${trancheFautive.reussite} % réussis.`,
+      correction:
+        "C'est la tranche la plus trompeuse pour un abonné : il y voit une quasi-certitude. Interdire à l'analyseur d'y recourir sans une raison chiffrée explicite dans son raisonnement.",
+    });
+  }
+
+  // 3. Le nul — angle mort classique des modèles de prédiction.
+  const nulsReels = d.repartition.reel.draw;
+  const nulsPredits = d.repartition.predit.draw;
+  if (nulsReels >= 3 && nulsPredits < nulsReels / 2) {
+    reco.push({
+      gravite: 'important',
+      titre: "L'analyseur ne prédit presque jamais le match nul",
+      constat: `${nulsReels} match${nulsReels > 1 ? 's se sont' : ' s\'est'} terminé${nulsReels > 1 ? 's' : ''} sur un nul, pour ${nulsPredits} annoncé${nulsPredits > 1 ? 's' : ''}.`,
+      correction:
+        "Ajouter dans les consignes : « Le nul est une issue à part entière. Quand deux équipes sont proches au classement et que ni la forme ni les absences ne les départagent, annonce le nul plutôt que de trancher artificiellement. »",
+    });
+  }
+
+  // 4. Biais vers l'équipe interrogée en premier.
+  const totalPredits = d.repartition.predit.team1 + d.repartition.predit.team2 + d.repartition.predit.draw;
+  const totalReels = d.repartition.reel.team1 + d.repartition.reel.team2 + d.repartition.reel.draw;
+  if (totalPredits >= 10 && totalReels > 0) {
+    const partPredite = pourcent(d.repartition.predit.team1, totalPredits);
+    const partReelle = pourcent(d.repartition.reel.team1, totalReels);
+    if (partPredite - partReelle >= 20) {
+      reco.push({
+        gravite: 'important',
+        titre: "L'analyseur favorise systématiquement la première équipe citée",
+        constat: `Victoire de la première équipe annoncée dans ${partPredite} % des cas, constatée dans ${partReelle} %.`,
+        correction:
+          "L'ordre de saisie ne devrait avoir aucune influence. Rappeler dans les consignes que la première équipe nommée n'est pas nécessairement celle qui reçoit, et que l'avantage du terrain doit être établi à partir des données, pas de l'ordre des noms.",
+      });
+    }
+  }
+
+  // 5. Compétitions où le modèle échoue.
+  for (const c of d.competitions) {
+    if (c.nombre >= 5 && c.reussite < 40) {
+      reco.push({
+        gravite: c.reussite < 25 ? 'critique' : 'important',
+        titre: `Résultats faibles sur ${c.competition}`,
+        constat: `${c.reussite} % de réussite sur ${c.nombre} matchs analysés.`,
+        correction: `Deux options : demander à l'analyseur davantage de prudence sur cette compétition — confiance plafonnée, verdict plus nuancé — ou vérifier que les données disponibles y sont complètes. Une compétition mal couverte produit des analyses mal fondées.`,
+      });
+    }
+  }
+
+  // 6. Inflation ou déflation des buts.
+  const { predits, reels } = d.butsMoyens;
+  if (predits !== null && reels !== null && echantillon >= 10) {
+    const ecart = Math.round((predits - reels) * 100) / 100;
+    if (Math.abs(ecart) >= 0.8) {
+      reco.push({
+        gravite: 'mineur',
+        titre: ecart > 0 ? "L'analyseur annonce trop de buts" : "L'analyseur annonce trop peu de buts",
+        constat: `${predits} buts annoncés en moyenne par match, ${reels} réellement marqués.`,
+        correction: `Écart de ${Math.abs(ecart)} but par match. Corriger le calibrage des scores annoncés, qui fausse les paris sur le nombre de buts autant que sur le score exact.`,
+      });
+    }
+  }
+
+  // 7. Score exact : rappeler ce qui est réellement atteignable.
+  if (d.reussiteScoreExact !== null && d.reussiteScoreExact < 8 && echantillon >= 20) {
+    reco.push({
+      gravite: 'mineur',
+      titre: 'Le score exact est rarement trouvé',
+      constat: `${d.reussiteScoreExact} % de scores exacts sur ${echantillon} matchs.`,
+      correction:
+        "C'est normal — personne ne prédit un score exact de façon fiable. Le présenter comme une estimation plutôt que comme une prédiction éviterait de décevoir un abonné qui le prendrait au pied de la lettre.",
+    });
+  }
+
+  const ordre = { critique: 0, important: 1, mineur: 2 };
+  return reco.sort((a, b) => ordre[a.gravite] - ordre[b.gravite]);
+}
