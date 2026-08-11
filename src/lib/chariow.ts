@@ -59,6 +59,19 @@ const FALLBACK_NUMBERS: Record<string, string> = {
 };
 const DEFAULT_COUNTRY = 'CI';
 
+/**
+ * Couple (pays, numéro) de tout dernier recours.
+ *
+ * Il est volontairement DIFFÉRENT du pays par défaut : c'est le seul intérêt
+ * d'une troisième tentative. Renvoyer le même numéro que celui qui vient d'être
+ * refusé ne fait que perdre une requête et laisser la vente échouer.
+ *
+ * Ce couple-là est retenu parce qu'il est le seul qu'on ait vu accepté en
+ * production : c'est lui qui figurait dans les liens de paiement réellement
+ * délivrés par Chariow.
+ */
+const PHONE_DERNIER_RECOURS = { number: '620000000', country_code: 'GN' };
+
 function fallbackPhone(country?: string) {
   const cc = (country || '').toUpperCase();
   if (cc && FALLBACK_NUMBERS[cc]) {
@@ -221,10 +234,16 @@ export async function initCheckout(params: {
   // l'acheteur corrige de toute façon ses coordonnées sur la page de paiement.
   const phoneDigits = params.phoneNumber?.replace(/\D/g, '');
   const neutralPhone = fallbackPhone(params.paysAcheteur);
-  body.phone =
+  const phoneDuCompte =
     phoneDigits && phoneDigits.length >= 6
       ? { number: phoneDigits, country_code: neutralPhone.country_code }
-      : neutralPhone;
+      : null;
+  body.phone = phoneDuCompte ?? neutralPhone;
+
+  // Ce qui a FINALEMENT été accepté, et non ce qu'on a tenté en premier. Sans
+  // cette distinction, un numéro refusé par Chariow se retrouvait quand même
+  // pré-rempli dans le formulaire de l'acheteur.
+  let telephoneRetenu = phoneDuCompte?.number;
 
   const post = async (payload: Record<string, unknown>) => {
     const res = await fetch(`${CHARIOW_API_URL}/checkout`, {
@@ -246,9 +265,14 @@ export async function initCheckout(params: {
   if (!res.ok && JSON.stringify(data?.errors ?? data?.message ?? '').toLowerCase().includes('phone')) {
     console.warn('Chariow a refusé le téléphone, nouvelle tentative avec le numéro de repli.');
     ({ res, json: data } = await post({ ...body, phone: neutralPhone }));
-    // Dernier recours : le pays lui-même n'est pas exploitable.
-    if (!res.ok) {
-      ({ res, json: data } = await post({ ...body, phone: fallbackPhone(DEFAULT_COUNTRY) }));
+    telephoneRetenu = undefined;
+
+    // Dernier recours : le plan de numérotation du pays lui-même n'est pas
+    // exploitable. On ne relance que si le couple diffère vraiment de celui qui
+    // vient d'être refusé — sinon la tentative est perdue d'avance.
+    if (!res.ok && neutralPhone.country_code !== PHONE_DERNIER_RECOURS.country_code) {
+      console.warn('Nouvel échec, tentative avec le couple de dernier recours.');
+      ({ res, json: data } = await post({ ...body, phone: PHONE_DERNIER_RECOURS }));
     }
   }
 
@@ -273,11 +297,7 @@ export async function initCheckout(params: {
   return {
     step: payload?.step ?? 'payment',
     checkoutUrl: checkoutUrl
-      ? ajusterLienPaiement(
-          checkoutUrl,
-          params.paysAcheteur,
-          phoneDigits && phoneDigits.length >= 6 ? phoneDigits : undefined
-        )
+      ? ajusterLienPaiement(checkoutUrl, params.paysAcheteur, telephoneRetenu)
       : undefined,
     saleId: payload?.purchase?.id ?? payload?.id ?? payload?.sale?.id,
   };
