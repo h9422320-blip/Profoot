@@ -21,7 +21,7 @@ const OFFRES = [
     cle: 'essential_monthly' as PlanKey,
     tier: 'ESSENTIAL' as PlanTier,
     nom: 'Essentiel',
-    prix: '9.000',
+    prix: '3.000',
     periode: 'FCFA / mois',
     accroche: "Pour découvrir l'analyse IA à votre rythme.",
     icone: Zap,
@@ -49,7 +49,7 @@ const OFFRES = [
     cle: 'pro_monthly' as PlanKey,
     tier: 'PRO' as PlanTier,
     nom: 'Pro',
-    prix: '15.000',
+    prix: '5.000',
     periode: 'FCFA / mois',
     accroche: 'Le meilleur équilibre pour analyser sérieusement.',
     icone: Flame,
@@ -77,12 +77,14 @@ const OFFRES = [
     cle: 'vip_yearly' as PlanKey,
     tier: 'VIP' as PlanTier,
     nom: 'VIP Annuel',
-    prix: '60.000',
+    prix: '30.000',
     periode: 'FCFA / an',
     mention: 'Paiement annuel',
-    // 15 000 × 12 = 180 000 FCFA en Pro sur un an, contre 60 000 en VIP.
-    // Chiffre calculé à partir des prix réels affichés, pas une estimation.
-    economie: 'Économisez 120 000 FCFA par an',
+    // 5 000 × 12 = 60 000 FCFA en Pro sur un an, contre 30 000 en VIP.
+    // Chiffre calculé à partir des prix réels affichés, pas une estimation :
+    // si les tarifs changent, cette ligne doit être recalculée, pas ajustée
+    // au jugé. Une économie annoncée qui ne se vérifie pas est un mensonge.
+    economie: 'Économisez 30 000 FCFA par an, soit 6 mois offerts',
     accroche: "L'offre la plus complète, sans aucune limite.",
     icone: Crown,
     cta: 'Devenir VIP',

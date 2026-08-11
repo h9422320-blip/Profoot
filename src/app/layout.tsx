@@ -118,8 +118,12 @@ export default function RootLayout({
                   url: SITE_URL,
                   description: DESCRIPTION,
                   offers: [
-                    { "@type": "Offer", name: "Abonnement Mensuel", price: "15000", priceCurrency: "XOF" },
-                    { "@type": "Offer", name: "Abonnement Annuel", price: "60000", priceCurrency: "XOF" },
+                    // Ces montants sont ceux que Google affiche dans ses
+                    // résultats : ils doivent suivre les tarifs réels, sinon le
+                    // visiteur arrive sur un prix différent de celui annoncé.
+                    { "@type": "Offer", name: "Essentiel", price: "3000", priceCurrency: "XOF" },
+                    { "@type": "Offer", name: "Pro", price: "5000", priceCurrency: "XOF" },
+                    { "@type": "Offer", name: "VIP Annuel", price: "30000", priceCurrency: "XOF" },
                   ],
                 },
               ],

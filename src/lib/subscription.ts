@@ -28,16 +28,19 @@ export interface Entitlements {
 // checkout ET la validation des webhooks. Ne jamais dupliquer ces montants ailleurs.
 export const PLANS = {
   essential_monthly: {
-    amountXof: 9000, durationDays: 30, tier: 'ESSENTIAL' as PlanTier,
+    amountXof: 3000, durationDays: 30, tier: 'ESSENTIAL' as PlanTier,
     vip: false, analysisLimit: 10, label: 'Essentiel',
+    montantsPrecedents: [9000],
   },
   pro_monthly: {
-    amountXof: 15000, durationDays: 30, tier: 'PRO' as PlanTier,
+    amountXof: 5000, durationDays: 30, tier: 'PRO' as PlanTier,
     vip: false, analysisLimit: 20, label: 'Pro',
+    montantsPrecedents: [15000],
   },
   vip_yearly: {
-    amountXof: 60000, durationDays: 365, tier: 'VIP' as PlanTier,
+    amountXof: 30000, durationDays: 365, tier: 'VIP' as PlanTier,
     vip: true, analysisLimit: UNLIMITED, label: 'VIP Annuel',
+    montantsPrecedents: [60000],
   },
 } as const;
 
@@ -61,11 +64,28 @@ export function normalizePlan(stored: string | null | undefined): PlanKey | null
   return LEGACY_PLANS[stored] ?? null;
 }
 
+/**
+ * Retrouve l'offre à partir du montant payé, en FCFA.
+ *
+ * Les montants précédents restent acceptés, et ce n'est pas un détail : une
+ * page de paiement ouverte avant une baisse de prix est réglée au tarif de
+ * l'époque. Sans cette tolérance, le contrôle croisé du webhook rejetterait la
+ * vente — le client serait débité sans recevoir son abonnement. C'est arrivé
+ * pour dix ventes restées en attente pendant le passage aux nouveaux tarifs.
+ *
+ * Le montant courant est cherché en premier : si un ancien prix venait un jour
+ * à coïncider avec le prix actuel d'une autre offre, c'est l'offre réellement
+ * en vente qui l'emporte.
+ */
 export function planFromAmount(amountXof: number): PlanKey | null {
-  const found = (Object.keys(PLANS) as PlanKey[]).find(
-    (k) => PLANS[k].amountXof === amountXof
+  const cles = Object.keys(PLANS) as PlanKey[];
+  const courant = cles.find((k) => PLANS[k].amountXof === amountXof);
+  if (courant) return courant;
+
+  const precedent = cles.find((k) =>
+    (PLANS[k].montantsPrecedents as readonly number[]).includes(amountXof)
   );
-  return found ?? null;
+  return precedent ?? null;
 }
 
 // Comptes avec droits permanents (fondateur/équipe). Les admins ont tous les accès.
