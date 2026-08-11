@@ -109,6 +109,7 @@ const PERMANENT_VIP_EMAILS = [
   'chrisbillalbabou@icloud.com',
   'traoreismaela753@gmail.com',
   'kbeken099@gmail.com',
+  'alphakba8@gmail.com', // Alpha
 ];
 
 /**
