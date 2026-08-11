@@ -212,6 +212,8 @@ export async function initCheckout(params: {
   phoneNumber?: string;
   /** Pays réel de l'acheteur, relevé quand son navigateur appelle notre route. */
   paysAcheteur: string;
+  /** IP réelle de l'acheteur. Sans elle, Chariow retient celle de notre serveur. */
+  ipAcheteur?: string;
   redirectUrl: string;
 }): Promise<ChariowCheckoutSession> {
   const body: Record<string, unknown> = {
@@ -220,6 +222,10 @@ export async function initCheckout(params: {
     first_name: params.firstName.slice(0, 50),
     last_name: params.lastName.slice(0, 50),
     redirect_url: params.redirectUrl,
+    // Sans ce champ, Chariow géolocalise l'appelant — notre serveur Vercel — et
+    // enregistre « États-Unis » dans le contexte de chaque vente, même pour un
+    // acheteur à Conakry. C'est ce que montrait le tableau des ventes.
+    ...(params.ipAcheteur ? { customer_ip: params.ipAcheteur } : {}),
     // Reliera le paiement à l'utilisateur dans le webhook successful.sale.
     custom_metadata: {
       user_id: params.userId,

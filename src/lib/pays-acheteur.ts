@@ -98,6 +98,40 @@ export function detecterPaysAcheteur(entetes: Headers, fuseauClient?: unknown): 
   return { code: PAYS_PAR_DEFAUT, source: 'defaut' };
 }
 
+/** Plages réservées : une IP interne ne dit rien du pays de l'acheteur. */
+const IP_PRIVEE =
+  /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|[fF][cCdD])/;
+
+const IPV4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+const IPV6 = /^[0-9a-fA-F:]+$/;
+
+/**
+ * Adresse IP réelle de l'acheteur, à transmettre au prestataire de paiement.
+ *
+ * Sans elle, Chariow retient l'adresse de l'appelant — notre serveur Vercel — et
+ * enregistre « États-Unis » dans le contexte de chaque vente, quel que soit le
+ * pays réel du client. Le champ `customer_ip` de leur API existe exactement pour
+ * ça : il détermine les moyens de paiement et l'attribution analytique.
+ *
+ * L'en-tête peut contenir une chaîne de relais séparés par des virgules ; la
+ * première adresse est celle du client.
+ */
+export function ipAcheteur(entetes: Headers): string | undefined {
+  const brut =
+    entetes.get('x-forwarded-for') ||
+    entetes.get('x-real-ip') ||
+    entetes.get('x-vercel-forwarded-for') ||
+    '';
+
+  const premiere = brut.split(',')[0]?.trim().replace(/^\[|\]$/g, '');
+  if (!premiere) return undefined;
+  if (!IPV4.test(premiere) && !IPV6.test(premiere)) return undefined;
+  // Une adresse privée passerait la validation de format sans rien apprendre à
+  // personne : mieux vaut ne rien envoyer que d'envoyer « 127.0.0.1 ».
+  if (IP_PRIVEE.test(premiere)) return undefined;
+  return premiere;
+}
+
 /**
  * Fuseau horaire du navigateur, joint à la demande de paiement en secours.
  * Ne sert que si l'en-tête de géolocalisation manque.
