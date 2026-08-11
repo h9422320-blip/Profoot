@@ -1,10 +1,11 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
+import { getOrigineAcheteurs } from "@/lib/origine-acheteurs";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { Vide, dateHeure, montant } from "../_components/Ui";
 import { Panneau } from "../_components/Panneaux";
 import { Indicateur } from "../_components/Indicateur";
-import { EnTete } from "../_components/EnTete";
-import { AlertTriangle, Info, Receipt } from "lucide-react";
+import { EnTete, Rapport } from "../_components/EnTete";
+import { AlertTriangle, Globe, Info, Receipt } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function AdminLogs({
 }) {
   const params = await searchParams;
   const periode = resoudrePeriode(params);
-  const m = await getAdminMetrics(periode);
+  const [m, origine] = await Promise.all([getAdminMetrics(periode), getOrigineAcheteurs()]);
 
   const parEvenement = new Map<string, number>();
   for (const p of m.paiements) parEvenement.set(p.evenement, (parEvenement.get(p.evenement) ?? 0) + 1);
@@ -91,6 +92,115 @@ export default async function AdminLogs({
           </div>
         </div>
       )}
+
+      {/* Une détection de pays qui échoue ne se voit nulle part ailleurs : elle
+          ne provoque aucune erreur, elle envoie simplement l'acheteur sur les
+          mauvais moyens de paiement. C'est exactement ce qui s'est produit, et
+          il a fallu lire un tableau de ventes à la main pour s'en apercevoir. */}
+      {origine.enEchec > 0 && (
+        <div className="flex items-start gap-3 p-4 rounded-[18px] bg-rose-500/10 border border-rose-500/30">
+          <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-black text-rose-300">
+              {origine.enEchec} paiement{origine.enEchec > 1 ? "s" : ""} sans pays détecté
+            </p>
+            <p className="text-xs text-white/60 mt-1 leading-relaxed">
+              Aucun indice n&apos;a permis de situer ces acheteurs : ils ont reçu la page de paiement du pays par
+              défaut, donc peut-être les mauvais moyens de paiement. Si ce nombre monte, l&apos;en-tête de
+              géolocalisation n&apos;arrive plus jusqu&apos;au serveur.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <Panneau
+        titre="D'où viennent vos acheteurs"
+        sousTitre="Relevé par l'application au moment du clic, indépendamment de la boutique"
+        icone={<Globe className="w-4 h-4" />}
+        teinte="cyan"
+      >
+        {origine.total === 0 ? (
+          <Vide
+            message={
+              origine.sansOrigine > 0
+                ? `${origine.sansOrigine} intention${origine.sansOrigine > 1 ? "s" : ""} enregistrée${origine.sansOrigine > 1 ? "s" : ""} avant la collecte de l'origine. Les prochaines seront situées.`
+                : "Aucune intention de paiement enregistrée pour l'instant."
+            }
+          />
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {origine.pays.map((p) => (
+                <Rapport
+                  key={p.code}
+                  libelle={`${p.drapeau} ${p.nom}`}
+                  valeur={`${p.nombre} / ${origine.total}`}
+                  pourcentage={p.part}
+                  teinte="#22d3ee"
+                  detail={`${p.part} % des demandes de paiement`}
+                />
+              ))}
+            </div>
+
+            <div className="text-[11px] text-white/35 leading-relaxed">
+              {origine.total} demande{origine.total > 1 ? "s" : ""} située{origine.total > 1 ? "s" : ""} par adresse IP
+              {origine.approchees > 0 && (
+                <>
+                  {" "}— dont {origine.approchees} obtenue{origine.approchees > 1 ? "s" : ""} par le fuseau horaire,
+                  donc approximative{origine.approchees > 1 ? "s" : ""}
+                </>
+              )}
+              {origine.sansOrigine > 0 && (
+                <>
+                  . {origine.sansOrigine} demande{origine.sansOrigine > 1 ? "s" : ""} plus ancienne
+                  {origine.sansOrigine > 1 ? "s" : ""} n&apos;{origine.sansOrigine > 1 ? "ont" : "a"} pas d&apos;origine :
+                  elle{origine.sansOrigine > 1 ? "s" : ""} date{origine.sansOrigine > 1 ? "nt" : ""} d&apos;avant la
+                  collecte, et rien n&apos;est inventé rétroactivement
+                </>
+              )}
+              .
+            </div>
+
+            <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+              {origine.recentes.map((r) => (
+                <div
+                  key={r.saleId}
+                  className="flex flex-wrap items-center gap-3 px-3.5 py-2.5 rounded-[14px] bg-[#1d2f3a] border border-[#2e4757]"
+                >
+                  <span className="text-base leading-none" title={r.paysNom}>
+                    {r.drapeau}
+                  </span>
+                  <span className="text-xs font-bold text-white/70 min-w-[110px]">{r.paysNom}</span>
+                  <span className="text-sm text-white/60 flex-1 min-w-[170px] truncate">
+                    {r.email ?? "(adresse non transmise)"}
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white/40 bg-[#16242e] border border-[#2e4757] rounded-full px-2 py-0.5">
+                    {r.plan}
+                  </span>
+                  <span
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                      r.honoree
+                        ? "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/25"
+                        : "text-amber-400 bg-amber-500/10 border-amber-500/25"
+                    }`}
+                  >
+                    {r.honoree ? "abonné" : "en attente"}
+                  </span>
+                  {r.source && r.source !== "ip" && (
+                    <span
+                      className="text-[10px] font-bold text-amber-400/80"
+                      title="Pays approché : l'adresse IP n'était pas disponible"
+                    >
+                      {r.source}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-white/30 whitespace-nowrap">{dateHeure(r.creeeLe)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Panneau>
 
       {parEvenement.size > 0 && (
         <div className="flex flex-wrap gap-2">

@@ -75,18 +75,33 @@ export async function POST(req: Request) {
     // trace, une vente payée revient sans aucun moyen de savoir à quel compte
     // l'attribuer, et le client se retrouve débité sans abonnement.
     if (session.saleId) {
-      const { error } = await createAdminClient()
+      // Le rattachement est vital ; l'origine géographique est un confort. Les
+      // deux ne doivent donc pas partager le même sort : tant que la migration
+      // qui ajoute les colonnes d'origine n'est pas appliquée, l'écriture
+      // complète échoue, et sans ce repli le client paierait sans rien recevoir.
+      const admin = createAdminClient();
+      const essentiel = {
+        sale_id: session.saleId,
+        user_id: user.id,
+        plan,
+        email: user.email,
+        amount: PLANS[plan].amountXof,
+      };
+      // Notre propre trace de l'origine de l'acheteur. Elle ne dépend d'aucun
+      // service tiers : si le prestataire change sa façon d'afficher les pays,
+      // celle-ci reste juste.
+      const origine = { pays: pays.code, pays_source: pays.source, ip_acheteur: ip ?? null };
+
+      let { error } = await admin
         .from('payment_intents')
-        .upsert(
-          {
-            sale_id: session.saleId,
-            user_id: user.id,
-            plan,
-            email: user.email,
-            amount: PLANS[plan].amountXof,
-          },
-          { onConflict: 'sale_id' }
+        .upsert({ ...essentiel, ...origine }, { onConflict: 'sale_id' });
+
+      if (error) {
+        console.warn(
+          `Origine de l'acheteur non enregistrée (${error.message}) — nouvelle tentative sans elle.`
         );
+        ({ error } = await admin.from('payment_intents').upsert(essentiel, { onConflict: 'sale_id' }));
+      }
       if (error) {
         // On n'interrompt pas l'achat : la réconciliation par e-mail reste
         // possible. Mais la trace doit être visible dans les journaux.
