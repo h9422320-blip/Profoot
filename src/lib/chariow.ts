@@ -57,7 +57,7 @@ const FALLBACK_NUMBERS: Record<string, string> = {
   CA: '4389995555',   // Canada
   HT: '34123456',     // Haïti
 };
-const DEFAULT_COUNTRY = 'GN';
+const DEFAULT_COUNTRY = 'CI';
 
 function fallbackPhone(country?: string) {
   const cc = (country || '').toUpperCase();
@@ -65,6 +65,40 @@ function fallbackPhone(country?: string) {
     return { number: FALLBACK_NUMBERS[cc], country_code: cc };
   }
   return { number: FALLBACK_NUMBERS[DEFAULT_COUNTRY], country_code: DEFAULT_COUNTRY };
+}
+
+/**
+ * Corrige le lien de paiement avant de l'envoyer au navigateur de l'acheteur.
+ *
+ * Chariow construit ce lien depuis l'adresse IP qui appelle son API — la nôtre,
+ * chez Vercel, aux États-Unis. Il y colle donc `country=US`, et ce paramètre
+ * commande toute la page : un acheteur ivoirien se voyait proposer Apple Pay et
+ * Cash App au lieu de Wave, Djamo, Orange Money et MTN. Vérifié en ouvrant une
+ * vraie session de paiement : le même lien avec `country=CI` affiche les bons
+ * moyens de paiement.
+ *
+ * Le numéro pré-rempli pose le même problème en plus discret : c'est notre
+ * numéro de remplissage, pas celui de l'acheteur. On ne le laisse dans le lien
+ * que si l'on connaît le vrai numéro du compte ; sinon on vide le champ pour
+ * que l'acheteur saisisse le sien.
+ */
+export function ajusterLienPaiement(
+  url: string,
+  paysAcheteur: string,
+  telephoneReel?: string
+): string {
+  try {
+    const lien = new URL(url);
+    lien.searchParams.set('country', paysAcheteur.toUpperCase());
+    if (telephoneReel) lien.searchParams.set('phone', telephoneReel);
+    else lien.searchParams.delete('phone');
+    return lien.toString();
+  } catch {
+    // Un lien que l'on ne sait pas analyser est renvoyé tel quel : mieux vaut
+    // une page de paiement mal localisée qu'aucune page de paiement.
+    console.warn('Lien de paiement Chariow inexploitable, renvoyé sans correction.');
+    return url;
+  }
 }
 
 function apiKey(): string {
@@ -163,7 +197,8 @@ export async function initCheckout(params: {
   firstName: string;
   lastName: string;
   phoneNumber?: string;
-  phoneCountryCode?: string;
+  /** Pays réel de l'acheteur, relevé quand son navigateur appelle notre route. */
+  paysAcheteur: string;
   redirectUrl: string;
 }): Promise<ChariowCheckoutSession> {
   const body: Record<string, unknown> = {
@@ -185,7 +220,7 @@ export async function initCheckout(params: {
   // (pays, numéro) cohérent et non un pays deviné depuis l'adresse IP —
   // l'acheteur corrige de toute façon ses coordonnées sur la page de paiement.
   const phoneDigits = params.phoneNumber?.replace(/\D/g, '');
-  const neutralPhone = fallbackPhone(params.phoneCountryCode);
+  const neutralPhone = fallbackPhone(params.paysAcheteur);
   body.phone =
     phoneDigits && phoneDigits.length >= 6
       ? { number: phoneDigits, country_code: neutralPhone.country_code }
@@ -237,7 +272,13 @@ export async function initCheckout(params: {
 
   return {
     step: payload?.step ?? 'payment',
-    checkoutUrl,
+    checkoutUrl: checkoutUrl
+      ? ajusterLienPaiement(
+          checkoutUrl,
+          params.paysAcheteur,
+          phoneDigits && phoneDigits.length >= 6 ? phoneDigits : undefined
+        )
+      : undefined,
     saleId: payload?.purchase?.id ?? payload?.id ?? payload?.sale?.id,
   };
 }

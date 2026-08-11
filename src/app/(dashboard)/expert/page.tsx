@@ -5,6 +5,7 @@ import { Shield, Send, Loader, Sparkles, Lock, ArrowRight, Zap, Loader2 } from "
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
 
 interface Message {
   id: string;
@@ -174,7 +175,7 @@ export default function ExpertAgentPage() {
       const res = await fetch('/api/payments/chariow/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: 'yearly' })
+        body: JSON.stringify({ plan: 'yearly', fuseau: fuseauDuNavigateur() })
       });
       
       const data = await res.json();

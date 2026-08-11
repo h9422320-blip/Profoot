@@ -3,6 +3,7 @@
 import { Check, Zap, Brain, TrendingUp, Shield, Star, Loader2, Crown, X, Flame, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
 
 type PlanTier = 'FREE' | 'ESSENTIAL' | 'PRO' | 'VIP';
 type PlanKey = 'essential_monthly' | 'pro_monthly' | 'vip_yearly';
@@ -132,7 +133,10 @@ export default function PricingPage() {
       const res = await fetch('/api/payments/chariow/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: selectedPlan })
+        // Le fuseau ne sert qu'en secours, si l'hébergeur ne transmet pas le
+        // pays de l'acheteur : sans lui, le paiement retomberait sur un pays
+        // par défaut et les moyens de paiement locaux disparaîtraient.
+        body: JSON.stringify({ plan: selectedPlan, fuseau: fuseauDuNavigateur() })
       });
 
       // Session expirée : reconnexion plutôt qu'un message d'erreur trompeur.

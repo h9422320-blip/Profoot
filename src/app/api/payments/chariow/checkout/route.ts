@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser, PLANS, PlanKey, normalizePlan } from '@/lib/subscription';
 import { initCheckout } from '@/lib/chariow';
+import { detecterPaysAcheteur } from '@/lib/pays-acheteur';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 export async function POST(req: Request) {
@@ -30,6 +31,11 @@ export async function POST(req: Request) {
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';
 
+    // Le pays se relève ICI, et nulle part ailleurs : c'est le seul moment où
+    // l'adresse IP en présence est celle de l'acheteur. Passé cette ligne, tout
+    // se joue entre notre serveur et Chariow, qui ne voit plus que Vercel.
+    const pays = detecterPaysAcheteur(req.headers, body?.fuseau);
+
     const session = await initCheckout({
       plan,
       userId: user.id,
@@ -37,9 +43,15 @@ export async function POST(req: Request) {
       firstName: user.user_metadata?.first_name || 'Utilisateur',
       lastName: user.user_metadata?.last_name || 'ProFoot',
       phoneNumber: user.phone || user.user_metadata?.phone || undefined,
-      phoneCountryCode: req.headers.get('x-vercel-ip-country') || 'GN',
+      paysAcheteur: pays.code,
       redirectUrl: `${baseUrl}/payment-success?plan=${plan}`,
     });
+
+    // Trace volontaire : une mauvaise détection ne se voit pas dans l'interface,
+    // elle se voit dans le taux d'abandon, des semaines plus tard. Une source
+    // « defaut » qui revient souvent signale que l'en-tête de géolocalisation
+    // n'arrive pas jusqu'ici.
+    console.log(`[PAIEMENT] Offre ${plan} — pays ${pays.code} (source : ${pays.source}).`);
 
     if (session.step === 'already_purchased') {
       return NextResponse.json(
