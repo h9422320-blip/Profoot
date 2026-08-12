@@ -67,11 +67,28 @@ const BUTS_ATTENDUS_MAX = 4;
 const BUTS_MAX = 8;
 
 /**
- * Confiance affichable. Une analyse à 100 % n'existe pas au football, et une
- * analyse à 8 % ne devrait jamais être servie : les deux ont été observées.
+ * Confiance affichable.
+ *
+ * ELLE NE VAUT PAS LA PROBABILITÉ DE VICTOIRE, et c'est tout le sujet.
+ *
+ * En prenant la probabilité de l'issue comme confiance, un match serré tombait
+ * à 45 % — alors que ce match-là peut être parfaitement analysé : données
+ * complètes des deux côtés, simplement deux équipes de même niveau. On
+ * affichait donc « faible confiance » là où il fallait lire « match indécis ».
+ * Résultat, une page couverte de 45 %.
+ *
+ * La confiance répond à une autre question : à quel point l'analyse est-elle
+ * solide ? Elle repose sur deux choses mesurables — la quantité de données
+ * disponibles, et la netteté de l'écart entre les issues.
+ *
+ * Le plafond n'est jamais atteint : au football, la certitude n'existe pas
+ * avant le coup de sifflet final.
  */
-const CONFIANCE_MIN = 45;
-const CONFIANCE_MAX = 90;
+const CONFIANCE_MIN = 55;
+const CONFIANCE_MAX = 92;
+
+/** Au-delà, une saison de plus n'apprend plus grand-chose sur une équipe. */
+const MATCHS_POUR_ETRE_SUR = 20;
 
 /** Moyenne de buts par équipe et par match, quand les données manquent. */
 const MOYENNE_PAR_DEFAUT = 1.35;
@@ -190,12 +207,32 @@ export function calculerScoreProbable(
     else pn += ecart;
   }
 
-  // La confiance reflète la probabilité de l'issue annoncée, pas une impression.
-  // Elle est bornée : au football, ni la certitude ni le hasard pur n'existent.
-  const probaIssue = Math.max(victoire1, nul, victoire2);
-  const confiance = donneesInsuffisantes
-    ? CONFIANCE_MIN
-    : Math.round(borner(probaIssue * 100, CONFIANCE_MIN, CONFIANCE_MAX));
+  // ── CONFIANCE ──────────────────────────────────────────────────────────────
+  //
+  // Deux ingrédients, tous deux mesurables :
+  //
+  //  1. La MATIÈRE : combien de matchs ont servi au calcul. Deux équipes suivies
+  //     sur une saison entière donnent une analyse plus sûre que deux clubs vus
+  //     cinq fois. C'est l'équipe la moins bien connue qui fixe la limite.
+  //
+  //  2. La NETTETÉ : de combien l'issue annoncée devance la suivante. Un écart
+  //     franc se défend ; deux issues au coude-à-coude, beaucoup moins.
+  //
+  // Un match serré entre deux équipes parfaitement connues garde donc une
+  // confiance honorable — l'analyse est solide, c'est le match qui est indécis.
+  // Les deux se lisaient auparavant sur le même chiffre, et tout finissait à
+  // 45 %.
+  const issues = [victoire1, nul, victoire2].sort((a, b) => b - a);
+  const nettete = Math.min(1, (issues[0] - issues[1]) / 0.35);
+  const matiere = Math.min(1, Math.min(joues1, joues2) / MATCHS_POUR_ETRE_SUR);
+
+  const confiance = Math.round(
+    borner(
+      CONFIANCE_MIN + (CONFIANCE_MAX - CONFIANCE_MIN) * (0.45 * matiere + 0.55 * nettete),
+      CONFIANCE_MIN,
+      CONFIANCE_MAX
+    )
+  );
 
   return {
     buts1: meilleur.buts1,

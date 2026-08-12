@@ -841,12 +841,13 @@ export async function POST(req: Request) {
       donnees.winProb = projection.probaVictoire1;
       donnees.drawProb = projection.probaNul;
       donnees.loseProb = projection.probaVictoire2;
-      // La confiance n'est pas bornée à 90 % ici, contrairement à un pronostic
-      // d'avant-match : à la 90ᵉ minute sur un score de 2-1, l'issue n'est plus
-      // une opinion, c'est presque un fait. Plafonner reviendrait à sous-estimer
-      // ce que le tableau d'affichage montre déjà.
-      donnees.confidence = Math.round(
-        Math.max(projection.probaVictoire1, projection.probaNul, projection.probaVictoire2)
+      // En cours de match, la confiance suit ce que dit le tableau d'affichage :
+      // mener 2-1 a la 90e est un fait, pas une opinion. Elle reste toutefois
+      // plafonnee a 95 % — un match n'est jamais joue avant le coup de sifflet
+      // final, et afficher 100 % serait une promesse que personne ne peut tenir.
+      donnees.confidence = Math.min(
+        95,
+        Math.round(Math.max(projection.probaVictoire1, projection.probaNul, projection.probaVictoire2))
       );
       // Le résumé d'avant-match dirait encore le contraire du tableau
       // d'affichage : la projection le remplace.
