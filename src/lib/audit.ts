@@ -33,8 +33,21 @@ export interface ResultatAudit {
   points: PointAudit[];
 }
 
-/** Fenêtre glissante d'observation des analyses. */
-const FENETRE_HEURES = 48;
+/**
+ * Fenêtre d'observation des analyses.
+ *
+ * Elle est volontairement courte. Sur 48 heures, un défaut corrigé continue de
+ * peser : le score 2-1, éteint à 21 h, restait signalé à 85 % parce que la
+ * fenêtre contenait encore les 143 analyses fautives de la journée. Un signal
+ * qui se déclenche à tort finit ignoré, et l'audit ne sert plus à rien.
+ *
+ * Six heures décrivent ce que l'application produit MAINTENANT. En dessous du
+ * minimum, on préfère dire qu'on ne peut pas juger plutôt que de juger sur des
+ * données périmées.
+ */
+const FENETRE_HEURES = 6;
+const MINIMUM_POUR_JUGER = 15;
+const ANALYSES_EXAMINEES = 40;
 
 const CHARIOW = 'https://api.chariow.com/v1';
 const FOOT = 'https://v3.football.api-sports.io';
@@ -145,12 +158,13 @@ export async function executerAudit(): Promise<ResultatAudit> {
     const { data } = await sb
       .from('analysis_history')
       .select('score, confidence, is_finished, created_at')
+      .eq('is_finished', false)
       .gte('created_at', depuis)
       .order('created_at', { ascending: false })
-      .limit(500);
+      .limit(ANALYSES_EXAMINEES);
 
-    const predictions = (data ?? []).filter((a: any) => !a.is_finished);
-    if (predictions.length < 15) {
+    const predictions = data ?? [];
+    if (predictions.length < MINIMUM_POUR_JUGER) {
       noter('Analyses', 'ok', `${predictions.length} prédiction(s) sur ${FENETRE_HEURES} h — trop peu pour juger`);
     } else {
       const parScore = new Map<string, number>();

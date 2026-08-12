@@ -169,30 +169,40 @@ async function verifierBase() {
 
 // ── 4. Ce que l'analyseur produit réellement ─────────────────────────────────
 
-/** Fenêtre d'observation des analyses, en heures. */
-const FENETRE_HEURES = 48;
+/**
+ * Nombre de prédictions récentes examinées.
+ *
+ * On raisonne sur un NOMBRE d'analyses et non sur une durée. Une fenêtre en
+ * heures traîne l'historique : le score 2-1, éteint depuis 21 h, restait signalé
+ * à 85 % parce que la fenêtre de 48 heures contenait encore les 143 analyses
+ * fautives de la veille. Un signal qui se déclenche à tort finit ignoré.
+ *
+ * En prenant les dernières analyses, le contrôle décrit ce que l'application
+ * produit MAINTENANT, quel que soit le trafic.
+ */
+const ANALYSES_EXAMINEES = 40;
+const MINIMUM_POUR_JUGER = 15;
+/** Au-dela, une analyse ne dit plus ce que l application produit aujourd hui. */
+const AGE_MAX_HEURES = 6;
 
 async function verifierAnalyses() {
-  titre(`4. QUALITÉ DES ANALYSES (${FENETRE_HEURES} dernières heures)`);
+  titre(`4. QUALITÉ DES ANALYSES (${ANALYSES_EXAMINEES} dernières prédictions)`);
 
-  // La fenêtre est glissante à dessein. Sur l'historique complet, un défaut
-  // corrigé continue de peser des semaines : le score 2-1 servi à 82 % des
-  // analyses resterait signalé longtemps après sa disparition, et l'alerte
-  // finirait ignorée. Ce qui compte est ce que l'application produit MAINTENANT.
-  const depuis = new Date(Date.now() - FENETRE_HEURES * 3600 * 1000).toISOString();
   const { data, error } = await sb
     .from('analysis_history')
     .select('score, confidence, win_prob, is_finished, created_at')
-    .gte('created_at', depuis)
+    .eq('is_finished', false)
+    .gte('created_at', new Date(Date.now() - AGE_MAX_HEURES * 3600 * 1000).toISOString())
     .order('created_at', { ascending: false })
-    .limit(500);
+    .limit(ANALYSES_EXAMINEES);
   if (error) return alerte(`analyses illisibles : ${error.message}`);
 
-  const predictions = (data ?? []).filter((a) => !a.is_finished);
-  if (predictions.length < 15)
-    return attention(
-      `seulement ${predictions.length} prédiction(s) sur ${FENETRE_HEURES} h — trop peu pour juger la qualité`
-    );
+  const predictions = data ?? [];
+  if (predictions.length < MINIMUM_POUR_JUGER)
+    return attention(`seulement ${predictions.length} prédiction(s) sur ${AGE_MAX_HEURES} h — trop peu pour juger la qualité`);
+
+  const plusAncienne = predictions[predictions.length - 1]?.created_at;
+  if (plusAncienne) console.log(`            (depuis ${new Date(plusAncienne).toLocaleString('fr-FR')})`);
 
   // Un score qui domine, c'est le défaut historique : 82 % des analyses
   // annonçaient 2-1 parce que le score était demandé au modèle au lieu d'être
