@@ -623,6 +623,40 @@ export async function POST(req: Request) {
   const scorers2 = extractTeamTopScorers(t2TopScorers, id2);
 
   // Get Recent Matches
+  /**
+   * Buts marqués et encaissés, reconstitués depuis les derniers matchs joués.
+   *
+   * Dernier rempart contre la confiance plancher de 45 %.
+   *
+   * Les statistiques de championnat manquent dans des cas parfaitement
+   * ordinaires : une équipe nationale, un club de division inférieure, un promu,
+   * un championnat que le fournisseur ne couvre pas en détail. Le calcul du
+   * score recevait alors des zéros des deux côtés, traitait les équipes comme
+   * équivalentes, et rendait un score sans intérêt assorti d'une confiance
+   * plancher — le fameux « 45 % » qui revenait partout.
+   *
+   * Or les derniers matchs joués, eux, sont TOUJOURS disponibles : ils sont déjà
+   * chargés pour afficher la forme, toutes compétitions et toutes saisons
+   * confondues. Ils donnent une attaque et une défense réelles. C'est moins
+   * précis qu'une saison complète de championnat, mais infiniment plus juste
+   * que de déclarer deux équipes équivalentes.
+   */
+  const statistiquesDepuisMatchs = (fixtures: any[], teamId: string) => {
+    const joues = (fixtures || []).filter((f: any) =>
+      ['FT', 'AET', 'PEN'].includes(f?.fixture?.status?.short)
+    );
+    let marques = 0;
+    let encaisses = 0;
+    for (const f of joues) {
+      const domicile = String(f?.teams?.home?.id) === String(teamId);
+      const bh = Number(f?.goals?.home ?? 0);
+      const ba = Number(f?.goals?.away ?? 0);
+      marques += domicile ? bh : ba;
+      encaisses += domicile ? ba : bh;
+    }
+    return { butsMarques: marques, butsEncaisses: encaisses, matchsJoues: joues.length };
+  };
+
   const getRecentMatches = (fixtures: any[], teamId: string) => {
     const allMatches = (fixtures || []).filter((f: any) => ["FT", "AET", "PEN"].includes(f.fixture.status.short));
     allMatches.sort((a: any, b: any) => new Date(b.fixture.date).getTime() - new Date(a.fixture.date).getTime());
@@ -660,6 +694,40 @@ export async function POST(req: Request) {
   const winStreak1 = s1r.fixtures?.wins?.total || 0;
   const winStreak2 = s2r.fixtures?.wins?.total || 0;
 
+  // ── PLUS AUCUNE ÉQUIPE SANS DONNÉES ────────────────────────────────────────
+  //
+  // Quand le championnat ne fournit rien, on reconstitue attaque et défense
+  // depuis les derniers matchs réellement joués. Sans ce rattrapage, les deux
+  // équipes étaient déclarées équivalentes et l'analyse tombait sur une
+  // confiance plancher de 45 % — ce que l'administration affichait ligne après
+  // ligne.
+  const brutes1 =
+    (s1r.fixtures?.played?.total ?? 0) > 0
+      ? { butsMarques: baseGoalsFor1, butsEncaisses: baseGoalsAgainst1, matchsJoues: played1 }
+      : statistiquesDepuisMatchs(
+          (t1Recent?.response?.length ? t1Recent.response : t1Fixtures?.response) || [],
+          String(id1)
+        );
+  const brutes2 =
+    (s2r.fixtures?.played?.total ?? 0) > 0
+      ? { butsMarques: baseGoalsFor2, butsEncaisses: baseGoalsAgainst2, matchsJoues: played2 }
+      : statistiquesDepuisMatchs(
+          (t2Recent?.response?.length ? t2Recent.response : t2Fixtures?.response) || [],
+          String(id2)
+        );
+
+  if (brutes1.matchsJoues === 0 || brutes2.matchsJoues === 0) {
+    console.warn(
+      `[BACKEND_ANALYZE] Données introuvables — ${team1.name} ${brutes1.matchsJoues} matchs, ${team2.name} ${brutes2.matchsJoues}.`
+    );
+  } else if ((s1r.fixtures?.played?.total ?? 0) === 0 || (s2r.fixtures?.played?.total ?? 0) === 0) {
+    console.log(
+      `[BACKEND_ANALYZE] Statistiques reconstituées depuis les derniers matchs : ` +
+        `${team1.name} ${brutes1.butsMarques}/${brutes1.butsEncaisses} en ${brutes1.matchsJoues}, ` +
+        `${team2.name} ${brutes2.butsMarques}/${brutes2.butsEncaisses} en ${brutes2.matchsJoues}.`
+    );
+  }
+
   // ── SCORE CALCULÉ ──────────────────────────────────────────────────────────
   //
   // Le score exact était demandé au modèle de langage. Constaté sur 228 analyses
@@ -675,11 +743,9 @@ export async function POST(req: Request) {
     ? String(lieuConnu.teams?.home?.id) === String(id1)
     : null;
 
-  const scoreCalcule = calculerScoreProbable(
-    { butsMarques: baseGoalsFor1, butsEncaisses: baseGoalsAgainst1, matchsJoues: played1 },
-    { butsMarques: baseGoalsFor2, butsEncaisses: baseGoalsAgainst2, matchsJoues: played2 },
-    equipe1AJoueADomicile
-  );
+  // Les statistiques utilisées sont celles du championnat quand elles existent,
+  // et celles reconstituées depuis les derniers matchs sinon.
+  const scoreCalcule = calculerScoreProbable(brutes1, brutes2, equipe1AJoueADomicile);
 
   /**
    * Impose les chiffres calculés à la réponse du modèle.
