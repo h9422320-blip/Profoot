@@ -23,7 +23,16 @@ const CACHE_TTL = {
   TEAM_STATS: 6 * 60 * 60 * 1000,
 };
 
-async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DATA) {
+/**
+ * Appel a l API de donnees.
+ *
+ * `delaiMs` existe pour les appels de RATTRAPAGE : ceux qui ameliorent l analyse
+ * sans lui etre indispensables. La requete entiere doit tenir sous les 60 s de
+ * l hebergeur, modele de langage compris ; un rattrapage qui attendrait quinze
+ * secondes ferait tuer la requete et l abonne verrait « Analyse interrompue »
+ * pour un detail dont il se serait passe.
+ */
+async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DATA, delaiMs = 15000) {
   const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
   if (!API_FOOTBALL_KEY || API_FOOTBALL_KEY === "MA_CLE_API" || API_FOOTBALL_KEY === "") {
     console.error("[BACKEND_ANALYZE] API Key missing!");
@@ -37,7 +46,7 @@ async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DA
   const url = `https://v3.football.api-sports.io${endpoint}`;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), delaiMs);
     const res = await fetch(url, {
       method: 'GET',
       headers: { "x-apisports-key": API_FOOTBALL_KEY, "x-rapidapi-host": "v3.football.api-sports.io" },
@@ -278,13 +287,27 @@ export async function POST(req: Request) {
     //    l'affichage se remplissait de cases vides. La forme d'une équipe ne
     //    s'arrête pas au 1er juillet : les dernières journées de l'exercice
     //    précédent en font partie.
-    const [t1Fixtures, t2Fixtures, h2hr, nextH2Hr, r1, r2] = await Promise.all([
+    // La recherche du match en cours voyage AVEC les autres appels, jamais
+    // après.
+    //
+    // Placée en série, elle ajoutait son propre délai à une requête qui enchaîne
+    // déjà plusieurs appels de données puis le modèle, le tout sous la limite de
+    // 60 s de l'hébergeur. Constaté en production : « Analyse interrompue » chez
+    // l'abonné, et rien dans le journal des échecs — parce que la requête était
+    // tuée avant même d'y arriver.
+    //
+    // Un match EN COURS n'apparaît pas dans les confrontations directes au coup
+    // d'envoi : il faut demander explicitement les matchs en cours de l'équipe.
+    // Cache de 30 secondes — le score évolue, mais cent abonnés sur la même
+    // affiche ne doivent pas coûter cent requêtes.
+    const [t1Fixtures, t2Fixtures, h2hr, nextH2Hr, r1, r2, enDirect] = await Promise.all([
       fetchApiFootball(`/fixtures?team=${id1}&season=${season}&last=10`, CACHE_TTL.TEAM_STATS),
       fetchApiFootball(`/fixtures?team=${id2}&season=${season}&last=10`, CACHE_TTL.TEAM_STATS),
       fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}`),
       fetchApiFootball(`/fixtures/headtohead?h2h=${id1}-${id2}&next=1`, CACHE_TTL.API_DATA),
       fetchApiFootball(`/fixtures?team=${id1}&last=12`, CACHE_TTL.TEAM_STATS),
-      fetchApiFootball(`/fixtures?team=${id2}&last=12`, CACHE_TTL.TEAM_STATS)
+      fetchApiFootball(`/fixtures?team=${id2}&last=12`, CACHE_TTL.TEAM_STATS),
+      fetchApiFootball(`/fixtures?live=all&team=${id1}`, 30 * 1000),
     ]);
     t1Data = { data: t1Fixtures, season };
     t2Data = { data: t2Fixtures, season };
@@ -293,14 +316,6 @@ export async function POST(req: Request) {
     h2hRes = h2hr;
     nextH2H = nextH2Hr?.response?.[0] || null;
 
-    // Un match EN COURS n'apparaît pas dans les confrontations directes —
-    // vérifié : pendant PSG — Aston Villa en Supercoupe, l'historique ne
-    // renvoyait que leurs deux rencontres de 2025. Il faut donc demander
-    // explicitement les matchs en cours de l'équipe.
-    //
-    // Cache de 30 secondes : le score évolue, mais cent abonnés sur la même
-    // affiche ne doivent pas coûter cent requêtes.
-    const enDirect = await fetchApiFootball(`/fixtures?live=all&team=${id1}`, 30 * 1000);
     const rencontreEnDirect = trouverRencontreEnDirect(enDirect, id1, id2);
     if (rencontreEnDirect) matchDirect = normaliserMatchDirect(rencontreEnDirect, id1);
   } else {
@@ -337,7 +352,8 @@ export async function POST(req: Request) {
     // répond pas : un score juste sans buteurs vaut mieux qu'un match périmé.
     const fiche = await fetchApiFootball(
       `/fixtures?id=${rencontreEnDirectH2H.fixture.id}`,
-      30 * 1000
+      30 * 1000,
+      6000
     );
     matchDirect =
       normaliserMatchDirect(fiche?.response?.[0], id1) ??
@@ -466,10 +482,10 @@ export async function POST(req: Request) {
     if (aucuneDonnee(t1Stats) || aucuneDonnee(t2Stats)) {
       const [precedent1, precedent2] = await Promise.all([
         aucuneDonnee(t1Stats)
-          ? fetchApiFootball(`/teams/statistics?team=${id1}&season=${t1Season - 1}&league=${t1League}`, CACHE_TTL.TEAM_STATS)
+          ? fetchApiFootball(`/teams/statistics?team=${id1}&season=${t1Season - 1}&league=${t1League}`, CACHE_TTL.TEAM_STATS, 6000)
           : Promise.resolve(null),
         aucuneDonnee(t2Stats)
-          ? fetchApiFootball(`/teams/statistics?team=${id2}&season=${t2Season - 1}&league=${t2League}`, CACHE_TTL.TEAM_STATS)
+          ? fetchApiFootball(`/teams/statistics?team=${id2}&season=${t2Season - 1}&league=${t2League}`, CACHE_TTL.TEAM_STATS, 6000)
           : Promise.resolve(null),
       ]);
       if (precedent1 && !aucuneDonnee(precedent1)) {
