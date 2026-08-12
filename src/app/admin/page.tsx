@@ -1,7 +1,7 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import SelecteurPeriode from "./_components/SelecteurPeriode";
 import { Courbe, Barres, Camembert } from "./_components/Graphique";
-import { Etiquette, Vide, montant, dateCourte, ilYA } from "./_components/Ui";
+import { Etiquette, LienCompte, Vide, montant, dateCourte, ilYA } from "./_components/Ui";
 import { Panneau, Classement } from "./_components/Panneaux";
 import { Indicateur } from "./_components/Indicateur";
 import { EnTete, Rapport } from "./_components/EnTete";
@@ -226,16 +226,20 @@ export default async function AdminOverview({
           ) : (
             <div className="space-y-3">
               {m.listeUtilisateurs.slice(0, 8).map((u) => (
-                <div key={u.id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#1d2f3a] border border-[#2e4757] flex items-center justify-center shrink-0">
+                <Link
+                  key={u.id}
+                  href={`/admin/users/${u.id}`}
+                  className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl hover:bg-white/[0.03] transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#1d2f3a] border border-[#2e4757] flex items-center justify-center shrink-0 group-hover:border-[#10b981]/50 transition-colors">
                     <span className="text-xs font-bold text-white/70">{u.email.charAt(0).toUpperCase()}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white truncate">{u.email}</p>
+                    <p className="text-sm text-white truncate group-hover:text-[#10b981] transition-colors">{u.email}</p>
                     <p className="text-[11px] text-white/35">Inscrit {ilYA(u.inscritLe)}</p>
                   </div>
                   <Etiquette tier={u.offre} />
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -269,7 +273,9 @@ export default async function AdminOverview({
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white truncate">{p.email}</p>
+                    <p className="text-sm text-white truncate">
+                      <LienCompte userId={p.userId} email={p.email} />
+                    </p>
                     <p className="text-[11px] text-white/35">
                       {p.inscrit
                         ? `Inscrit ${ilYA(p.inscritLe!)} — ${p.nbAnalyses} analyse${p.nbAnalyses > 1 ? "s" : ""}` +

@@ -116,6 +116,8 @@ export interface LigneUtilisateur {
 }
 
 export interface LignePartenaire {
+  /** Null tant que l adresse n a pas servi a creer un compte. */
+  userId: string | null;
   email: string;
   niveau: 'VIP' | 'PRO';
   /** Faux tant que l'adresse n'a pas servi à créer un compte. */
@@ -127,6 +129,8 @@ export interface LignePartenaire {
 
 export interface LigneAbonnement {
   id: string;
+  /** Compte rattache : permet d ouvrir sa fiche depuis n importe quelle liste. */
+  userId: string;
   email: string;
   offre: string;
   offreLibelle: string;
@@ -141,6 +145,7 @@ export interface LigneAbonnement {
 
 export interface LigneAnalyse {
   id: string;
+  userId: string;
   email: string;
   match: string;
   competition: string | null;
@@ -152,6 +157,12 @@ export interface LigneAnalyse {
 
 export interface EvenementPaiement {
   id: string;
+  /**
+   * Compte correspondant a l adresse du payeur, quand elle en designe un.
+   * Null pour un achat fait directement en boutique avec une autre adresse :
+   * mieux vaut une adresse non cliquable qu un lien vers le mauvais compte.
+   */
+  userId: string | null;
   fournisseur: string;
   evenement: string;
   recuLe: string;
@@ -531,6 +542,7 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
       (s.expires_at ? new Date(s.expires_at).getTime() > maintenant : s.plan === 'lifetime');
     return {
       id: s.id,
+      userId: s.user_id,
       email: emailParId.get(s.user_id) ?? '(compte supprimé)',
       offre: s.plan,
       offreLibelle: config?.label ?? s.plan,
@@ -682,6 +694,7 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
   const listePartenaires: LignePartenaire[] = ACCES_OFFERTS.map(({ email, niveau }) => {
     const compte = compteParEmail.get(email);
     return {
+      userId: compte?.id ?? null,
       email,
       niveau,
       inscrit: !!compte,
@@ -755,17 +768,20 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
   };
 
   // ── Paiements ──
+  const idParEmail = new Map(comptes.map((c) => [c.email.toLowerCase(), c.id]));
   const paiements: EvenementPaiement[] = webhooks.map((w) => {
     const p: any = w.payload ?? {};
     const vente = p.sale ?? p.data?.sale ?? {};
+    const email = p.customer?.email ?? vente?.customer?.email ?? null;
     return {
       id: w.id,
+      userId: email ? idParEmail.get(String(email).toLowerCase()) ?? null : null,
       fournisseur: w.provider,
       evenement: w.event,
       recuLe: w.received_at,
       montant: typeof vente?.amount?.value === 'number' ? vente.amount.value : null,
       devise: vente?.amount?.currency ?? null,
-      email: p.customer?.email ?? vente?.customer?.email ?? null,
+      email,
     };
   });
 
@@ -826,6 +842,7 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
       topUtilisateurs: classer(parUtilisateur, 10),
       dernieres: analysesPeriode.slice(0, 50).map((a) => ({
         id: a.id,
+        userId: a.user_id,
         email: emailParId.get(a.user_id) ?? '(compte supprimé)',
         match: `${a.team1_name ?? '?'} — ${a.team2_name ?? '?'}`,
         competition: a.competition,

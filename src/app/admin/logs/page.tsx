@@ -1,7 +1,7 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import { getOrigineAcheteurs } from "@/lib/origine-acheteurs";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
-import { Vide, dateHeure, montant } from "../_components/Ui";
+import { LienCompte, Vide, dateHeure, montant } from "../_components/Ui";
 import { Panneau } from "../_components/Panneaux";
 import { Indicateur } from "../_components/Indicateur";
 import { EnTete, Rapport } from "../_components/EnTete";
@@ -172,7 +172,7 @@ export default async function AdminLogs({
                   </span>
                   <span className="text-xs font-bold text-white/70 min-w-[110px]">{r.paysNom}</span>
                   <span className="text-sm text-white/60 flex-1 min-w-[170px] truncate">
-                    {r.email ?? "(adresse non transmise)"}
+                    <LienCompte userId={r.userId} email={r.email} />
                   </span>
                   <span className="text-[10px] font-black uppercase tracking-wider text-white/40 bg-[#16242e] border border-[#2e4757] rounded-full px-2 py-0.5">
                     {r.plan}
@@ -230,7 +230,7 @@ export default async function AdminLogs({
                   {p.evenement}
                 </span>
                 <span className="text-sm text-white/70 flex-1 min-w-[160px] truncate">
-                  {p.email ?? "(adresse non transmise)"}
+                  <LienCompte userId={p.userId} email={p.email} />
                 </span>
                 {p.montant !== null && (
                   <span className="text-sm font-bold text-white">{montant(p.montant, p.devise ?? "XOF")}</span>

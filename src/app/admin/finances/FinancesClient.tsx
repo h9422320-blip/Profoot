@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Download, CheckCircle2, XCircle } from "lucide-react";
 import type { LigneAbonnement, EvenementPaiement } from "@/lib/admin-metrics";
-import { Vide, dateCourte, dateHeure, montant } from "../_components/Ui";
+import { LienCompte, Vide, dateCourte, dateHeure, montant } from "../_components/Ui";
 
 const FILTRES = [
   { cle: "tous", libelle: "Tous" },
@@ -92,7 +92,7 @@ export default function FinancesClient({
               <tbody>
                 {liste.map((s) => (
                   <tr key={s.id} className="border-b border-[#2e4757]/50 last:border-0 hover:bg-white/[0.02]">
-                    <td className="px-5 py-3 text-white truncate max-w-[240px]">{s.email}</td>
+                    <td className="px-5 py-3 text-white truncate max-w-[240px]"><LienCompte userId={s.userId} email={s.email} /></td>
                     <td className="px-5 py-3 text-white/70">
                       {s.offreLibelle}
                       {s.offre !== s.offreLibelle && (
@@ -139,7 +139,7 @@ export default function FinancesClient({
                   {p.evenement}
                 </span>
                 <span className="text-sm text-white/70 flex-1 min-w-[160px] truncate">
-                  {p.email ?? "(adresse non transmise)"}
+                  <LienCompte userId={p.userId} email={p.email} />
                 </span>
                 {p.montant !== null && (
                   <span className="text-sm font-bold text-white">{montant(p.montant, p.devise ?? "XOF")}</span>

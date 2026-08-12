@@ -1,7 +1,7 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { Courbe } from "../_components/Graphique";
-import { Vide, dateHeure } from "../_components/Ui";
+import { LienCompte, Vide, dateHeure } from "../_components/Ui";
 import { Panneau, Classement } from "../_components/Panneaux";
 import { Indicateur } from "../_components/Indicateur";
 import { EnTete, Rapport } from "../_components/EnTete";
@@ -192,7 +192,7 @@ export default async function AdminSystem({
                       </div>
                     </td>
                     <td className="px-5 py-3 text-white/60 truncate max-w-[160px]">{a.competition ?? "—"}</td>
-                    <td className="px-5 py-3 text-white/60 truncate max-w-[200px]">{a.email}</td>
+                    <td className="px-5 py-3 text-white/60 truncate max-w-[200px]"><LienCompte userId={a.userId} email={a.email} /></td>
                     <td className="px-5 py-3 text-white/80 font-medium">{a.score ?? "—"}</td>
                     <td className="px-5 py-3 text-right text-white/80">
                       {a.confiance !== null ? `${a.confiance} %` : "—"}

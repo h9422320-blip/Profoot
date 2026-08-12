@@ -6,7 +6,7 @@ import { getBilanAgentVip } from "@/lib/conversations-vip";
 import { EnTete, Rapport } from "../_components/EnTete";
 import { Indicateur } from "../_components/Indicateur";
 import { Panneau } from "../_components/Panneaux";
-import { Vide, dateHeure } from "../_components/Ui";
+import { LienCompte, Vide, dateHeure } from "../_components/Ui";
 
 export const dynamic = "force-dynamic";
 
@@ -179,7 +179,11 @@ export default async function AgentVipPage() {
 
                       <div className="flex items-center gap-2 mt-3 flex-wrap">
                         <span className="text-[10px] text-white/25">{dateHeure(e.created_at)}</span>
-                        {e.email && <span className="text-[10px] text-white/25">• {e.email}</span>}
+                        {e.email && (
+                          <span className="text-[10px] text-white/25">
+                            • <LienCompte userId={e.user_id} email={e.email} />
+                          </span>
+                        )}
                         {(e.outils_appeles ?? []).length > 0 && (
                           <span className="text-[10px] text-white/25">
                             • {(e.outils_appeles ?? []).length} appel

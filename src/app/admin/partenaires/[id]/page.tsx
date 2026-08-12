@@ -8,7 +8,7 @@ import {
   TAUX_POUR_MILLE_USD, getPartenaire, montantPartenaire, versXof,
 } from "@/lib/partenaires";
 import { Panneau } from "../../_components/Panneaux";
-import { Etiquette, dateCourte, ilYA } from "../../_components/Ui";
+import { Etiquette, dateCourte, ilYA , LienCompte } from "../../_components/Ui";
 import { Indicateur } from "../../_components/Indicateur";
 import ListeReleves from "../ListeReleves";
 
@@ -83,7 +83,7 @@ export default async function FichePartenaire({
             </div>
             <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2.5 text-[12px] text-white/40">
               <span className="inline-flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5" /> {p.email}
+                <Mail className="w-3.5 h-3.5" /> <LienCompte userId={p.userId} email={p.email} />
               </span>
               {p.country && (
                 <span className="inline-flex items-center gap-1.5">

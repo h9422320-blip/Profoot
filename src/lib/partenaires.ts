@@ -45,6 +45,8 @@ export interface ReleveePartenaire {
 export interface PartenaireEnrichi extends Partenaire {
   /** Niveau d'accès réellement ouvert par le code, ou null si aucun. */
   accesOuvert: 'VIP' | 'PRO' | null;
+  /** Compte rattaché, pour ouvrir sa fiche. Null tant qu'il ne s'est pas inscrit. */
+  userId: string | null;
   /** Le partenaire a-t-il créé son compte sur l'application ? */
   inscrit: boolean;
   inscritLe: string | null;
@@ -118,12 +120,13 @@ export async function getPartenaires(): Promise<PartenaireEnrichi[]> {
   if (!partenaires?.length) return [];
 
   // Les comptes vivent dans l'authentification, pas dans une table métier.
-  const comptes = new Map<string, { created_at: string; last_sign_in_at: string | null }>();
+  const comptes = new Map<string, { id: string; created_at: string; last_sign_in_at: string | null }>();
   try {
     const { data } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
     for (const u of data?.users ?? []) {
       if (u.email) {
         comptes.set(u.email.toLowerCase(), {
+          id: u.id,
           created_at: u.created_at,
           last_sign_in_at: u.last_sign_in_at ?? null,
         });
@@ -140,6 +143,8 @@ export async function getPartenaires(): Promise<PartenaireEnrichi[]> {
     return {
       ...p,
       accesOuvert: niveauOffert(p.email),
+      // Permet d ouvrir la fiche du compte depuis la page du partenaire.
+      userId: compte?.id ?? null,
       inscrit: !!compte,
       inscritLe: compte?.created_at ?? null,
       derniereConnexion: compte?.last_sign_in_at ?? null,

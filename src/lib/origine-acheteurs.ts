@@ -26,6 +26,8 @@ export interface PaysAcheteurs {
 
 export interface IntentionRecente {
   saleId: string;
+  /** Compte a l origine de la demande, pour ouvrir sa fiche. */
+  userId: string | null;
   email: string | null;
   plan: string;
   pays: string | null;
@@ -78,7 +80,7 @@ export async function getOrigineAcheteurs(limite = 300): Promise<OrigineAcheteur
 
   const { data, error } = await createAdminClient()
     .from('payment_intents')
-    .select('sale_id, email, plan, pays, pays_source, consumed_at, created_at')
+    .select('sale_id, user_id, email, plan, pays, pays_source, consumed_at, created_at')
     .order('created_at', { ascending: false })
     .limit(limite);
 
@@ -112,6 +114,7 @@ export async function getOrigineAcheteurs(limite = 300): Promise<OrigineAcheteur
     enEchec: avecOrigine.filter((l) => l.pays_source === 'defaut').length,
     recentes: lignes.slice(0, 40).map((l) => ({
       saleId: l.sale_id,
+      userId: l.user_id ?? null,
       email: l.email ?? null,
       plan: l.plan,
       pays: l.pays ?? null,
