@@ -7,7 +7,7 @@ import { toTeaser } from "@/lib/analysis-teaser";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale } from "@/lib/score-probable";
-import { normaliserMatchDirect, trouverRencontreEnDirect, type MatchDirect } from "@/lib/match-direct";
+import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 
 // ============================================================================
@@ -319,10 +319,47 @@ export async function POST(req: Request) {
   const targetFutureMatch = futureMatches.length > 0 ? futureMatches[futureMatches.length - 1] : null;
   const targetPastMatch = pastMatches.length > 0 ? pastMatches[0] : null;
 
+  // ── SECONDE CHANCE POUR LE DIRECT ──────────────────────────────────────────
+  //
+  // La rencontre en cours finit par apparaître dans l'historique des
+  // confrontations — vérifié : absente en début de match, présente à la 72ᵉ
+  // avec le statut « 2H ». On dispose donc de deux sources indépendantes.
+  //
+  // Elles sont toutes les deux utilisées, et ce n'est pas un luxe : un seul
+  // appel réseau qui échoue suffisait à faire retomber l'affichage sur la
+  // dernière rencontre terminée — celle d'avril 2025 présentée comme le match
+  // du jour. Tant qu'une des deux sources répond, le direct l'emporte.
+  const rencontreEnDirectH2H = h2hList.find((m: any) => estEnDirect(m?.fixture?.status?.short));
+
+  if (!matchDirect && rencontreEnDirectH2H && id1) {
+    // L'historique donne le score et la minute, jamais les buteurs. On va les
+    // chercher sur la fiche du match, et on se contente du score si elle ne
+    // répond pas : un score juste sans buteurs vaut mieux qu'un match périmé.
+    const fiche = await fetchApiFootball(
+      `/fixtures?id=${rencontreEnDirectH2H.fixture.id}`,
+      30 * 1000
+    );
+    matchDirect =
+      normaliserMatchDirect(fiche?.response?.[0], id1) ??
+      normaliserMatchDirect(rencontreEnDirectH2H, id1);
+
+    if (matchDirect) {
+      console.log(
+        `[BACKEND_ANALYZE] Direct récupéré par l'historique (${matchDirect.buts1}-${matchDirect.buts2}, ${matchDirect.statut}).`
+      );
+    }
+  }
+
+  // Une rencontre en cours n'est ni à venir ni terminée : elle ne doit jamais
+  // être comptée parmi les matchs passés.
+  const passeReel = targetPastMatch && !estEnDirect(targetPastMatch?.fixture?.status?.short)
+    ? targetPastMatch
+    : null;
+
   // ============================================================================
   // CASE 1: MATCH IS IN THE PAST
   // ============================================================================
-  if (targetPastMatch && !targetFutureMatch && !matchDirect) {
+  if (passeReel && !targetFutureMatch && !matchDirect) {
     // ... (Past Match Logic remains the same as before for history)
     const fixtureId = targetPastMatch.fixture.id;
     const [eventsRes, statsRes] = await Promise.all([
