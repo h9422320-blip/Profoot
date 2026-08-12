@@ -6,7 +6,8 @@ import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-
 import { toTeaser } from "@/lib/analysis-teaser";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
-import { calculerScoreProbable, bornerConfiance } from "@/lib/score-probable";
+import { calculerScoreProbable, bornerConfiance, predireIssueFinale } from "@/lib/score-probable";
+import { normaliserMatchDirect, trouverRencontreEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 
 // ============================================================================
@@ -259,6 +260,7 @@ export async function POST(req: Request) {
   let t1Data: any = null, t2Data: any = null, h2hRes: any = null, nextH2H: any = null;
   // Derniers matchs joués, indépendamment de la saison — voir plus bas.
   let t1Recent: any = { response: [] }, t2Recent: any = { response: [] };
+  let matchDirect: MatchDirect | null = null;
   const season = getCurrentSeason();
 
   if (id1 && id2) {
@@ -290,6 +292,17 @@ export async function POST(req: Request) {
     t2Recent = r2 ?? { response: [] };
     h2hRes = h2hr;
     nextH2H = nextH2Hr?.response?.[0] || null;
+
+    // Un match EN COURS n'apparaît pas dans les confrontations directes —
+    // vérifié : pendant PSG — Aston Villa en Supercoupe, l'historique ne
+    // renvoyait que leurs deux rencontres de 2025. Il faut donc demander
+    // explicitement les matchs en cours de l'équipe.
+    //
+    // Cache de 30 secondes : le score évolue, mais cent abonnés sur la même
+    // affiche ne doivent pas coûter cent requêtes.
+    const enDirect = await fetchApiFootball(`/fixtures?live=all&team=${id1}`, 30 * 1000);
+    const rencontreEnDirect = trouverRencontreEnDirect(enDirect, id1, id2);
+    if (rencontreEnDirect) matchDirect = normaliserMatchDirect(rencontreEnDirect, id1);
   } else {
     console.warn(`[BACKEND_ANALYZE] API-Football IDs missing (Rate Limit or Unmapped). Bypassing API-Football for PURE AI analysis.`);
     t1Data = { data: { response: [] }, season };
@@ -309,7 +322,7 @@ export async function POST(req: Request) {
   // ============================================================================
   // CASE 1: MATCH IS IN THE PAST
   // ============================================================================
-  if (targetPastMatch && !targetFutureMatch) {
+  if (targetPastMatch && !targetFutureMatch && !matchDirect) {
     // ... (Past Match Logic remains the same as before for history)
     const fixtureId = targetPastMatch.fixture.id;
     const [eventsRes, statsRes] = await Promise.all([
@@ -570,6 +583,35 @@ export async function POST(req: Request) {
         over35: scoreCalcule.probaPlusDe.troisCinq,
       },
     };
+
+    // ── MATCH EN COURS ────────────────────────────────────────────────────────
+    //
+    // L'analyse d'avant-match est CONSERVÉE telle quelle : l'abonné doit
+    // pouvoir confronter ce qui était annoncé à ce qui se passe réellement.
+    // On lui ajoute l'état du match, et une projection de l'issue qui, elle,
+    // tient compte du score déjà acquis et du temps restant — la prédiction
+    // d'avant-match ne veut plus rien dire une fois le coup d'envoi donné.
+    if (matchDirect) {
+      donnees.live = matchDirect;
+      donnees.isFinished = false;
+      donnees.enDirect = true;
+      // Le contexte affiché doit être celui du match qu'on regarde, pas d'une
+      // rencontre à venir sans rapport.
+      if (matchDirect.competition) donnees.competition = matchDirect.competition;
+      if (matchDirect.stade) donnees.venue = matchDirect.stade;
+      donnees.finalPrediction = predireIssueFinale(
+        scoreCalcule.butsAttendus1,
+        scoreCalcule.butsAttendus2,
+        matchDirect.buts1,
+        matchDirect.buts2,
+        // À la pause, la minute affichée est 45 mais aucune n'a été jouée
+        // depuis : la traiter autrement ferait fondre le temps restant.
+        matchDirect.minute ?? (matchDirect.miTemps ? 45 : 0),
+        team1.name,
+        team2.name
+      );
+    }
+
     return donnees;
   };
 

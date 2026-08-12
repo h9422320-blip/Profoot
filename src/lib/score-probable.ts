@@ -218,6 +218,108 @@ export function calculerScoreProbable(
   };
 }
 
+export interface IssueFinale {
+  /** Probabilités, en pourcentage, que le match se termine ainsi. */
+  probaVictoire1: number;
+  probaNul: number;
+  probaVictoire2: number;
+  /** Score final le plus probable, en partant du score actuel. */
+  scoreFinal1: number;
+  scoreFinal2: number;
+  /** Minutes restantes prises en compte. */
+  minutesRestantes: number;
+  /** Phrase prête à afficher, disant qui tient le match. */
+  verdict: string;
+}
+
+/**
+ * Où va le match, à partir du score actuel et du temps restant.
+ *
+ * La prédiction d'avant-match ne vaut plus rien une fois que le match a
+ * commencé : une équipe menée 0-2 à la 80ᵉ minute n'a pas les chances qu'on lui
+ * donnait au coup d'envoi. On ne garde donc du calcul initial que le RYTHME de
+ * buts attendu, ramené au temps qui reste, et on l'ajoute au score déjà acquis.
+ *
+ * Aucun modèle de langage n'intervient : un modèle ne sait pas compter les
+ * minutes restantes, et cette prédiction doit pouvoir se rafraîchir à chaque
+ * consultation sans rien coûter.
+ */
+export function predireIssueFinale(
+  butsAttendus1: number,
+  butsAttendus2: number,
+  butsActuels1: number,
+  butsActuels2: number,
+  minuteEcoulee: number,
+  nomEquipe1: string,
+  nomEquipe2: string
+): IssueFinale {
+  // La mi-temps compte comme la 45ᵉ minute ; au-delà du temps réglementaire on
+  // ne promet plus de temps restant.
+  const minutesRestantes = Math.max(0, Math.min(90, 90 - Math.max(0, minuteEcoulee)));
+  const part = minutesRestantes / 90;
+
+  const restant1 = borner(butsAttendus1 * part, 0, BUTS_ATTENDUS_MAX);
+  const restant2 = borner(butsAttendus2 * part, 0, BUTS_ATTENDUS_MAX);
+
+  const SUP = 6; // buts supplémentaires envisagés d'ici la fin
+  const q1 = Array.from({ length: SUP + 1 }, (_, i) => (part === 0 ? (i === 0 ? 1 : 0) : poisson(i, restant1)));
+  const q2 = Array.from({ length: SUP + 1 }, (_, j) => (part === 0 ? (j === 0 ? 1 : 0) : poisson(j, restant2)));
+
+  let v1 = 0, n = 0, v2 = 0;
+  let meilleur = { s1: butsActuels1, s2: butsActuels2, proba: -1 };
+
+  for (let i = 0; i <= SUP; i++) {
+    for (let j = 0; j <= SUP; j++) {
+      const p = q1[i] * q2[j];
+      const final1 = butsActuels1 + i;
+      const final2 = butsActuels2 + j;
+      if (p > meilleur.proba) meilleur = { s1: final1, s2: final2, proba: p };
+      if (final1 > final2) v1 += p;
+      else if (final1 === final2) n += p;
+      else v2 += p;
+    }
+  }
+
+  let pv1 = Math.round(v1 * 100);
+  let pn = Math.round(n * 100);
+  let pv2 = Math.round(v2 * 100);
+  const ecart = 100 - (pv1 + pn + pv2);
+  if (ecart !== 0) {
+    if (pv1 >= pn && pv1 >= pv2) pv1 += ecart;
+    else if (pv2 >= pn) pv2 += ecart;
+    else pn += ecart;
+  }
+
+  // Le verdict nomme ce qui est le plus probable, sans jamais présenter une
+  // issue serrée comme acquise.
+  const maxi = Math.max(pv1, pn, pv2);
+  const quasiCertain = maxi >= 80;
+  const serre = maxi < 45;
+  let verdict: string;
+  if (pn === maxi) {
+    verdict = serre
+      ? `Tout reste ouvert : le partage des points est le scénario le plus probable (${pn} %), mais de peu.`
+      : `Le match se dirige vers un partage des points (${pn} %).`;
+  } else {
+    const nom = pv1 === maxi ? nomEquipe1 : nomEquipe2;
+    verdict = quasiCertain
+      ? `${nom} tient ce match : ${maxi} % de chances de l'emporter avec ${minutesRestantes} minutes à jouer.`
+      : serre
+        ? `Rien n'est joué. ${nom} garde un léger avantage (${maxi} %), mais ${minutesRestantes} minutes suffisent à tout changer.`
+        : `${nom} a l'avantage : ${maxi} % de chances de l'emporter, ${minutesRestantes} minutes à jouer.`;
+  }
+
+  return {
+    probaVictoire1: pv1,
+    probaNul: pn,
+    probaVictoire2: pv2,
+    scoreFinal1: meilleur.s1,
+    scoreFinal2: meilleur.s2,
+    minutesRestantes,
+    verdict,
+  };
+}
+
 /** Borne une confiance venue d'ailleurs — celles observées allaient de 8 % à 100 %. */
 export function bornerConfiance(valeur: unknown): number {
   const n = Number(valeur);

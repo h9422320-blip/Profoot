@@ -621,7 +621,14 @@ export default function AnalyzePage() {
             isFinished: data.isFinished,
             competition: data.competition || t1Obj.league || "Europe",
             type: data.isFinished ? "Résultat passé" : "Prédiction IA",
-            score: data.isFinished ? data.score : `${data.predictedScore?.team1Goals ?? 2} - ${data.predictedScore?.team2Goals ?? 1}`,
+            // Aucune valeur de repli : un score absent doit rester absent.
+            // Ce `?? 2` et ce `?? 1` inscrivaient un 2-1 en base des que la
+            // prediction manquait, et venaient gonfler le fleau du 2-1.
+            score: data.isFinished
+              ? data.score
+              : data.predictedScore
+                ? `${data.predictedScore.team1Goals} - ${data.predictedScore.team2Goals}`
+                : null,
             confidence: data.confidence || (data.isFinished ? 100 : 85),
             summary: data.quickSummary || data.summary || "Analyse tactique et prédictive complète générée par l'IA ProFoot.",
             winProb: data.winProb,
@@ -1076,6 +1083,114 @@ export default function AnalyzePage() {
       {result && (
         <div className="space-y-8 animate-fade-in">
           
+          {/* 🔴 MATCH EN COURS.
+              Il s'affiche AU-DESSUS de l'analyse, qui reste entièrement
+              visible : l'intérêt est justement de confronter ce qui avait été
+              annoncé à ce qui se passe sur le terrain. */}
+          {result.live && (
+            <div className="mb-8 bg-[#1d2f3a]/60 backdrop-blur-md border border-[#EF4444]/25 rounded-[32px] p-6 md:p-8 shadow-lg">
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EF4444] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#EF4444]" />
+                </span>
+                <span className="text-[10px] font-black text-[#EF4444] uppercase tracking-widest">
+                  En direct · {result.live.statutLibelle}
+                  {result.live.minute !== null && !result.live.miTemps && ` · ${result.live.minute}'`}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 md:gap-12 w-full">
+                <div className="flex flex-col items-center gap-2 w-[35%]">
+                  <img src={getClub(team1!).logo} className="w-14 h-14 md:w-18 md:h-18 object-contain" alt="" />
+                  <span className="text-xs md:text-base font-black text-center text-white truncate max-w-full">
+                    {getClub(team1!).name}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-center bg-black/40 px-5 py-2.5 rounded-full border border-white/5 shrink-0">
+                  <span className="text-3xl md:text-5xl font-black text-white tracking-tight">
+                    {result.live.buts1} <span className="text-white/25">-</span> {result.live.buts2}
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center gap-2 w-[35%]">
+                  <img src={getClub(team2!).logo} className="w-14 h-14 md:w-18 md:h-18 object-contain" alt="" />
+                  <span className="text-xs md:text-base font-black text-center text-white truncate max-w-full">
+                    {getClub(team2!).name}
+                  </span>
+                </div>
+              </div>
+
+              {result.live.buteurs?.length > 0 && (
+                <div className="mt-6 pt-5 border-t border-white/5 space-y-2">
+                  {result.live.buteurs.map((b: any, i: number) => (
+                    <div key={i} className="flex items-center gap-3 text-[13px]">
+                      <span className="text-white/35 font-bold tabular-nums w-9 shrink-0">{b.minute}&apos;</span>
+                      <span className="text-white/25">⚽</span>
+                      <span className={`font-bold ${b.cote === "team1" ? "text-white" : "text-white/70"}`}>
+                        {b.joueur}
+                      </span>
+                      {b.precision && (
+                        <span className="text-[10px] font-black text-amber-400 uppercase">{b.precision}</span>
+                      )}
+                      {b.passeur && <span className="text-white/30 text-[11px]">passe de {b.passeur}</span>}
+                      <span className="ml-auto text-[11px] text-white/25 truncate">
+                        {b.cote === "team1" ? getClub(team1!).name : getClub(team2!).name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {result.live.statistiques && (
+                <div className="mt-5 pt-4 border-t border-white/5 flex flex-wrap justify-center gap-x-8 gap-y-2 text-[11px] text-white/40">
+                  <span>
+                    Tirs <span className="text-white/70 font-bold">{result.live.statistiques.tirs1 ?? "—"}</span> —{" "}
+                    <span className="text-white/70 font-bold">{result.live.statistiques.tirs2 ?? "—"}</span>
+                  </span>
+                  <span>
+                    Cadrés <span className="text-white/70 font-bold">{result.live.statistiques.cadres1 ?? "—"}</span> —{" "}
+                    <span className="text-white/70 font-bold">{result.live.statistiques.cadres2 ?? "—"}</span>
+                  </span>
+                  <span>
+                    Possession{" "}
+                    <span className="text-white/70 font-bold">{result.live.statistiques.possession1 ?? "—"}</span> —{" "}
+                    <span className="text-white/70 font-bold">{result.live.statistiques.possession2 ?? "—"}</span>
+                  </span>
+                </div>
+              )}
+
+              {/* Projection de l'issue, recalculée sur le score acquis et le
+                  temps restant. Réservée aux abonnés : c'est une prédiction. */}
+              {result.finalPrediction && (
+                <div className="mt-6 bg-black/25 border border-white/5 rounded-[20px] p-5">
+                  <p className="text-[10px] font-black text-white/35 uppercase tracking-widest mb-3">
+                    Où va ce match
+                  </p>
+                  <p className="text-sm text-white font-bold leading-relaxed mb-4">
+                    {result.finalPrediction.verdict}
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    {[
+                      { libelle: getClub(team1!).name, valeur: result.finalPrediction.probaVictoire1 },
+                      { libelle: "Nul", valeur: result.finalPrediction.probaNul },
+                      { libelle: getClub(team2!).name, valeur: result.finalPrediction.probaVictoire2 },
+                    ].map((c) => (
+                      <div key={c.libelle} className="bg-white/[0.03] rounded-2xl py-3">
+                        <p className="text-xl font-black text-[#10B981] tabular-nums">{c.valeur}%</p>
+                        <p className="text-[10px] text-white/40 truncate px-1">{c.libelle}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-white/25 mt-3 text-center">
+                    Recalculé sur le score actuel et les {result.finalPrediction.minutesRestantes} minutes restantes.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* A. 🔴 MATCH TERMINÉ : REAL MATCH RESULTS REPORT */}
           {result.isFinished ? (
             <div className="space-y-8">

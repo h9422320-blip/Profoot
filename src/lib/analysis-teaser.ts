@@ -26,6 +26,12 @@ const TEASER_FIELDS = [
   // Rencontre déjà jouée : le score et la chronologie sont des faits publics.
   'score',
   'events',
+  // Match en cours : le score, la minute et les buteurs sont publics — Google
+  // les affiche. Les cacher n aurait fait fuir personne vers l abonnement.
+  // La projection de l issue finale, elle, n est PAS dans cette liste : c est
+  // une prediction, donc du contenu payant.
+  'live',
+  'enDirect',
   // L'aperçu proprement dit.
   'globalForm',
   'quickSummary',
