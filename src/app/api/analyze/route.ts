@@ -741,7 +741,8 @@ export async function POST(req: Request) {
       // rencontre à venir sans rapport.
       if (matchDirect.competition) donnees.competition = matchDirect.competition;
       if (matchDirect.stade) donnees.venue = matchDirect.stade;
-      donnees.finalPrediction = predireIssueFinale(
+
+      const projection = predireIssueFinale(
         scoreCalcule.butsAttendus1,
         scoreCalcule.butsAttendus2,
         matchDirect.buts1,
@@ -752,6 +753,38 @@ export async function POST(req: Request) {
         team1.name,
         team2.name
       );
+      donnees.finalPrediction = projection;
+
+      // ── LE PRONOSTIC D'AVANT-MATCH EST REMPLACÉ, PAS COMPLÉTÉ ───────────────
+      //
+      // C'est le point qui a fait le plus de dégâts. Le 12 août 2026 à 20 h 59,
+      // pendant que le PSG menait 2-1 à la 90ᵉ minute, l'analyse affichait
+      // toujours son pronostic d'avant-match — « 0-1 pour Aston Villa » — parce
+      // que le bloc du direct s'ajoutait sans rien remplacer. Un influenceur l'a
+      // relayé à sa communauté alors que le match disait le contraire.
+      //
+      // Un pronostic d'avant-match n'a plus aucune valeur une fois le coup
+      // d'envoi donné : il ignore les buts déjà marqués. Tous les chiffres
+      // affichés sont donc ceux de la projection, recalculée sur le score acquis
+      // et le temps restant. Une seule vérité à l'écran.
+      donnees.predictedScore = {
+        team1Goals: projection.scoreFinal1,
+        team2Goals: projection.scoreFinal2,
+        reasoning: projection.verdict,
+      };
+      donnees.winProb = projection.probaVictoire1;
+      donnees.drawProb = projection.probaNul;
+      donnees.loseProb = projection.probaVictoire2;
+      // La confiance n'est pas bornée à 90 % ici, contrairement à un pronostic
+      // d'avant-match : à la 90ᵉ minute sur un score de 2-1, l'issue n'est plus
+      // une opinion, c'est presque un fait. Plafonner reviendrait à sous-estimer
+      // ce que le tableau d'affichage montre déjà.
+      donnees.confidence = Math.round(
+        Math.max(projection.probaVictoire1, projection.probaNul, projection.probaVictoire2)
+      );
+      // Le résumé d'avant-match dirait encore le contraire du tableau
+      // d'affichage : la projection le remplace.
+      donnees.quickSummary = projection.verdict;
     }
 
     return donnees;
