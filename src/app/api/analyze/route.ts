@@ -398,6 +398,39 @@ export async function POST(req: Request) {
       fetchApiFootball(`/standings?season=${t2Season}&league=${t2League}`, CACHE_TTL.API_DATA)
     ]);
     [t1Stats, t2Stats, t1Injuries, t2Injuries, t1Squad, t2Squad, t1TopScorers, t2TopScorers, t1Standings, t2Standings] = statsRes;
+
+    // ── SAISON QUI VIENT DE COMMENCER ────────────────────────────────────────
+    //
+    // Vérifié le 12 août 2026 sur la Liga : Barcelone, Elche et le Real
+    // affichaient tous 0 match, 0 but pour la saison en cours, qui débutait à
+    // peine. Trois semaines par an, toutes les équipes d'un championnat sont
+    // donc statistiquement vides.
+    //
+    // Sans ce rattrapage, le calcul du score reçoit des zéros pour les deux
+    // équipes, les considère comme équivalentes, et rend le même résultat pour
+    // toutes les affiches — le défaut qu'on vient précisément de corriger.
+    // La saison précédente est complète et reste le meilleur reflet du niveau
+    // d'une équipe tant que la nouvelle n'a pas produit de matchs.
+    const aucuneDonnee = (stats: any) => !((stats?.response?.fixtures?.played?.total ?? 0) > 0);
+
+    if (aucuneDonnee(t1Stats) || aucuneDonnee(t2Stats)) {
+      const [precedent1, precedent2] = await Promise.all([
+        aucuneDonnee(t1Stats)
+          ? fetchApiFootball(`/teams/statistics?team=${id1}&season=${t1Season - 1}&league=${t1League}`, CACHE_TTL.TEAM_STATS)
+          : Promise.resolve(null),
+        aucuneDonnee(t2Stats)
+          ? fetchApiFootball(`/teams/statistics?team=${id2}&season=${t2Season - 1}&league=${t2League}`, CACHE_TTL.TEAM_STATS)
+          : Promise.resolve(null),
+      ]);
+      if (precedent1 && !aucuneDonnee(precedent1)) {
+        console.log(`[BACKEND_ANALYZE] Saison ${t1Season} vide pour ${id1} — bascule sur ${t1Season - 1}.`);
+        t1Stats = precedent1;
+      }
+      if (precedent2 && !aucuneDonnee(precedent2)) {
+        console.log(`[BACKEND_ANALYZE] Saison ${t2Season} vide pour ${id2} — bascule sur ${t2Season - 1}.`);
+        t2Stats = precedent2;
+      }
+    }
   }
 
   // Extract Standings Info (For League Level/Rank Context)
