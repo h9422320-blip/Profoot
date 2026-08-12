@@ -9,6 +9,7 @@ import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale } from "@/lib/score-probable";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
+import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
 
 // ============================================================================
 // ProFoot ANALYSE ENGINE v6.0 — FULL AI DELEGATION
@@ -126,6 +127,78 @@ async function getTeamApiId(team: any) {
   return null;
 }
 
+/**
+ * Statistiques d'une équipe dans son championnat, avec obstination.
+ *
+ * Trois obstacles se cumulent ici, et chacun a été constaté :
+ *
+ *  1. En début d'exercice, la saison en cours ne contient aucun match. On
+ *     bascule alors sur la précédente, qui reste le meilleur reflet du niveau.
+ *
+ *  2. Sous rafale d'appels, l'API renvoie parfois une réponse vide avec un
+ *     code 200 — vérifié : une requête donnait 0 match, la même relancée dix
+ *     minutes plus tard en donnait 38. Un seul de ces à-coups suffisait à faire
+ *     traiter Barcelone comme une équipe inconnue.
+ *
+ *  3. Une réponse vide et une équipe réellement sans historique se ressemblent.
+ *     On insiste donc avant de conclure à l'absence de données, car cette
+ *     conclusion fait tomber toute l'analyse sur des valeurs neutres.
+ */
+async function statistiquesEquipe(
+  teamId: string | number,
+  ligue: number,
+  saison: number
+): Promise<any> {
+  const aDesDonnees = (r: any) => (r?.response?.fixtures?.played?.total ?? 0) > 0;
+
+  for (const s of [saison, saison - 1]) {
+    const premier = await fetchApiFootball(
+      `/teams/statistics?team=${teamId}&season=${s}&league=${ligue}`,
+      CACHE_TTL.TEAM_STATS,
+      8000
+    );
+    if (aDesDonnees(premier)) return premier;
+
+    // Une seule relance, et uniquement sur la saison précédente : c'est celle
+    // qui doit contenir des données. Insister sur la saison en cours en début
+    // d'exercice ne ferait que perdre du temps pour rien.
+    if (s !== saison) {
+      await new Promise((r) => setTimeout(r, 400));
+      const second = await fetchApiFootball(
+        `/teams/statistics?team=${teamId}&season=${s}&league=${ligue}&`,
+        0,
+        8000
+      );
+      if (aDesDonnees(second)) {
+        console.log(`[BACKEND_ANALYZE] Statistiques de ${teamId} récupérées à la seconde tentative.`);
+        return second;
+      }
+    }
+  }
+  console.warn(`[BACKEND_ANALYZE] Aucune statistique exploitable pour ${teamId} (ligue ${ligue}).`);
+  return null;
+}
+
+/**
+ * Championnat domestique d'une équipe.
+ *
+ * On ne retient que les compétitions de type « League ». Déduire le
+ * championnat du dernier match joué rattachait les clubs à un match amical en
+ * intersaison, ou à une finale de coupe, et toutes les statistiques suivantes
+ * étaient alors calculées sur trois ou quatre rencontres sans rapport.
+ *
+ * La saison précédente sert de recours : au tout début d'un exercice, la
+ * nouvelle n'est pas encore déclarée.
+ */
+async function resoudreChampionnat(teamId: string | number, saison: number): Promise<number | null> {
+  for (const s of [saison, saison - 1]) {
+    const r = await fetchApiFootball(`/leagues?team=${teamId}&season=${s}`, CACHE_TTL.TEAM_STATS, 8000);
+    const championnat = (r?.response ?? []).find((x: any) => x?.league?.type === 'League');
+    if (championnat?.league?.id) return championnat.league.id;
+  }
+  return null;
+}
+
 function getCurrentSeason(): number {
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -238,19 +311,41 @@ export async function POST(req: Request) {
    * Flouter côté navigateur ne protégeait rien, la réponse complète étant déjà
    * lisible dans les outils de développement.
    */
-  const respond = (data: Record<string, any>) =>
-    NextResponse.json(
+  /**
+   * Point de passage unique de toutes les réponses.
+   *
+   * L'enregistrement de l'historique se fait ICI, et non dans le navigateur.
+   * Écrit côté client, il ne disposait que de ce que le paywall laissait
+   * passer : un compte gratuit ne reçoit ni le score prédit ni les
+   * probabilités, et la ligne partait donc vide — ou pire, remplie d'un « 2-1 »
+   * de remplissage. Sur le serveur, l'analyse complète est disponible quel que
+   * soit l'abonnement.
+   *
+   * `dejaEnregistre` évite de recréer une ligne à chaque consultation d'une
+   * analyse déjà servie depuis le cache.
+   */
+  const respond = (data: Record<string, any>, dejaEnregistre = false) => {
+    if (!dejaEnregistre) {
+      enregistrerAnalyse({
+        userId: guard.user.id,
+        equipe1: { id: team1.id, name: team1.name, logo: team1.logo, league: team1.league },
+        equipe2: { id: team2.id, name: team2.name, logo: team2.logo, league: team2.league },
+        donnees: data,
+      });
+    }
+    return NextResponse.json(
       guard.entitlements.premium
         ? { ...data, quota }
         : { ...toTeaser(data), quota }
     );
+  };
 
   const today = new Date().toISOString().split('T')[0];
   const cacheKey = `${team1.id}-${team2.id}-${today}`;
   const cachedAnalysis = analysisCache.get(cacheKey);
   if (cachedAnalysis && Date.now() - cachedAnalysis.timestamp < CACHE_TTL.ANALYSIS) {
     console.log(`[BACKEND_ANALYZE] Returning CACHED analysis for ${team1.name} vs ${team2.name}`);
-    return respond(cachedAnalysis.data);
+    return respond(cachedAnalysis.data, true);
   }
 
   console.log(`[BACKEND_ANALYZE] Starting analysis for ${team1.name} vs ${team2.name}`);
@@ -444,16 +539,40 @@ export async function POST(req: Request) {
   const t1Season = t1Data.season;
   const t2Season = t2Data.season;
 
+  // ── CHAMPIONNAT DE CHAQUE ÉQUIPE ───────────────────────────────────────────
+  //
+  // Il était déduit de la compétition du dernier match joué. En août, ce sont
+  // des matchs AMICAUX : vérifié le 12 août 2026, Barcelone et Elche étaient
+  // tous deux rattachés à « Friendlies Clubs », et le PSG comme Aston Villa à
+  // la « UEFA Super Cup » où ils comptent zéro match.
+  //
+  // Toutes les statistiques qui suivent — buts marqués, encaissés, forme — se
+  // retrouvaient donc calculées sur quatre matchs de préparation. C'est ce qui
+  // a produit un Barcelone — Elche donné à l'avantage d'Elche, avec une
+  // confiance plancher de 45 %.
+  //
+  // Le championnat se demande maintenant directement, et l'on ne retient que
+  // les compétitions de type « League » : ni coupes, ni amicaux.
   let t1League = 39; let t2League = 39;
   if (t1Fixtures?.response?.length > 0) t1League = t1Fixtures.response[0].league.id;
   if (t2Fixtures?.response?.length > 0) t2League = t2Fixtures.response[0].league.id;
+
+  if (id1 && id2) {
+    const [ligue1, ligue2] = await Promise.all([
+      resoudreChampionnat(id1, season),
+      resoudreChampionnat(id2, season),
+    ]);
+    if (ligue1) t1League = ligue1;
+    if (ligue2) t2League = ligue2;
+    console.log(`[BACKEND_ANALYZE] Championnats retenus : ${t1League} et ${t2League}.`);
+  }
 
   let t1Stats = null, t2Stats = null, t1Injuries = null, t2Injuries = null, t1Squad = null, t2Squad = null, t1TopScorers = null, t2TopScorers = null, t1Standings = null, t2Standings = null;
 
   if (id1 && id2) {
     const statsRes = await Promise.all([
-      fetchApiFootball(`/teams/statistics?team=${id1}&season=${t1Season}&league=${t1League}`, CACHE_TTL.TEAM_STATS),
-      fetchApiFootball(`/teams/statistics?team=${id2}&season=${t2Season}&league=${t2League}`, CACHE_TTL.TEAM_STATS),
+      statistiquesEquipe(id1, t1League, t1Season),
+      statistiquesEquipe(id2, t2League, t2Season),
       fetchApiFootball(`/injuries?team=${id1}&season=${t1Season}`),
       fetchApiFootball(`/injuries?team=${id2}&season=${t2Season}`),
       fetchApiFootball(`/players/squads?team=${id1}`, CACHE_TTL.TEAM_STATS),
@@ -465,38 +584,8 @@ export async function POST(req: Request) {
     ]);
     [t1Stats, t2Stats, t1Injuries, t2Injuries, t1Squad, t2Squad, t1TopScorers, t2TopScorers, t1Standings, t2Standings] = statsRes;
 
-    // ── SAISON QUI VIENT DE COMMENCER ────────────────────────────────────────
-    //
-    // Vérifié le 12 août 2026 sur la Liga : Barcelone, Elche et le Real
-    // affichaient tous 0 match, 0 but pour la saison en cours, qui débutait à
-    // peine. Trois semaines par an, toutes les équipes d'un championnat sont
-    // donc statistiquement vides.
-    //
-    // Sans ce rattrapage, le calcul du score reçoit des zéros pour les deux
-    // équipes, les considère comme équivalentes, et rend le même résultat pour
-    // toutes les affiches — le défaut qu'on vient précisément de corriger.
-    // La saison précédente est complète et reste le meilleur reflet du niveau
-    // d'une équipe tant que la nouvelle n'a pas produit de matchs.
-    const aucuneDonnee = (stats: any) => !((stats?.response?.fixtures?.played?.total ?? 0) > 0);
-
-    if (aucuneDonnee(t1Stats) || aucuneDonnee(t2Stats)) {
-      const [precedent1, precedent2] = await Promise.all([
-        aucuneDonnee(t1Stats)
-          ? fetchApiFootball(`/teams/statistics?team=${id1}&season=${t1Season - 1}&league=${t1League}`, CACHE_TTL.TEAM_STATS, 6000)
-          : Promise.resolve(null),
-        aucuneDonnee(t2Stats)
-          ? fetchApiFootball(`/teams/statistics?team=${id2}&season=${t2Season - 1}&league=${t2League}`, CACHE_TTL.TEAM_STATS, 6000)
-          : Promise.resolve(null),
-      ]);
-      if (precedent1 && !aucuneDonnee(precedent1)) {
-        console.log(`[BACKEND_ANALYZE] Saison ${t1Season} vide pour ${id1} — bascule sur ${t1Season - 1}.`);
-        t1Stats = precedent1;
-      }
-      if (precedent2 && !aucuneDonnee(precedent2)) {
-        console.log(`[BACKEND_ANALYZE] Saison ${t2Season} vide pour ${id2} — bascule sur ${t2Season - 1}.`);
-        t2Stats = precedent2;
-      }
-    }
+    // La bascule sur la saison précédente et la relance en cas de réponse vide
+    // sont désormais assurées par statistiquesEquipe, au plus près de la lecture.
   }
 
   // Extract Standings Info (For League Level/Rank Context)

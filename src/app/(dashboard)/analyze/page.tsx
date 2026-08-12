@@ -641,33 +641,17 @@ export default function AnalyzePage() {
           const existing = JSON.parse(localStorage.getItem("profoot_user_history_v1") || "[]");
           localStorage.setItem("profoot_user_history_v1", JSON.stringify([historyItem, ...existing]));
 
-          // 2. Sauvegarde dans Supabase (persistante, tous appareils)
-          fetch('/api/history', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              team1_id: t1Obj.id,
-              team1_name: t1Obj.name,
-              team1_logo: t1Obj.logo || '',
-              team1_league: t1Obj.league || '',
-              team2_id: t2Obj.id,
-              team2_name: t2Obj.name,
-              team2_logo: t2Obj.logo || '',
-              team2_league: t2Obj.league || '',
-              competition: historyItem.competition,
-              score: historyItem.score,
-              confidence: historyItem.confidence,
-              summary: historyItem.summary,
-              is_finished: historyItem.isFinished,
-              win_prob: data.winProb || null,
-              draw_prob: data.drawProb || null,
-              lose_prob: data.loseProb || null,
-              analysis_data: data
-            })
-          }).then(r => {
-            if (r.ok) console.log("[HISTORY] ✅ Sauvegardé dans Supabase");
-            else console.warn("[HISTORY] ⚠️ Erreur Supabase, localStorage OK");
-          }).catch(() => console.warn("[HISTORY] ⚠️ Erreur réseau Supabase, localStorage OK"));
+          // 2. L'enregistrement durable est fait par le SERVEUR, au moment où il
+          //    produit l'analyse. Il ne se fait plus ici.
+          //
+          //    Écrit depuis le navigateur, il ne disposait que de ce que le
+          //    paywall laissait passer : un compte gratuit ne reçoit ni le score
+          //    prédit ni les probabilités, et la ligne partait donc vide — ou
+          //    remplie d'un « 2-1 » de remplissage. Le serveur, lui, a l'analyse
+          //    entière quel que soit l'abonnement.
+          //
+          //    Le stockage local ci-dessus reste : il affiche l'historique sans
+          //    attendre le réseau.
 
           console.log("[HISTORY] Analyse enregistrée avec succès.");
           
