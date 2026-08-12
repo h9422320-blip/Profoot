@@ -49,6 +49,13 @@ const FENETRE_HEURES = 6;
 const MINIMUM_POUR_JUGER = 15;
 const ANALYSES_EXAMINEES = 40;
 
+/**
+ * Un défaut dont la dernière occurrence est ancienne n est pas une panne en
+ * cours. Sans cette distinction, l audit criait au loup pendant des heures
+ * après une correction, et un signal qui se déclenche à tort finit ignoré.
+ */
+const DELAI_RESORPTION_MS = 2 * 3600 * 1000;
+
 const CHARIOW = 'https://api.chariow.com/v1';
 const FOOT = 'https://v3.football.api-sports.io';
 
@@ -67,6 +74,14 @@ export async function executerAudit(): Promise<ResultatAudit> {
   const points: PointAudit[] = [];
   const noter = (domaine: string, gravite: Gravite, message: string) =>
     points.push({ domaine, gravite, message });
+
+  /** Signale une anomalie, ou la déclare résorbée si elle ne survient plus. */
+  const noterSelonAnciennete = (domaine: string, derniere: string | null, message: string) => {
+    const age = derniere ? Date.now() - new Date(derniere).getTime() : Infinity;
+    if (age > DELAI_RESORPTION_MS)
+      noter(domaine, 'ok', `${message} — dernière occurrence il y a ${Math.round(age / 3600000)} h, défaut résorbé`);
+    else noter(domaine, 'anomalie', message);
+  };
 
   const sb = createAdminClient();
 
@@ -172,19 +187,32 @@ export async function executerAudit(): Promise<ResultatAudit> {
       const avecScore = [...parScore.values()].reduce((t, n) => t + n, 0);
       const dominant = [...parScore.entries()].sort((a, b) => b[1] - a[1])[0];
 
+      // Les prédictions sont triées du plus récent au plus ancien : la première
+      // ligne fautive est donc la plus récente, celle qui dit si le défaut
+      // sévit encore.
+      const derniere = (p: (a: any) => boolean) => predictions.find(p)?.created_at ?? null;
+
       if (avecScore === 0) noter('Analyses', 'anomalie', 'aucune prédiction ne porte de score');
       else {
         const part = (dominant[1] / avecScore) * 100;
         // Un score qui domine signale un calcul en panne : c'est ainsi que le
         // 2-1 servi à 82 % des analyses est passé inaperçu pendant des jours.
         if (part > 45)
-          noter('Analyses', 'anomalie', `le score ${dominant[0]} représente ${Math.round(part)} % des prédictions`);
+          noterSelonAnciennete(
+            'Analyses',
+            derniere((a: any) => a.score === dominant[0]),
+            `le score ${dominant[0]} représente ${Math.round(part)} % des prédictions`
+          );
         else noter('Analyses', 'ok', `${parScore.size} scores distincts, le plus fréquent à ${Math.round(part)} %`);
       }
 
       const sansScore = predictions.filter((a: any) => !a.score).length;
       if (sansScore / predictions.length > 0.2)
-        noter('Analyses', 'anomalie', `${Math.round((sansScore / predictions.length) * 100)} % des prédictions sans score`);
+        noterSelonAnciennete(
+          'Analyses',
+          derniere((a: any) => !a.score),
+          `${Math.round((sansScore / predictions.length) * 100)} % des prédictions sans score`
+        );
 
       const parConfiance = new Map<number, number>();
       for (const a of predictions) if (a.confidence != null) parConfiance.set(a.confidence, (parConfiance.get(a.confidence) ?? 0) + 1);
@@ -195,7 +223,11 @@ export async function executerAudit(): Promise<ResultatAudit> {
         // Une confiance qui se répète à l'identique est une valeur par défaut,
         // pas une mesure.
         if (part > 50)
-          noter('Analyses', 'anomalie', `la confiance vaut ${conf[0]} % dans ${Math.round(part)} % des cas`);
+          noterSelonAnciennete(
+            'Analyses',
+            derniere((a: any) => a.confidence === conf[0]),
+            `la confiance vaut ${conf[0]} % dans ${Math.round(part)} % des cas`
+          );
         const aberrantes = predictions.filter((a: any) => a.confidence != null && (a.confidence >= 100 || a.confidence < 40)).length;
         if (aberrantes > 0) noter('Analyses', 'anomalie', `${aberrantes} confiance(s) à 100 % ou sous 40 %`);
       }

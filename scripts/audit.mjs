@@ -53,6 +53,30 @@ const attention = (texte) => {
 };
 const titre = (t) => console.log(`\n${t}`);
 
+/**
+ * Un défaut dont la dernière occurrence est ancienne n'est pas une panne en
+ * cours.
+ *
+ * Sans cette distinction, l'audit criait au loup pendant des heures après une
+ * correction : le score 2-1 éteint à 21 h restait signalé parce que les lignes
+ * fautives de la soirée étaient encore dans la fenêtre. Un signal qui se
+ * déclenche à tort finit ignoré, et l'audit ne sert alors plus à rien.
+ *
+ * Au-delà de ce délai sans nouvelle occurrence, le défaut est présenté comme
+ * résorbé — mentionné, mais sans réclamer d'intervention.
+ */
+const DELAI_RESORPTION_MS = 2 * 3600 * 1000;
+
+const selonAnciennete = (derniereOccurrence, texte) => {
+  const age = Date.now() - new Date(derniereOccurrence).getTime();
+  if (age > DELAI_RESORPTION_MS) {
+    const heures = Math.round(age / 3600000);
+    ok(`${texte} — dernière occurrence il y a ${heures} h, défaut résorbé`);
+  } else {
+    alerte(texte);
+  }
+};
+
 /** Le réseau lâche parfois ; une panne réseau n'est pas une anomalie applicative. */
 const reessayer = async (f, essai = 1) => {
   try {
@@ -212,16 +236,29 @@ async function verifierAnalyses() {
   const avecScore = [...parScore.values()].reduce((t, n) => t + n, 0);
   const dominant = [...parScore.entries()].sort((a, b) => b[1] - a[1])[0];
 
+  // `predictions` est trié du plus récent au plus ancien : la première ligne
+  // fautive rencontrée est donc la plus récente, celle qui dit si le défaut
+  // sévit encore.
+  const derniere = (predicat) => predictions.find(predicat)?.created_at ?? null;
+
   if (avecScore === 0) alerte('aucune prédiction ne porte de score');
   else {
     const part = (dominant[1] / avecScore) * 100;
-    if (part > 45) alerte(`le score ${dominant[0]} représente ${part.toFixed(0)} % des prédictions — un score qui domine signale un calcul en panne`);
+    if (part > 45)
+      selonAnciennete(
+        derniere((a) => a.score === dominant[0]),
+        `le score ${dominant[0]} représente ${part.toFixed(0)} % des prédictions — un score qui domine signale un calcul en panne`
+      );
     else ok(`score le plus fréquent : ${dominant[0]} à ${part.toFixed(0)} % (${parScore.size} scores distincts)`);
   }
 
   const sansScore = predictions.filter((a) => !a.score).length;
   const partSansScore = (sansScore / predictions.length) * 100;
-  if (partSansScore > 20) alerte(`${partSansScore.toFixed(0)} % des prédictions n'ont pas de score enregistré`);
+  if (partSansScore > 20)
+    selonAnciennete(
+      derniere((a) => !a.score),
+      `${partSansScore.toFixed(0)} % des prédictions n'ont pas de score enregistré`
+    );
   else ok(`${sansScore} prédiction(s) sans score sur ${predictions.length}`);
 
   // Une confiance qui se répète à l'identique révèle une valeur par défaut, pas
@@ -232,11 +269,19 @@ async function verifierAnalyses() {
   if (avecConfiance > 0) {
     const conf = [...parConfiance.entries()].sort((a, b) => b[1] - a[1])[0];
     const part = (conf[1] / avecConfiance) * 100;
-    if (part > 50) alerte(`la confiance vaut ${conf[0]} % dans ${part.toFixed(0)} % des cas — valeur par défaut probable`);
+    if (part > 50)
+      selonAnciennete(
+        derniere((a) => a.confidence === conf[0]),
+        `la confiance vaut ${conf[0]} % dans ${part.toFixed(0)} % des cas — valeur par défaut probable`
+      );
     else ok(`confiance la plus fréquente : ${conf[0]} % à ${part.toFixed(0)} %`);
 
     const extremes = predictions.filter((a) => a.confidence != null && (a.confidence >= 100 || a.confidence < 40));
-    if (extremes.length > 0) alerte(`${extremes.length} prédiction(s) affichent une confiance de 100 % ou inférieure à 40 %`);
+    if (extremes.length > 0)
+      selonAnciennete(
+        derniere((a) => a.confidence != null && (a.confidence >= 100 || a.confidence < 40)),
+        `${extremes.length} prédiction(s) affichent une confiance de 100 % ou inférieure à 40 %`
+      );
     else ok('aucune confiance aberrante');
   }
 
