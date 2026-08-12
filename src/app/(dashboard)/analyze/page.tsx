@@ -1088,102 +1088,130 @@ export default function AnalyzePage() {
               visible : l'intérêt est justement de confronter ce qui avait été
               annoncé à ce qui se passe sur le terrain. */}
           {result.live && (
-            <div className="mb-8 bg-[#1d2f3a]/60 backdrop-blur-md border border-[#EF4444]/25 rounded-[32px] p-6 md:p-8 shadow-lg">
-              <div className="flex items-center justify-center gap-2 mb-6">
-                <span className="relative flex h-2.5 w-2.5">
+            <div className="mb-8 bg-[#1d2f3a]/60 backdrop-blur-md border border-[#EF4444]/25 rounded-[28px] md:rounded-[32px] p-4 sm:p-6 md:p-8 shadow-lg">
+              <div className="flex items-center justify-center gap-2 mb-5 md:mb-6">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EF4444] opacity-75" />
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#EF4444]" />
                 </span>
-                <span className="text-[10px] font-black text-[#EF4444] uppercase tracking-widest">
+                <span className="text-[9.5px] sm:text-[10px] font-black text-[#EF4444] uppercase tracking-widest text-center">
                   En direct · {result.live.statutLibelle}
                   {result.live.minute !== null && !result.live.miTemps && ` · ${result.live.minute}'`}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between gap-2 md:gap-12 w-full">
-                <div className="flex flex-col items-center gap-2 w-[35%]">
-                  <img src={getClub(team1!).logo} className="w-14 h-14 md:w-18 md:h-18 object-contain" alt="" />
-                  <span className="text-xs md:text-base font-black text-center text-white truncate max-w-full">
+              <div className="flex items-center justify-between gap-1.5 md:gap-12 w-full">
+                <div className="flex flex-col items-center gap-2 w-[32%] min-w-0">
+                  <img src={getClub(team1!).logo} className="w-12 h-12 sm:w-14 sm:h-14 md:w-18 md:h-18 object-contain" alt="" />
+                  {/* Deux lignes autorisées plutôt qu'un nom coupé à « Pa… » :
+                      un club tronqué ne se reconnaît pas. */}
+                  <span className="text-[11px] sm:text-xs md:text-base font-black text-center text-white leading-tight w-full">
                     {getClub(team1!).name}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-center bg-black/40 px-5 py-2.5 rounded-full border border-white/5 shrink-0">
-                  <span className="text-3xl md:text-5xl font-black text-white tracking-tight">
+                <div className="flex items-center justify-center bg-black/40 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full border border-white/5 shrink-0 self-start mt-3 md:mt-0">
+                  <span className="text-2xl sm:text-3xl md:text-5xl font-black text-white tracking-tight whitespace-nowrap">
                     {result.live.buts1} <span className="text-white/25">-</span> {result.live.buts2}
                   </span>
                 </div>
 
-                <div className="flex flex-col items-center gap-2 w-[35%]">
-                  <img src={getClub(team2!).logo} className="w-14 h-14 md:w-18 md:h-18 object-contain" alt="" />
-                  <span className="text-xs md:text-base font-black text-center text-white truncate max-w-full">
+                <div className="flex flex-col items-center gap-2 w-[32%] min-w-0">
+                  <img src={getClub(team2!).logo} className="w-12 h-12 sm:w-14 sm:h-14 md:w-18 md:h-18 object-contain" alt="" />
+                  <span className="text-[11px] sm:text-xs md:text-base font-black text-center text-white leading-tight w-full">
                     {getClub(team2!).name}
                   </span>
                 </div>
               </div>
 
+              {/* Un but tient sur une ligne au bureau, jamais sur un téléphone
+                  de 360 px : le nom du buteur, le passeur et le club dans une
+                  seule rangée écrasaient tout. Le buteur reste donc en tête, le
+                  passeur et le club passent en dessous. */}
               {result.live.buteurs?.length > 0 && (
-                <div className="mt-6 pt-5 border-t border-white/5 space-y-2">
+                <div className="mt-6 pt-5 border-t border-white/5 space-y-3">
                   {result.live.buteurs.map((b: any, i: number) => (
-                    <div key={i} className="flex items-center gap-3 text-[13px]">
-                      <span className="text-white/35 font-bold tabular-nums w-9 shrink-0">{b.minute}&apos;</span>
-                      <span className="text-white/25">⚽</span>
-                      <span className={`font-bold ${b.cote === "team1" ? "text-white" : "text-white/70"}`}>
-                        {b.joueur}
+                    <div key={i} className="flex items-start gap-2.5">
+                      <span className="text-white/35 font-bold tabular-nums w-8 shrink-0 text-[12px] pt-[3px]">
+                        {b.minute}&apos;
                       </span>
-                      {b.precision && (
-                        <span className="text-[10px] font-black text-amber-400 uppercase">{b.precision}</span>
-                      )}
-                      {b.passeur && <span className="text-white/30 text-[11px]">passe de {b.passeur}</span>}
-                      <span className="ml-auto text-[11px] text-white/25 truncate">
-                        {b.cote === "team1" ? getClub(team1!).name : getClub(team2!).name}
-                      </span>
+                      <span className="text-white/25 shrink-0 text-[12px] pt-[3px]">⚽</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`font-bold text-[13px] leading-tight ${
+                              b.cote === "team1" ? "text-white" : "text-white/70"
+                            }`}
+                          >
+                            {b.joueur}
+                          </span>
+                          {b.precision && (
+                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-wide">
+                              {b.precision}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap text-[10.5px] text-white/30 mt-0.5">
+                          <span className="font-bold text-white/40">
+                            {b.cote === "team1" ? getClub(team1!).name : getClub(team2!).name}
+                          </span>
+                          {b.passeur && <span>· passe de {b.passeur}</span>}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
 
+              {/* Trois statistiques côte à côte débordaient à 360 px. Une
+                  grille de trois colonnes égales tient sur toutes les largeurs
+                  et se lit mieux qu'une ligne qui se coupe n'importe où. */}
               {result.live.statistiques && (
-                <div className="mt-5 pt-4 border-t border-white/5 flex flex-wrap justify-center gap-x-8 gap-y-2 text-[11px] text-white/40">
-                  <span>
-                    Tirs <span className="text-white/70 font-bold">{result.live.statistiques.tirs1 ?? "—"}</span> —{" "}
-                    <span className="text-white/70 font-bold">{result.live.statistiques.tirs2 ?? "—"}</span>
-                  </span>
-                  <span>
-                    Cadrés <span className="text-white/70 font-bold">{result.live.statistiques.cadres1 ?? "—"}</span> —{" "}
-                    <span className="text-white/70 font-bold">{result.live.statistiques.cadres2 ?? "—"}</span>
-                  </span>
-                  <span>
-                    Possession{" "}
-                    <span className="text-white/70 font-bold">{result.live.statistiques.possession1 ?? "—"}</span> —{" "}
-                    <span className="text-white/70 font-bold">{result.live.statistiques.possession2 ?? "—"}</span>
-                  </span>
+                <div className="mt-5 pt-4 border-t border-white/5 grid grid-cols-3 gap-2 text-center">
+                  {[
+                    { libelle: "Tirs", a: result.live.statistiques.tirs1, b: result.live.statistiques.tirs2 },
+                    { libelle: "Cadrés", a: result.live.statistiques.cadres1, b: result.live.statistiques.cadres2 },
+                    {
+                      libelle: "Possession",
+                      a: result.live.statistiques.possession1,
+                      b: result.live.statistiques.possession2,
+                    },
+                  ].map((s) => (
+                    <div key={s.libelle}>
+                      <p className="text-[13px] font-black text-white/80 tabular-nums whitespace-nowrap">
+                        {s.a ?? "—"} <span className="text-white/20">·</span> {s.b ?? "—"}
+                      </p>
+                      <p className="text-[9.5px] text-white/30 uppercase tracking-wide mt-0.5">{s.libelle}</p>
+                    </div>
+                  ))}
                 </div>
               )}
 
               {/* Projection de l'issue, recalculée sur le score acquis et le
                   temps restant. Réservée aux abonnés : c'est une prédiction. */}
               {result.finalPrediction && (
-                <div className="mt-6 bg-black/25 border border-white/5 rounded-[20px] p-5">
-                  <p className="text-[10px] font-black text-white/35 uppercase tracking-widest mb-3">
+                <div className="mt-6 bg-black/25 border border-white/5 rounded-[20px] p-4 sm:p-5">
+                  <p className="text-[9.5px] sm:text-[10px] font-black text-white/35 uppercase tracking-widest mb-2.5">
                     Où va ce match
                   </p>
-                  <p className="text-sm text-white font-bold leading-relaxed mb-4">
+                  <p className="text-[13px] sm:text-sm text-white font-bold leading-relaxed mb-4">
                     {result.finalPrediction.verdict}
                   </p>
-                  <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
                     {[
-                      { libelle: getClub(team1!).name, valeur: result.finalPrediction.probaVictoire1 },
-                      { libelle: "Nul", valeur: result.finalPrediction.probaNul },
-                      { libelle: getClub(team2!).name, valeur: result.finalPrediction.probaVictoire2 },
+                      { cle: "t1", libelle: getClub(team1!).name, valeur: result.finalPrediction.probaVictoire1 },
+                      { cle: "nul", libelle: "Nul", valeur: result.finalPrediction.probaNul },
+                      { cle: "t2", libelle: getClub(team2!).name, valeur: result.finalPrediction.probaVictoire2 },
                     ].map((c) => (
-                      <div key={c.libelle} className="bg-white/[0.03] rounded-2xl py-3">
-                        <p className="text-xl font-black text-[#10B981] tabular-nums">{c.valeur}%</p>
-                        <p className="text-[10px] text-white/40 truncate px-1">{c.libelle}</p>
+                      <div key={c.cle} className="bg-white/[0.03] rounded-2xl py-2.5 sm:py-3 px-1 min-w-0">
+                        <p className="text-lg sm:text-xl font-black text-[#10B981] tabular-nums">{c.valeur}%</p>
+                        <p className="text-[9.5px] sm:text-[10px] text-white/40 leading-tight break-words">
+                          {c.libelle}
+                        </p>
                       </div>
                     ))}
                   </div>
-                  <p className="text-[10px] text-white/25 mt-3 text-center">
+                  <p className="text-[9.5px] sm:text-[10px] text-white/25 mt-3 text-center leading-relaxed">
                     Recalculé sur le score actuel et les {result.finalPrediction.minutesRestantes} minutes restantes.
                   </p>
                 </div>
