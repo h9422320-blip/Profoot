@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Search, ShieldCheck, MailWarning, Download } from "lucide-react";
+import { Search, ShieldCheck, MailWarning, Download, ChevronRight } from "lucide-react";
 import type { LigneUtilisateur } from "@/lib/admin-metrics";
 import { Etiquette, Vide, dateCourte, ilYA, montant } from "../_components/Ui";
 
@@ -147,14 +148,20 @@ export default function UsersClient({ utilisateurs }: { utilisateurs: LigneUtili
               {liste.map((u) => (
                 <tr key={u.id} className="border-b border-[#2e4757]/50 last:border-0 hover:bg-white/[0.02]">
                   <td className="px-5 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-[#1d2f3a] border border-[#2e4757] flex items-center justify-center shrink-0">
+                    {/* L'adresse ouvre la fiche du compte : ses analyses, ses
+                        questions à l'agent et ses paiements. Le total affiché
+                        plus loin dans la ligne dit combien, jamais lesquelles. */}
+                    <Link href={`/admin/users/${u.id}`} className="group flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-[#1d2f3a] border border-[#2e4757] flex items-center justify-center shrink-0 group-hover:border-[#10b981]/50 transition-colors">
                         <span className="text-[11px] font-bold text-white/70">{u.email.charAt(0).toUpperCase()}</span>
                       </div>
-                      <span className="text-white truncate max-w-[240px]">{u.email}</span>
+                      <span className="text-white truncate max-w-[240px] group-hover:text-[#10b981] transition-colors">
+                        {u.email}
+                      </span>
                       {u.estAdmin && <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
                       {!u.emailConfirme && <MailWarning className="w-3.5 h-3.5 text-red-400 shrink-0" />}
-                    </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-white/0 group-hover:text-[#10b981] transition-colors shrink-0" />
+                    </Link>
                   </td>
                   <td className="px-5 py-3">
                     <Etiquette tier={u.offre} />
