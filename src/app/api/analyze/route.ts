@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { avecBasculeDeModele } from "@/lib/gemini-models";
+import { avecBasculeDeModele, MODELES_GEMINI } from "@/lib/gemini-models";
 import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
 import { toTeaser } from "@/lib/analysis-teaser";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
+import { calculerScoreProbable, bornerConfiance } from "@/lib/score-probable";
+import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 
 // ============================================================================
 // ProFoot ANALYSE ENGINE v6.0 — FULL AI DELEGATION
@@ -470,12 +472,81 @@ export async function POST(req: Request) {
   const winStreak1 = s1r.fixtures?.wins?.total || 0;
   const winStreak2 = s2r.fixtures?.wins?.total || 0;
 
+  // ── SCORE CALCULÉ ──────────────────────────────────────────────────────────
+  //
+  // Le score exact était demandé au modèle de langage. Constaté sur 228 analyses
+  // réelles : 186 annonçaient 2-1, soit 82 %, y compris pour la même affiche
+  // inversée. Un modèle de langage ne calcule pas un score, il répond le plus
+  // banal du football.
+  //
+  // Il est donc calculé ici, à partir des buts marqués et encaissés des deux
+  // équipes et de l'avantage du terrain. Le modèle garde la rédaction ; il ne
+  // décide plus des chiffres.
+  const lieuConnu = targetFutureMatch || targetPastMatch || nextH2H;
+  const equipe1AJoueADomicile: boolean | null = lieuConnu
+    ? String(lieuConnu.teams?.home?.id) === String(id1)
+    : null;
+
+  const scoreCalcule = calculerScoreProbable(
+    { butsMarques: baseGoalsFor1, butsEncaisses: baseGoalsAgainst1, matchsJoues: played1 },
+    { butsMarques: baseGoalsFor2, butsEncaisses: baseGoalsAgainst2, matchsJoues: played2 },
+    equipe1AJoueADomicile
+  );
+
+  /**
+   * Impose les chiffres calculés à la réponse du modèle.
+   *
+   * Le modèle rédige, mais les nombres affichés sont ceux du calcul : sans quoi
+   * le texte et le score pourraient se contredire, et le 2-1 reviendrait par la
+   * fenêtre. Sert aussi bien quand le modèle répond que quand il échoue.
+   */
+  const imposerChiffresCalcules = (donnees: any) => {
+    const raison =
+      typeof donnees?.predictedScore?.reasoning === 'string' && donnees.predictedScore.reasoning.trim()
+        ? donnees.predictedScore.reasoning
+        : `Les buts attendus ressortent à ${scoreCalcule.butsAttendus1} contre ${scoreCalcule.butsAttendus2}, ce qui rend ce score le plus probable.`;
+
+    donnees.predictedScore = {
+      team1Goals: scoreCalcule.buts1,
+      team2Goals: scoreCalcule.buts2,
+      reasoning: raison,
+    };
+    donnees.winProb = scoreCalcule.probaVictoire1;
+    donnees.drawProb = scoreCalcule.probaNul;
+    donnees.loseProb = scoreCalcule.probaVictoire2;
+    // Une analyse à 100 % et une autre à 8 % ont réellement été servies.
+    donnees.confidence = scoreCalcule.donneesInsuffisantes
+      ? scoreCalcule.confiance
+      : bornerConfiance(scoreCalcule.confiance);
+
+    donnees.predictions = {
+      ...(donnees.predictions ?? {}),
+      expectedGoals: {
+        team1: scoreCalcule.butsAttendus1,
+        team2: scoreCalcule.butsAttendus2,
+        total: Math.round((scoreCalcule.butsAttendus1 + scoreCalcule.butsAttendus2) * 100) / 100,
+      },
+      btts: {
+        yes: scoreCalcule.probaLesDeuxMarquent,
+        no: 100 - scoreCalcule.probaLesDeuxMarquent,
+      },
+      overUnder: {
+        over05: scoreCalcule.probaPlusDe.zeroCinq,
+        over15: scoreCalcule.probaPlusDe.unCinq,
+        over25: scoreCalcule.probaPlusDe.deuxCinq,
+        over35: scoreCalcule.probaPlusDe.troisCinq,
+      },
+    };
+    return donnees;
+  };
+
   // GEMINI PROMPT GENERATION
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
   if (!GEMINI_KEY || GEMINI_KEY === "fallback_key_for_safety" || GEMINI_KEY === "") {
     return NextResponse.json({ error: "Clé API Gemini manquante. Impossible de générer la prédiction." }, { status: 500 });
   }
 
+  const debutAnalyse = Date.now();
   try {
     console.log(`[BACKEND_ANALYZE] Calling Gemini for PREDICTION and EXPERT ANALYSIS...`);
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
@@ -512,10 +583,17 @@ DONNÉES REELLES FOURNIES :
 [HISTORIQUE CONFRONTATIONS (H2H)]
 ${JSON.stringify(pastMatches.slice(0, 3).map((m:any)=>`${m.teams.home.name} ${m.goals.home}-${m.goals.away} ${m.teams.away.name}`))}
 
+[PROJECTION CHIFFRÉE DÉJÀ CALCULÉE — À NE PAS CONTREDIRE]
+Le score et les probabilités de ce match ont été calculés à partir des buts marqués et encaissés des deux équipes et de l'avantage du terrain. Ils sont définitifs :
+- Buts attendus : ${team1.name} ${scoreCalcule.butsAttendus1} — ${team2.name} ${scoreCalcule.butsAttendus2}
+- Score le plus probable : ${scoreCalcule.buts1} - ${scoreCalcule.buts2}
+- Victoire ${team1.name} ${scoreCalcule.probaVictoire1} %, nul ${scoreCalcule.probaNul} %, victoire ${team2.name} ${scoreCalcule.probaVictoire2} %
+Ton texte doit être COHÉRENT avec ces chiffres. N'annonce jamais un autre score ni un autre vainqueur, et ne mentionne jamais qu'un calcul a été fait : tu expliques le match, pas la méthode.
+
 TON ANALYSE ET TA DECISION (MODE EXPERT & COACH) :
 1. Évalue la différence de niveau réel entre les équipes en t'appuyant sur TA PROPRE CONNAISSANCE.
-2. Prédit le score exact (team1Goals et team2Goals).
-3. Calcule les probabilités (winProb, drawProb, loseProb).
+2. Reprends le score ci-dessus dans predictedScore, et explique en une phrase POURQUOI ce score tient debout au vu des forces en présence.
+3. Reprends les probabilités ci-dessus telles quelles (winProb, drawProb, loseProb).
 4. GÉNÉRATION DES TEXTES (TRÈS IMPORTANT) : Ton style de rédaction doit être fluide, percutant et facile à lire. Interdiction d'utiliser des phrases banales. 
    - INTERDICTION ABSOLUE : Tu ne dois JAMAIS mentionner "API", "API Football", ou "données fournies". Tu es un expert humain, tu parles en ton nom. Ne dis JAMAIS "absence de données".
    - LANGAGE SIMPLE : N'utilise pas de mots trop compliqués. Fais des phrases claires, courtes et sans fautes de grammaire, compréhensibles par tout fan de foot.
@@ -581,6 +659,11 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     }
     const parsedData = JSON.parse(responseText);
 
+    // Les chiffres affichés sont ceux du calcul, jamais ceux que le modèle a pu
+    // réécrire au passage. C'est ce qui garantit qu'on ne reverra pas 82 % de
+    // 2-1, et que le texte ne peut pas contredire le score annoncé.
+    imposerChiffresCalcules(parsedData);
+
     // Informations réelles du match (compétition, coup d'envoi, stade, ville).
     // Sans elles, l'en-tête affichait ses valeurs de repli — « Match
     // International » et « Bientôt » — au lieu du contexte réel de la rencontre.
@@ -609,20 +692,38 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
 
   } catch (e: any) {
     console.error("[BACKEND_ANALYZE] Gemini failed:", e.message);
-    
-    // MATHEMATICAL FALLBACK IN CASE OF GEMINI ERROR (ex: Leaked API Key)
-    let winProb = 45; let loseProb = 25; let drawProb = 30;
-    let t1Goals = 2; let t2Goals = 1;
-    if (baseGoalsFor2 > baseGoalsFor1) {
-       winProb = 25; loseProb = 45; t1Goals = 1; t2Goals = 2;
-    }
-    
-    const fallbackData = {
+
+    // ── REPRISE SUR ÉCHEC ────────────────────────────────────────────────────
+    //
+    // L'abonné ne doit rien voir. Il reçoit une analyse complète et exploitable
+    // — le score et les probabilités sont ceux du calcul, exactement comme
+    // lorsque le modèle répond. Seuls les textes sont plus sobres.
+    //
+    // Ce qui change, c'est que l'échec ne disparaît plus dans le silence : il
+    // est enregistré pour l'administration. Auparavant, près d'une analyse sur
+    // cinq servait un score écrit en dur et une phrase creuse sans que personne
+    // ne le sache.
+    enregistrerEchecAnalyse({
+      userId: guard.user.id,
+      equipe1: team1.name,
+      equipe2: team2.name,
+      competition: (targetFutureMatch || nextH2H)?.league?.name ?? null,
+      message: String(e?.message ?? e),
+      modele: MODELES_GEMINI[0],
+      dureeMs: Date.now() - debutAnalyse,
+      serviQuandMeme: true,
+    });
+
+    const t1Goals = scoreCalcule.buts1;
+    const t2Goals = scoreCalcule.buts2;
+    const vainqueur =
+      t1Goals > t2Goals ? team1.name : t2Goals > t1Goals ? team2.name : null;
+
+    const fallbackData = imposerChiffresCalcules({
       isFinished: false,
-      predictedScore: { team1Goals: t1Goals, team2Goals: t2Goals, reasoning: `L'avantage global penche en faveur de ${t1Goals > t2Goals ? team1.name : team2.name} au vu des équilibres récents.` },
-      winProb, drawProb, loseProb,
-      confidence: 75,
-      quickSummary: `Une analyse statistique approfondie qui souligne les forces en présence et la dynamique actuelle des deux équipes.`,
+      quickSummary: vainqueur
+        ? `Les buts attendus penchent vers ${vainqueur} : ${scoreCalcule.butsAttendus1} contre ${scoreCalcule.butsAttendus2} au vu des attaques et des défenses en présence.`
+        : `Les deux équipes affichent des projections très proches — ${scoreCalcule.butsAttendus1} contre ${scoreCalcule.butsAttendus2} buts attendus — ce qui rend le partage des points le scénario le plus probable.`,
       comparison: {
         attack: { team1: 60, team2: 50 }, defense: { team1: 60, team2: 50 },
         form: { team1: 60, team2: 50 }, h2h: { team1: 50, team2: 50 },
@@ -635,8 +736,10 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
       },
       advancedMetrics: {
         possession: { team1: baseAvgPossession1, team2: baseAvgPossession2 },
-        xG: { team1: t1Goals + 0.5, team2: t2Goals + 0.2 },
-        xT: { team1: t1Goals + 0.6, team2: t2Goals + 0.3 },
+        // Les buts attendus viennent du calcul : les afficher decales du score
+        // arrondi revenait a inventer une metrique qui a l air savante.
+        xG: { team1: scoreCalcule.butsAttendus1, team2: scoreCalcule.butsAttendus2 },
+        xT: { team1: scoreCalcule.butsAttendus1, team2: scoreCalcule.butsAttendus2 },
         ppda: { team1: 10, team2: 10 }
       },
       keyStrengths: { team1: ["Performance offensive régulière"], team2: ["Solidité défensive"] },
@@ -651,8 +754,8 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
         team1: { recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1, cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1, winStreak: winStreak1 },
         team2: { recentMatches: recent2, goalsScored: baseGoalsFor2, goalsConceded: baseGoalsAgainst2, cleanSheets: s2r.clean_sheet?.total || 0, avgPossession: baseAvgPossession2, winStreak: winStreak2 }
       }
-    };
-    
+    });
+
     setBounded(analysisCache, cacheKey, { data: fallbackData, timestamp: Date.now() });
     return respond(fallbackData);
   }

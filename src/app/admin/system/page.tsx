@@ -1,11 +1,12 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
+import { getBilanEchecs } from "@/lib/echecs-analyse";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { Courbe } from "../_components/Graphique";
 import { LienCompte, Vide, dateHeure } from "../_components/Ui";
 import { Panneau, Classement } from "../_components/Panneaux";
 import { Indicateur } from "../_components/Indicateur";
 import { EnTete, Rapport } from "../_components/EnTete";
-import { Brain, CheckCircle2, Clock, Gauge, Target } from "lucide-react";
+import { Brain, CheckCircle2, Clock, Gauge, ShieldAlert, Target } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function AdminSystem({
 }) {
   const params = await searchParams;
   const periode = resoudrePeriode(params);
-  const m = await getAdminMetrics(periode);
+  const [m, echecs] = await Promise.all([getAdminMetrics(periode), getBilanEchecs()]);
 
   return (
     <div className="space-y-6">
@@ -210,6 +211,101 @@ export default async function AdminSystem({
           <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-white/30" /> Match terminé</span>
         </div>
       </div>
+
+      {/* Les échecs du moteur, visibles ICI et nulle part ailleurs.
+          L'abonné reçoit son analyse normalement — score et probabilités
+          calculés — et ne sait jamais que le modèle n'a pas répondu. Sans cette
+          section, l'échec resterait invisible et ne serait jamais corrigé. */}
+      <Panneau
+        titre="Échecs du moteur d'analyse"
+        sousTitre="Réservé à l'administration — l'abonné reçoit son analyse sans rien voir"
+        icone={<ShieldAlert className="w-4 h-4" />}
+        teinte={echecs.recents > 0 ? "or" : "vert"}
+      >
+        {echecs.total === 0 ? (
+          <Vide
+            message={
+              echecs.analysesTotales > 0
+                ? `Aucun échec enregistré sur ${echecs.analysesTotales} analyses.`
+                : "Aucun échec enregistré. La collecte démarre au premier incident."
+            }
+          />
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Rapport
+                libelle="Taux d'échec"
+                valeur={echecs.tauxEchec === null ? "—" : `${echecs.tauxEchec} %`}
+                pourcentage={echecs.tauxEchec ?? 0}
+                teinte={(echecs.tauxEchec ?? 0) >= 10 ? "#fb7185" : "#fbbf24"}
+                detail={`${echecs.total} échec${echecs.total > 1 ? "s" : ""} pour ${echecs.analysesTotales} analyses produites`}
+              />
+              <Rapport
+                libelle="Dernières 24 h"
+                valeur={String(echecs.recents)}
+                teinte="#fbbf24"
+                detail={
+                  echecs.recents === 0
+                    ? "Aucun échec depuis hier"
+                    : "Échecs survenus depuis hier — c'est le chiffre à surveiller"
+                }
+              />
+              <Rapport
+                libelle="Abonnés restés sans réponse"
+                valeur={String(echecs.sansReponse)}
+                teinte={echecs.sansReponse > 0 ? "#fb7185" : "#10b981"}
+                detail={
+                  echecs.sansReponse === 0
+                    ? "Tous ont reçu une analyse complète, calculée"
+                    : "Requêtes réellement perdues : à traiter en priorité"
+                }
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {echecs.causes.map((c) => (
+                <span
+                  key={c.cause}
+                  className="text-xs font-bold text-white/70 bg-[#1d2f3a] border border-[#2e4757] rounded-full px-3 py-1.5"
+                >
+                  {c.libelle} <span className="text-amber-400">{c.nombre}</span>
+                  <span className="text-white/30"> ({c.part} %)</span>
+                </span>
+              ))}
+            </div>
+
+            <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+              {echecs.derniers.map((e) => (
+                <div
+                  key={e.id}
+                  className="flex flex-wrap items-center gap-3 px-3.5 py-2.5 rounded-[14px] bg-[#1d2f3a] border border-[#2e4757]"
+                >
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-full px-2 py-0.5">
+                    {e.causeLibelle}
+                  </span>
+                  <span className="text-[13px] text-white/80 min-w-[170px]">
+                    {e.equipe1} — {e.equipe2}
+                  </span>
+                  <span className="text-[11px] text-white/45 flex-1 min-w-[150px] truncate">
+                    <LienCompte userId={e.userId} email={e.email} />
+                  </span>
+                  {e.dureeMs !== null && (
+                    <span className="text-[11px] text-white/35 tabular-nums">
+                      {(e.dureeMs / 1000).toFixed(1)} s
+                    </span>
+                  )}
+                  <span className="text-[11px] text-white/25 whitespace-nowrap">{dateHeure(e.creeLe)}</span>
+                  {e.message && (
+                    <p className="w-full text-[10px] text-white/25 font-mono truncate" title={e.message}>
+                      {e.message}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Panneau>
     </div>
   );
 }
