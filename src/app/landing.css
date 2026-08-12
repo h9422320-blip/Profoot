@@ -295,11 +295,32 @@
 .faq-question:hover { color: #10b981; }
 .faq-chevron { transition: transform 0.3s ease; color: rgba(255,255,255,0.4); flex-shrink: 0; width: 20px; height: 20px; }
 .faq-chevron-open { transform: rotate(180deg); color: #10b981; }
-@keyframes faq-slide-down {
-  from { opacity: 0; max-height: 0; padding-bottom: 0; }
-  to { opacity: 1; max-height: 200px; padding-bottom: 20px; }
-}
-.faq-answer { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.7; padding: 0 24px 20px; animation: faq-slide-down 0.3s ease forwards; }
+/*
+  La réponse de la FAQ n'a plus d'animation d'apparition.
+
+  L'ancienne pilotait sa hauteur, sa marge et son opacité depuis zéro : quand
+  elle ne se jouait pas — animations mises en pause par le navigateur, visiteur
+  ayant demandé moins d'animations, onglet en arrière-plan — la réponse restait
+  bloquée invisible alors même qu'elle était dépliée. Constaté en la mesurant :
+  hauteur nulle et opacité nulle, sur un bloc pourtant affiché.
+
+  La lisibilité d'un texte ne doit dépendre de rien. La réponse s'affiche donc
+  simplement, sans effet.
+*/
+/*
+  Le texte de la réponse reste TOUJOURS dans la page ; seul son affichage est
+  replié, par l'attribut `hidden`. Auparavant la réponse n'était insérée qu'au
+  clic : Google n'en voyait donc aucune, alors que c'est précisément ce texte
+  qui répond aux questions tapées dans le moteur de recherche.
+
+  Le repli passe par `hidden` plutôt que par une astuce de mise en forme. Une
+  ouverture animée serait plus jolie, mais elle dépendait d'une subtilité de
+  cascade qui ne se déclenchait pas ici. Mieux vaut un mécanisme banal qui
+  fonctionne qu'un mécanisme habile qui laisse les réponses fermées.
+*/
+.faq-answer { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.7; padding: 0 24px 20px; }
+.faq-answer[hidden] { display: none; }
+
 @media (max-width: 768px) {
   .faq-question { font-size: 13px; padding: 16px 16px; }
   .faq-answer { font-size: 12px; padding: 0 16px 16px; }

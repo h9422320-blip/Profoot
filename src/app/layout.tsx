@@ -48,14 +48,17 @@ export const metadata: Metadata = {
     siteName: "ProFoot AI",
     title: "ProFoot AI — Analyse IA Football",
     description: DESCRIPTION,
-    images: [{ url: "/logo.png", width: 1200, height: 630, alt: "ProFoot AI" }],
+    // L'image d'aperçu n'est plus déclarée ici : elle est générée par
+    // opengraph-image.tsx, donc toujours au format 1200×630 attendu. La
+    // déclaration précédente pointait vers /logo.png en annonçant ces
+    // dimensions, alors que ce fichier est un JPEG au format tout autre —
+    // WhatsApp et Facebook recadraient de travers ou n'affichaient rien.
   },
 
   twitter: {
     card: "summary_large_image",
     title: "ProFoot AI — Analyse IA Football",
     description: DESCRIPTION,
-    images: ["/logo.png"],
   },
 
   robots: {

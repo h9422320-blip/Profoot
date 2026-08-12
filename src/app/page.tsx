@@ -355,6 +355,29 @@ export default function LandingPage() {
         {/* FAQ SECTION */}
         {/* ================================================================ */}
         <section id="faq" className="faq-section">
+          {/*
+            Données structurées de la FAQ. Elles permettent à Google d'afficher
+            les questions directement sous le lien, ce qui prend plus de place
+            dans les résultats et répond à la recherche avant même le clic.
+
+            Elles sont construites À PARTIR de `faqItems`, jamais recopiées :
+            une question modifiée à l'écran mais oubliée ici produirait une
+            incohérence que Google sanctionne.
+          */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: faqItems.map((item) => ({
+                  "@type": "Question",
+                  name: item.q,
+                  acceptedAnswer: { "@type": "Answer", text: item.a },
+                })),
+              }),
+            }}
+          />
           <div className="faq-inner">
             <h2 className="section-title">QUESTIONS FRÉQUENTES</h2>
             <p className="section-subtitle">Une réponse claire à toutes vos questions sur ProFoot.</p>
@@ -365,9 +388,16 @@ export default function LandingPage() {
                     <span>{`${i + 1}. ${item.q}`}</span>
                     <ChevronDown className={`faq-chevron ${openFaq === i ? "faq-chevron-open" : ""}`} />
                   </button>
-                  {openFaq === i && (
-                    <div className="faq-answer">{item.a}</div>
-                  )}
+                  {/*
+                    La réponse est TOUJOURS présente dans la page ; seul son
+                    affichage est replié. Auparavant elle n'était insérée qu'au
+                    clic : Google n'en voyait donc aucune, et c'est justement ce
+                    texte-là qui répond aux questions que les gens tapent dans
+                    le moteur de recherche.
+                  */}
+                  <div className="faq-answer" hidden={openFaq !== i}>
+                    {item.a}
+                  </div>
                 </div>
               ))}
             </div>
