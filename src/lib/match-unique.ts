@@ -31,8 +31,23 @@ export const LIBELLE_MATCH_UNIQUE = 'Débloquer ce match';
 /** Identifiant du produit dans la boutique. */
 export const produitMatchUnique = () => process.env.CHARIOW_PRODUCT_ID_MATCH ?? '';
 
-/** L'offre est-elle utilisable ? Sans produit configuré, on ne l'affiche pas. */
-export const matchUniqueDisponible = () => !!produitMatchUnique();
+/**
+ * L'OFFRE EST ÉTEINTE.
+ *
+ * Un acheteur a payé et n'a jamais vu son analyse : elle vivait dans l'état de
+ * son navigateur, perdu au moment de partir vers la page de paiement. Le
+ * parcours de retour a été réparé, mais tant qu'il n'a pas été éprouvé sur un
+ * vrai paiement, personne ne doit pouvoir tomber sur cette offre. Encaisser
+ * sans livrer coûte infiniment plus cher que de ne pas vendre.
+ *
+ * Le code reste entier derrière ce commutateur : déblocage, webhook,
+ * réconciliation, suivi en administration. Pour rallumer l'offre, il suffira
+ * d'ajouter `ACHAT_MATCH_ACTIF=true` — aucune modification de code.
+ *
+ * Le produit doit AUSSI être configuré : les deux conditions, jamais une seule.
+ */
+export const matchUniqueDisponible = () =>
+  process.env.ACHAT_MATCH_ACTIF === 'true' && !!produitMatchUnique();
 
 /**
  * Identité d'un match, SANS LA DATE.

@@ -159,6 +159,7 @@ async function verifierBoutique() {
         attention("vente à l'unité inactive — CHARIOW_PRODUCT_ID_MATCH n'est pas configuré");
         continue;
       }
+      // Rien à signaler ici : ce cas est traité juste après la boucle.
       alerte(`aucun produit configuré pour l'offre ${nom} — elle n'est pas payable`);
       continue;
     }
@@ -179,6 +180,12 @@ async function verifierBoutique() {
       alerte(`${nom} : la boutique facture ${facture} alors que l'application annonce ${TARIFS[nom]}`);
     else ok(`${nom} : ${facture} FCFA, publié`);
   }
+
+  // L'offre à l'unité est volontairement éteinte tant que le parcours de retour
+  // après paiement n'a pas été éprouvé sur un vrai paiement. Le dire ici évite
+  // qu'on la croie active parce que le produit existe et que son prix est juste.
+  if (env.CHARIOW_PRODUCT_ID_MATCH && env.ACHAT_MATCH_ACTIF !== 'true')
+    ok("vente à l'unité éteinte volontairement (ACHAT_MATCH_ACTIF absent) — invisible pour les utilisateurs");
 
   await verifierPulse(produits);
 }
