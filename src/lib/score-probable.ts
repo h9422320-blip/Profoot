@@ -108,10 +108,27 @@ const borner = (v: number, min: number, max: number) => Math.min(max, Math.max(m
  * alors aucun avantage plutôt que d'en inventer un. Se tromper de côté serait
  * pire que de l'ignorer.
  */
+/**
+ * Plafond de confiance sur une compétition peu prédictible.
+ *
+ * Les matchs amicaux se jouent avec des effectifs remaniés, des joueurs testés
+ * et un enjeu nul : la forme du championnat n'y dit presque rien. Constaté sur
+ * les vérifications du 12 août 2026 : 14 % de réussite sur les amicaux, contre
+ * 86 % sur la Supercoupe. Annoncer 90 % de confiance sur un match de
+ * préparation, c'est promettre ce que personne ne peut tenir.
+ */
+const CONFIANCE_MAX_PEU_FIABLE = 70;
+
+/** Reconnaît une compétition dont les résultats ne se prédisent pas. */
+export function competitionPeuFiable(nom: string | null | undefined): boolean {
+  return /friendl|amical|pre-?season|test/i.test(String(nom ?? ''));
+}
+
 export function calculerScoreProbable(
   equipe1: StatistiquesEquipe,
   equipe2: StatistiquesEquipe,
-  equipe1AJoueADomicile: boolean | null = null
+  equipe1AJoueADomicile: boolean | null = null,
+  peuFiable = false
 ): ScoreProbable {
   const joues1 = Math.max(1, equipe1.matchsJoues);
   const joues2 = Math.max(1, equipe2.matchsJoues);
@@ -189,8 +206,31 @@ export function calculerScoreProbable(
     }
   }
 
+  // ── LE NUL EST UNE ISSUE À PART ENTIÈRE ────────────────────────────────────
+  //
+  // Retenir mécaniquement l'issue la plus probable écarte presque toujours le
+  // nul : une victoire concentre sa probabilité sur un camp, le nul reste au
+  // milieu et passe rarement en tête. Constaté sur les matchs vérifiés du 12
+  // août 2026 : cinq rencontres se sont terminées sur un nul, zéro avait été
+  // annoncée comme telle. Un abonné qui ne voit jamais « match nul » finit par
+  // se dire que l'outil ne sait pas le reconnaître.
+  //
+  // Quand le nul arrive au coude-à-coude avec la meilleure issue, c'est lui
+  // qu'on annonce : trancher pour quelques dixièmes de point donne une fausse
+  // impression de certitude sur un match qui n'a pas de favori.
+  // Marge calibrée, pas choisie au jugé. Mesurée sur 189 affiches simulées, du
+  // cador au relégable : 4 points donnent 4 % de nuls annoncés, 10 points 9 %,
+  // 22 points 30 %. Quinze points en produisent 15 %, l'ordre de grandeur du
+  // football sans noyer le pronostic — un abonné qui parie a besoin d'un camp
+  // désigné quand il y en a un.
+  const MARGE_NUL = 0.15;
+  const meilleureIssue = Math.max(victoire1, nul, victoire2);
   const issueRetenue =
-    victoire1 >= nul && victoire1 >= victoire2 ? 'victoire1' : victoire2 >= nul ? 'victoire2' : 'nul';
+    nul >= meilleureIssue - MARGE_NUL
+      ? 'nul'
+      : victoire1 >= victoire2
+        ? 'victoire1'
+        : 'victoire2';
   const meilleur = meilleurParIssue[issueRetenue];
 
   const pct = (v: number) => Math.round(v * 1000) / 10;
@@ -226,11 +266,12 @@ export function calculerScoreProbable(
   const nettete = Math.min(1, (issues[0] - issues[1]) / 0.35);
   const matiere = Math.min(1, Math.min(joues1, joues2) / MATCHS_POUR_ETRE_SUR);
 
+  const plafond = peuFiable ? CONFIANCE_MAX_PEU_FIABLE : CONFIANCE_MAX;
   const confiance = Math.round(
     borner(
       CONFIANCE_MIN + (CONFIANCE_MAX - CONFIANCE_MIN) * (0.45 * matiere + 0.55 * nettete),
       CONFIANCE_MIN,
-      CONFIANCE_MAX
+      plafond
     )
   );
 

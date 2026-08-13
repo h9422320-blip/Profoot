@@ -6,7 +6,7 @@ import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-
 import { toTeaser } from "@/lib/analysis-teaser";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
-import { calculerScoreProbable, bornerConfiance, predireIssueFinale } from "@/lib/score-probable";
+import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable } from "@/lib/score-probable";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
@@ -745,7 +745,16 @@ export async function POST(req: Request) {
 
   // Les statistiques utilisées sont celles du championnat quand elles existent,
   // et celles reconstituées depuis les derniers matchs sinon.
-  const scoreCalcule = calculerScoreProbable(brutes1, brutes2, equipe1AJoueADomicile);
+  // Un match amical ne se predit pas comme un match de championnat : effectifs
+  // remanies, enjeu nul. La confiance y est plafonnee.
+  const nomCompetition =
+    (targetFutureMatch || targetPastMatch || nextH2H)?.league?.name ?? team1.league ?? null;
+  const scoreCalcule = calculerScoreProbable(
+    brutes1,
+    brutes2,
+    equipe1AJoueADomicile,
+    competitionPeuFiable(nomCompetition)
+  );
 
   /**
    * Impose les chiffres calculés à la réponse du modèle.
