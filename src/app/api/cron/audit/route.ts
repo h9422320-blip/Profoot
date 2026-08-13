@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { executerAudit } from '@/lib/audit';
 import { verifierPronostics } from '@/lib/precision-reelle';
+import { rafraichirStatutsPaiement } from '@/lib/echecs-paiement';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 export const maxDuration = 120;
@@ -46,6 +47,14 @@ export async function GET(request: Request) {
       verification = await verifierPronostics(150);
     } catch (e: any) {
       console.warn('[AUDIT] Vérification des pronostics impossible :', e?.message);
+    }
+
+    // Le sort des demandes de paiement se releve aussi ici : sans lui, on voit
+    // que l argent ne rentre pas sans jamais savoir pourquoi.
+    try {
+      await rafraichirStatutsPaiement(40);
+    } catch (e: any) {
+      console.warn('[AUDIT] Releve des paiements impossible :', e?.message);
     }
 
     const resultat = await executerAudit();

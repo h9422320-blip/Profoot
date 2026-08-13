@@ -1,0 +1,290 @@
+/**
+ * Pourquoi les paiements n'aboutissent pas.
+ *
+ * POURQUOI CE FICHIER EXISTE
+ *
+ * Sur sept jours, 3 demandes de paiement sur 54 ont abouti. On voyait le
+ * chiffre, on ne voyait pas la cause — et sans la cause, il n'y a rien à
+ * corriger, seulement des hypothèses.
+ *
+ * La boutique, elle, sait : chaque vente porte son statut et, quand le client a
+ * réellement tenté de payer, le motif exact du refus. Le premier relevé manuel
+ * a montré deux choses qu'aucune supposition n'aurait données — trois quarts
+ * des personnes repartent sans même choisir un moyen de paiement, et la
+ * première cause d'échec réel est le solde insuffisant, pas un défaut technique.
+ *
+ * Les relevés sont conservés en base. Interroger la boutique à chaque ouverture
+ * de la page coûterait une cinquantaine d'appels réseau par affichage.
+ */
+
+import { createAdminClient } from './supabase-admin';
+
+const CHARIOW = 'https://api.chariow.com/v1';
+
+/**
+ * Ce que disent les codes du prestataire, en français.
+ *
+ * Le libellé importe : « CUSTOMER_DO_NOT_AUTHORIZE_PAYMENT » ne se lit pas d'un
+ * coup d'œil, et un tableau qu'on ne lit pas ne sert à rien.
+ */
+const CAUSES: Record<string, { libelle: string; explication: string }> = {
+  INSUFFICIENT_BALANCE: {
+    libelle: 'Solde insuffisant',
+    explication: "Le client n'avait pas assez d'argent sur son compte au moment de payer.",
+  },
+  CUSTOMER_CANCEL_TRANSACTION: {
+    libelle: 'Annulé par le client',
+    explication: "Il a lui-même interrompu le paiement après l'avoir lancé.",
+  },
+  CUSTOMER_DO_NOT_AUTHORIZE_PAYMENT: {
+    libelle: 'Non validé par le client',
+    explication: "La demande a été envoyée sur son téléphone, il ne l'a jamais confirmée.",
+  },
+  UNSPECIFIED_FAILURE: {
+    libelle: 'Échec sans motif',
+    explication:
+      "Le prestataire ne dit pas pourquoi. C'est le seul cas qui puisse cacher un vrai problème technique.",
+  },
+  EXPIRED: {
+    libelle: 'Demande expirée',
+    explication: "Le client a mis trop de temps : la demande de paiement s'est périmée.",
+  },
+};
+
+/** Statuts de vente, tels que le prestataire les nomme. */
+const STATUTS: Record<string, { libelle: string; explication: string }> = {
+  abandoned: {
+    libelle: 'Reparti sans essayer',
+    explication:
+      "La page de paiement s'est ouverte, aucun moyen de paiement n'a été choisi. Rien n'a échoué : la personne a renoncé avant.",
+  },
+  failed: { libelle: 'Paiement refusé', explication: 'Le paiement a été tenté et rejeté.' },
+  completed: { libelle: 'Payé', explication: 'Le paiement est passé.' },
+  settled: { libelle: 'Payé et reversé', explication: 'Le paiement est passé et vous a été reversé.' },
+  pending: { libelle: 'En cours', explication: 'Le paiement est engagé, la réponse se fait attendre.' },
+};
+
+export const libelleCausePaiement = (code: string | null | undefined) =>
+  code ? CAUSES[code]?.libelle ?? code : null;
+export const explicationCausePaiement = (code: string | null | undefined) =>
+  code ? CAUSES[code]?.explication ?? '' : '';
+export const libelleStatutVente = (s: string | null | undefined) =>
+  s ? STATUTS[s]?.libelle ?? s : 'Inconnu';
+export const explicationStatutVente = (s: string | null | undefined) =>
+  s ? STATUTS[s]?.explication ?? '' : '';
+
+/**
+ * Relève auprès de la boutique le sort des demandes de paiement.
+ *
+ * Ne réinterroge pas ce qui est déjà réglé : une vente payée ne changera plus.
+ * Les demandes jamais relevées passent en premier.
+ */
+export async function rafraichirStatutsPaiement(limite = 40): Promise<{
+  releves: number;
+  echecs: number;
+}> {
+  const cle = process.env.CHARIOW_API_KEY;
+  if (!cle) return { releves: 0, echecs: 0 };
+
+  const sb = createAdminClient();
+  const { data, error } = await sb
+    .from('payment_intents')
+    .select('sale_id, releve_le, statut_boutique')
+    // Une vente honorée est définitive : inutile d'y revenir.
+    .is('consumed_at', null)
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (error) {
+    console.warn('[PAIEMENTS] Relevé impossible :', error.message);
+    return { releves: 0, echecs: 0 };
+  }
+
+  // Jamais relevées d'abord ; puis celles dont le sort peut encore changer.
+  const aRelever = (data ?? [])
+    .filter((i: any) => !i.releve_le || !['completed', 'settled', 'abandoned', 'failed'].includes(i.statut_boutique))
+    .slice(0, limite);
+
+  let releves = 0;
+  let echecs = 0;
+
+  for (const intention of aRelever) {
+    try {
+      const r = await fetch(`${CHARIOW}/sales/${intention.sale_id}`, {
+        headers: { Authorization: `Bearer ${cle}`, Accept: 'application/json' },
+      });
+      const v = (await r.json())?.data;
+      if (!v) continue;
+
+      const erreur = v.payment?.failure_error;
+      const moyen = v.payment?.method;
+
+      const { error: err } = await sb
+        .from('payment_intents')
+        .update({
+          statut_boutique: v.status ?? null,
+          cause_echec: erreur?.code ?? null,
+          message_echec: erreur?.customer_message ?? erreur?.message ?? null,
+          moyen_paiement:
+            typeof moyen === 'string' ? moyen : moyen?.label ?? moyen?.value ?? null,
+          releve_le: new Date().toISOString(),
+        })
+        .eq('sale_id', intention.sale_id);
+
+      if (!err) {
+        releves++;
+        if (erreur?.code) echecs++;
+      }
+    } catch {
+      // Un relevé raté sera repris au passage suivant : il n'y a rien d'urgent.
+    }
+  }
+
+  if (releves) console.log(`[PAIEMENTS] ${releves} vente(s) relevée(s), ${echecs} avec un motif d'échec.`);
+  return { releves, echecs };
+}
+
+export interface CausePaiement {
+  code: string;
+  libelle: string;
+  explication: string;
+  nombre: number;
+  part: number;
+}
+
+export interface DemandeDetaillee {
+  saleId: string;
+  userId: string | null;
+  email: string | null;
+  plan: string;
+  montant: number | null;
+  pays: string | null;
+  statut: string | null;
+  statutLibelle: string;
+  cause: string | null;
+  causeLibelle: string | null;
+  causeExplication: string;
+  moyen: string | null;
+  aPaye: boolean;
+  creeeLe: string;
+}
+
+export interface BilanEchecsPaiement {
+  /**
+   * Vrai quand le relevé lui-même est hors service (colonnes absentes, base
+   * injoignable). Sans ce drapeau, une panne se lirait « aucune demande de
+   * paiement » — une phrase fausse sur un tableau de bord est pire qu'une case
+   * vide, parce qu'on la croit.
+   */
+  indisponible: boolean;
+  /** Demandes relevées auprès de la boutique. */
+  relevees: number;
+  /** Demandes pas encore relevées : leur sort est inconnu. */
+  nonRelevees: number;
+  payees: number;
+  /** Personnes reparties sans jamais choisir de moyen de paiement. */
+  repartiesSansEssayer: number;
+  /** Paiements réellement tentés puis refusés. */
+  refuses: number;
+  causes: CausePaiement[];
+  statuts: { statut: string; libelle: string; explication: string; nombre: number }[];
+  /** Comptes ayant ouvert plusieurs fois le paiement sans jamais aboutir. */
+  insistants: { email: string | null; userId: string | null; tentatives: number; causes: string[] }[];
+  demandes: DemandeDetaillee[];
+}
+
+export async function getBilanEchecsPaiement(jours = 14): Promise<BilanEchecsPaiement> {
+  const sb = createAdminClient();
+  const vide: BilanEchecsPaiement = {
+    indisponible: false,
+    relevees: 0, nonRelevees: 0, payees: 0, repartiesSansEssayer: 0, refuses: 0,
+    causes: [], statuts: [], insistants: [], demandes: [],
+  };
+
+  const { data, error } = await sb
+    .from('payment_intents')
+    .select('sale_id, user_id, email, plan, amount, pays, statut_boutique, cause_echec, message_echec, moyen_paiement, releve_le, consumed_at, created_at')
+    .gte('created_at', new Date(Date.now() - jours * 86400000).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(300);
+
+  if (error) {
+    // Les colonnes n'existent pas encore : la migration n'a pas été appliquée.
+    console.warn('[PAIEMENTS] Bilan indisponible :', error.message);
+    return { ...vide, indisponible: true };
+  }
+  const lignes = data ?? [];
+  if (!lignes.length) return vide;
+
+  const parCause = new Map<string, number>();
+  const parStatut = new Map<string, number>();
+  for (const l of lignes) {
+    if (l.cause_echec) parCause.set(l.cause_echec, (parCause.get(l.cause_echec) ?? 0) + 1);
+    if (l.statut_boutique) parStatut.set(l.statut_boutique, (parStatut.get(l.statut_boutique) ?? 0) + 1);
+  }
+  const totalCauses = [...parCause.values()].reduce((t, n) => t + n, 0);
+
+  // Plusieurs tentatives sans jamais aboutir : quelqu'un qui recommence veut
+  // payer. C'est le signal le plus fort du tableau.
+  const parPersonne = new Map<string, { userId: string | null; tentatives: number; causes: string[]; aPaye: boolean }>();
+  for (const l of lignes as any[]) {
+    const cle = l.email ?? l.user_id ?? l.sale_id;
+    const p = parPersonne.get(cle) ?? {
+      userId: (l.user_id ?? null) as string | null,
+      tentatives: 0,
+      causes: [] as string[],
+      aPaye: false,
+    };
+    p.tentatives++;
+    if (l.cause_echec) p.causes.push(libelleCausePaiement(l.cause_echec)!);
+    if (l.consumed_at) p.aPaye = true;
+    parPersonne.set(cle, p);
+  }
+
+  return {
+    indisponible: false,
+    relevees: lignes.filter((l) => l.releve_le).length,
+    nonRelevees: lignes.filter((l) => !l.releve_le).length,
+    payees: lignes.filter((l) => l.consumed_at).length,
+    repartiesSansEssayer: lignes.filter((l) => l.statut_boutique === 'abandoned').length,
+    refuses: lignes.filter((l) => l.statut_boutique === 'failed').length,
+    causes: [...parCause.entries()]
+      .map(([code, nombre]) => ({
+        code,
+        libelle: libelleCausePaiement(code)!,
+        explication: explicationCausePaiement(code),
+        nombre,
+        part: Math.round((nombre / totalCauses) * 1000) / 10,
+      }))
+      .sort((a, b) => b.nombre - a.nombre),
+    statuts: [...parStatut.entries()]
+      .map(([statut, nombre]) => ({
+        statut,
+        libelle: libelleStatutVente(statut),
+        explication: explicationStatutVente(statut),
+        nombre,
+      }))
+      .sort((a, b) => b.nombre - a.nombre),
+    insistants: [...parPersonne.entries()]
+      .filter(([, p]) => p.tentatives > 1 && !p.aPaye)
+      .map(([email, p]) => ({ email, userId: p.userId, tentatives: p.tentatives, causes: p.causes }))
+      .sort((a, b) => b.tentatives - a.tentatives)
+      .slice(0, 10),
+    demandes: lignes.slice(0, 60).map((l) => ({
+      saleId: l.sale_id,
+      userId: l.user_id ?? null,
+      email: l.email ?? null,
+      plan: l.plan,
+      montant: l.amount,
+      pays: l.pays ?? null,
+      statut: l.statut_boutique ?? null,
+      statutLibelle: l.releve_le ? libelleStatutVente(l.statut_boutique) : 'Pas encore relevé',
+      cause: l.cause_echec ?? null,
+      causeLibelle: libelleCausePaiement(l.cause_echec),
+      causeExplication: explicationCausePaiement(l.cause_echec),
+      moyen: l.moyen_paiement ?? null,
+      aPaye: !!l.consumed_at,
+      creeeLe: l.created_at,
+    })),
+  };
+}

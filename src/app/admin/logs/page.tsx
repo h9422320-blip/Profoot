@@ -1,11 +1,12 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import { getOrigineAcheteurs } from "@/lib/origine-acheteurs";
+import { getBilanEchecsPaiement } from "@/lib/echecs-paiement";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { LienCompte, Vide, dateHeure, montant } from "../_components/Ui";
 import { Panneau } from "../_components/Panneaux";
 import { Indicateur } from "../_components/Indicateur";
 import { EnTete, Rapport } from "../_components/EnTete";
-import { AlertTriangle, Globe, Info, Receipt } from "lucide-react";
+import { AlertTriangle, Globe, Info, Receipt, XCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,11 @@ export default async function AdminLogs({
 }) {
   const params = await searchParams;
   const periode = resoudrePeriode(params);
-  const [m, origine] = await Promise.all([getAdminMetrics(periode), getOrigineAcheteurs()]);
+  const [m, origine, echecs] = await Promise.all([
+    getAdminMetrics(periode),
+    getOrigineAcheteurs(),
+    getBilanEchecsPaiement(),
+  ]);
 
   const parEvenement = new Map<string, number>();
   for (const p of m.paiements) parEvenement.set(p.evenement, (parEvenement.get(p.evenement) ?? 0) + 1);
@@ -112,6 +117,135 @@ export default async function AdminLogs({
           </div>
         </div>
       )}
+
+      {/* Pourquoi l'argent ne rentre pas.
+          Le taux d'aboutissement se voyait déjà ; ce qui manquait, c'était la
+          cause. Sans elle il n'y a rien à corriger, seulement des hypothèses. */}
+      <Panneau
+        titre="Pourquoi les paiements n'aboutissent pas"
+        sousTitre="Relevé auprès de la boutique, demande par demande"
+        icone={<XCircle className="w-4 h-4" />}
+        teinte={echecs.refuses > 0 ? "rose" : "or"}
+      >
+        {echecs.indisponible ? (
+          <Vide message="Le relevé des paiements est hors service : la base n'a pas répondu. Ce n'est pas « aucun échec » — c'est « on ne sait pas »." />
+        ) : echecs.relevees === 0 && echecs.nonRelevees === 0 ? (
+          <Vide message="Aucune demande de paiement sur les quinze derniers jours." />
+        ) : (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Rapport
+                libelle="Repartis sans essayer"
+                valeur={String(echecs.repartiesSansEssayer)}
+                pourcentage={
+                  echecs.relevees ? (echecs.repartiesSansEssayer / echecs.relevees) * 100 : 0
+                }
+                teinte="#94a3b8"
+                detail="La page s'est ouverte, aucun moyen de paiement n'a été choisi. Rien n'a échoué : ils ont renoncé avant."
+              />
+              <Rapport
+                libelle="Paiements refusés"
+                valeur={String(echecs.refuses)}
+                pourcentage={echecs.relevees ? (echecs.refuses / echecs.relevees) * 100 : 0}
+                teinte="#fb7185"
+                detail="Le paiement a réellement été tenté, puis rejeté. C'est là que les causes ci-dessous s'appliquent."
+              />
+              <Rapport
+                libelle="Payés"
+                valeur={String(echecs.payees)}
+                pourcentage={echecs.relevees ? (echecs.payees / echecs.relevees) * 100 : 0}
+                detail={
+                  echecs.nonRelevees > 0
+                    ? `${echecs.nonRelevees} demande(s) pas encore relevée(s) auprès de la boutique`
+                    : "Toutes les demandes ont été relevées"
+                }
+              />
+            </div>
+
+            {echecs.causes.length > 0 && (
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-white/35 mb-2.5">
+                  Motifs des refus
+                </p>
+                <div className="space-y-2">
+                  {echecs.causes.map((c) => (
+                    <div key={c.code} className="px-4 py-3 rounded-[14px] bg-[#1d2f3a] border border-[#2e4757]">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-[13px] font-bold text-white">{c.libelle}</span>
+                        <span className="text-sm font-black text-rose-400 tabular-nums shrink-0">
+                          {c.nombre} <span className="text-white/30 text-xs">({c.part} %)</span>
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/40 mt-1 leading-relaxed">{c.explication}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quelqu'un qui recommence veut payer. C'est le signal le plus fort
+                du tableau, et le seul sur lequel une relance a du sens. */}
+            {echecs.insistants.length > 0 && (
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-white/35 mb-2.5">
+                  Ont essayé plusieurs fois sans jamais aboutir
+                </p>
+                <div className="space-y-1.5">
+                  {echecs.insistants.map((p) => (
+                    <div
+                      key={p.email ?? p.userId ?? Math.random()}
+                      className="flex flex-wrap items-center gap-3 px-3.5 py-2.5 rounded-[14px] bg-amber-500/[0.07] border border-amber-500/20"
+                    >
+                      <span className="text-sm font-black text-amber-400 tabular-nums shrink-0">
+                        {p.tentatives}×
+                      </span>
+                      <span className="text-[13px] text-white/70 flex-1 min-w-[160px] truncate">
+                        <LienCompte userId={p.userId} email={p.email} />
+                      </span>
+                      <span className="text-[11px] text-white/40">
+                        {p.causes.length ? p.causes.join(" · ") : "n'a jamais choisi de moyen de paiement"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+              {echecs.demandes.map((d) => (
+                <div
+                  key={d.saleId}
+                  className="flex flex-wrap items-center gap-3 px-3.5 py-2.5 rounded-[14px] bg-[#1d2f3a] border border-[#2e4757]"
+                  title={d.causeExplication}
+                >
+                  <span
+                    className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${
+                      d.aPaye
+                        ? "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/25"
+                        : d.cause
+                          ? "text-rose-400 bg-rose-500/10 border-rose-500/25"
+                          : "text-white/40 bg-white/5 border-white/10"
+                    }`}
+                  >
+                    {d.statutLibelle}
+                  </span>
+                  {d.causeLibelle && (
+                    <span className="text-[11px] font-bold text-rose-300">{d.causeLibelle}</span>
+                  )}
+                  <span className="text-[12px] text-white/50 flex-1 min-w-[150px] truncate">
+                    <LienCompte userId={d.userId} email={d.email} />
+                  </span>
+                  <span className="text-[11px] text-white/35">
+                    {d.montant !== null ? montant(d.montant) : "—"}
+                  </span>
+                  {d.moyen && <span className="text-[11px] text-white/30">{d.moyen}</span>}
+                  <span className="text-[11px] text-white/25 whitespace-nowrap">{dateHeure(d.creeeLe)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Panneau>
 
       <Panneau
         titre="D'où viennent vos acheteurs"
