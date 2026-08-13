@@ -176,7 +176,7 @@ export async function clientsLeses(
   const sb = createAdminClient();
   const vide = { leses: [], ventesPayees: 0, demandes: 0, examenPartiel: false };
 
-  const champs = 'sale_id, user_id, email, consumed_at, created_at';
+  const champs = 'sale_id, user_id, email, consumed_at, created_at, match_key';
   const depuis = new Date(Date.now() - jours * 86400000).toISOString();
 
   // Le statut déjà relevé évite un appel réseau. La colonne peut ne pas exister
@@ -245,6 +245,34 @@ export async function clientsLeses(
 
     if (!payee) continue;
     ventesPayees++;
+
+    // ── UN MATCH ACHETÉ À L'UNITÉ N'EST PAS UN ABONNEMENT ────────────────────
+    //
+    // Sans cette distinction, chaque vente à l'unité était signalée comme un
+    // client lésé : le contrôle cherchait un abonnement, alors que cet achat
+    // est honoré par une ligne dans `matchs_debloques`. La toute première vente
+    // l'a déclenché — un client parfaitement servi, annoncé comme volé.
+    //
+    // Une alerte qui se déclenche à chaque vente réussie finit ignorée, et
+    // c'est précisément celle qui doit attraper les vrais cas.
+    if (i.match_key) {
+      const { data: debloque } = await sb
+        .from('matchs_debloques')
+        .select('id')
+        .eq('user_id', i.user_id)
+        .eq('match_key', i.match_key)
+        .limit(1);
+
+      if ((debloque?.length ?? 0) === 0) {
+        leses.push({
+          email: i.email ?? null,
+          userId: i.user_id ?? null,
+          saleId: i.sale_id,
+          raison: 'match payé mais jamais débloqué',
+        });
+      }
+      continue;
+    }
 
     if (!i.user_id) {
       leses.push({

@@ -179,6 +179,52 @@ async function verifierBoutique() {
       alerte(`${nom} : la boutique facture ${facture} alors que l'application annonce ${TARIFS[nom]}`);
     else ok(`${nom} : ${facture} FCFA, publié`);
   }
+
+  await verifierPulse(produits);
+}
+
+/**
+ * Le pulse couvre-t-il TOUS les produits ?
+ *
+ * C'est la panne silencieuse par excellence. Un pulse configuré pour les
+ * abonnements ne couvre pas automatiquement un nouveau produit : la vente est
+ * encaissée, aucune notification n'arrive, et le client n'obtient rien. Aucune
+ * erreur nulle part — ni dans les journaux, ni à l'écran. On ne s'en aperçoit
+ * qu'en lisant un tableau de ventes à la main, des jours plus tard.
+ *
+ * Ce contrôle est né de la mise en vente du match à l'unité : le produit
+ * existait, la variable était en place, et il ne restait que cette case à
+ * cocher pour que l'argent rentre sans que rien ne soit livré.
+ */
+async function verifierPulse(produits) {
+  const corps = await reessayer(async () => {
+    const r = await fetch('https://api.chariow.com/v1/pulses', {
+      headers: { Authorization: `Bearer ${env.CHARIOW_API_KEY}`, Accept: 'application/json' },
+    });
+    return r.json();
+  });
+
+  const pulses = (corps?.data ?? []).filter(
+    (p) => p.is_enabled && String(p.url ?? '').includes('/api/payments/chariow/webhook')
+  );
+
+  if (pulses.length === 0)
+    return alerte('aucun pulse actif vers notre webhook — les paiements ne seront jamais livrés');
+
+  const surVente = pulses.filter((p) =>
+    (p.triggers ?? []).some((t) => String(t.value ?? '').includes('successful'))
+  );
+  if (surVente.length === 0)
+    return alerte("le pulse n'écoute pas l'événement de vente réussie — rien ne sera livré");
+
+  const couverts = new Set(surVente.flatMap((p) => (p.products ?? []).map((x) => x.id)));
+  const manquants = produits.filter(([, id]) => id && !couverts.has(id)).map(([nom]) => nom);
+
+  if (manquants.length > 0)
+    alerte(
+      `le pulse ne couvre pas ${manquants.join(', ')} — ces ventes seront encaissées sans rien livrer`
+    );
+  else ok(`pulse actif, ${couverts.size} produit(s) couvert(s), aucune offre oubliée`);
 }
 
 // ── 3. Base de données et étanchéité ─────────────────────────────────────────
@@ -409,7 +455,7 @@ async function verifierPaiements() {
  * d'abonnement.
  */
 async function verifierClientsLeses() {
-  const champs = 'sale_id, user_id, email, consumed_at, created_at';
+  const champs = 'sale_id, user_id, email, consumed_at, created_at, match_key';
   // Le statut déjà relevé évite un appel réseau. La colonne peut ne pas exister
   // si la migration n'a pas encore été appliquée : on retombe alors sur le
   // relevé en direct plutôt que d'abandonner la vérification.
@@ -466,6 +512,25 @@ async function verifierClientsLeses() {
     }
 
     payees++;
+
+    // Un match acheté à l'unité est honoré par `matchs_debloques`, pas par un
+    // abonnement. Sans ce cas, la toute première vente réussie a été signalée
+    // comme un client volé — alors qu'il avait reçu exactement ce qu'il avait
+    // payé, 76 secondes après son paiement. Une alerte qui se déclenche à
+    // chaque vente réussie finit ignorée, et c'est justement celle qui doit
+    // attraper les vrais cas.
+    if (i.match_key) {
+      const { data: dbq } = await sb
+        .from('matchs_debloques')
+        .select('id')
+        .eq('user_id', i.user_id)
+        .eq('match_key', i.match_key)
+        .limit(1);
+      if ((dbq?.length ?? 0) === 0)
+        leses.push(`${i.email} — match payé mais jamais débloqué`);
+      continue;
+    }
+
     if (!i.user_id) {
       leses.push(`${i.email} — paiement encaissé sans compte rattaché`);
       continue;
