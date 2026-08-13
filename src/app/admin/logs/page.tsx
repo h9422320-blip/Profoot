@@ -131,7 +131,7 @@ export default async function AdminLogs({
       >
         {echecs.indisponible ? (
           <Vide message="Le relevé des paiements est hors service : la base n'a pas répondu. Ce n'est pas « aucun échec » — c'est « on ne sait pas »." />
-        ) : echecs.relevees === 0 && echecs.nonRelevees === 0 ? (
+        ) : echecs.total === 0 ? (
           <Vide message="Aucune demande de paiement sur les quinze derniers jours." />
         ) : (
           <div className="space-y-5">
@@ -140,7 +140,7 @@ export default async function AdminLogs({
                 libelle="Repartis sans essayer"
                 valeur={String(echecs.repartiesSansEssayer)}
                 pourcentage={
-                  echecs.relevees ? (echecs.repartiesSansEssayer / echecs.relevees) * 100 : 0
+                  echecs.total ? (echecs.repartiesSansEssayer / echecs.total) * 100 : 0
                 }
                 teinte="#94a3b8"
                 detail="La page s'est ouverte, aucun moyen de paiement n'a été choisi. Rien n'a échoué : ils ont renoncé avant."
@@ -148,14 +148,14 @@ export default async function AdminLogs({
               <Rapport
                 libelle="Paiements refusés"
                 valeur={String(echecs.refuses)}
-                pourcentage={echecs.relevees ? (echecs.refuses / echecs.relevees) * 100 : 0}
+                pourcentage={echecs.total ? (echecs.refuses / echecs.total) * 100 : 0}
                 teinte="#fb7185"
                 detail="Le paiement a réellement été tenté, puis rejeté. C'est là que les causes ci-dessous s'appliquent."
               />
               <Rapport
                 libelle="Payés"
                 valeur={String(echecs.payees)}
-                pourcentage={echecs.relevees ? (echecs.payees / echecs.relevees) * 100 : 0}
+                pourcentage={echecs.total ? (echecs.payees / echecs.total) * 100 : 0}
                 detail={
                   echecs.nonRelevees > 0
                     ? `${echecs.nonRelevees} demande(s) pas encore relevée(s) auprès de la boutique`

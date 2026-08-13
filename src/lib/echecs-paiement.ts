@@ -310,6 +310,13 @@ export interface BilanEchecsPaiement {
    * vide, parce qu'on la croit.
    */
   indisponible: boolean;
+  /**
+   * Toutes les demandes de la période. C'est le seul dénominateur juste pour
+   * les pourcentages : les ventes honorées ne sont jamais relevées auprès de
+   * la boutique, si bien que « relevées » les exclut et que les parts
+   * dépasseraient 100 %.
+   */
+  total: number;
   /** Demandes relevées auprès de la boutique. */
   relevees: number;
   /** Demandes pas encore relevées : leur sort est inconnu. */
@@ -330,6 +337,7 @@ export async function getBilanEchecsPaiement(jours = 14): Promise<BilanEchecsPai
   const sb = createAdminClient();
   const vide: BilanEchecsPaiement = {
     indisponible: false,
+    total: 0,
     relevees: 0, nonRelevees: 0, payees: 0, repartiesSansEssayer: 0, refuses: 0,
     causes: [], statuts: [], insistants: [], demandes: [],
   };
@@ -376,8 +384,11 @@ export async function getBilanEchecsPaiement(jours = 14): Promise<BilanEchecsPai
 
   return {
     indisponible: false,
+    total: lignes.length,
     relevees: lignes.filter((l) => l.releve_le).length,
-    nonRelevees: lignes.filter((l) => !l.releve_le).length,
+    // Une vente honorée n'est jamais relevée — son sort est scellé. La compter
+    // comme « pas encore relevée » ferait croire à un retard qui n'existe pas.
+    nonRelevees: lignes.filter((l: any) => !l.releve_le && !l.consumed_at).length,
     payees: lignes.filter((l) => l.consumed_at).length,
     repartiesSansEssayer: lignes.filter((l) => l.statut_boutique === 'abandoned').length,
     refuses: lignes.filter((l) => l.statut_boutique === 'failed').length,
@@ -411,7 +422,14 @@ export async function getBilanEchecsPaiement(jours = 14): Promise<BilanEchecsPai
       montant: l.amount,
       pays: l.pays ?? null,
       statut: l.statut_boutique ?? null,
-      statutLibelle: l.releve_le ? libelleStatutVente(l.statut_boutique) : 'Pas encore relevé',
+      // Une vente honorée n'est jamais relevée auprès de la boutique — c'est
+      // inutile, son sort est scellé. Sans ce cas particulier, elle
+      // s'afficherait « pas encore relevé » sous une pastille verte.
+      statutLibelle: l.consumed_at
+        ? 'Payé'
+        : l.releve_le
+          ? libelleStatutVente(l.statut_boutique)
+          : 'Pas encore relevé',
       cause: l.cause_echec ?? null,
       causeLibelle: libelleCausePaiement(l.cause_echec),
       causeExplication: explicationCausePaiement(l.cause_echec),
