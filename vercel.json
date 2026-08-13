@@ -6,14 +6,6 @@
       "schedule": "0 0 * * *"
     },
     {
-      "//": "UNE SEULE FOIS PAR JOUR, et ce n'est pas un choix de confort.",
-      "//2": "La formule Loisir de l'hébergeur refuse tout rythme plus rapide, et le",
-      "//3": "déploiement ÉCHOUE — pas la tâche, le déploiement entier. Une planification",
-      "//4": "à deux passages par heure a bloqué la mise en production pendant quatre",
-      "//5": "heures, sans que rien ne le signale : le site continuait de tourner sur",
-      "//6": "l'ancienne version pendant que les correctifs s'accumulaient sans effet.",
-      "//7": "Pour un rythme plus soutenu, il faut passer sur la formule Pro, ou",
-      "//8": "appeler cette adresse depuis un service de planification extérieur.",
       "path": "/api/cron/audit",
       "schedule": "37 5 * * *"
     }
