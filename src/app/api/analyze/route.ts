@@ -355,9 +355,37 @@ export async function POST(req: Request) {
     );
   };
 
+  /**
+   * Ce visiteur reçoit-il l'aperçu gratuit plutôt que l'analyse complète ?
+   *
+   * Déterminé ici, une fois pour toutes : ce drapeau décide à la fois de ce
+   * qu'on demande au modèle et de l'entrée de cache utilisée. Les deux DOIVENT
+   * s'accorder, sinon une version réduite finirait chez un abonné.
+   */
+  const estApercuGlobal = !guard.entitlements.premium;
+
   const today = new Date().toISOString().split('T')[0];
-  const cacheKey = `${team1.id}-${team2.id}-${today}`;
-  const cachedAnalysis = analysisCache.get(cacheKey);
+
+  // ── LE CACHE DOIT SÉPARER L'APERÇU DE L'ANALYSE COMPLÈTE ──────────────────
+  //
+  // Depuis que l'aperçu gratuit ne fait plus générer les sections détaillées,
+  // une seule clé par match serait un piège : un visiteur non abonné analysant
+  // Paris — Lens y déposerait une version réduite, et L'ABONNÉ SUIVANT LA
+  // RECEVRAIT TELLE QUELLE. Il aurait payé pour une analyse amputée, sans que
+  // rien ne signale l'erreur — ni exception, ni journal.
+  //
+  // Deux entrées distinctes, donc. Un abonné n'accepte QUE la complète ; s'il
+  // n'en existe pas, l'analyse est régénérée intégralement pour lui. Un compte
+  // gratuit se contente de l'une ou l'autre : `toTeaser` réduit la complète
+  // sans le moindre risque, et c'est autant d'appels économisés.
+  const cleComplete = `${team1.id}-${team2.id}-${today}-complet`;
+  const cleApercu = `${team1.id}-${team2.id}-${today}-apercu`;
+  const cacheKey = estApercuGlobal ? cleApercu : cleComplete;
+
+  const cachedAnalysis = guard.entitlements.premium
+    ? analysisCache.get(cleComplete)
+    : analysisCache.get(cleComplete) ?? analysisCache.get(cleApercu);
+
   if (cachedAnalysis && Date.now() - cachedAnalysis.timestamp < CACHE_TTL.ANALYSIS) {
     console.log(`[BACKEND_ANALYZE] Returning CACHED analysis for ${team1.name} vs ${team2.name}`);
     return respond(cachedAnalysis.data, true);
@@ -903,6 +931,29 @@ export async function POST(req: Request) {
     // tentative : un `AbortController` unique condamnait la deuxième tentative
     // avant qu'elle commence, puisqu'il continuait de courir entre les essais.
 
+    // ── NE DEMANDER QUE CE QUI SERA RÉELLEMENT UTILISÉ ────────────────────────
+    //
+    // Deux gaspillages mesurés au compteur de jetons du fournisseur.
+    //
+    // 1. Les chiffres écrasés. Le modèle produisait le score, les probabilités,
+    //    la confiance et les prédictions (buts attendus, BTTS, over/under) —
+    //    que `imposerChiffresCalcules` remplace intégralement par le calcul de
+    //    Poisson juste après. 13 % de chaque réponse était payé puis jeté. Seul
+    //    le `reasoning` du score est conservé, donc seul lui reste demandé.
+    //
+    // 2. Le contenu jamais envoyé. Pour un compte sans abonnement, `toTeaser`
+    //    retire côté serveur les sections, la comparaison, les métriques
+    //    avancées, les points forts et le score prédit — soit environ 85 % de
+    //    la réponse. On payait la rédaction de sept analyses détaillées que le
+    //    visiteur ne recevait jamais. Les comptes gratuits représentent 88 %
+    //    du trafic.
+    //
+    // L'aperçu affiché est INCHANGÉ : le résumé, le scénario et la confiance
+    // sont exactement les mêmes. Le score, les probabilités et la confiance
+    // étant calculés et non générés, l'historique et les preuves ne perdent
+    // rien non plus.
+    const estApercu = estApercuGlobal;
+
     const apiDataMissing = (baseGoalsFor1 === 0 && baseGoalsFor2 === 0 && played1 <= 1);
     const prompt = `Tu es le moteur de prédiction IA de ProFoot, un système ultra-avancé d'analyse de football.
 TA MISSION : Analyser le match entre ${team1.name} et ${team2.name}, prendre en compte LA FORCE REELLE DES ÉQUIPES, évaluer les dynamiques et PREDIRE LE SCORE EXACT.
@@ -940,23 +991,22 @@ Ton texte doit être COHÉRENT avec ces chiffres. N'annonce jamais un autre scor
 
 TON ANALYSE ET TA DECISION (MODE EXPERT & COACH) :
 1. Évalue la différence de niveau réel entre les équipes en t'appuyant sur TA PROPRE CONNAISSANCE.
-2. Reprends le score ci-dessus dans predictedScore, et explique en une phrase POURQUOI ce score tient debout au vu des forces en présence.
-3. Reprends les probabilités ci-dessus telles quelles (winProb, drawProb, loseProb).
-4. GÉNÉRATION DES TEXTES (TRÈS IMPORTANT) : Ton style de rédaction doit être fluide, percutant et facile à lire. Interdiction d'utiliser des phrases banales. 
+2. Explique en une phrase POURQUOI le score ci-dessus tient debout au vu des forces en présence.
+3. GÉNÉRATION DES TEXTES (TRÈS IMPORTANT) : Ton style de rédaction doit être fluide, percutant et facile à lire. Interdiction d'utiliser des phrases banales.
    - INTERDICTION ABSOLUE : Tu ne dois JAMAIS mentionner "API", "API Football", ou "données fournies". Tu es un expert humain, tu parles en ton nom. Ne dis JAMAIS "absence de données".
    - LANGAGE SIMPLE : N'utilise pas de mots trop compliqués. Fais des phrases claires, courtes et sans fautes de grammaire, compréhensibles par tout fan de foot.
    - EXPLICATION OBLIGATOIRE DES TERMES TECHNIQUES : À chaque fois que tu utilises un terme technique (xG, PPDA, xT, bloc médian, etc.), tu DOIS OBLIGATOIREMENT l'expliquer brièvement entre parenthèses avec des mots très simples pour le grand public.
    - STYLE ATTENDU : des phrases courtes et imagées, chaque terme technique expliqué entre parenthèses juste après, et les joueurs clés notés sur 10. Exemple de tournure, sans aucun nom réel : "Cette équipe a une attaque terrifiante. Son xG (qui mesure la qualité des occasions) montre qu'elle est très dangereuse, portée par un ailier étincelant (Note: 9/10). En face, on va souffrir face à un PPDA très bas (ce qui prouve un pressing très haut)..."
    - Cet exemple illustre une manière d'écrire, jamais un contenu : tous les noms, chiffres et notes que tu produis doivent venir des données de ce match, pas de cet exemple ni de ta mémoire.
-   - ÉVALUATION DES EFFECTIFS : Décortique les joueurs titulaires et les remplaçants fournis. Note les joueurs clés sur 10, explique leur rôle exact dans ce match précis, et révèle qui sera le facteur X capable de renverser la rencontre.
+${estApercu ? '' : `   - ÉVALUATION DES EFFECTIFS : Décortique les joueurs titulaires et les remplaçants fournis. Note les joueurs clés sur 10, explique leur rôle exact dans ce match précis, et révèle qui sera le facteur X capable de renverser la rencontre.`}
 
 RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun markdown) :
-{
-  "predictedScore": { "team1Goals": 0, "team2Goals": 0, "reasoning": "Phrase courte justifiant le score." },
-  "winProb": 0,
-  "drawProb": 0,
-  "loseProb": 0,
-  "confidence": 0,
+${estApercu ? `{
+  "predictedScore": { "reasoning": "Phrase courte justifiant le score." },
+  "quickSummary": "Un résumé captivant du match et de la tactique attendue.",
+  "scenarios": [ { "title": "Scénario principal", "content": "Le déroulé le plus probable, en trois phrases." } ]
+}` : `{
+  "predictedScore": { "reasoning": "Phrase courte justifiant le score." },
   "quickSummary": "Un résumé captivant du match et de la tactique attendue.",
   "comparison": {
     "attack": { "team1": 0, "team2": 0 },
@@ -965,11 +1015,6 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     "h2h": { "team1": 50, "team2": 50 },
     "goals": { "team1": 0, "team2": 0 },
     "global": { "team1": 0, "team2": 0 }
-  },
-  "predictions": {
-    "expectedGoals": { "team1": 0.0, "team2": 0.0, "total": 0.0 },
-    "btts": { "yes": 0, "no": 0 },
-    "overUnder": { "over05": 0, "over15": 0, "over25": 0, "over35": 0 }
   },
   "advancedMetrics": {
     "possession": { "team1": 50, "team2": 50 },
@@ -988,7 +1033,7 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
     { "title": "Contexte & Enjeux du Match", "icon": "Trophy", "content": "Importance du match." },
     { "title": "Justification du Score Final", "icon": "Brain", "content": "Pourquoi ce score final, en combinant les joueurs clés et la tactique." }
   ]
-}`;
+}`}`;
 
     // Chaque modèle a son propre quota journalier ET sa propre charge : si le
     // premier est épuisé, saturé ou trop lent, le suivant prend le relais.

@@ -53,6 +53,21 @@ export interface TeaserResult {
  * métriques avancées, les points forts, la comparaison et les sections
  * détaillées ne quittent jamais le serveur pour un compte non abonné.
  */
+/**
+ * Nombre de sections que comporte une analyse complète.
+ *
+ * L'aperçu annonce au visiteur combien de sections l'abonnement débloque. Ce
+ * décompte se lisait sur les sections réellement présentes — ce qui marchait
+ * tant que l'analyse complète était générée pour tout le monde, puis jetée.
+ * Depuis qu'un compte gratuit ne fait plus rédiger ces sections, le décompte
+ * serait tombé à zéro : l'aperçu aurait annoncé « 0 section réservée », soit
+ * exactement l'inverse de l'argument de vente.
+ *
+ * Le chiffre est donc une constante, et il est exact : la structure demandée
+ * au modèle pour une analyse complète contient toujours ces sept sections.
+ */
+const SECTIONS_ANALYSE_COMPLETE = 7;
+
 export function toTeaser(data: Record<string, any>): TeaserResult {
   const teaser: Record<string, unknown> = {};
 
@@ -69,6 +84,10 @@ export function toTeaser(data: Record<string, any>): TeaserResult {
     ...teaser,
     locked: true,
     lockedScenarios: Math.max(0, scenarios.length - 1),
-    lockedSections: Array.isArray(data.sections) ? data.sections.length : 0,
+    // Les sections présentes si l'analyse complète a été générée (elle peut
+    // provenir du cache) ; sinon le nombre qu'un abonnement débloquerait.
+    lockedSections: Array.isArray(data.sections) && data.sections.length > 0
+      ? data.sections.length
+      : SECTIONS_ANALYSE_COMPLETE,
   } as TeaserResult;
 }
