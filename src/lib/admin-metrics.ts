@@ -862,7 +862,20 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
       topCompetitions: classer(parCompetition, 8),
       topClubs: classer(parClub, 10),
       topUtilisateurs: classer(parUtilisateur, 10),
-      dernieres: analysesPeriode.slice(0, 50).map((a) => ({
+      /**
+       * Cinquante lignes ne suffisaient pas.
+       *
+       * Sur les journées chargées, l'application produit cent analyses : cent
+       * une le 11 août, quatre-vingt-sept le 12. La coupe à cinquante en
+       * rendait la moitié INTROUVABLE — sans pagination, sans recherche, et
+       * sans que rien n'indique qu'il en manquait. Chercher l'analyse d'un
+       * utilisateur précis dans sa propre administration devenait impossible.
+       *
+       * Trois cents couvre les journées les plus chargées avec de la marge,
+       * pour un tableau qui reste léger. Un champ de recherche filtre la liste
+       * à l'écran, sans nouvel appel.
+       */
+      dernieres: analysesPeriode.slice(0, 300).map((a) => ({
         id: a.id,
         userId: a.user_id,
         email: emailParId.get(a.user_id) ?? '(compte supprimé)',

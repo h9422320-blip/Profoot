@@ -2,6 +2,7 @@ import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import { getBilanEchecs } from "@/lib/echecs-analyse";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { Courbe } from "../_components/Graphique";
+import TableauAnalyses from "./TableauAnalyses";
 import { LienCompte, Vide, dateHeure } from "../_components/Ui";
 import { Panneau, Classement } from "../_components/Panneaux";
 import { Indicateur } from "../_components/Indicateur";
@@ -158,59 +159,7 @@ export default async function AdminSystem({
         </Panneau>
       </div>
 
-      <div className="bg-[#16242e] border border-[#2e4757] rounded-[20px] overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#2e4757]">
-          <h3 className="font-bold text-white text-sm">Dernières analyses</h3>
-          <p className="text-[11px] text-white/40 mt-0.5">50 plus récentes sur la période</p>
-        </div>
-
-        {m.analyses.dernieres.length === 0 ? (
-          <Vide message="Aucune analyse sur cette période." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[760px]">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-widest text-white/35 border-b border-[#2e4757]">
-                  <th className="font-bold px-5 py-3">Match</th>
-                  <th className="font-bold px-5 py-3">Compétition</th>
-                  <th className="font-bold px-5 py-3">Compte</th>
-                  <th className="font-bold px-5 py-3">Score</th>
-                  <th className="font-bold px-5 py-3 text-right">Confiance</th>
-                  <th className="font-bold px-5 py-3">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {m.analyses.dernieres.map((a) => (
-                  <tr key={a.id} className="border-b border-[#2e4757]/50 last:border-0 hover:bg-white/[0.02]">
-                    <td className="px-5 py-3 text-white">
-                      <div className="flex items-center gap-2">
-                        {a.termine ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-white/30 shrink-0" />
-                        ) : (
-                          <Clock className="w-3.5 h-3.5 text-[#10b981] shrink-0" />
-                        )}
-                        <span className="truncate max-w-[220px]">{a.match}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-white/60 truncate max-w-[160px]">{a.competition ?? "—"}</td>
-                    <td className="px-5 py-3 text-white/60 truncate max-w-[200px]"><LienCompte userId={a.userId} email={a.email} /></td>
-                    <td className="px-5 py-3 text-white/80 font-medium">{a.score ?? "—"}</td>
-                    <td className="px-5 py-3 text-right text-white/80">
-                      {a.confiance !== null ? `${a.confiance} %` : "—"}
-                    </td>
-                    <td className="px-5 py-3 text-white/50 whitespace-nowrap">{dateHeure(a.date)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="px-5 py-3 border-t border-[#2e4757] flex items-center gap-4 text-[11px] text-white/30">
-          <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#10b981]" /> Match à venir</span>
-          <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-white/30" /> Match terminé</span>
-        </div>
-      </div>
+      <TableauAnalyses lignes={m.analyses.dernieres} />
 
       {/* Les échecs du moteur, visibles ICI et nulle part ailleurs.
           L'abonné reçoit son analyse normalement — score et probabilités
