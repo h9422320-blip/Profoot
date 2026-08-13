@@ -132,10 +132,21 @@ export async function verifierPronostics(limite = 60): Promise<{
     .from('analysis_history')
     .select('id, team1_logo, team2_logo, score, created_at')
     .is('verified_at', null)
-    // Un match analysé il y a moins de 24 h n'a généralement pas encore été
-    // joué : inutile de l'interroger.
-    .lt('created_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString())
-    .order('created_at', { ascending: true })
+    // Deux heures, et non vingt-quatre.
+    //
+    // Le délai précédent rendait invisible tout match joué le jour même. Le 12
+    // août 2026, Paris Saint-Germain — Aston Villa a été analysé par une
+    // dizaine d'abonnés puis joué dans la foulée : la vérification refusait de
+    // le regarder avant le lendemain, et le diagnostic affichait « 1 match
+    // vérifié, 271 en attente » alors que le résultat était connu de tous.
+    //
+    // Une rencontre dure environ deux heures. Passé ce délai, elle PEUT être
+    // terminée ; c'est la recherche du résultat qui tranche, et elle ne retient
+    // que les matchs réellement achevés.
+    .lt('created_at', new Date(Date.now() - 2 * 3600 * 1000).toISOString())
+    // Les analyses les plus récentes d'abord : ce sont les matchs du jour qui
+    // intéressent, pas un arriéré de la semaine passée.
+    .order('created_at', { ascending: false })
     .limit(limite);
 
   if (error) {

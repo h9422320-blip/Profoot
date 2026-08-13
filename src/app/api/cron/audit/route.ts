@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { executerAudit } from '@/lib/audit';
+import { verifierPronostics } from '@/lib/precision-reelle';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 export const maxDuration = 120;
@@ -32,6 +33,21 @@ export async function GET(request: Request) {
   }
 
   try {
+    // La vérification des pronostics tourne AVEC l'audit, et non une seule fois
+    // par nuit.
+    //
+    // À raison d'un passage quotidien de soixante analyses, l'arriéré ne se
+    // résorbait jamais : 271 analyses attendaient pendant qu'une seule était
+    // vérifiée. Un match joué à 21 h n'était confronté à son résultat que le
+    // lendemain, alors que c'est le jour même qu'il intéresse — c'est ce qui
+    // rend le diagnostic utilisable pour parler du produit.
+    let verification: { examinees: number; verifiees: number; enAttente: number } | null = null;
+    try {
+      verification = await verifierPronostics(150);
+    } catch (e: any) {
+      console.warn('[AUDIT] Vérification des pronostics impossible :', e?.message);
+    }
+
     const resultat = await executerAudit();
 
     // L'enregistrement ne doit pas faire échouer l'audit : mieux vaut un verdict
@@ -54,10 +70,11 @@ export async function GET(request: Request) {
     }
     console.log(
       `[AUDIT] Terminé en ${resultat.duree_ms} ms — ${resultat.anomalies} anomalie(s), ` +
-        `${resultat.avertissements} à surveiller.`
+        `${resultat.avertissements} à surveiller.` +
+        (verification ? ` Pronostics : ${verification.verifiees} vérifié(s), ${verification.enAttente} en attente.` : '')
     );
 
-    return NextResponse.json(resultat);
+    return NextResponse.json({ ...resultat, verification });
   } catch (erreur: any) {
     console.error('[AUDIT] Exécution impossible :', erreur?.message);
     return NextResponse.json({ error: erreur?.message ?? 'Audit impossible' }, { status: 500 });
