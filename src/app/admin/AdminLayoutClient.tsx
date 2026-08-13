@@ -9,6 +9,7 @@ import {
   LayoutDashboard, Users, CreditCard, Brain, Settings, Bell, Search,
   Menu, X, ChevronRight, LogOut, ExternalLink, Wrench, AlertTriangle,
   Info, CheckCircle2, ArrowRight, Megaphone, Gauge, MessageSquare, CalendarDays,
+  ShieldCheck,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import type { Alerte } from "@/lib/admin-metrics";
@@ -22,6 +23,7 @@ const SIDEBAR_ITEMS = [
   { name: "Agent VIP", href: "/admin/agent-vip", icon: MessageSquare },
   { name: "La journée", href: "/admin/journee", icon: CalendarDays },
   { name: "Diagnostic", href: "/admin/diagnostic", icon: Gauge },
+  { name: "Preuves", href: "/admin/preuves", icon: ShieldCheck },
   { name: "Paiements", href: "/admin/logs", icon: ExternalLink },
   { name: "Paramètres", href: "/admin/settings", icon: Settings },
 ];

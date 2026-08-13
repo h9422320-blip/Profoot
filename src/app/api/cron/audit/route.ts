@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { executerAudit } from '@/lib/audit';
 import { verifierPronostics } from '@/lib/precision-reelle';
 import { rafraichirStatutsPaiement } from '@/lib/echecs-paiement';
+import { construirePreuves } from '@/lib/preuves';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 export const maxDuration = 120;
@@ -55,6 +56,14 @@ export async function GET(request: Request) {
       await rafraichirStatutsPaiement(40);
     } catch (e: any) {
       console.warn('[AUDIT] Releve des paiements impossible :', e?.message);
+    }
+
+    // Les preuves publiques se reconstruisent apres la verification des
+    // pronostics : elles n en sont que l agregation par match.
+    try {
+      await construirePreuves();
+    } catch (e: any) {
+      console.warn('[AUDIT] Construction des preuves impossible :', e?.message);
     }
 
     const resultat = await executerAudit();

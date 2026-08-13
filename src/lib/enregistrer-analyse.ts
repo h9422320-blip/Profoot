@@ -59,7 +59,25 @@ export async function enregistrerAnalyse(a: AnalyseAEnregistrer): Promise<void> 
         ? `${d.predictedScore.team1Goals} - ${d.predictedScore.team2Goals}`
         : null;
 
+    // L'ISSUE ANNONCÉE, FIGÉE AVANT LE MATCH.
+    //
+    // Elle était jusqu'ici déduite du score au moment de la vérification,
+    // c'est-à-dire APRÈS la rencontre. Le calcul était juste, mais rien dans la
+    // base ne prouvait que le pronostic n'avait pas été retouché entre-temps —
+    // et une preuve qu'on peut soupçonner d'avoir été écrite après coup ne
+    // prouve rien du tout.
+    const butsPredits = termine ? null : String(score ?? '').match(/(\d+)\s*[-–]\s*(\d+)/);
+    const issuePredite = butsPredits
+      ? Number(butsPredits[1]) > Number(butsPredits[2])
+        ? 'team1'
+        : Number(butsPredits[2]) > Number(butsPredits[1])
+          ? 'team2'
+          : 'draw'
+      : null;
+
     const { error } = await createAdminClient().from('analysis_history').insert({
+      predicted_winner: issuePredite,
+      predicted_at: issuePredite ? new Date().toISOString() : null,
       user_id: a.userId,
       team1_id: a.equipe1.id ?? '',
       team1_name: a.equipe1.name ?? '',

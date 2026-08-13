@@ -130,7 +130,7 @@ export async function verifierPronostics(limite = 60): Promise<{
 
   const { data, error } = await sb
     .from('analysis_history')
-    .select('id, team1_logo, team2_logo, score, created_at')
+    .select('id, team1_logo, team2_logo, score, created_at, predicted_winner, predicted_at')
     .is('verified_at', null)
     // Deux heures, et non vingt-quatre.
     //
@@ -172,13 +172,18 @@ export async function verifierPronostics(limite = 60): Promise<{
 
     const issueReelle = issue(butsEq1, butsEq2);
 
+    // L'issue figée à la création prime sur celle qu'on recalcule ici : elle
+    // date d'avant le match. Ne l'écraser jamais, sinon la preuve perd ce qui
+    // fait sa valeur — l'antériorité.
+    const issueAnnoncee = (analyse as any).predicted_winner ?? prediction.issue;
+
     const { error: erreurEcriture } = await sb
       .from('analysis_history')
       .update({
         real_score: `${butsEq1} - ${butsEq2}`,
         real_winner: issueReelle,
-        predicted_winner: prediction.issue,
-        winner_correct: prediction.issue === issueReelle,
+        predicted_winner: issueAnnoncee,
+        winner_correct: issueAnnoncee === issueReelle,
         score_correct: prediction.buts[0] === butsEq1 && prediction.buts[1] === butsEq2,
         verified_at: new Date().toISOString(),
         fixture_id: resultat.fixtureId,
