@@ -42,13 +42,24 @@ export interface ResultatAudit {
  * fenêtre contenait encore les 143 analyses fautives de la journée. Un signal
  * qui se déclenche à tort finit ignoré, et l'audit ne sert plus à rien.
  *
- * Six heures décrivent ce que l'application produit MAINTENANT. En dessous du
- * minimum, on préfère dire qu'on ne peut pas juger plutôt que de juger sur des
- * données périmées.
+ * MAIS SIX HEURES ÉTAIENT TROP COURTES.
+ *
+ * La nuit vidait la fenêtre. Mesuré sur quarante-huit heures réelles : elle
+ * tombait sous les quinze analyses requises 52 % DU TEMPS — et sous ce seuil,
+ * le contrôle s'arrêtait entièrement. Le défaut du « 2-1 » pouvait revenir et
+ * passer inaperçu la moitié de chaque journée.
+ *
+ * Vingt-quatre heures couvrent un cycle complet de fréquentation. Cela ne
+ * dilue pas les défauts récents : `selonAnciennete()` date la ligne fautive la
+ * PLUS RÉCENTE, donc un défaut éteint depuis deux heures est annoncé comme
+ * résorbé quelle que soit la fenêtre.
  */
-const FENETRE_HEURES = 6;
+const FENETRE_HEURES = 24;
 const MINIMUM_POUR_JUGER = 15;
 const ANALYSES_EXAMINEES = 40;
+
+/** En dessous, le moteur est à l'arrêt — ce n'est plus un creux de trafic. */
+const ACTIVITE_MINIMALE = 5;
 
 /**
  * Un défaut dont la dernière occurrence est ancienne n est pas une panne en
@@ -180,9 +191,21 @@ export async function executerAudit(): Promise<ResultatAudit> {
       .limit(ANALYSES_EXAMINEES);
 
     const predictions = data ?? [];
-    if (predictions.length < MINIMUM_POUR_JUGER) {
-      noter('Analyses', 'ok', `${predictions.length} prédiction(s) sur ${FENETRE_HEURES} h — trop peu pour juger`);
+    if (predictions.length < ACTIVITE_MINIMALE) {
+      // Plus rien ne sort du moteur : c'est une panne, pas un creux.
+      noter(
+        'Analyses',
+        'anomalie',
+        `${predictions.length} prédiction(s) sur ${FENETRE_HEURES} h — le moteur d'analyse est probablement à l'arrêt`
+      );
     } else {
+      if (predictions.length < MINIMUM_POUR_JUGER)
+        noter(
+          'Analyses',
+          'ok',
+          `${predictions.length} prédictions seulement — contrôles menés, conclusions à nuancer`
+        );
+
       const parScore = new Map<string, number>();
       for (const a of predictions) if (a.score) parScore.set(a.score, (parScore.get(a.score) ?? 0) + 1);
       const avecScore = [...parScore.values()].reduce((t, n) => t + n, 0);

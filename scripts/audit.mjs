@@ -206,8 +206,33 @@ async function verifierBase() {
  */
 const ANALYSES_EXAMINEES = 40;
 const MINIMUM_POUR_JUGER = 15;
-/** Au-dela, une analyse ne dit plus ce que l application produit aujourd hui. */
-const AGE_MAX_HEURES = 6;
+
+/**
+ * Vingt-quatre heures, et non six.
+ *
+ * La fenêtre de six heures était vidée par la nuit. Mesuré sur quarante-huit
+ * heures réelles : elle tombait sous les quinze analyses requises 52 % DU
+ * TEMPS — et sous ce seuil, la fonction abandonnait TOUS les contrôles de
+ * qualité. Le défaut du « 2-1 » pouvait donc revenir et passer inaperçu la
+ * moitié de chaque journée, pendant que l'audit affichait une ligne rassurante
+ * sur le manque de volume.
+ *
+ * Vingt-quatre heures couvrent un cycle complet de fréquentation : creux de
+ * 3 h à 7 h, pics à 10 h et 21 h. Le même instant qui ne donnait que 12
+ * analyses en six heures en donne 46 sur vingt-quatre.
+ *
+ * Élargir la fenêtre ne dilue pas les défauts récents : `selonAnciennete()`
+ * date la ligne fautive la PLUS RÉCENTE, si bien qu'un défaut éteint depuis
+ * deux heures est annoncé comme résorbé, quelle que soit la fenêtre.
+ */
+const AGE_MAX_HEURES = 24;
+
+/**
+ * En dessous, l'application ne tourne plus : ce n'est pas un creux de trafic.
+ * Sur les journées observées, le minimum sur vingt-quatre heures reste très
+ * au-dessus — descendre ici signale une panne, pas une nuit calme.
+ */
+const ACTIVITE_MINIMALE_24H = 5;
 
 async function verifierAnalyses() {
   titre(`4. QUALITÉ DES ANALYSES (${ANALYSES_EXAMINEES} dernières prédictions)`);
@@ -222,8 +247,19 @@ async function verifierAnalyses() {
   if (error) return alerte(`analyses illisibles : ${error.message}`);
 
   const predictions = data ?? [];
+
+  // Aucune analyse du tout : c'est une panne, et elle prime sur le reste.
+  if (predictions.length < ACTIVITE_MINIMALE_24H)
+    return alerte(
+      `seulement ${predictions.length} prédiction(s) sur ${AGE_MAX_HEURES} h — le moteur d'analyse est probablement à l'arrêt`
+    );
+
+  // Volume faible mais réel : on contrôle quand même. Un défaut visible sur
+  // huit analyses reste un défaut ; renoncer à regarder était le vrai risque.
   if (predictions.length < MINIMUM_POUR_JUGER)
-    return attention(`seulement ${predictions.length} prédiction(s) sur ${AGE_MAX_HEURES} h — trop peu pour juger la qualité`);
+    console.log(
+      `            (${predictions.length} prédictions seulement — contrôles menés, conclusions à nuancer)`
+    );
 
   const plusAncienne = predictions[predictions.length - 1]?.created_at;
   if (plusAncienne) console.log(`            (depuis ${new Date(plusAncienne).toLocaleString('fr-FR')})`);
