@@ -82,9 +82,11 @@ export const explicationStatutVente = (s: string | null | undefined) =>
 export async function rafraichirStatutsPaiement(limite = 40): Promise<{
   releves: number;
   echecs: number;
+  /** Renseigné quand le relevé n a pas pu se faire du tout. */
+  erreur?: string;
 }> {
   const cle = process.env.CHARIOW_API_KEY;
-  if (!cle) return { releves: 0, echecs: 0 };
+  if (!cle) return { releves: 0, echecs: 0, erreur: "La clé de la boutique n'est pas configurée." };
 
   const sb = createAdminClient();
   const { data, error } = await sb
@@ -97,7 +99,7 @@ export async function rafraichirStatutsPaiement(limite = 40): Promise<{
 
   if (error) {
     console.warn('[PAIEMENTS] Relevé impossible :', error.message);
-    return { releves: 0, echecs: 0 };
+    return { releves: 0, echecs: 0, erreur: error.message };
   }
 
   // Jamais relevées d'abord ; puis celles dont le sort peut encore changer.

@@ -1,6 +1,7 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import { getOrigineAcheteurs } from "@/lib/origine-acheteurs";
 import { getBilanEchecsPaiement } from "@/lib/echecs-paiement";
+import BoutonRelever from "./BoutonRelever";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { LienCompte, Vide, dateHeure, montant } from "../_components/Ui";
 import { Panneau } from "../_components/Panneaux";
@@ -126,6 +127,7 @@ export default async function AdminLogs({
         sousTitre="Relevé auprès de la boutique, demande par demande"
         icone={<XCircle className="w-4 h-4" />}
         teinte={echecs.refuses > 0 ? "rose" : "or"}
+        action={<BoutonRelever />}
       >
         {echecs.indisponible ? (
           <Vide message="Le relevé des paiements est hors service : la base n'a pas répondu. Ce n'est pas « aucun échec » — c'est « on ne sait pas »." />
