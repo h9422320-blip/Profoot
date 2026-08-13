@@ -15,6 +15,7 @@
  */
 
 import { createAdminClient } from './supabase-admin';
+import { clientsLeses } from './echecs-paiement';
 import { PLANS, ACCES_OFFERTS } from './subscription';
 
 export type Gravite = 'anomalie' | 'attention' | 'ok';
@@ -280,13 +281,27 @@ export async function executerAudit(): Promise<ResultatAudit> {
       if (enEchec === 0 && us / avecOrigine.length <= 0.5)
         noter('Paiements', 'ok', `${avecOrigine.length} demandes situées correctement`);
 
+      // Le taux d'aboutissement est un chiffre commercial : il est bas parce
+      // que la plupart des gens repartent sans essayer de payer, pas parce que
+      // l'application casse. Signalé, jamais alerté — une alerte qu'aucune
+      // correction ne peut éteindre finit par masquer les vraies.
       const semaine = avecOrigine.filter((p: any) => Date.now() - new Date(p.created_at).getTime() < 7 * 86400000);
       if (semaine.length >= 5) {
         const part = (semaine.filter((p: any) => p.consumed_at).length / semaine.length) * 100;
-        if (part < 30)
-          noter('Paiements', 'attention', `${Math.round(part)} % des demandes de la semaine ont abouti à un abonnement`);
+        noter('Paiements', 'ok', `${Math.round(part)} % des demandes de la semaine ont été payées (${semaine.length} demandes)`);
       }
     }
+
+    // La seule question de paiement qui mérite une alerte.
+    const { leses, ventesPayees, examenPartiel } = await clientsLeses();
+    if (leses.length > 0) {
+      for (const c of leses)
+        noter('Paiements', 'anomalie', `${c.email ?? c.saleId} a payé sans recevoir son abonnement — ${c.raison}`);
+    } else if (ventesPayees > 0) {
+      noter('Paiements', 'ok', `${ventesPayees} paiement(s) encaissé(s), tous ont reçu leur abonnement`);
+    }
+    if (examenPartiel)
+      noter('Paiements', 'attention', "toutes les demandes n'ont pas pu être vérifiées auprès de la boutique");
   } catch (e: any) {
     noter('Paiements', 'attention', `paiements non vérifiables : ${e?.message}`);
   }

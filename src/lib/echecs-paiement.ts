@@ -146,6 +146,137 @@ export async function rafraichirStatutsPaiement(limite = 40): Promise<{
   return { releves, echecs };
 }
 
+/**
+ * Les clients qui ont payé sans rien recevoir.
+ *
+ * C'est la seule question de paiement qui mérite une alerte. Le taux
+ * d'aboutissement, lui, est un chiffre commercial : quand quarante personnes
+ * sur cinquante-quatre repartent sans même choisir un moyen de paiement,
+ * aucune correction de code n'y changera rien, et une alerte qui se rallume à
+ * chaque passage sans qu'on puisse l'éteindre apprend surtout à ne plus lire
+ * l'audit.
+ *
+ * Deux façons de ne rien recevoir après avoir payé :
+ *   — la boutique dit « payé », la notification n'est jamais arrivée
+ *     (l'intention n'est pas consommée) ;
+ *   — la notification est arrivée, mais aucun abonnement n'en est sorti.
+ * La seconde se voit sans réseau ; la première demande d'interroger la
+ * boutique, d'où le plafond d'appels.
+ */
+export async function clientsLeses(
+  jours = 7,
+  plafondAppels = 60
+): Promise<{
+  leses: { email: string | null; userId: string | null; saleId: string; raison: string }[];
+  ventesPayees: number;
+  demandes: number;
+  /** Vrai quand le plafond a empêché d'examiner toutes les demandes. */
+  examenPartiel: boolean;
+}> {
+  const sb = createAdminClient();
+  const vide = { leses: [], ventesPayees: 0, demandes: 0, examenPartiel: false };
+
+  const champs = 'sale_id, user_id, email, consumed_at, created_at';
+  const depuis = new Date(Date.now() - jours * 86400000).toISOString();
+
+  // Le statut déjà relevé évite un appel réseau. La colonne peut ne pas exister
+  // si la migration n'a pas encore été appliquée : on retombe alors sur le
+  // relevé en direct plutôt que d'abandonner la vérification.
+  let { data, error } = await sb
+    .from('payment_intents')
+    .select(`${champs}, statut_boutique`)
+    .gte('created_at', depuis)
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (error) {
+    ({ data, error } = await sb
+      .from('payment_intents')
+      .select(champs)
+      .gte('created_at', depuis)
+      .order('created_at', { ascending: false })
+      .limit(200) as any);
+  }
+
+  if (error || !data?.length) return vide;
+
+  const cle = process.env.CHARIOW_API_KEY;
+  const leses: { email: string | null; userId: string | null; saleId: string; raison: string }[] = [];
+  let ventesPayees = 0;
+  let appels = 0;
+  let examenPartiel = false;
+
+  for (const i of data as any[]) {
+    let payee = !!i.consumed_at;
+
+    // Une intention non consommée n'est pas forcément un impayé : la
+    // notification a pu se perdre. Seule la boutique le sait.
+    if (!payee && cle) {
+      let statut: string | null = i.statut_boutique ?? null;
+
+      if (!statut) {
+        if (appels >= plafondAppels) {
+          examenPartiel = true;
+          continue;
+        }
+        appels++;
+        try {
+          const r = await fetch(`${CHARIOW}/sales/${i.sale_id}`, {
+            headers: { Authorization: `Bearer ${cle}`, Accept: 'application/json' },
+          });
+          statut = (await r.json())?.data?.status ?? null;
+        } catch {
+          // Boutique injoignable : on ne conclut pas à un client lésé.
+          continue;
+        }
+      }
+
+      if (statut === 'completed' || statut === 'settled') {
+        ventesPayees++;
+        leses.push({
+          email: i.email ?? null,
+          userId: i.user_id ?? null,
+          saleId: i.sale_id,
+          raison: "payé chez la boutique, la notification n'est jamais arrivée",
+        });
+      }
+      continue;
+    }
+
+    if (!payee) continue;
+    ventesPayees++;
+
+    if (!i.user_id) {
+      leses.push({
+        email: i.email ?? null,
+        userId: null,
+        saleId: i.sale_id,
+        raison: 'paiement encaissé sans compte rattaché',
+      });
+      continue;
+    }
+
+    const { data: abos } = await sb
+      .from('subscriptions')
+      .select('status')
+      .eq('user_id', i.user_id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const statut = (abos as any[])?.[0]?.status;
+    if (statut !== 'active' && statut !== 'trialing') {
+      leses.push({
+        email: i.email ?? null,
+        userId: i.user_id,
+        saleId: i.sale_id,
+        raison: statut ? `abonnement en statut « ${statut} »` : 'aucun abonnement créé',
+      });
+    }
+  }
+
+  return { leses, ventesPayees, demandes: data.length, examenPartiel };
+}
+
 export interface CausePaiement {
   code: string;
   libelle: string;

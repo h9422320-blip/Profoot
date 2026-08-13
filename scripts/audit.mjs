@@ -336,13 +336,104 @@ async function verifierPaiements() {
   if (paysUS / avecOrigine.length > 0.5)
     alerte(`${paysUS} demandes sur ${avecOrigine.length} sont rattachées aux États-Unis — la détection est probablement retombée en panne`);
 
+  // Le taux d'aboutissement est un chiffre commercial, pas un défaut : il est
+  // bas parce que la plupart des gens repartent sans essayer de payer. Une
+  // alerte qu'aucune correction de code ne peut éteindre finit par apprendre à
+  // ne plus lire l'audit — donc on l'affiche, on n'alerte pas dessus.
   const recentes = avecOrigine.filter((p) => Date.now() - new Date(p.created_at) < 7 * 86400000);
-  const honorees = recentes.filter((p) => p.consumed_at).length;
   if (recentes.length >= 5) {
-    const part = (honorees / recentes.length) * 100;
-    if (part < 30) attention(`${part.toFixed(0)} % des demandes de paiement de la semaine ont abouti à un abonnement`);
-    else ok(`${part.toFixed(0)} % des demandes récentes ont abouti`);
+    const part = (recentes.filter((p) => p.consumed_at).length / recentes.length) * 100;
+    ok(`${part.toFixed(0)} % des demandes de la semaine ont été payées (${recentes.length} demandes)`);
   }
+
+  await verifierClientsLeses();
+}
+
+/**
+ * La seule question de paiement qui mérite une alerte : quelqu'un a-t-il payé
+ * sans rien recevoir ? Deux façons — la boutique dit « payé » et la
+ * notification n'est jamais arrivée, ou elle est arrivée sans produire
+ * d'abonnement.
+ */
+async function verifierClientsLeses() {
+  const champs = 'sale_id, user_id, email, consumed_at, created_at';
+  // Le statut déjà relevé évite un appel réseau. La colonne peut ne pas exister
+  // si la migration n'a pas encore été appliquée : on retombe alors sur le
+  // relevé en direct plutôt que d'abandonner la vérification.
+  let { data } = await sb
+    .from('payment_intents')
+    .select(`${champs}, statut_boutique`)
+    .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (!data) {
+    ({ data } = await sb
+      .from('payment_intents')
+      .select(champs)
+      .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(200));
+  }
+
+  if (!data?.length) return;
+
+  const leses = [];
+  let payees = 0;
+  let appels = 0;
+  let partiel = false;
+
+  for (const i of data) {
+    if (!i.consumed_at) {
+      let statut = i.statut_boutique ?? null;
+
+      if (!statut) {
+        // Interroger la boutique coûte un appel réseau : plafonné, car l'audit
+        // ne doit jamais devenir la chose la plus lente de la journée.
+        if (appels >= 60) { partiel = true; continue; }
+        appels++;
+        try {
+          const r = await fetch(`https://api.chariow.com/v1/sales/${i.sale_id}`, {
+            headers: { Authorization: `Bearer ${env.CHARIOW_API_KEY}`, Accept: 'application/json' },
+          });
+          statut = (await r.json())?.data?.status ?? null;
+        } catch {
+          // Boutique injoignable : on ne conclut pas à un client lésé.
+          continue;
+        }
+      }
+
+      {
+        if (statut === 'completed' || statut === 'settled') {
+          payees++;
+          leses.push(`${i.email} — payé chez la boutique, la notification n'est jamais arrivée`);
+        }
+      }
+      continue;
+    }
+
+    payees++;
+    if (!i.user_id) {
+      leses.push(`${i.email} — paiement encaissé sans compte rattaché`);
+      continue;
+    }
+
+    const { data: abos } = await sb
+      .from('subscriptions')
+      .select('status')
+      .eq('user_id', i.user_id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const statut = abos?.[0]?.status;
+    if (statut !== 'active' && statut !== 'trialing')
+      leses.push(`${i.email} — ${statut ? `abonnement en statut « ${statut} »` : 'aucun abonnement créé'}`);
+  }
+
+  if (leses.length) leses.forEach((l) => alerte(`a payé sans recevoir son abonnement : ${l}`));
+  else if (payees > 0) ok(`${payees} paiement(s) encaissé(s), tous ont reçu leur abonnement`);
+
+  if (partiel) attention("toutes les demandes n'ont pas pu être vérifiées auprès de la boutique");
 }
 
 // ── 7. Agent VIP ─────────────────────────────────────────────────────────────
