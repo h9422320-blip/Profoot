@@ -87,6 +87,23 @@ export function estAmical(competition: string | null | undefined): boolean {
   return /friendl|amical|pre-?season|test/i.test(String(competition ?? ''));
 }
 
+/**
+ * Le nom de la compétition, tel qu'il doit s'afficher.
+ *
+ * Le fournisseur nomme les matchs de préparation « Friendlies Clubs ». Écrit
+ * tel quel sur une carte destinée à un public francophone, c'est du charabia.
+ * On traduit ce cas — et lui seul : les autres compétitions gardent leur nom
+ * officiel, qui est ce que le visiteur cherche à reconnaître (« UEFA Super
+ * Cup », « La Liga », « Premier League »). Rien n'est masqué : un amical
+ * s'annonce comme un amical.
+ */
+export function libelleCompetition(nom: string | null | undefined): string | null {
+  const n = String(nom ?? '').trim();
+  if (!n) return null;
+  if (/^(friendlies?( clubs?)?|club friendlies)$/i.test(n)) return 'Amical';
+  return n;
+}
+
 export interface Preuve {
   id: string;
   fixtureId: number | null;

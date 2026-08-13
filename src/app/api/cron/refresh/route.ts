@@ -3,6 +3,7 @@ import { LEAGUE_IDS } from '@/lib/api-football';
 import { getAllCompetitionStatuses } from '@/lib/competition-status';
 import { getLiveTeams } from '@/lib/teams-live';
 import { verifierPronostics } from '@/lib/precision-reelle';
+import { construirePreuves } from '@/lib/preuves';
 
 export const maxDuration = 300;
 // Jamais de mise en cache : la tâche doit réellement s'exécuter à chaque appel.
@@ -47,7 +48,24 @@ export async function GET(request: Request) {
     // Confronte les pronostics passés aux résultats réels. C'est ce passage
     // quotidien qui alimente la précision affichée : sans lui, aucun taux ne
     // pourrait être mesuré et il faudrait en inventer un.
-    const precision = await verifierPronostics();
+    //
+    // Le lot est large parce que le coût ne dépend plus du nombre d'analyses
+    // mais du nombre de RENCONTRES distinctes : les cinquante-deux analyses de
+    // FC Barcelone — Elche ne coûtent qu'un seul appel.
+    const precision = await verifierPronostics(300);
+
+    // ── LE MUR SE RECONSTRUIT ICI AUSSI ───────────────────────────────────────
+    //
+    // Vérifier les pronostics sans reconstruire les preuves laissait le mur en
+    // retard d'un passage : un match joué le 15 août au soir était confronté à
+    // son résultat à minuit, mais n'apparaissait publiquement qu'à 5 h 37. Les
+    // deux tâches quotidiennes font désormais le travail complet, à des heures
+    // différentes — si l'une échoue, l'autre rattrape dans la journée.
+    try {
+      await construirePreuves();
+    } catch (e: any) {
+      console.warn('[CRON] Construction des preuves impossible :', e?.message);
+    }
 
     console.log(
       `[CRON] Rafraîchissement terminé en ${Date.now() - debut}ms — ` +

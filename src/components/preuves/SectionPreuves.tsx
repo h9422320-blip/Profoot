@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, Crosshair, ShieldCheck } from "lucide-react";
 import {
   getPreuvesPubliques,
+  libelleCompetition,
   libelleIssue,
   type BilanPreuves,
   type Preuve,
@@ -64,7 +65,7 @@ function CartePreuve({ p }: { p: Preuve }) {
           est longue ; la date, elle, ne rétrécit jamais. */}
       <div className="flex items-center justify-between gap-2 min-w-0">
         <span className="text-[10px] font-bold uppercase tracking-wider text-white/35 leading-tight min-w-0">
-          {p.competition || "Match"}
+          {libelleCompetition(p.competition) ?? "Match"}
         </span>
         {date && (
           <span className="text-[10px] font-semibold text-white/30 shrink-0">{date}</span>
