@@ -68,18 +68,23 @@ function lirePrediction(score: string | null): { buts: [number, number]; issue: 
  * l'analyse. Renvoie `null` tant que le match n'est pas terminé — l'analyse
  * reste alors en attente et sera reprise au passage suivant.
  */
+export function identifiantEquipe(logo: string | null | undefined): string | null {
+  // Les identifiants du fournisseur sont contenus dans l'URL des logos, seule
+  // trace fiable : les identifiants stockés sont des slugs internes.
+  return String(logo ?? '').match(/teams\/(\d+)\.png/)?.[1] ?? null;
+}
+
 async function trouverResultat(analyse: any): Promise<{
   fixtureId: number;
   butsDomicile: number;
   butsExterieur: number;
   inverse: boolean;
+  competition: string | null;
+  /** Identifiant de l'équipe qui reçoit, pour redresser chaque analyse. */
+  idDomicile: string;
 } | null> {
-  const logo1 = String(analyse.team1_logo ?? '');
-  const logo2 = String(analyse.team2_logo ?? '');
-  // Les identifiants du fournisseur sont contenus dans l'URL des logos, seule
-  // trace fiable : les identifiants stockés sont des slugs internes.
-  const id1 = logo1.match(/teams\/(\d+)\.png/)?.[1];
-  const id2 = logo2.match(/teams\/(\d+)\.png/)?.[1];
+  const id1 = identifiantEquipe(analyse.team1_logo);
+  const id2 = identifiantEquipe(analyse.team2_logo);
   if (!id1 || !id2) return null;
 
   const data = await apiFootball<any>(
@@ -112,6 +117,17 @@ async function trouverResultat(analyse: any): Promise<{
     butsDomicile: match.goals?.home ?? 0,
     butsExterieur: match.goals?.away ?? 0,
     inverse,
+    idDomicile: String(match.teams?.home?.id ?? ''),
+    // LA COMPÉTITION RÉELLE DE LA RENCONTRE.
+    //
+    // Celle enregistrée à l'analyse n'est pas fiable : quand la rencontre n'a
+    // pas pu être résolue, le code retombe sur le championnat de la première
+    // équipe. Paris Saint-Germain — Aston Villa se retrouvait ainsi étiqueté
+    // « ligue1 », ce qu'un amateur de football repère en une seconde.
+    //
+    // Ici, le nom vient de la fiche du match elle-même. C'est la seule source
+    // qui ne puisse pas se tromper.
+    competition: match.league?.name ?? null,
   };
 }
 
@@ -157,9 +173,44 @@ export async function verifierPronostics(limite = 60): Promise<{
   let verifiees = 0;
   let enAttente = 0;
 
+  // ── UN APPEL PAR RENCONTRE, PAS PAR ANALYSE ────────────────────────────────
+  //
+  // Cinquante personnes ont analysé FC Barcelone — Elche. Le code interrogeait
+  // le fournisseur cinquante fois pour la même rencontre, dont le résultat est
+  // évidemment identique. Sur 191 analyses en attente, cela faisait 191 appels
+  // là où 57 suffisent — 70 % de gaspillage, sur un quota qui est justement ce
+  // qui limite le nombre de matchs qu'on peut vérifier.
+  //
+  // Le résultat est donc cherché une fois par paire d'équipes, puis appliqué à
+  // toutes les analyses qui portent sur cette rencontre.
+  const resultatsParPaire = new Map<string, Awaited<ReturnType<typeof trouverResultat>>>();
+
+  const resultatPourAnalyse = async (analyse: any) => {
+    const id1 = identifiantEquipe(analyse.team1_logo);
+    const id2 = identifiantEquipe(analyse.team2_logo);
+    if (!id1 || !id2) return null;
+
+    // La date entre dans la clé : deux analyses de la même affiche à des dates
+    // éloignées peuvent viser deux rencontres différentes (aller et retour).
+    const jour = String(analyse.created_at).slice(0, 10);
+    const cle = `${[id1, id2].sort().join('-')}@${jour}`;
+
+    if (!resultatsParPaire.has(cle)) {
+      resultatsParPaire.set(cle, await trouverResultat(analyse));
+    }
+    const commun = resultatsParPaire.get(cle) ?? null;
+    if (!commun) return null;
+
+    // « inverse » dépend de l'ordre dans lequel CETTE analyse nomme les
+    // équipes, pas de celui de la première analyse rencontrée. Sans ce
+    // redressement, une analyse saisie dans l'autre sens verrait le score à
+    // l'envers et serait comptée comme fausse.
+    return { ...commun, inverse: String(commun.idDomicile) !== String(id1) };
+  };
+
   for (const analyse of data ?? []) {
     const prediction = lirePrediction(analyse.score);
-    const resultat = await trouverResultat(analyse);
+    const resultat = await resultatPourAnalyse(analyse);
 
     if (!resultat || !prediction) {
       enAttente++;

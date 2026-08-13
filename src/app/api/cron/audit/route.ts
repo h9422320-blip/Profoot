@@ -45,7 +45,11 @@ export async function GET(request: Request) {
     // rend le diagnostic utilisable pour parler du produit.
     let verification: { examinees: number; verifiees: number; enAttente: number } | null = null;
     try {
-      verification = await verifierPronostics(150);
+      // Le lot est large parce que le coût ne dépend plus du nombre d'analyses
+      // mais du nombre de RENCONTRES distinctes : 300 analyses ne représentent
+      // qu'une soixantaine d'appels. Avec un lot de 150, l'arriéré ne se
+      // résorbait jamais — il grossissait plus vite qu'il n'était traité.
+      verification = await verifierPronostics(300);
     } catch (e: any) {
       console.warn('[AUDIT] Vérification des pronostics impossible :', e?.message);
     }

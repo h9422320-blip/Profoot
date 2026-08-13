@@ -26,7 +26,30 @@
  * l'administration, et c'est là qu'ils servent à quelque chose.
  */
 
+import { apiFootball, CACHE_TTL } from './api-football';
 import { createAdminClient } from './supabase-admin';
+
+/**
+ * La compétition réelle d'une rencontre, lue sur sa fiche.
+ *
+ * Le libellé enregistré au moment de l'analyse n'est pas fiable : quand la
+ * rencontre n'a pas pu être résolue, le code retombe sur le championnat de la
+ * première équipe. Paris Saint-Germain — Aston Villa s'affichait ainsi en
+ * « ligue1 » — Aston Villa est anglais, et n'importe quel amateur de football
+ * le voit immédiatement. Une seule étiquette fausse discrédite tout le mur.
+ *
+ * Un appel par match, mis en cache longuement : une rencontre terminée ne
+ * change plus de compétition.
+ */
+async function competitionDuMatch(fixtureId: number | null): Promise<string | null> {
+  if (!fixtureId) return null;
+  try {
+    const data = await apiFootball<any>(`/fixtures?id=${fixtureId}`, CACHE_TTL.STANDINGS);
+    return data?.response?.[0]?.league?.name ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /** Issue d'un match à partir de deux buts. */
 function issue(buts1: number, buts2: number): 'team1' | 'draw' | 'team2' {
@@ -202,7 +225,9 @@ export async function construirePreuves(): Promise<{
       team1_logo: l.team1_logo ?? null,
       team2_name: l.team2_name ?? '',
       team2_logo: l.team2_logo ?? null,
-      competition: l.competition ?? null,
+      // La fiche du match fait foi ; le libellé enregistré à l'analyse ne sert
+      // que de repli quand le fournisseur ne répond pas.
+      competition: (await competitionDuMatch(l.fixture_id)) ?? l.competition ?? null,
       date_match: m.dateMatch,
       prono_issue: buts ? issue(buts[0], buts[1]) : null,
       prono_score: pronoScore,
