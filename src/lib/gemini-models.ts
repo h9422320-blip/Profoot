@@ -84,12 +84,19 @@ export async function avecBasculeDeModele<T>(
     budgetMs = 40000,
     plafondMs = 26000,
     minimumMs = 8000,
-  }: { budgetMs?: number; plafondMs?: number; minimumMs?: number } = {}
+    modeles = MODELES_GEMINI,
+  }: {
+    budgetMs?: number;
+    plafondMs?: number;
+    minimumMs?: number;
+    /** Liste à parcourir. Diffère selon la passerelle employée. */
+    modeles?: string[];
+  } = {}
 ): Promise<T> {
   const echeance = Date.now() + budgetMs;
   let derniereErreur: any;
 
-  for (const modele of MODELES_GEMINI) {
+  for (const modele of modeles) {
     const restant = echeance - Date.now();
     if (restant < minimumMs) break;
 

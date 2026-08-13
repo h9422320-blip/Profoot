@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { avecBasculeDeModele, MODELES_GEMINI } from "@/lib/gemini-models";
+import { MODELES_GEMINI } from "@/lib/gemini-models";
+import { genererAnalyseJSON } from "@/lib/analyse-modele";
+import { openRouterDisponible } from "@/lib/openrouter";
 import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
 import { toTeaser } from "@/lib/analysis-teaser";
@@ -880,18 +881,26 @@ export async function POST(req: Request) {
     return donnees;
   };
 
-  // GEMINI PROMPT GENERATION
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_KEY || GEMINI_KEY === "fallback_key_for_safety" || GEMINI_KEY === "") {
-    return NextResponse.json({ error: "Clé API Gemini manquante. Impossible de générer la prédiction." }, { status: 500 });
+  // UNE PASSERELLE SUFFIT.
+  //
+  // Ce contrôle exigeait une clé Gemini. Le jour où l'application passe par
+  // OpenRouter et où la clé Google est retirée, il aurait refusé toutes les
+  // analyses alors que la nouvelle passerelle fonctionnait — une panne totale
+  // provoquée par un garde-fou devenu faux.
+  const cleGemini = process.env.GEMINI_API_KEY;
+  const geminiUtilisable = !!cleGemini && cleGemini !== 'fallback_key_for_safety';
+  if (!openRouterDisponible() && !geminiUtilisable) {
+    return NextResponse.json(
+      { error: "Aucune passerelle IA configurée. Renseignez OPENROUTER_API_KEY ou GEMINI_API_KEY." },
+      { status: 500 }
+    );
   }
 
   const debutAnalyse = Date.now();
   try {
-    console.log(`[BACKEND_ANALYZE] Calling Gemini for PREDICTION and EXPERT ANALYSIS...`);
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    // Le modèle et le délai sont choisis plus bas, tentative par tentative :
-    // un `AbortController` unique créé ici condamnait la deuxième tentative
+    console.log(`[BACKEND_ANALYZE] Génération de la prédiction et de l'analyse experte...`);
+    // Le modèle, la passerelle et le délai sont choisis plus bas, tentative par
+    // tentative : un `AbortController` unique condamnait la deuxième tentative
     // avant qu'elle commence, puisqu'il continuait de courir entre les essais.
 
     const apiDataMissing = (baseGoalsFor1 === 0 && baseGoalsFor2 === 0 && played1 <= 1);
@@ -995,15 +1004,21 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
       12000,
       LIMITE_PLATEFORME_MS - (Date.now() - debutRequete) - RESERVE_MISE_EN_FORME_MS
     );
-    const result = await avecBasculeDeModele(
-      (modele, signal) =>
-        genAI
-          .getGenerativeModel({ model: modele, generationConfig: { responseMimeType: 'application/json' } })
-          .generateContent(prompt, { signal } as any),
-      { budgetMs: budgetModele }
+
+    // Un compte non abonné ne voit que 15 % du résultat, le reste étant flouté.
+    // Lui servir le modèle le plus cher revient à payer le prix fort pour du
+    // contenu masqué : l'aperçu est produit par le modèle économique. Son
+    // CONTENU est identique — seul le coût change.
+    const result = await genererAnalyseJSON(prompt, {
+      budgetMs: budgetModele,
+      economique: !guard.entitlements.premium,
+    });
+
+    console.log(
+      `[BACKEND_ANALYZE] Réponse obtenue via ${result.passerelle} — modèle ${result.modele}.`
     );
-    
-    let responseText = result.response.text();
+
+    let responseText = result.texte;
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       responseText = jsonMatch[0];
