@@ -213,7 +213,21 @@ import { isRateLimited, clientIp, setBounded } from "@/lib/rateLimit";
 // « erreur de connexion au modèle IA ».
 export const maxDuration = 60;
 
+/**
+ * Budget de temps de la requête.
+ *
+ * `maxDuration` est un couperet : passé ce délai, l'hébergeur coupe et le
+ * visiteur voit une erreur. On vise donc volontairement en dessous, et on
+ * garde une réserve pour tout ce qui suit la réponse du modèle — analyse du
+ * JSON, imposition des chiffres calculés, enregistrement dans l'historique.
+ * Sans cette réserve, un modèle qui répond à la dernière seconde produit
+ * quand même un échec.
+ */
+const LIMITE_PLATEFORME_MS = 55000;
+const RESERVE_MISE_EN_FORME_MS = 6000;
+
 export async function POST(req: Request) {
+  const debutRequete = Date.now();
   // --- PERMISSIONS ---
   // L'analyse est ouverte à tout utilisateur connecté : le modèle produit est
   // un APERÇU gratuit (résultat partiel, reste flouté avec invitation à
@@ -876,10 +890,9 @@ export async function POST(req: Request) {
   try {
     console.log(`[BACKEND_ANALYZE] Calling Gemini for PREDICTION and EXPERT ANALYSIS...`);
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    // Use flash as it's very fast and excellent at reasoning with structured JSON
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash", generationConfig: { responseMimeType: "application/json" } });
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s timeout
+    // Le modèle et le délai sont choisis plus bas, tentative par tentative :
+    // un `AbortController` unique créé ici condamnait la deuxième tentative
+    // avant qu'elle commence, puisqu'il continuait de courir entre les essais.
 
     const apiDataMissing = (baseGoalsFor1 === 0 && baseGoalsFor2 === 0 && played1 <= 1);
     const prompt = `Tu es le moteur de prédiction IA de ProFoot, un système ultra-avancé d'analyse de football.
@@ -968,15 +981,27 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
   ]
 }`;
 
-    // Chaque modèle a son propre quota journalier : si le premier est épuisé,
-    // le suivant prend le relais. Mieux vaut une analyse rédigée par un modèle
-    // plus léger qu'un texte de secours identique pour tous les matchs.
-    const result = await avecBasculeDeModele((modele) =>
-      genAI
-        .getGenerativeModel({ model: modele, generationConfig: { responseMimeType: 'application/json' } })
-        .generateContent(prompt, { signal: controller.signal } as any)
+    // Chaque modèle a son propre quota journalier ET sa propre charge : si le
+    // premier est épuisé, saturé ou trop lent, le suivant prend le relais.
+    // Mieux vaut une analyse rédigée par un modèle plus léger qu'un texte de
+    // secours identique pour tous les matchs.
+    //
+    // Le délai est géré tentative par tentative par `avecBasculeDeModele` : un
+    // compteur unique partagé condamnait la deuxième tentative avant même
+    // qu'elle commence. Le budget est calculé sur le temps réellement restant
+    // avant la limite de la plateforme, moins une réserve pour la mise en forme
+    // de la réponse.
+    const budgetModele = Math.max(
+      12000,
+      LIMITE_PLATEFORME_MS - (Date.now() - debutRequete) - RESERVE_MISE_EN_FORME_MS
     );
-    clearTimeout(timeoutId);
+    const result = await avecBasculeDeModele(
+      (modele, signal) =>
+        genAI
+          .getGenerativeModel({ model: modele, generationConfig: { responseMimeType: 'application/json' } })
+          .generateContent(prompt, { signal } as any),
+      { budgetMs: budgetModele }
+    );
     
     let responseText = result.response.text();
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
