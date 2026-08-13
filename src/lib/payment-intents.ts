@@ -48,3 +48,32 @@ export async function marquerIntentionHonoree(admin: SupabaseClient, saleId: str
     .is('consumed_at', null);
   if (error) console.error('Intention non marquée comme honorée:', saleId, error.message);
 }
+
+/**
+ * Cette vente correspond-elle à l'achat d'un match à l'unité ?
+ *
+ * On se fie à NOTRE trace, écrite au moment du checkout, et non au produit
+ * annoncé par la boutique : personne d'autre que notre serveur n'a pu écrire
+ * cette ligne. Un acheteur ne peut donc pas se faire débloquer un match en
+ * manipulant les métadonnées de la vente.
+ */
+export async function intentionMatch(
+  admin: SupabaseClient,
+  saleId: string
+): Promise<{ matchKey: string; equipe1Nom: string | null; equipe2Nom: string | null } | null> {
+  const { data, error } = await admin
+    .from('payment_intents')
+    .select('match_key, equipe1_nom, equipe2_nom')
+    .eq('sale_id', saleId)
+    .maybeSingle();
+
+  // Colonne absente (migration non appliquée) ou vente ordinaire : dans les
+  // deux cas ce n'est pas un achat de match, et l'abonnement suit son cours.
+  if (error || !data?.match_key) return null;
+
+  return {
+    matchKey: data.match_key,
+    equipe1Nom: data.equipe1_nom ?? null,
+    equipe2Nom: data.equipe2_nom ?? null,
+  };
+}

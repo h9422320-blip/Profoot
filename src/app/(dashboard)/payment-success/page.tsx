@@ -16,10 +16,19 @@ export default function PaymentSuccessPage() {
   useEffect(() => {
     let cancelled = false;
 
+    // Un achat à l'unité ne rend pas « premium » : c'est le déblocage de CE
+    // match qu'il faut attendre. Sans cette distinction, la page tournerait
+    // indéfiniment sur un abonnement qui ne viendra jamais, et l'acheteur
+    // croirait avoir payé pour rien.
+    const cleMatch = new URLSearchParams(window.location.search).get('match');
+
     const checkStatus = async (): Promise<boolean> => {
-      const res = await fetch('/api/payments/status');
+      const url = cleMatch
+        ? `/api/payments/status?match=${encodeURIComponent(cleMatch)}`
+        : '/api/payments/status';
+      const res = await fetch(url);
       const data = await res.json();
-      return !!data.premium;
+      return cleMatch ? !!data.matchDebloque : !!data.premium;
     };
 
     (async () => {

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase-admin';
+import { getRevenusMatchsUniques } from './match-unique';
 import { ACCES_OFFERTS, niveauOffert, normalizePlan, PLANS, PlanKey, PlanTier } from '@/lib/subscription';
 import { TAUX_POUR_MILLE_USD, TAUX_XOF } from '@/lib/partenaires';
 import { getPrecisionReelle } from '@/lib/precision-reelle';
@@ -210,6 +211,18 @@ export interface AdminMetrics {
     revenuMensuelRecurrent: number;
     devise: string;
     serie: Point[];
+    /**
+     * Achats a l unite, comptes a part.
+     *
+     * Les fondre dans le total masquerait ce qu on cherche justement a
+     * mesurer : la petite porte fait-elle entrer des gens qui n auraient
+     * jamais pris d abonnement ?
+     */
+    matchsUniques: {
+      nombre: number;
+      totalXof: number;
+      acheteursSansAbonnement: number;
+    };
   };
 
   analyses: {
@@ -533,6 +546,10 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
     : 0;
   const actifs = comptes.filter((c) => dansPeriode(c.last_sign_in_at ? new Date(c.last_sign_in_at) : null, periode)).length;
 
+  // Comptés à part des abonnements : ce sont deux gestes commerciaux
+  // différents, et les additionner rendrait le premier invisible.
+  const revenusMatchs = await getRevenusMatchsUniques();
+
   // ── Abonnements ──
   const abosEnrichis: LigneAbonnement[] = abos.map((s) => {
     const cle = normalizePlan(s.plan);
@@ -816,6 +833,11 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
     },
 
     revenus: {
+      matchsUniques: {
+        nombre: revenusMatchs.nombre,
+        totalXof: revenusMatchs.totalXof,
+        acheteursSansAbonnement: revenusMatchs.acheteursSansAbonnement,
+      },
       totalCumule,
       surPeriode,
       surPeriodePrecedente,

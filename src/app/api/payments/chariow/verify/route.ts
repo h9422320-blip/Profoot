@@ -3,7 +3,8 @@ import { requireUser } from '@/lib/subscription';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { listCompletedSalesByEmail } from '@/lib/chariow';
 import { activateSubscriptionFromSale } from '@/lib/subscription-activation';
-import { trouverAcheteur, marquerIntentionHonoree } from '@/lib/payment-intents';
+import { trouverAcheteur, marquerIntentionHonoree, intentionMatch } from '@/lib/payment-intents';
+import { debloquerMatch } from '@/lib/match-unique';
 
 /**
  * Réconciliation : filet de sécurité si un webhook a été manqué (panne,
@@ -42,6 +43,23 @@ export async function POST() {
       }
       if (sale.customer?.email?.toLowerCase() !== user.email.toLowerCase()) {
         unmatched++;
+        continue;
+      }
+
+      // Meme aiguillage que le webhook : sans lui, un achat de match dont la
+      // notification s est perdue ne serait jamais rattrape par ce filet.
+      const achatMatch = await intentionMatch(admin, sale.id);
+      if (achatMatch) {
+        const r = await debloquerMatch({
+          userId: user.id,
+          matchKey: achatMatch.matchKey,
+          saleId: sale.id,
+          equipe1Nom: achatMatch.equipe1Nom,
+          equipe2Nom: achatMatch.equipe2Nom,
+          montant: sale.amount?.value ?? null,
+          devise: sale.amount?.currency ?? 'XOF',
+        });
+        if (r.debloque) await marquerIntentionHonoree(admin, sale.id);
         continue;
       }
 

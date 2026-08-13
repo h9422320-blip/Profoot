@@ -204,7 +204,16 @@ export interface ChariowCheckoutSession {
 
 /** Crée une session de paiement Chariow pour un utilisateur ProFoot. */
 export async function initCheckout(params: {
-  plan: PlanKey;
+  /** Abonnement demandé, ou null pour un achat à l unité. */
+  plan: PlanKey | null;
+  /**
+   * Produit à facturer quand ce n est pas un abonnement.
+   * Le déblocage d un match passe par ici : même tunnel de paiement, même
+   * détection du pays, même trace — seul le produit change.
+   */
+  produitDirect?: string;
+  /** Métadonnées supplémentaires (identité du match débloqué). */
+  metadonnees?: Record<string, string>;
   userId: string;
   email: string;
   firstName: string;
@@ -217,7 +226,7 @@ export async function initCheckout(params: {
   redirectUrl: string;
 }): Promise<ChariowCheckoutSession> {
   const body: Record<string, unknown> = {
-    product_id: productIdForPlan(params.plan),
+    product_id: params.plan ? productIdForPlan(params.plan) : params.produitDirect,
     email: params.email,
     first_name: params.firstName.slice(0, 50),
     last_name: params.lastName.slice(0, 50),
@@ -229,7 +238,8 @@ export async function initCheckout(params: {
     // Reliera le paiement à l'utilisateur dans le webhook successful.sale.
     custom_metadata: {
       user_id: params.userId,
-      plan: params.plan,
+      ...(params.plan ? { plan: params.plan } : {}),
+      ...(params.metadonnees ?? {}),
       app: 'profoot',
     },
   };

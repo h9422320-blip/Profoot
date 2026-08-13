@@ -47,6 +47,36 @@ export default async function AdminLogs({
         ]}
       />
 
+      {/* Les achats à l'unité, comptés à part.
+          Les fondre dans le revenu total masquerait exactement ce qu'on veut
+          mesurer : la petite porte fait-elle entrer des gens qui n'auraient
+          jamais pris d'abonnement ? */}
+      {m.revenus.matchsUniques.nombre > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Indicateur
+            libelle="Matchs vendus à l'unité"
+            valeur={m.revenus.matchsUniques.nombre}
+            teinte="cyan"
+            aide="Achats uniques, hors abonnement"
+            delai={0.05}
+          />
+          <Indicateur
+            libelle="Encaissé à l'unité"
+            valeur={montant(m.revenus.matchsUniques.totalXof, m.revenus.devise)}
+            teinte="or"
+            aide="Compté séparément des abonnements"
+            delai={0.1}
+          />
+          <Indicateur
+            libelle="Acheteurs non abonnés"
+            valeur={m.revenus.matchsUniques.acheteursSansAbonnement}
+            teinte="vert"
+            aide="Comptes que seule la vente à l'unité a fait payer"
+            delai={0.15}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <Indicateur
           libelle="Événements reçus"

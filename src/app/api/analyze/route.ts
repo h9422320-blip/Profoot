@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MODELES_GEMINI } from "@/lib/gemini-models";
 import { genererAnalyseJSON } from "@/lib/analyse-modele";
+import { PRIX_MATCH_UNIQUE, matchDebloque, matchUniqueDisponible } from "@/lib/match-unique";
 import { openRouterDisponible } from "@/lib/openrouter";
 import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
@@ -327,6 +328,23 @@ export async function POST(req: Request) {
    * lisible dans les outils de développement.
    */
   /**
+   * A-t-il droit à l'analyse complète de CE match ?
+   *
+   * Deux titres y donnent accès, et ils donnent exactement le même contenu :
+   * un abonnement en cours, ou l'achat de ce match à l'unité. Le second est
+   * définitif et ne concerne que cette rencontre.
+   *
+   * Déterminé ici, une fois pour toutes : ce drapeau décide de ce qu'on demande
+   * au modèle, de l'entrée de cache utilisée, et de ce qu'on renvoie. Les trois
+   * DOIVENT s'accorder — sinon une version réduite finirait chez quelqu'un qui
+   * a payé.
+   */
+  const aDroitAuComplet =
+    guard.entitlements.premium || (await matchDebloque(guard.user.id, team1.id, team2.id));
+
+  const estApercuGlobal = !aDroitAuComplet;
+
+  /**
    * Point de passage unique de toutes les réponses.
    *
    * L'enregistrement de l'historique se fait ICI, et non dans le navigateur.
@@ -349,20 +367,32 @@ export async function POST(req: Request) {
       });
     }
     return NextResponse.json(
-      guard.entitlements.premium
-        ? { ...data, quota }
-        : { ...toTeaser(data), quota }
+      aDroitAuComplet
+        ? {
+            ...data,
+            quota,
+            // Vrai quand l'accès vient d'un achat à l'unité et non d'un
+            // abonnement. C'est le seul moment où proposer l'abonnement a du
+            // sens : la personne vient de payer, elle a la preuve en main.
+            debloqueParAchat: !guard.entitlements.premium,
+          }
+        : {
+            ...toTeaser(data),
+            quota,
+            // L offre a l unite est decrite ICI et nulle part ailleurs : le
+            // prix et l identifiant du produit vivent cote serveur, et le
+            // navigateur ne doit pas avoir a importer ce module.
+            matchUnique: {
+              disponible: matchUniqueDisponible(),
+              prix: PRIX_MATCH_UNIQUE,
+              equipe1Id: String(team1.id),
+              equipe2Id: String(team2.id),
+              equipe1Nom: String(team1.name ?? ''),
+              equipe2Nom: String(team2.name ?? ''),
+            },
+          }
     );
   };
-
-  /**
-   * Ce visiteur reçoit-il l'aperçu gratuit plutôt que l'analyse complète ?
-   *
-   * Déterminé ici, une fois pour toutes : ce drapeau décide à la fois de ce
-   * qu'on demande au modèle et de l'entrée de cache utilisée. Les deux DOIVENT
-   * s'accorder, sinon une version réduite finirait chez un abonné.
-   */
-  const estApercuGlobal = !guard.entitlements.premium;
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -382,7 +412,7 @@ export async function POST(req: Request) {
   const cleApercu = `${team1.id}-${team2.id}-${today}-apercu`;
   const cacheKey = estApercuGlobal ? cleApercu : cleComplete;
 
-  const cachedAnalysis = guard.entitlements.premium
+  const cachedAnalysis = aDroitAuComplet
     ? analysisCache.get(cleComplete)
     : analysisCache.get(cleComplete) ?? analysisCache.get(cleApercu);
 
@@ -1056,7 +1086,7 @@ ${estApercu ? `{
     // CONTENU est identique — seul le coût change.
     const result = await genererAnalyseJSON(prompt, {
       budgetMs: budgetModele,
-      economique: !guard.entitlements.premium,
+      economique: estApercu,
     });
 
     console.log(

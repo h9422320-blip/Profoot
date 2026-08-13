@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import PaywallDeuxChemins from "./PaywallDeuxChemins";
 import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw, Lock, ArrowRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
@@ -1463,25 +1464,14 @@ export default function AnalyzePage({ preuves }: { preuves?: React.ReactNode }) 
                      pendant tout le défilement de la zone floutée. Un enfant de
                      conteneur absolu ne peut PAS être collant, d'où ce montage. */
                   <div className="sticky top-[32vh] z-30 h-0 px-4">
-                    <div className="w-full max-w-[340px] sm:max-w-[420px] mx-auto flex flex-col items-center rounded-[28px] px-5 py-7 sm:px-8 sm:py-9 border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.55)]" style={{background: 'rgba(22,36,46,0.94)', backdropFilter: 'blur(8px)'}}>
-                      <h3 className="text-[19px] leading-tight sm:text-2xl md:text-3xl font-black text-white mb-4 text-center" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Tu n'as accès qu'à 15% de notre analyse</h3>
-
-                      <div className="w-full max-w-[220px] h-1.5 bg-white/10 rounded-full mb-5 overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-[#10B981] to-[#2DD4BF] rounded-full" style={{ width: "15%" }}></div>
-                      </div>
-
-                      <p className="text-[13px] md:text-[14px] text-white/80 font-medium mb-7 max-w-[300px] leading-relaxed text-center">
-                        L'analyse complète contient les probabilités exactes, les scénarios restants et les insights premium.
-                      </p>
-
-                      <Link
-                        href="/pricing"
-                        className="w-full inline-flex items-center justify-center gap-2 font-black py-3.5 px-5 rounded-full transition-all text-[13px] sm:text-sm text-center shadow-[0_8px_32px_rgba(45,212,191,0.4)] hover:scale-[1.02] active:scale-95"
-                        style={{background: 'linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)', color: '#101c24'}}
-                      >
-                        🔒 Débloquer l'analyse complète
-                      </Link>
-                    </div>
+                    <PaywallDeuxChemins
+                      equipe1Id={result.matchUnique?.equipe1Id ?? ''}
+                      equipe2Id={result.matchUnique?.equipe2Id ?? ''}
+                      equipe1Nom={result.matchUnique?.equipe1Nom ?? ''}
+                      equipe2Nom={result.matchUnique?.equipe2Nom ?? ''}
+                      prixMatch={result.matchUnique?.prix ?? 500}
+                      achatUniteDisponible={!!result.matchUnique?.disponible}
+                    />
                   </div>
                 )}
 
@@ -1491,6 +1481,32 @@ export default function AnalyzePage({ preuves }: { preuves?: React.ReactNode }) 
                   les formes et les couleurs restent perceptibles.
                 */}
                 <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[16px] opacity-[0.8] saturate-125' : ''}`}>
+                  {/* L'abonnement se propose ICI, et pas ailleurs : la personne
+                      vient de payer pour ce match et tient la preuve entre les
+                      mains. C'est le seul instant où « et si tu débloques
+                      souvent ? » se pose tout seul. */}
+                  {result.debloqueParAchat && (
+                    <div className="rounded-[20px] border border-[#10B981]/25 bg-[#10B981]/[0.07] p-4 flex flex-col gap-3">
+                      <p className="text-[13px] font-bold text-white leading-snug">
+                        Tu débloques souvent des matchs ?
+                      </p>
+                      <p className="text-[12px] text-white/60 leading-relaxed">
+                        L&apos;abonnement Essentiel à 3 000 FCFA te donne 10 analyses complètes par
+                        mois — soit six fois moins cher au match.
+                      </p>
+                      <Link
+                        href="/pricing"
+                        className="inline-flex items-center justify-center gap-2 font-black py-3 px-5 rounded-full text-[13px] transition-all active:scale-95 min-h-[48px] w-full sm:w-auto sm:self-start"
+                        style={{
+                          background: "linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)",
+                          color: "#101c24",
+                        }}
+                      >
+                        Voir l&apos;abonnement
+                      </Link>
+                    </div>
+                  )}
+
                   {/* Le serveur ne transmet plus le contenu payant à un compte
                       gratuit : il n'y a donc rien à afficher ici, seulement la
                       silhouette de ce que contient l'analyse complète. */}

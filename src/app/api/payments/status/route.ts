@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionEntitlements, PLANS, UNLIMITED } from '@/lib/subscription';
 import { getQuotaState } from '@/lib/analysis-quota';
+import { matchDebloqueParCle } from '@/lib/match-unique';
 
 /**
  * Droits d'accès et consommation de l'utilisateur connecté — seule source que
@@ -8,7 +9,7 @@ import { getQuotaState } from '@/lib/analysis-quota';
  * jamais et ne les recalcule pas : chaque route API refait sa propre
  * vérification côté serveur.
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { user, entitlements } = await getSessionEntitlements();
     if (!user) {
@@ -17,10 +18,19 @@ export async function GET() {
 
     const quota = await getQuotaState(user.id, entitlements);
 
+    // Un achat a l unite ne rend pas premium : sans cette reponse, la page de
+    // retour apres paiement attendrait indefiniment un abonnement qui ne
+    // viendra jamais, et l acheteur croirait avoir paye pour rien.
+    const cle = new URL(req.url).searchParams.get('match');
+    const matchDebloqueDemande = cle
+      ? await matchDebloqueParCle(user.id, cle)
+      : null;
+
     return NextResponse.json({
       // isPro conservé pour compatibilité avec l'interface existante.
       isPro: entitlements.premium,
       premium: entitlements.premium,
+      matchDebloque: matchDebloqueDemande,
       vip: entitlements.vip,
       plan: entitlements.plan,
       planLabel:

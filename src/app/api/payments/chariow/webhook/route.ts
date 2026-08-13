@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { ChariowSale } from '@/lib/chariow';
+import { debloquerMatch } from '@/lib/match-unique';
 import { activateSubscriptionFromSale } from '@/lib/subscription-activation';
-import { trouverAcheteur, marquerIntentionHonoree } from '@/lib/payment-intents';
+import { trouverAcheteur, marquerIntentionHonoree, intentionMatch } from '@/lib/payment-intents';
 
 /**
  * Webhook Chariow (Pulse). Point d'entrée principal de l'activation
@@ -79,6 +80,38 @@ export async function POST(req: Request) {
       // réconciliation quand l'utilisateur se connectera.
       console.warn(`Vente Chariow ${sale.id} sans acheteur identifiable — en attente de réconciliation.`);
       return NextResponse.json({ received: true, status: 'unmatched' });
+    }
+
+    // ── ACHAT D'UN MATCH À L'UNITÉ ────────────────────────────────────────────
+    //
+    // Aiguillage AVANT l'activation d'abonnement, et sur notre propre trace
+    // plutôt que sur le produit annoncé par la boutique : c'est nous qui avons
+    // écrit `match_key` au moment du checkout, personne ne peut la falsifier.
+    // Sans cette bifurcation, `resolvePaidPlan` ne reconnaîtrait pas le produit
+    // et renverrait 422 — le client serait débité sans rien recevoir.
+    const achatMatch = await intentionMatch(admin, sale.id);
+    if (achatMatch) {
+      if (sale.status !== 'completed' && sale.status !== 'settled') {
+        return NextResponse.json({ received: true, status: 'pending' });
+      }
+
+      const resultat = await debloquerMatch({
+        userId: acheteur.userId,
+        matchKey: achatMatch.matchKey,
+        saleId: sale.id,
+        equipe1Nom: achatMatch.equipe1Nom,
+        equipe2Nom: achatMatch.equipe2Nom,
+        montant: sale.amount?.value ?? null,
+        devise: sale.amount?.currency ?? 'XOF',
+      });
+
+      if (!resultat.debloque) {
+        console.error(`Match non débloqué pour la vente ${sale.id} : ${resultat.raison}`);
+        return NextResponse.json({ error: resultat.raison }, { status: 422 });
+      }
+
+      await marquerIntentionHonoree(admin, sale.id);
+      return NextResponse.json({ received: true, status: 'match_debloque' });
     }
 
     const result = await activateSubscriptionFromSale(admin, sale, acheteur.userId);
