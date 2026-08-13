@@ -35,7 +35,16 @@ const env = Object.fromEntries(
 );
 
 const SITE = 'https://profootai.com';
-const TARIFS = { Essentiel: 3000, Pro: 5000, 'VIP Annuel': 30000 };
+/**
+ * Ce que l'application ANNONCE. La boutique, elle, encaisse — et l'audit
+ * compare les deux.
+ *
+ * Ce contrôle a prouvé son utilité le jour du lancement de la vente à l'unité :
+ * le produit était à 600 FCFA quand le code affichait 500. Le paywall aurait
+ * promis un prix et la page de paiement en aurait réclamé un autre, ce qui fait
+ * abandonner l'achat au moment précis où l'on tenait enfin l'acheteur.
+ */
+const TARIFS = { Essentiel: 3000, Pro: 5000, 'VIP Annuel': 30000, 'Match à l\'unité': 600 };
 
 // ── Journal ──────────────────────────────────────────────────────────────────
 
@@ -138,10 +147,18 @@ async function verifierBoutique() {
     ['Essentiel', env.CHARIOW_PRODUCT_ID_ESSENTIAL],
     ['Pro', env.CHARIOW_PRODUCT_ID_PRO],
     ['VIP Annuel', env.CHARIOW_PRODUCT_ID_VIP],
+    ["Match à l'unité", env.CHARIOW_PRODUCT_ID_MATCH],
   ];
 
   for (const [nom, id] of produits) {
     if (!id) {
+      // La vente à l'unité est facultative : sans produit configuré, le paywall
+      // se replie sur l'abonnement seul. Ce n'est pas une panne, seulement une
+      // offre encore éteinte.
+      if (nom === "Match à l'unité") {
+        attention("vente à l'unité inactive — CHARIOW_PRODUCT_ID_MATCH n'est pas configuré");
+        continue;
+      }
       alerte(`aucun produit configuré pour l'offre ${nom} — elle n'est pas payable`);
       continue;
     }

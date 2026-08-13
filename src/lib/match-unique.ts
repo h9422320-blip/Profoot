@@ -24,7 +24,7 @@ import { createAdminClient } from './supabase-admin';
  * dans la boutique : c'est elle qui encaisse. Un écart entre les deux est
  * détecté par l'audit, qui compare les tarifs publiés à ceux du code.
  */
-export const PRIX_MATCH_UNIQUE = 500;
+export const PRIX_MATCH_UNIQUE = 600;
 
 export const LIBELLE_MATCH_UNIQUE = 'Débloquer ce match';
 

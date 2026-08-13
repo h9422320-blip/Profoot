@@ -1469,7 +1469,7 @@ export default function AnalyzePage({ preuves }: { preuves?: React.ReactNode }) 
                       equipe2Id={result.matchUnique?.equipe2Id ?? ''}
                       equipe1Nom={result.matchUnique?.equipe1Nom ?? ''}
                       equipe2Nom={result.matchUnique?.equipe2Nom ?? ''}
-                      prixMatch={result.matchUnique?.prix ?? 500}
+                      prixMatch={result.matchUnique?.prix ?? 600}
                       achatUniteDisponible={!!result.matchUnique?.disponible}
                     />
                   </div>
