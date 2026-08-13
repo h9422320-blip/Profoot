@@ -119,7 +119,7 @@ export async function getDiagnosticIA(): Promise<DiagnosticIA> {
   const [{ data: verifiees, error }, attente] = await Promise.all([
     sb
       .from('analysis_history')
-      .select('score, real_score, predicted_winner, real_winner, winner_correct, score_correct, confidence, competition')
+      .select('score, real_score, predicted_winner, real_winner, winner_correct, score_correct, confidence, competition, fixture_id, team1_name, team2_name')
       .not('verified_at', 'is', null)
       .limit(2000),
     sb.from('analysis_history').select('id', { count: 'exact', head: true }).is('verified_at', null),
@@ -146,7 +146,55 @@ export async function getDiagnosticIA(): Promise<DiagnosticIA> {
     return vide;
   }
 
-  const lignes = (verifiees ?? []) as any[];
+  // ── UN MATCH COMPTE POUR UN ────────────────────────────────────────────────
+  //
+  // Vingt personnes qui analysent la même rencontre ne fournissent pas vingt
+  // observations : elles en fournissent UNE. Sans ce regroupement, une seule
+  // affiche décide de tout le diagnostic.
+  //
+  // Constaté le 12 août 2026 : Paris Saint-Germain — Aston Villa pesait 42 des
+  // 49 vérifications, soit 86 % de la mesure. Le match a fini 2-1, et le défaut
+  // du « 2-1 par défaut » annonçait précisément 2-1 : vingt-cinq analyses ont
+  // décroché le score exact par pur hasard, hissant ce taux à 67 % là où il
+  // tourne autour de 10 % pour tout le monde dans ce métier. Les
+  // recommandations affichées en dessous héritaient toutes de ce biais.
+  //
+  // Une rencontre donne donc une ligne, dont le verdict est celui de la
+  // MAJORITÉ de ses analyses — ce que l'application a dit à ses abonnés sur ce
+  // match-là. Les valeurs continues (confiance, buts annoncés) sont moyennées.
+  const brutes = (verifiees ?? []) as any[];
+
+  const parMatch = new Map<string, any[]>();
+  for (const l of brutes) {
+    const cle = l.fixture_id
+      ? `f${l.fixture_id}`
+      : [l.team1_name, l.team2_name].map((n: any) => String(n ?? '').toLowerCase()).sort().join('|');
+    parMatch.set(cle, [...(parMatch.get(cle) ?? []), l]);
+  }
+
+  /** Valeur la plus fréquente d'un champ au sein d'une rencontre. */
+  const majoritaire = (lot: any[], champ: string) => {
+    const compte = new Map<any, number>();
+    for (const l of lot) if (l[champ] != null) compte.set(l[champ], (compte.get(l[champ]) ?? 0) + 1);
+    return [...compte.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  };
+  const moyenneDuChamp = (lot: any[], champ: string) => {
+    const v = lot.map((l) => l[champ]).filter((x) => typeof x === 'number');
+    return v.length ? v.reduce((t, x) => t + x, 0) / v.length : null;
+  };
+
+  const lignes = [...parMatch.values()].map((lot) => ({
+    // Le verdict de la rencontre est celui de la majorité de ses analyses.
+    winner_correct: lot.filter((l) => l.winner_correct).length * 2 > lot.length,
+    score_correct: lot.filter((l) => l.score_correct).length * 2 > lot.length,
+    confidence: moyenneDuChamp(lot, 'confidence'),
+    competition: majoritaire(lot, 'competition'),
+    predicted_winner: majoritaire(lot, 'predicted_winner'),
+    real_winner: lot[0]?.real_winner ?? null,
+    score: majoritaire(lot, 'score'),
+    real_score: lot[0]?.real_score ?? null,
+  }));
+
   const total = lignes.length;
   if (!total) return vide;
 
@@ -176,8 +224,10 @@ export async function getDiagnosticIA(): Promise<DiagnosticIA> {
       return { ...t, nombre: 0, reussite: null, confianceMoyenne: null, ecart: null };
     }
     const reussite = pourcent(dedans.filter((l) => l.winner_correct).length, dedans.length);
+    // La confiance d'une rencontre est la moyenne de ses analyses : elle peut
+    // donc manquer si aucune ne l'a renseignée.
     const moyenne =
-      Math.round((dedans.reduce((s, l) => s + l.confidence, 0) / dedans.length) * 10) / 10;
+      Math.round((dedans.reduce((s, l) => s + (l.confidence ?? 0), 0) / dedans.length) * 10) / 10;
     return {
       ...t,
       nombre: dedans.length,
