@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { genererAnalyseJSON } from '@/lib/analyse-modele';
+import { openRouterDisponible } from '@/lib/openrouter';
 import { requireUser } from '@/lib/subscription';
 
 // Appel Gemini : dépasse les 10 s accordées par défaut à une fonction serverless.
@@ -34,17 +35,16 @@ export async function GET(request: Request) {
     return NextResponse.json(cached.data);
   }
 
-  if (!GEMINI_KEY) {
-    return NextResponse.json({ error: 'API key missing' }, { status: 500 });
+  // Une passerelle suffit : OpenRouter si sa clé existe, Google sinon. Exiger
+  // la clé Google aurait coupé cette page le jour où elle sera retirée.
+  if (!openRouterDisponible() && !GEMINI_KEY) {
+    return NextResponse.json({ error: 'Aucune passerelle IA configurée' }, { status: 500 });
   }
 
   try {
-    console.log(`[BRACKET_AI] Generating automatic background simulation for ${COMPETITION_NAMES[id]} via Gemini...`);
+    console.log(`[BRACKET_AI] Generating automatic background simulation for ${COMPETITION_NAMES[id]}...`);
 
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      systemInstruction: `Tu es le moteur IA en arrière-plan (Background Engine) de l'application ProFoot.
+    const systeme = `Tu es le moteur IA en arrière-plan (Background Engine) de l'application ProFoot.
 Le contexte ACTUEL est que nous sommes le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. La Coupe du Monde 2026 est terminée ; le focus est la saison 2026-2027 des championnats et coupes.
 
 CONSIGNES STRICTES ET ABSOLUES :
@@ -72,15 +72,19 @@ CONSIGNES STRICTES ET ABSOLUES :
   "final": {"t1": "Vainqueur Demie 1", "t2": "Vainqueur Demie 2", "s1": "-", "s2": "-", "status": "NS"}
 }
 
-IMPORTANT : Ne génère AUCUN score de match après les Huitièmes de finale.`
-    });
+IMPORTANT : Ne génère AUCUN score de match après les Huitièmes de finale.`;
 
     const prompt = `Génère l'arbre complet de la ${COMPETITION_NAMES[id]}. N'oublie pas : nous sommes le 5 Juillet 2026, les Quarts de finale n'ont pas encore été joués. Retourne uniquement le JSON.`;
 
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text().trim();
-    
-    console.log(`[BRACKET_AI] Raw Gemini response length: ${rawText.length}`);
+    // Passe par la même chaîne de bascule que l'analyse : un modèle saturé ou
+    // à court de quota ne fait plus échouer la page, le suivant prend le
+    // relais. Le budget reste sous la limite de la plateforme (60 s).
+    const result = await genererAnalyseJSON(prompt, { budgetMs: 45000, systeme });
+    const rawText = result.texte.trim();
+
+    console.log(
+      `[BRACKET_AI] Réponse de ${result.modele} via ${result.passerelle} — ${rawText.length} caractères.`
+    );
 
     let jsonStr = rawText;
     if (jsonStr.includes('```')) {

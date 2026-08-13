@@ -44,7 +44,16 @@ export interface ResultatModele {
  */
 export async function genererAnalyseJSON(
   prompt: string,
-  { budgetMs, economique = false }: { budgetMs: number; economique?: boolean }
+  {
+    budgetMs,
+    economique = false,
+    systeme,
+  }: {
+    budgetMs: number;
+    economique?: boolean;
+    /** Consigne système, pour les appelants qui en utilisent une. */
+    systeme?: string;
+  }
 ): Promise<ResultatModele> {
   if (openRouterDisponible()) {
     const modeles = economique
@@ -55,7 +64,7 @@ export async function genererAnalyseJSON(
     const texte = await avecBasculeDeModele(
       (modele, signal) => {
         retenu = modele;
-        return appelerOpenRouter(modele, prompt, signal);
+        return appelerOpenRouter(modele, prompt, signal, systeme);
       },
       { budgetMs, modeles }
     );
@@ -71,6 +80,7 @@ export async function genererAnalyseJSON(
       return genAI
         .getGenerativeModel({
           model: modele,
+          systemInstruction: systeme,
           generationConfig: { responseMimeType: 'application/json' },
         })
         .generateContent(prompt, { signal } as any);

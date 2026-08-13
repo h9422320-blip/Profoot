@@ -68,7 +68,9 @@ class ErreurModele extends Error {
 export async function appelerOpenRouter(
   modele: string,
   prompt: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  /** Consigne système, quand l'appelant en fournit une. */
+  systeme?: string
 ): Promise<string> {
   const reponse = await fetch(OPENROUTER, {
     method: 'POST',
@@ -83,7 +85,12 @@ export async function appelerOpenRouter(
     },
     body: JSON.stringify({
       model: modele,
-      messages: [{ role: 'user', content: prompt }],
+      messages: systeme
+        ? [
+            { role: 'system', content: systeme },
+            { role: 'user', content: prompt },
+          ]
+        : [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
     }),
   });
