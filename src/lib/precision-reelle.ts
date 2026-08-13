@@ -211,7 +211,7 @@ export async function getPrecisionReelle(): Promise<PrecisionReelle> {
   const [verifiees, attente] = await Promise.all([
     sb
       .from('analysis_history')
-      .select('winner_correct, score_correct, verified_at')
+      .select('winner_correct, score_correct, verified_at, fixture_id, team1_name, team2_name, analysis_data')
       .not('verified_at', 'is', null)
       .order('verified_at', { ascending: false })
       .limit(1000),
@@ -232,7 +232,44 @@ export async function getPrecisionReelle(): Promise<PrecisionReelle> {
     );
   }
 
-  const lignes = verifiees.data ?? [];
+  // ── UN MATCH COMPTE POUR UN ────────────────────────────────────────────────
+  //
+  // Vingt personnes qui analysent la même rencontre ne fournissent pas vingt
+  // observations : elles en fournissent UNE. Compter chaque analyse séparément
+  // laisse une seule affiche décider du chiffre global.
+  //
+  // Constaté le 12 août 2026 : Paris Saint-Germain — Aston Villa pesait 29 des
+  // 49 vérifications, soit 59 % de la mesure. Le match a fini 2-1, et le défaut
+  // du « 2-1 par défaut » annonçait précisément 2-1 : vingt-cinq analyses ont
+  // décroché le score exact par pur hasard, hissant ce taux à 67 % alors qu'il
+  // tourne autour de 10 % pour tout le monde dans ce métier.
+  //
+  // On regroupe donc par rencontre. Au sein d'une même rencontre, le verdict
+  // retenu est celui de la MAJORITÉ des analyses : c'est ce que l'application a
+  // dit à ses abonnés sur ce match-là.
+  const brutes = verifiees.data ?? [];
+
+  const parMatch = new Map<string, { justes: number; exacts: number; total: number; date: string }>();
+  for (const l of brutes as any[]) {
+    const cle = l.fixture_id
+      ? `f${l.fixture_id}`
+      : [l.team1_name, l.team2_name].map((n) => String(n ?? '').toLowerCase()).sort().join('|');
+    const m = parMatch.get(cle) ?? { justes: 0, exacts: 0, total: 0, date: l.verified_at };
+    m.total++;
+    if (l.winner_correct) m.justes++;
+    if (l.score_correct) m.exacts++;
+    if (l.verified_at > m.date) m.date = l.verified_at;
+    parMatch.set(cle, m);
+  }
+
+  const lignes = [...parMatch.values()]
+    .map((m) => ({
+      winner_correct: m.justes * 2 > m.total,
+      score_correct: m.exacts * 2 > m.total,
+      verified_at: m.date,
+    }))
+    .sort((a, b) => (a.verified_at < b.verified_at ? 1 : -1));
+
   const total = lignes.length;
 
   if (!total) {
