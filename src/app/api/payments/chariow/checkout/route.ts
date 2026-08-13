@@ -193,7 +193,18 @@ async function lancerAchatMatch(req: Request, body: any, user: any) {
     phoneNumber: user.phone || user.user_metadata?.phone || undefined,
     paysAcheteur: pays.code,
     ipAcheteur: ip,
-    redirectUrl: `${baseUrl}/payment-success?match=${encodeURIComponent(matchKey)}`,
+    // Les équipes voyagent dans l'URL de retour, et pas seulement la clé du
+    // match.
+    //
+    // Sans elles, l'acheteur revenait sur une page d'analyse VIERGE : l'analyse
+    // qu'il venait de payer vivait dans l'état React de son navigateur, perdu
+    // au moment de partir vers la page de paiement. Il avait payé et ne voyait
+    // rien. La clé seule (`equipe1__equipe2`) ne suffit pas à relancer
+    // l'analyse : elle est triée par ordre alphabétique et ne dit plus qui
+    // reçoit.
+    redirectUrl:
+      `${baseUrl}/payment-success?match=${encodeURIComponent(matchKey)}` +
+      `&t1=${encodeURIComponent(equipe1Id)}&t2=${encodeURIComponent(equipe2Id)}`,
   });
 
   if (!session.checkoutUrl) {

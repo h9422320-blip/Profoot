@@ -688,6 +688,40 @@ export default function AnalyzePage({ preuves }: { preuves?: React.ReactNode }) 
     handleAnalyze(hId, aId);
   };
 
+  /**
+   * Reprise automatique de l'analyse payée.
+   *
+   * Après un achat à l'unité, la page de paiement renvoie ici avec les deux
+   * équipes en paramètres. Sans cette reprise, l'acheteur retombait sur une
+   * page VIERGE : l'analyse vivait dans l'état de son navigateur, perdu au
+   * moment de partir payer. Il voyait un formulaire vide après avoir payé, et
+   * devait deviner qu'il fallait resélectionner les équipes.
+   *
+   * L'analyse est relancée, et non restaurée : pour un compte gratuit, le
+   * serveur n'avait généré que l'aperçu. C'est ce nouvel appel qui produit
+   * enfin le contenu complet, maintenant que le match est débloqué.
+   *
+   * Les paramètres sont retirés de l'URL aussitôt : un rechargement ne doit pas
+   * relancer une analyse déjà affichée, et l'adresse partagée ne doit pas
+   * déclencher d'analyse chez quelqu'un d'autre.
+   */
+  const repriseFaite = useRef(false);
+  useEffect(() => {
+    if (repriseFaite.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const t1 = params.get('t1');
+    const t2 = params.get('t2');
+    if (!t1 || !t2) return;
+
+    repriseFaite.current = true;
+    window.history.replaceState({}, '', window.location.pathname);
+    handleQuickMatchSelect(t1, t2);
+    // Volontairement sans dépendances : cette reprise n'a lieu qu'au premier
+    // rendu, jamais à chaque changement d'état.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const progressPercent = Math.round(((analyzingStep + 1) / steps.length) * 100);
 
   return (

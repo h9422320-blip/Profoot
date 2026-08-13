@@ -1,12 +1,39 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Mail, Lock, AlertCircle, TrendingUp, Zap, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { login } from './actions'
 import { ProFootLogo } from '@/components/ui/ProFootLogo'
+
+/**
+ * Transporte l'identité du match payé à travers la connexion.
+ *
+ * Lu depuis l'adresse au montage plutôt qu'avec `useSearchParams`, qui
+ * imposerait un `<Suspense>` autour de tout le formulaire pour une information
+ * accessoire. Absent dans le cas normal : le champ ne s'affiche que si l'on
+ * revient bien d'un paiement.
+ */
+function ChampsMatchPaye() {
+  const [equipes, setEquipes] = useState<{ t1: string; t2: string } | null>(null)
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    const t1 = p.get('t1')
+    const t2 = p.get('t2')
+    if (t1 && t2) setEquipes({ t1, t2 })
+  }, [])
+
+  if (!equipes) return null
+  return (
+    <>
+      <input type="hidden" name="t1" value={equipes.t1} />
+      <input type="hidden" name="t2" value={equipes.t2} />
+    </>
+  )
+}
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
@@ -108,7 +135,13 @@ export default function LoginPage() {
 
           {/* Form */}
           <form action={handleSubmit} className="space-y-5">
-            
+            {/* L'identité du match payé traverse la connexion.
+                Un acheteur revenu de sa banque avec une session expirée atterrit
+                ici en la portant dans l'adresse ; sans ces deux champs, elle se
+                perdrait et il retrouverait la page vide qu'il venait justement
+                de payer pour éviter. */}
+            <ChampsMatchPaye />
+
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />

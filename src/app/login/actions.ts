@@ -24,7 +24,32 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/analyze')
+  redirect(destinationApres(formData))
+}
+
+/**
+ * Où renvoyer l'utilisateur après connexion.
+ *
+ * Presque toujours la page d'analyse. Mais un acheteur qui revient de sa banque
+ * avec une session expirée arrive ici en portant l'identité du match qu'il vient
+ * de payer. Le renvoyer sur une page d'analyse nue lui ferait perdre exactement
+ * ce qu'il a acheté — c'est le même écran vide que le bug d'origine, atteint par
+ * un autre chemin.
+ *
+ * Seules deux valeurs sont reprises, et jamais une adresse fournie par
+ * l'appelant : une redirection ouverte permettrait d'envoyer quelqu'un vers un
+ * site tiers depuis notre propre page de connexion.
+ */
+function destinationApres(formData: FormData): string {
+  const propre = (v: FormDataEntryValue | null) =>
+    typeof v === 'string' && /^[a-z0-9_-]{1,40}$/i.test(v) ? v : null
+
+  const t1 = propre(formData.get('t1'))
+  const t2 = propre(formData.get('t2'))
+
+  return t1 && t2
+    ? `/analyze?t1=${encodeURIComponent(t1)}&t2=${encodeURIComponent(t2)}`
+    : '/analyze'
 }
 
 export async function signup(formData: FormData) {
