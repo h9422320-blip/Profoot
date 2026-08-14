@@ -309,7 +309,7 @@ async function verifierAnalyses() {
 
   const { data, error } = await sb
     .from('analysis_history')
-    .select('score, confidence, win_prob, is_finished, created_at')
+    .select('score, confidence, win_prob, is_finished, created_at, team1_name, team2_name')
     .eq('is_finished', false)
     .gte('created_at', new Date(Date.now() - AGE_MAX_HEURES * 3600 * 1000).toISOString())
     .order('created_at', { ascending: false })
@@ -337,9 +337,31 @@ async function verifierAnalyses() {
   // Un score qui domine, c'est le défaut historique : 82 % des analyses
   // annonçaient 2-1 parce que le score était demandé au modèle au lieu d'être
   // calculé.
+  //
+  // UNE AFFICHE COMPTE POUR UNE, PAS POUR VINGT.
+  //
+  // Le contrôle comptait les analyses. Or le même match est analysé en boucle :
+  // vingt personnes ont demandé FC Barcelone — Elche dans la même journée, et
+  // le calcul rend évidemment vingt fois le même score. Ce n'est pas un défaut,
+  // c'est un match populaire — mais cela suffisait à faire franchir le seuil et
+  // à crier à la panne. Le vrai défaut du « 2-1 », lui, dominait sur des
+  // affiches DIFFÉRENTES : c'est cela qu'il faut mesurer.
+  const parMatch = new Map();
+  for (const a of predictions) {
+    if (!a.score) continue;
+    const cle = [a.team1_name, a.team2_name].map((n) => String(n ?? '').toLowerCase()).sort().join('|');
+    if (!parMatch.has(cle)) parMatch.set(cle, new Map());
+    const m = parMatch.get(cle);
+    m.set(a.score, (m.get(a.score) ?? 0) + 1);
+  }
+
   const parScore = new Map();
-  for (const a of predictions) if (a.score) parScore.set(a.score, (parScore.get(a.score) ?? 0) + 1);
-  const avecScore = [...parScore.values()].reduce((t, n) => t + n, 0);
+  for (const scores of parMatch.values()) {
+    // Le score retenu pour une affiche est celui qui y revient le plus.
+    const majoritaire = [...scores.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    parScore.set(majoritaire, (parScore.get(majoritaire) ?? 0) + 1);
+  }
+  const avecScore = parMatch.size;
   const dominant = [...parScore.entries()].sort((a, b) => b[1] - a[1])[0];
 
   // `predictions` est trié du plus récent au plus ancien : la première ligne
@@ -350,12 +372,21 @@ async function verifierAnalyses() {
   if (avecScore === 0) alerte('aucune prédiction ne porte de score');
   else {
     const part = (dominant[1] / avecScore) * 100;
-    if (part > 45)
+    // En dessous de dix affiches distinctes, un pourcentage ne veut rien dire :
+    // sur six matchs, deux fois le même score font déjà 33 %. On le montre sans
+    // en tirer d'alarme.
+    if (avecScore < 10)
+      ok(`score le plus fréquent : ${dominant[0]} sur ${dominant[1]} des ${avecScore} affiches — trop peu pour juger`);
+    else if (part > 45)
       selonAnciennete(
         derniere((a) => a.score === dominant[0]),
-        `le score ${dominant[0]} représente ${part.toFixed(0)} % des prédictions — un score qui domine signale un calcul en panne`
+        `le score ${dominant[0]} revient sur ${dominant[1]} des ${avecScore} affiches distinctes (${part.toFixed(0)} %) — un score qui domine signale un calcul en panne`
       );
-    else ok(`score le plus fréquent : ${dominant[0]} à ${part.toFixed(0)} % (${parScore.size} scores distincts)`);
+    else
+      ok(
+        `score le plus fréquent : ${dominant[0]} à ${part.toFixed(0)} % ` +
+        `(${parScore.size} scores distincts sur ${avecScore} affiches)`
+      );
   }
 
   const sansScore = predictions.filter((a) => !a.score).length;

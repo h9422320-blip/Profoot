@@ -184,7 +184,7 @@ export async function executerAudit(): Promise<ResultatAudit> {
     const depuis = new Date(Date.now() - FENETRE_HEURES * 3600 * 1000).toISOString();
     const { data } = await sb
       .from('analysis_history')
-      .select('score, confidence, is_finished, created_at')
+      .select('score, confidence, is_finished, created_at, team1_name, team2_name')
       .eq('is_finished', false)
       .gte('created_at', depuis)
       .order('created_at', { ascending: false })
@@ -206,9 +206,28 @@ export async function executerAudit(): Promise<ResultatAudit> {
           `${predictions.length} prédictions seulement — contrôles menés, conclusions à nuancer`
         );
 
+      // UNE AFFICHE COMPTE POUR UNE, PAS POUR VINGT.
+      //
+      // Le contrôle comptait les analyses. Or le même match est analysé en
+      // boucle : vingt personnes demandent FC Barcelone — Elche dans la même
+      // journée, et le calcul rend évidemment vingt fois le même score. Ce
+      // n'est pas un défaut, c'est un match populaire. Le vrai défaut du
+      // « 2-1 » dominait sur des affiches DIFFÉRENTES — c'est cela qu'on mesure.
+      const parMatch = new Map<string, Map<string, number>>();
+      for (const a of predictions) {
+        if (!a.score) continue;
+        const cle = [a.team1_name, a.team2_name].map((n: any) => String(n ?? '').toLowerCase()).sort().join('|');
+        if (!parMatch.has(cle)) parMatch.set(cle, new Map());
+        const m = parMatch.get(cle)!;
+        m.set(a.score, (m.get(a.score) ?? 0) + 1);
+      }
+
       const parScore = new Map<string, number>();
-      for (const a of predictions) if (a.score) parScore.set(a.score, (parScore.get(a.score) ?? 0) + 1);
-      const avecScore = [...parScore.values()].reduce((t, n) => t + n, 0);
+      for (const scores of parMatch.values()) {
+        const majoritaire = [...scores.entries()].sort((a, b) => b[1] - a[1])[0][0];
+        parScore.set(majoritaire, (parScore.get(majoritaire) ?? 0) + 1);
+      }
+      const avecScore = parMatch.size;
       const dominant = [...parScore.entries()].sort((a, b) => b[1] - a[1])[0];
 
       // Les prédictions sont triées du plus récent au plus ancien : la première
@@ -219,9 +238,13 @@ export async function executerAudit(): Promise<ResultatAudit> {
       if (avecScore === 0) noter('Analyses', 'anomalie', 'aucune prédiction ne porte de score');
       else {
         const part = (dominant[1] / avecScore) * 100;
+        // En dessous de dix affiches distinctes, un pourcentage ne veut rien
+        // dire : sur six matchs, deux fois le même score font déjà 33 %.
+        if (avecScore < 10)
+          noter('Analyses', 'ok', `${dominant[0]} sur ${dominant[1]} des ${avecScore} affiches — trop peu pour juger`);
         // Un score qui domine signale un calcul en panne : c'est ainsi que le
         // 2-1 servi à 82 % des analyses est passé inaperçu pendant des jours.
-        if (part > 45)
+        else if (part > 45)
           noterSelonAnciennete(
             'Analyses',
             derniere((a: any) => a.score === dominant[0]),
