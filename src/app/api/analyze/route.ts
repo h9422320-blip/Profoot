@@ -8,7 +8,7 @@ import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-
 import { toTeaser } from "@/lib/analysis-teaser";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
-import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable } from "@/lib/score-probable";
+import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques } from "@/lib/score-probable";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
@@ -774,20 +774,35 @@ export async function POST(req: Request) {
   // équipes étaient déclarées équivalentes et l'analyse tombait sur une
   // confiance plancher de 45 % — ce que l'administration affichait ligne après
   // ligne.
-  const brutes1 =
-    (s1r.fixtures?.played?.total ?? 0) > 0
-      ? { butsMarques: baseGoalsFor1, butsEncaisses: baseGoalsAgainst1, matchsJoues: played1 }
-      : statistiquesDepuisMatchs(
-          (t1Recent?.response?.length ? t1Recent.response : t1Fixtures?.response) || [],
-          String(id1)
-        );
-  const brutes2 =
-    (s2r.fixtures?.played?.total ?? 0) > 0
-      ? { butsMarques: baseGoalsFor2, butsEncaisses: baseGoalsAgainst2, matchsJoues: played2 }
-      : statistiquesDepuisMatchs(
-          (t2Recent?.response?.length ? t2Recent.response : t2Fixtures?.response) || [],
-          String(id2)
-        );
+  // La reconstruction sur les dernières rencontres, toutes compétitions
+  // confondues. Elle était calculée uniquement en dernier recours ; elle sert
+  // désormais d'ancre permanente, ce qui empêche un unique match de championnat
+  // de dicter toute la prédiction.
+  const reference1 = statistiquesDepuisMatchs(
+    (t1Recent?.response?.length ? t1Recent.response : t1Fixtures?.response) || [],
+    String(id1)
+  );
+  const reference2 = statistiquesDepuisMatchs(
+    (t2Recent?.response?.length ? t2Recent.response : t2Fixtures?.response) || [],
+    String(id2)
+  );
+
+  const brutes1 = melangerStatistiques(
+    {
+      butsMarques: baseGoalsFor1,
+      butsEncaisses: baseGoalsAgainst1,
+      matchsJoues: s1r.fixtures?.played?.total ?? 0,
+    },
+    reference1
+  );
+  const brutes2 = melangerStatistiques(
+    {
+      butsMarques: baseGoalsFor2,
+      butsEncaisses: baseGoalsAgainst2,
+      matchsJoues: s2r.fixtures?.played?.total ?? 0,
+    },
+    reference2
+  );
 
   if (brutes1.matchsJoues === 0 || brutes2.matchsJoues === 0) {
     console.warn(

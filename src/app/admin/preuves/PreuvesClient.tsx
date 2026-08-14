@@ -1,5 +1,6 @@
 "use client";
 
+import { libelleIssue } from "@/lib/preuves";
 import { useState, useTransition } from "react";
 import { CheckCircle2, Crosshair, Eye, EyeOff, RefreshCw, Star, XCircle } from "lucide-react";
 import type { Preuve } from "@/lib/preuves";
@@ -145,6 +146,21 @@ function LignePreuve({
           </strong>
         </span>
         <span className="text-white/25">{p.analysesComptees} analyse(s)</span>
+      </div>
+
+      {/* L'ISSUE, EN TOUTES LETTRES.
+          Le score seul ne dit pas ce qui était annoncé : « 1-0 » contre
+          « 2-2 » se lit comme un échec total, alors que l'issue prédite
+          — victoire du premier — pouvait être juste. C'est sur l'issue que se
+          juge un pronostic ; le score exact n'est qu'un bonus. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+        <span className="text-white/35">Annoncé</span>
+        <strong className="text-white/80">{libelleIssue(p.pronoIssue, p.equipe1, p.equipe2)}</strong>
+        <span className="text-white/20">→</span>
+        <span className="text-white/35">Résultat</span>
+        <strong className={p.issueCorrecte ? "text-[#10b981]" : "text-rose-400"}>
+          {p.issueReelle ? libelleIssue(p.issueReelle, p.equipe1, p.equipe2) : "en attente"}
+        </strong>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">

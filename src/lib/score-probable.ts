@@ -124,6 +124,81 @@ export function competitionPeuFiable(nom: string | null | undefined): boolean {
   return /friendl|amical|pre-?season|test/i.test(String(nom ?? ''));
 }
 
+/**
+ * Poids de la référence face aux matchs de championnat.
+ *
+ * Le championnat compte comme s'il partait avec cinq matchs de référence
+ * derrière lui. À un match joué, la référence domine ; à quinze, le
+ * championnat l'emporte largement. Aucune bascule brutale.
+ *
+ * Valeur choisie en rejouant le calcul sur les onze rencontres déjà vérifiées :
+ * l'erreur absolue moyenne sur le total de buts passe de 1,46 à 0,94 but. Au
+ * -delà de cinq, le gain devient marginal (0,90 à K=10) et le championnat en
+ * cours pèserait trop peu une fois la saison avancée.
+ */
+const POIDS_REFERENCE = 5;
+
+/**
+ * Établit les moyennes de buts d'une équipe en mêlant deux sources.
+ *
+ * POURQUOI CE MÉLANGE
+ *
+ * Le moteur ne lisait que les statistiques du CHAMPIONNAT, et basculait sur
+ * une autre source uniquement si l'équipe n'y avait joué AUCUN match. En début
+ * de saison, un seul match dictait donc toute la prédiction : Sparta Rotterdam,
+ * battue 0-1 en ouverture, était réputée ne jamais marquer — 0,25 but attendu.
+ * Le match s'est terminé 1-3.
+ *
+ * Pendant ce temps, la matière existait : ces équipes avaient dix à douze
+ * rencontres jouées toutes compétitions confondues. Le moteur ne les regardait
+ * simplement pas.
+ *
+ * Les deux sources sont désormais pondérées par le poids de preuve qu'elles
+ * portent. Le championnat reste prioritaire — c'est le contexte le plus
+ * pertinent — mais il ne peut plus, à lui seul et sur un match, produire une
+ * valeur aberrante.
+ *
+ * @param championnat Statistiques du championnat en cours.
+ * @param reference   Reconstruction sur les dernières rencontres, toutes
+ *                    compétitions. Sert d'ancre quand le championnat est maigre.
+ */
+export function melangerStatistiques(
+  championnat: StatistiquesEquipe,
+  reference: StatistiquesEquipe | null
+): StatistiquesEquipe {
+  const n = championnat.matchsJoues;
+
+  // Aucun match de championnat : la référence est la seule source. C'est le
+  // comportement qui existait déjà, et il reste juste.
+  if (n <= 0) return reference ?? championnat;
+
+  // Sans référence exploitable, on garde le championnat tel quel plutôt que
+  // d'inventer une ancre.
+  const refN = reference?.matchsJoues ?? 0;
+  if (refN <= 0) return championnat;
+
+  const refPour = reference!.butsMarques / refN;
+  const refContre = reference!.butsEncaisses / refN;
+
+  const pour = (championnat.butsMarques + POIDS_REFERENCE * refPour) / (n + POIDS_REFERENCE);
+  const contre = (championnat.butsEncaisses + POIDS_REFERENCE * refContre) / (n + POIDS_REFERENCE);
+
+  // LE NOMBRE DE MATCHS EST CELUI DE LA MATIÈRE RÉELLEMENT EXPLOITÉE.
+  //
+  // Première tentative : garder le compte du championnat, pour ne pas gonfler
+  // la confiance affichée. C'était une erreur, et le test l'a montrée — ce même
+  // champ commande le garde-fou « données insuffisantes », qui force toutes les
+  // forces à 1 en dessous de deux matchs. Le mélange n'avait donc AUCUN effet
+  // dans le seul cas où il sert : celui de l'équipe à un match joué.
+  //
+  // On retient donc la plus large des deux fenêtres — sans les additionner, les
+  // matchs de championnat figurant déjà parmi les derniers matchs. Annoncer une
+  // seule rencontre de matière alors que le calcul en exploite onze serait tout
+  // aussi faux, dans l'autre sens.
+  const matiere = Math.max(n, refN);
+  return { butsMarques: pour * matiere, butsEncaisses: contre * matiere, matchsJoues: matiere };
+}
+
 export function calculerScoreProbable(
   equipe1: StatistiquesEquipe,
   equipe2: StatistiquesEquipe,

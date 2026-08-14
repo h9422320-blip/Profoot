@@ -18,18 +18,33 @@ export const dynamic = "force-dynamic";
 export default async function AdminPreuves() {
   const { preuves, reussites, echecs, publiees, indisponible } = await getToutesPreuves();
 
+  // Le taux qui compte est celui de l'ISSUE : c'est sur elle qu'on juge un
+  // pronostic. Le score exact est un bonus, spectaculaire mais rare — l'afficher
+  // seul donnerait une image faussement sévère du moteur.
+  const scoresExacts = preuves.filter((p) => p.scoreExact).length;
+  const tauxIssue = preuves.length ? Math.round((reussites / preuves.length) * 100) : null;
+  const tauxExact = preuves.length ? Math.round((scoresExacts / preuves.length) * 100) : null;
+
   return (
     <div className="space-y-6">
       <EnTete
-        titre="Preuves publiques"
-        sousTitre="Pronostics confrontés aux résultats réels — seules les réussites sont publiables"
+        titre="Toutes les prédictions vérifiées"
+        sousTitre="Chaque match joué, ce qui était annoncé et ce qui s'est passé — réussites comme ratés"
         icone={<ShieldCheck className="w-6 h-6" />}
         teinte="vert"
         reperes={[
-          { libelle: "Matchs vérifiés", valeur: String(preuves.length) },
-          { libelle: "Réussites", valeur: String(reussites), accent: reussites > 0 },
-          { libelle: "Ratés", valeur: String(echecs) },
-          { libelle: "Publiées", valeur: String(publiees) },
+          { libelle: "Matchs joués et vérifiés", valeur: String(preuves.length) },
+          {
+            libelle: "Bonne issue",
+            valeur: tauxIssue === null ? "—" : `${reussites}/${preuves.length} · ${tauxIssue} %`,
+            accent: (tauxIssue ?? 0) >= 50,
+          },
+          {
+            libelle: "Score exact",
+            valeur: tauxExact === null ? "—" : `${scoresExacts}/${preuves.length} · ${tauxExact} %`,
+          },
+          { libelle: "Ratés (privés)", valeur: String(echecs) },
+          { libelle: "Sur le mur public", valeur: String(publiees) },
         ]}
       />
 
