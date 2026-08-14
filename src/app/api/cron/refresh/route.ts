@@ -4,6 +4,7 @@ import { getAllCompetitionStatuses } from '@/lib/competition-status';
 import { getLiveTeams } from '@/lib/teams-live';
 import { verifierPronostics } from '@/lib/precision-reelle';
 import { construirePreuves } from '@/lib/preuves';
+import { enregistrerPrecisionDuJour } from '@/lib/precision-quotidienne';
 
 export const maxDuration = 300;
 // Jamais de mise en cache : la tâche doit réellement s'exécuter à chaque appel.
@@ -63,6 +64,7 @@ export async function GET(request: Request) {
     // différentes — si l'une échoue, l'autre rattrape dans la journée.
     try {
       await construirePreuves();
+      await enregistrerPrecisionDuJour();
     } catch (e: any) {
       console.warn('[CRON] Construction des preuves impossible :', e?.message);
     }

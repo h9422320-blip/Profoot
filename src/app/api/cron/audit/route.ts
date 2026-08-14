@@ -3,6 +3,7 @@ import { executerAudit } from '@/lib/audit';
 import { verifierPronostics } from '@/lib/precision-reelle';
 import { rafraichirStatutsPaiement } from '@/lib/echecs-paiement';
 import { construirePreuves } from '@/lib/preuves';
+import { enregistrerPrecisionDuJour } from '@/lib/precision-quotidienne';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 export const maxDuration = 120;
@@ -66,6 +67,7 @@ export async function GET(request: Request) {
     // pronostics : elles n en sont que l agregation par match.
     try {
       await construirePreuves();
+      await enregistrerPrecisionDuJour();
     } catch (e: any) {
       console.warn('[AUDIT] Construction des preuves impossible :', e?.message);
     }

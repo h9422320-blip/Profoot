@@ -4,6 +4,7 @@ import { EnTete } from "../_components/EnTete";
 import { Panneau } from "../_components/Panneaux";
 import { Vide } from "../_components/Ui";
 import PreuvesClient from "./PreuvesClient";
+import CourbePrecision from "./CourbePrecision";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,8 @@ export default async function AdminPreuves() {
           { libelle: "Sur le mur public", valeur: String(publiees) },
         ]}
       />
+
+      <CourbePrecision />
 
       <Panneau
         titre="Toutes les rencontres vérifiées"
