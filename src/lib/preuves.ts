@@ -359,6 +359,56 @@ export async function construirePreuves(): Promise<{
  * impressionne —, puis les vraies compétitions avant les amicaux, puis le plus
  * récent.
  */
+/**
+ * Clubs qu'un amateur de football reconnaît sans réfléchir.
+ *
+ * Liste volontairement courte : elle sert à faire remonter les affiches qui
+ * retiennent l'attention, pas à établir un palmarès. Un club absent n'est pas
+ * jugé faible — sa preuve s'affiche simplement plus bas.
+ */
+const CLUBS_CONNUS = [
+  'real madrid', 'barcelon', 'atletico', 'sevilla', 'valencia',
+  'paris saint', 'marseille', 'monaco', 'lyon', 'lille',
+  'manchester', 'liverpool', 'arsenal', 'chelsea', 'tottenham', 'newcastle',
+  'bayern', 'dortmund', 'leipzig', 'leverkusen',
+  'juventus', 'milan', 'inter', 'napoli', 'roma',
+  'ajax', 'psv', 'benfica', 'porto', 'sporting', 'celtic', 'rangers',
+  'galatasaray', 'fenerbah', 'besiktas', 'al ahly',
+];
+
+/** Compétitions dont le nom seul impose le niveau. */
+const COMPETITIONS_MAJEURES = [
+  { motif: /super cup|supercoupe/i, poids: 6 },
+  { motif: /champions league/i, poids: 6 },
+  { motif: /europa league/i, poids: 5 },
+  { motif: /conference league/i, poids: 4 },
+  { motif: /premier league|la liga|serie a|bundesliga|ligue 1/i, poids: 4 },
+  { motif: /trophée des champions|community shield/i, poids: 3 },
+  { motif: /coupe|cup|copa/i, poids: 2 },
+];
+
+/**
+ * Poids d'une affiche : plus il est élevé, plus la carte remonte.
+ *
+ * Deux ingrédients seulement, tous deux lisibles : combien de clubs connus
+ * s'affrontent, et le niveau de la compétition. Un match de préparation perd
+ * des points — l'enjeu n'est pas le même, et une preuve en vraie compétition
+ * convainc davantage.
+ */
+function poidsAffiche(p: Preuve): number {
+  const nom = `${p.equipe1} ${p.equipe2}`.toLowerCase();
+  const connus = CLUBS_CONNUS.filter((c) => nom.includes(c)).length;
+
+  const competition = String(p.competition ?? '');
+  const niveau = COMPETITIONS_MAJEURES.find((c) => c.motif.test(competition))?.poids ?? 1;
+
+  // Deux gros clubs valent plus que deux fois un seul : c'est l'affiche qui
+  // compte, pas la somme des notoriétés.
+  const notoriete = connus >= 2 ? 6 : connus === 1 ? 3 : 0;
+
+  return notoriete + niveau - (estAmical(competition) ? 3 : 0);
+}
+
 export async function getPreuvesPubliques(limite = 10): Promise<{
   preuves: Preuve[];
   bilan: BilanPreuves;
@@ -390,13 +440,21 @@ export async function getPreuvesPubliques(limite = 10): Promise<{
   const toutes = (data ?? []).map(versPreuve);
   if (!toutes.length) return vide;
 
-  // Les amicaux passent après : l'enjeu n'est pas le même, et une preuve en
-  // vraie compétition convainc davantage.
+  // ── LES AFFICHES QUI PARLENT PASSENT EN PREMIER ───────────────────────────
+  //
+  // Un visiteur ne lit pas dix cartes : il en regarde deux. Si ces deux-là
+  // sont « Nottingham Forest — Leverkusen » et « Heart of Midlothian — Benfica »,
+  // il referme la page sans avoir compris que l'outil a aussi vu juste sur
+  // Paris — Aston Villa ou Atlético — Marseille.
+  //
+  // Le classement combine donc deux choses mesurables : la notoriété des clubs
+  // en présence, et le niveau de la compétition. Rien n'est masqué — les preuves
+  // moins connues restent, simplement plus bas.
   const ordonnees = [...toutes].sort((a, b) => {
     if (a.miseEnAvant !== b.miseEnAvant) return a.miseEnAvant ? -1 : 1;
-    const amicalA = estAmical(a.competition);
-    const amicalB = estAmical(b.competition);
-    if (amicalA !== amicalB) return amicalA ? 1 : -1;
+    const poidsA = poidsAffiche(a);
+    const poidsB = poidsAffiche(b);
+    if (poidsA !== poidsB) return poidsB - poidsA;
     if (a.scoreExact !== b.scoreExact) return a.scoreExact ? -1 : 1;
     return String(b.dateMatch ?? '').localeCompare(String(a.dateMatch ?? ''));
   });
