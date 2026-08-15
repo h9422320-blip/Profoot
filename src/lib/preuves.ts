@@ -41,6 +41,50 @@ import { createAdminClient } from './supabase-admin';
  * Un appel par match, mis en cache longuement : une rencontre terminée ne
  * change plus de compétition.
  */
+/**
+ * Périodes pendant lesquelles le moteur produisait des pronostics faussés par
+ * un défaut connu, corrigé depuis.
+ *
+ * POURQUOI CETTE LISTE EXISTE
+ *
+ * Une analyse produite par une version défectueuse n'est pas l'avis du moteur :
+ * c'est le symptôme d'un bug. La compter comme un pronostic reviendrait à juger
+ * le produit sur du code qui n'existe plus.
+ *
+ * Le cas fondateur : du 13 août à 00 h 48 au 15 août à 21 h 50, une « marge du
+ * nul » de quinze points faisait annoncer un match nul alors que les
+ * probabilités affichées désignaient clairement un favori. Sur Deportivo
+ * Alavés — Getafe, dix-neuf analyses ont annoncé « 1-1 » pendant que le
+ * graphique donnait Alavés à 42 % contre 29 % au nul. Le match s'est terminé
+ * 3-0 pour Alavés — l'issue que le moteur annonçait avant le défaut, et qu'il
+ * annonce à nouveau depuis la correction.
+ *
+ * CE QUE CETTE LISTE NE FAIT PAS
+ *
+ * Elle n'efface rien : les analyses écartées restent visibles en administration
+ * avec leur verdict. Elle ne s'applique qu'à l'agrégation par match, et
+ * seulement si le match conserve des analyses hors période — sinon on garde
+ * tout, mieux vaut un pronostic imparfait qu'une preuve inventée.
+ *
+ * Toute période ajoutée ici doit correspondre à un défaut RÉEL, daté, et
+ * corrigé. Ce n'est pas un moyen d'écarter un résultat qui déplaît.
+ */
+const PERIODES_DEFECTUEUSES: { debut: string; fin: string; raison: string }[] = [
+  {
+    debut: '2026-08-13T00:48:00Z',
+    fin: '2026-08-15T21:50:00Z',
+    raison: 'marge du nul : le score annoncé contredisait les probabilités affichées',
+  },
+];
+
+const produiteParUneVersionDefectueuse = (creeeLe: string | null | undefined) => {
+  if (!creeeLe) return false;
+  const t = new Date(creeeLe).getTime();
+  return PERIODES_DEFECTUEUSES.some(
+    (p) => t >= new Date(p.debut).getTime() && t <= new Date(p.fin).getTime()
+  );
+};
+
 async function competitionDuMatch(fixtureId: number | null): Promise<string | null> {
   if (!fixtureId) return null;
   try {
@@ -203,12 +247,43 @@ export async function construirePreuves(): Promise<{
       exacts: 0,
       scores: new Map<string, number>(),
       dateMatch: l.verified_at ?? l.created_at,
+      // Analyses mises de côté parce qu'une version défectueuse les a produites.
+      // Conservées à part : si elles sont les seules, on les reprend.
+      ecartees: 0,
+      secours: { total: 0, justes: 0, exacts: 0, scores: new Map<string, number>() },
     };
-    m.total++;
-    if (l.winner_correct) m.justes++;
-    if (l.score_correct) m.exacts++;
-    if (l.score) m.scores.set(l.score, (m.scores.get(l.score) ?? 0) + 1);
+
+    if (produiteParUneVersionDefectueuse(l.created_at)) {
+      m.ecartees++;
+      m.secours.total++;
+      if (l.winner_correct) m.secours.justes++;
+      if (l.score_correct) m.secours.exacts++;
+      if (l.score) m.secours.scores.set(l.score, (m.secours.scores.get(l.score) ?? 0) + 1);
+    } else {
+      m.total++;
+      if (l.winner_correct) m.justes++;
+      if (l.score_correct) m.exacts++;
+      if (l.score) m.scores.set(l.score, (m.scores.get(l.score) ?? 0) + 1);
+    }
     parMatch.set(cle, m);
+  }
+
+  // Un match dont TOUTES les analyses tombent dans une période défectueuse
+  // garde les siennes : mieux vaut un pronostic imparfait qu'un match effacé du
+  // bilan. On ne se débarrasse pas d'un résultat, on écarte une version du code.
+  for (const m of parMatch.values()) {
+    if (m.total === 0 && m.secours.total > 0) {
+      m.total = m.secours.total;
+      m.justes = m.secours.justes;
+      m.exacts = m.secours.exacts;
+      m.scores = m.secours.scores;
+      m.ecartees = 0;
+    }
+    if (m.ecartees > 0)
+      console.log(
+        `[PREUVES] ${m.ligne.team1_name} — ${m.ligne.team2_name} : ${m.ecartees} analyse(s) écartée(s) ` +
+          `(version défectueuse), ${m.total} retenue(s).`
+      );
   }
 
   let reussites = 0;
