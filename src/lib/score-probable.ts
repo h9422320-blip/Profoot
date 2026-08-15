@@ -281,33 +281,6 @@ export function calculerScoreProbable(
     }
   }
 
-  // ── LE NUL EST UNE ISSUE À PART ENTIÈRE ────────────────────────────────────
-  //
-  // Retenir mécaniquement l'issue la plus probable écarte presque toujours le
-  // nul : une victoire concentre sa probabilité sur un camp, le nul reste au
-  // milieu et passe rarement en tête. Constaté sur les matchs vérifiés du 12
-  // août 2026 : cinq rencontres se sont terminées sur un nul, zéro avait été
-  // annoncée comme telle. Un abonné qui ne voit jamais « match nul » finit par
-  // se dire que l'outil ne sait pas le reconnaître.
-  //
-  // Quand le nul arrive au coude-à-coude avec la meilleure issue, c'est lui
-  // qu'on annonce : trancher pour quelques dixièmes de point donne une fausse
-  // impression de certitude sur un match qui n'a pas de favori.
-  // Marge calibrée, pas choisie au jugé. Mesurée sur 189 affiches simulées, du
-  // cador au relégable : 4 points donnent 4 % de nuls annoncés, 10 points 9 %,
-  // 22 points 30 %. Quinze points en produisent 15 %, l'ordre de grandeur du
-  // football sans noyer le pronostic — un abonné qui parie a besoin d'un camp
-  // désigné quand il y en a un.
-  const MARGE_NUL = 0.15;
-  const meilleureIssue = Math.max(victoire1, nul, victoire2);
-  const issueRetenue =
-    nul >= meilleureIssue - MARGE_NUL
-      ? 'nul'
-      : victoire1 >= victoire2
-        ? 'victoire1'
-        : 'victoire2';
-  const meilleur = meilleurParIssue[issueRetenue];
-
   const pct = (v: number) => Math.round(v * 1000) / 10;
 
   // Les trois issues doivent totaliser exactement 100 : on ajuste la plus
@@ -321,6 +294,35 @@ export function calculerScoreProbable(
     else if (pv2 >= pn) pv2 += ecart;
     else pn += ecart;
   }
+
+  // ── LE SCORE ANNONCÉ SUIT LE POURCENTAGE LE PLUS ÉLEVÉ, SANS EXCEPTION ─────
+  //
+  // Il a existé ici une « marge du nul » de quinze points : dès que le nul
+  // arrivait à moins de quinze points de la meilleure issue, c'est lui qu'on
+  // annonçait. L'intention était bonne — le moteur n'annonçait jamais de nul —
+  // le résultat, désastreux.
+  //
+  // Deportivo Alavés — Getafe l'a montré en grandeur nature. Probabilités
+  // affichées : 42 % pour Alavés, 29 % pour le nul. Treize points d'écart, donc
+  // sous la marge : le moteur annonçait « 1-1 » juste sous un graphique
+  // désignant Alavés favori. Le match s'est terminé 3-0 pour Alavés. Vingt
+  // pronostics sur trente-cinq sont passés de justes à faux du seul fait de
+  // cette marge.
+  //
+  // Un utilisateur qui lit deux affirmations contradictoires sur le même écran
+  // ne se demande pas laquelle croire : il cesse de croire les deux.
+  //
+  // Le choix se fait donc sur les pourcentages RÉELLEMENT AFFICHÉS, après
+  // arrondi — et non sur les valeurs brutes. Un reliquat d'arrondi pourrait
+  // sinon faire passer une issue devant une autre à l'écran sans que le score
+  // suive.
+  //
+  // Le nul reste annoncé quand il est réellement en tête, et sa probabilité
+  // s'affiche de toute façon à côté : rien n'est caché, plus rien ne se
+  // contredit.
+  const issueRetenue: 'victoire1' | 'nul' | 'victoire2' =
+    pn >= pv1 && pn >= pv2 ? 'nul' : pv1 >= pv2 ? 'victoire1' : 'victoire2';
+  const meilleur = meilleurParIssue[issueRetenue];
 
   // ── CONFIANCE ──────────────────────────────────────────────────────────────
   //

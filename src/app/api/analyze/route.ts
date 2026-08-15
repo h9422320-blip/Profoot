@@ -228,6 +228,38 @@ export const maxDuration = 60;
 const LIMITE_PLATEFORME_MS = 55000;
 const RESERVE_MISE_EN_FORME_MS = 6000;
 
+/**
+ * Contrôle final de cohérence, juste avant l'envoi.
+ *
+ * Les deux chemins de calcul normalisent déjà leurs pourcentages à 100 et
+ * alignent le score sur l'issue la plus probable. Ce garde-fou ne corrige donc
+ * rien aujourd'hui — il est là pour qu'une régression future se voie dans les
+ * journaux au lieu d'arriver sur l'écran d'un abonné.
+ *
+ * Deux invariants, ceux-là même qui ont été rompus le 13 août : les trois
+ * probabilités totalisent cent, et le score annoncé désigne le favori.
+ */
+function verifierCoherence(d: Record<string, any>, contexte: string) {
+  const v = Number(d.winProb), n = Number(d.drawProb), l = Number(d.loseProb);
+  if (![v, n, l].every(Number.isFinite)) return;
+
+  const somme = Math.round(v + n + l);
+  if (somme !== 100)
+    console.error(`[COHERENCE] ${contexte} — les probabilités totalisent ${somme} % et non 100 (${v}/${n}/${l}).`);
+
+  const buts1 = Number(d.predictedScore?.team1Goals);
+  const buts2 = Number(d.predictedScore?.team2Goals);
+  if (!Number.isFinite(buts1) || !Number.isFinite(buts2)) return;
+
+  const issueScore = buts1 > buts2 ? 'victoire1' : buts1 < buts2 ? 'victoire2' : 'nul';
+  const issueProbas = n >= v && n >= l ? 'nul' : v >= l ? 'victoire1' : 'victoire2';
+  if (issueScore !== issueProbas)
+    console.error(
+      `[COHERENCE] ${contexte} — le score ${buts1}-${buts2} annonce « ${issueScore} » ` +
+        `alors que les probabilités désignent « ${issueProbas} » (${v}/${n}/${l}).`
+    );
+}
+
 export async function POST(req: Request) {
   const debutRequete = Date.now();
   // --- PERMISSIONS ---
@@ -950,6 +982,10 @@ export async function POST(req: Request) {
       // d'affichage : la projection le remplace.
       donnees.quickSummary = projection.verdict;
     }
+
+    // Dernier filet avant l'envoi : le score et les probabilités doivent
+    // raconter la même chose.
+    verifierCoherence(donnees, `${team1.name} — ${team2.name}`);
 
     return donnees;
   };
