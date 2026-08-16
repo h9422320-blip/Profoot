@@ -123,22 +123,61 @@ export const LEAGUE_IDS: Record<string, number> = {
   premiership: 179,
   superlig: 203,
   can: 6,
-  // Reste de l'Europe. Ajoutés le 16/08/2026 : le sélecteur ignorait la Suisse
-  // le jour de Bâle–Barcelone, et l'utilisateur ne pouvait tout simplement pas
-  // analyser le match.
-  suisse: 207,
+  // ── TOUTES LES PREMIÈRES DIVISIONS D'EUROPE ────────────────────────────────
+  //
+  // Ajoutées le 16/08/2026. Le sélecteur ignorait la Suisse le jour de
+  // Bâle–Barcelone : l'abonné cherchait son match et repartait bredouille.
+  //
+  // Chaque identifiant est relevé un par un, jamais déduit. Classer les
+  // championnats d'un pays par identifiant croissant DONNE LA MAUVAISE LIGUE
+  // dans au moins six pays — en Azerbaïdjan, en Estonie, aux Îles Féroé, en
+  // Géorgie, en Israël, à Malte et en Irlande du Nord, le plus petit numéro
+  // désigne la DEUXIÈME division. On aurait chargé des clubs de deuxième
+  // division en croyant charger l'élite.
+  albanie: 310,
+  andorre: 312,
+  armenie: 342,
   autriche: 218,
-  grece: 197,
-  danemark: 119,
-  norvege: 103,
-  suede: 113,
-  pologne: 106,
-  tchequie: 345,
+  azerbaidjan: 419,
+  bielorussie: 116,
+  bosnie: 315,
+  bulgarie: 172,
   croatie: 210,
-  serbie: 286,
-  ukraine: 333,
+  chypre: 318,
+  tchequie: 345,
+  danemark: 119,
+  estonie: 329,
+  feroe: 367,
+  finlande: 244,
+  georgie: 327,
+  gibraltar: 758,
+  grece: 197,
+  hongrie: 271,
+  islande: 164,
+  irlande: 357,
+  israel: 383,
+  kazakhstan: 389,
+  kosovo: 664,
+  lettonie: 365,
+  lituanie: 362,
+  luxembourg: 261,
+  malte: 393,
+  moldavie: 394,
+  montenegro: 355,
+  irlandedunord: 408,
+  norvege: 103,
+  pologne: 106,
   roumanie: 283,
-  // Deuxièmes divisions dont les clubs sont connus du public.
+  russie: 235,
+  sanmarin: 404,
+  serbie: 286,
+  slovaquie: 332,
+  slovenie: 373,
+  suede: 113,
+  suisse: 207,
+  ukraine: 333,
+  paysdegalles: 110,
+  // Deuxièmes divisions dont les clubs sont connus du grand public.
   championship: 40,
   ligue2: 62,
   segunda: 141,

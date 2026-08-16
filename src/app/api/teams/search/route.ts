@@ -44,15 +44,39 @@ export async function GET(req: Request) {
       if (!parId.has(t.apiId)) parId.set(t.apiId, t);
     }
 
-    // Le plus proche de ce qui a été tapé en premier : sur « Bruges », le Club
-    // Brugge doit passer avant le Cercle Brugge.
+    // Classement des résultats.
+    //
+    // Sur « Bâle », la recherche brute remontait Balerna, Balestier Khalsa et
+    // Baleine Shimonoseki AVANT le FC Bâle — le club cherché arrivait sixième,
+    // sous la ligne de flottaison d'un écran de téléphone. Trouvable mais
+    // introuvé revient au même pour l'utilisateur.
+    //
+    // Deux critères, dans cet ordre :
+    //  1. le club joue-t-il dans un championnat que nous suivons ? Une
+    //     première division européenne passe avant un club inconnu d'Asie ;
+    //  2. son nom colle-t-il à ce qui a été tapé, ou à sa traduction ?
     const cible = normaliser(q);
+    const traductions = termes.slice(1).map(normaliser); // hors saisie d'origine
+
+    const pertinence = (t: LiveTeam) => {
+      const n = normaliser(t.name);
+      if (n === cible) return 0;
+      // Correspond à la traduction : « Bâle » → « Basel ». C'est le résultat
+      // que la personne cherchait, il passe devant tout le reste.
+      if (traductions.some((tr) => n.includes(tr))) return 1;
+      if (n.startsWith(cible)) return 2;
+      return 3;
+    };
+
     const teams = [...parId.values()]
       .sort((a, b) => {
-        const na = normaliser(a.name);
-        const nb = normaliser(b.name);
-        const score = (n: string) => (n === cible ? 0 : n.startsWith(cible) ? 1 : 2);
-        return score(na) - score(nb) || na.length - nb.length;
+        // Un championnat renseigné signifie « issu de nos premières divisions ».
+        const suivi = (t: LiveTeam) => (t.league ? 0 : 1);
+        return (
+          suivi(a) - suivi(b) ||
+          pertinence(a) - pertinence(b) ||
+          a.name.length - b.name.length
+        );
       })
       .slice(0, 25);
 

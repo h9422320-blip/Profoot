@@ -10,6 +10,36 @@ import { clubs, getClub, matches, competitions } from "@/lib/data";
 // Extract future matches for the "Prochains matchs" list
 const futureMatches = matches.filter(m => m.status === "upcoming");
 
+/**
+ * Inscrit au référentiel local un club venu de la recherche.
+ *
+ * SANS CECI, LE CLUB S'AFFICHE « INCONNU ».
+ *
+ * Le sélecteur ne renvoie qu'un identifiant ; tout le reste de l'écran lit le
+ * nom et le logo dans `clubs`. Un club trouvé hors des championnats préchargés
+ * n'y figure pas : l'utilisateur le choisissait, et se retrouvait devant
+ * « Inconnu » et un logo cassé. Trouvé, puis perdu à l'affichage — c'est ce
+ * qu'a vécu le FC Bâle le jour de Bâle–Barcelone.
+ */
+function enregistrerClub(t: any) {
+  if ((clubs as any)[t.id]) return;
+  (clubs as any)[t.id] = {
+    id: t.id,
+    name: t.name,
+    shortName: (t.name ?? '').slice(0, 3).toUpperCase(),
+    logo: t.logo,
+    country: t.country ?? 'N/A',
+    league: t.league || 'ucl',
+    stadium: t.stadium || 'Stade',
+    coach: 'N/A',
+    ranking: 0,
+    points: 0,
+    squad: [],
+    form: [],
+    stats: { played: 0, wins: 0, draws: 0, losses: 0, goalsScored: 0, goalsConceded: 0, possession: 0, xG: 0, cleanSheets: 0 },
+  };
+}
+
 // Group clubs by league for the picker
 const leagueOrder = [
   "ucl", "epl", "laliga", "ligue1", "seriea", "bundesliga",
@@ -18,6 +48,12 @@ const leagueOrder = [
   // jour de Bâle–Barcelone, et le match ne pouvait pas être analysé.
   "suisse", "autriche", "grece", "danemark", "norvege", "suede",
   "pologne", "tchequie", "croatie", "serbie", "ukraine", "roumanie",
+  "russie", "israel", "chypre", "hongrie", "bulgarie", "slovaquie",
+  "slovenie", "bosnie", "kazakhstan", "finlande", "irlande", "islande",
+  "azerbaidjan", "bielorussie", "georgie", "albanie", "kosovo", "moldavie",
+  "montenegro", "lettonie", "lituanie", "estonie", "armenie", "malte",
+  "luxembourg", "irlandedunord", "paysdegalles", "feroe", "gibraltar",
+  "andorre", "sanmarin",
   "championship", "ligue2", "segunda", "serieb", "bundesliga2",
   "can",
 ];
@@ -44,6 +80,37 @@ const leagueLabels: Record<string, string> = {
   serbie: "Super Liga (Serbie)",
   ukraine: "Premier League (Ukraine)",
   roumanie: "Liga I (Roumanie)",
+  albanie: "Superliga (Albanie)",
+  andorre: "1a Divisió (Andorre)",
+  armenie: "Premier League (Arménie)",
+  azerbaidjan: "Premyer Liqa (Azerbaïdjan)",
+  bielorussie: "Premier League (Biélorussie)",
+  bosnie: "Premijer Liga (Bosnie)",
+  bulgarie: "First League (Bulgarie)",
+  chypre: "1re Division (Chypre)",
+  estonie: "Meistriliiga (Estonie)",
+  feroe: "Meistaradeildin (Féroé)",
+  finlande: "Veikkausliiga (Finlande)",
+  georgie: "Erovnuli Liga (Géorgie)",
+  gibraltar: "Premier Division (Gibraltar)",
+  hongrie: "NB I (Hongrie)",
+  islande: "Úrvalsdeild (Islande)",
+  irlande: "Premier Division (Irlande)",
+  israel: "Ligat Ha'al (Israël)",
+  kazakhstan: "Premier League (Kazakhstan)",
+  kosovo: "Superliga (Kosovo)",
+  lettonie: "Virsliga (Lettonie)",
+  lituanie: "A Lyga (Lituanie)",
+  luxembourg: "National Division (Luxembourg)",
+  malte: "Premier League (Malte)",
+  moldavie: "Super Liga (Moldavie)",
+  montenegro: "First League (Monténégro)",
+  irlandedunord: "Premiership (Irlande du Nord)",
+  russie: "Premier League (Russie)",
+  sanmarin: "Campionato (Saint-Marin)",
+  slovaquie: "Super Liga (Slovaquie)",
+  slovenie: "1. SNL (Slovénie)",
+  paysdegalles: "Cymru Premier (Pays de Galles)",
   championship: "Championship (Angleterre)",
   ligue2: "Ligue 2",
   segunda: "LaLiga 2",
@@ -195,7 +262,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
                 searchResults.map((c: any) => (
                   <button
                     key={c.id}
-                    onClick={() => { onSelect(c.id); onClose(); }}
+                    onClick={() => { enregistrerClub(c); onSelect(c.id); onClose(); }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[16px] transition-all text-left ${
                       c.id === currentTeamId ? "bg-[#10B981]/10 border border-[#10B981]/20" : "hover:bg-white/5 border border-transparent"
                     }`}

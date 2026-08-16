@@ -38,12 +38,18 @@ export interface LiveTeam {
 export const CLUB_LEAGUES = [
   // Les cinq grands
   'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1',
-  // Reste de l'Europe de l'Ouest
+  // Toutes les autres premières divisions d'Europe — les 53 fédérations de
+  // l'UEFA pour lesquelles le fournisseur publie un championnat.
   'eredivisie', 'ligaportugal', 'proleague', 'premiership', 'superlig',
-  'suisse', 'autriche', 'grece', 'danemark', 'norvege', 'suede',
-  // Europe centrale et de l'Est
-  'pologne', 'tchequie', 'croatie', 'serbie', 'ukraine', 'roumanie',
-  // Deuxièmes divisions dont les clubs sont connus du public
+  'albanie', 'andorre', 'armenie', 'autriche', 'azerbaidjan', 'bielorussie',
+  'bosnie', 'bulgarie', 'croatie', 'chypre', 'tchequie', 'danemark',
+  'estonie', 'feroe', 'finlande', 'georgie', 'gibraltar', 'grece',
+  'hongrie', 'islande', 'irlande', 'israel', 'kazakhstan', 'kosovo',
+  'lettonie', 'lituanie', 'luxembourg', 'malte', 'moldavie', 'montenegro',
+  'irlandedunord', 'norvege', 'pologne', 'roumanie', 'russie', 'sanmarin',
+  'serbie', 'slovaquie', 'slovenie', 'suede', 'suisse', 'ukraine',
+  'paysdegalles',
+  // Deuxièmes divisions dont les clubs sont connus du grand public
   'championship', 'ligue2', 'segunda', 'serieb', 'bundesliga2',
 ] as const;
 
