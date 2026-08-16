@@ -25,13 +25,20 @@ export async function enregistrerReglages(formData: FormData) {
   const contactEmail = String(formData.get('contactEmail') ?? '');
   const maintenance = formData.get('maintenance') === 'on';
   const maintenanceMessage = String(formData.get('maintenanceMessage') ?? '');
+  // Saisie libre : une ligne ou une virgule par club. On normalise en
+  // minuscules parce que la comparaison se fait par inclusion dans le nom de
+  // l'équipe, qui n'a pas de casse garantie.
+  const grandsClubs = String(formData.get('grandsClubs') ?? '')
+    .split(/[\n,;]+/)
+    .map((c) => c.trim().toLowerCase())
+    .filter(Boolean);
 
   if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim())) {
     return { ok: false as const, erreur: "L'adresse de contact n'est pas une adresse e-mail valide." };
   }
 
   const resultat = await ecrireReglages(
-    { appName, contactEmail, maintenance, maintenanceMessage },
+    { appName, contactEmail, maintenance, maintenanceMessage, grandsClubs },
     user.email!
   );
 

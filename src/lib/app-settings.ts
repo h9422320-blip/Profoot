@@ -1,6 +1,26 @@
 import { createAdminClient } from '@/lib/supabase-admin';
 
 /**
+ * Clubs qu un amateur de football reconnait sans reflechir.
+ *
+ * Liste de depart, volontairement courte : elle sert a faire remonter les
+ * affiches qui retiennent l attention, pas a etablir un palmares. Un club
+ * absent n est pas juge faible — sa preuve s affiche simplement plus bas.
+ *
+ * Ecrite en minuscules et sans accent : la comparaison se fait par inclusion
+ * dans le nom de l equipe, qui varie selon les sources.
+ */
+export const GRANDS_CLUBS_PAR_DEFAUT = [
+  'real madrid', 'barcelon', 'atletico', 'sevilla', 'valencia',
+  'paris saint', 'marseille', 'monaco', 'lyon', 'lille',
+  'manchester', 'liverpool', 'arsenal', 'chelsea', 'tottenham', 'newcastle',
+  'bayern', 'dortmund', 'leipzig', 'leverkusen',
+  'juventus', 'milan', 'inter', 'napoli', 'roma',
+  'ajax', 'psv', 'benfica', 'porto', 'sporting', 'celtic', 'rangers',
+  'galatasaray', 'fenerbah', 'besiktas', 'al ahly',
+];
+
+/**
  * Configuration de l'application (table `app_settings`, ligne unique).
  */
 export interface AppSettings {
@@ -8,6 +28,13 @@ export interface AppSettings {
   contactEmail: string;
   maintenance: boolean;
   maintenanceMessage: string;
+  /**
+   * Clubs dont les affiches remontent en tete du mur de preuves.
+   *
+   * Modifiable depuis l administration : un visiteur ne lit pas dix cartes, il
+   * en regarde deux. Ces deux-la doivent lui parler.
+   */
+  grandsClubs: string[];
   updatedAt: string | null;
   updatedBy: string | null;
 }
@@ -17,6 +44,7 @@ export const REGLAGES_PAR_DEFAUT: AppSettings = {
   contactEmail: 'support@profootai.com',
   maintenance: false,
   maintenanceMessage: 'ProFoot AI est momentanément en maintenance. Nous revenons très vite.',
+  grandsClubs: GRANDS_CLUBS_PAR_DEFAUT,
   updatedAt: null,
   updatedBy: null,
 };
@@ -27,6 +55,11 @@ function versReglages(ligne: any): AppSettings {
     contactEmail: ligne?.contact_email ?? REGLAGES_PAR_DEFAUT.contactEmail,
     maintenance: !!ligne?.maintenance,
     maintenanceMessage: ligne?.maintenance_message ?? REGLAGES_PAR_DEFAUT.maintenanceMessage,
+    // Une liste vide vaut « pas de reglage » : on retombe sur celle du code
+    // plutot que de laisser le mur sans aucune priorite.
+    grandsClubs: Array.isArray(ligne?.grands_clubs) && ligne.grands_clubs.length
+      ? ligne.grands_clubs
+      : GRANDS_CLUBS_PAR_DEFAUT,
     updatedAt: ligne?.updated_at ?? null,
     updatedBy: ligne?.updated_by ?? null,
   };
@@ -44,7 +77,7 @@ export async function lireReglages(): Promise<AppSettings> {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from('app_settings')
-      .select('app_name, contact_email, maintenance, maintenance_message, updated_at, updated_by')
+      .select('app_name, contact_email, maintenance, maintenance_message, grands_clubs, updated_at, updated_by')
       .eq('id', 1)
       .maybeSingle();
     if (error || !data) return REGLAGES_PAR_DEFAUT;
@@ -55,7 +88,9 @@ export async function lireReglages(): Promise<AppSettings> {
 }
 
 export async function ecrireReglages(
-  valeurs: Pick<AppSettings, 'appName' | 'contactEmail' | 'maintenance' | 'maintenanceMessage'>,
+  valeurs: Pick<AppSettings, 'appName' | 'contactEmail' | 'maintenance' | 'maintenanceMessage'> & {
+    grandsClubs?: string[];
+  },
   parEmail: string
 ): Promise<{ ok: true } | { ok: false; erreur: string }> {
   try {
@@ -70,6 +105,9 @@ export async function ecrireReglages(
           maintenance: valeurs.maintenance,
           maintenance_message:
             valeurs.maintenanceMessage.trim() || REGLAGES_PAR_DEFAUT.maintenanceMessage,
+          // Une liste vidée remet celle du code : le mur ne se retrouve jamais
+          // sans priorité d'affichage à cause d'un champ effacé par mégarde.
+          grands_clubs: valeurs.grandsClubs?.length ? valeurs.grandsClubs : null,
           updated_at: new Date().toISOString(),
           updated_by: parEmail,
         },
@@ -109,7 +147,7 @@ export async function maintenanceActive(
     if (client) {
       const { data } = await client
         .from('app_settings')
-        .select('app_name, contact_email, maintenance, maintenance_message, updated_at, updated_by')
+        .select('app_name, contact_email, maintenance, maintenance_message, grands_clubs, updated_at, updated_by')
         .eq('id', 1)
         .maybeSingle();
       if (data) valeur = versReglages(data);

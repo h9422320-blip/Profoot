@@ -28,6 +28,7 @@
 
 import { apiFootball, CACHE_TTL } from './api-football';
 import { createAdminClient } from './supabase-admin';
+import { lireReglages } from './app-settings';
 
 /**
  * La compétition réelle d'une rencontre, lue sur sa fiche.
@@ -93,6 +94,18 @@ async function competitionDuMatch(fixtureId: number | null): Promise<string | nu
   } catch {
     return null;
   }
+}
+
+/**
+ * Retourne un score : « 2 - 1 » devient « 1 - 2 ».
+ *
+ * Sert à ramener dans un même sens les analyses d'une rencontre saisie tantôt
+ * dans un ordre, tantôt dans l'autre. Sans cela, deux scores identiques en
+ * apparence désignent des vainqueurs opposés.
+ */
+function inverserScore(score: string | null | undefined): string | null {
+  const lu = lireScore(score);
+  return lu ? `${lu[1]} - ${lu[0]}` : null;
 }
 
 /** Issue d'un match à partir de deux buts. */
@@ -253,17 +266,29 @@ export async function construirePreuves(): Promise<{
       secours: { total: 0, justes: 0, exacts: 0, scores: new Map<string, number>() },
     };
 
+    // ── CHAQUE SCORE EST REMIS DANS LE SENS DE LA CARTE ───────────────────
+    //
+    // La même rencontre est analysée dans les deux sens selon l'ordre choisi
+    // par l'utilisateur. « 1 - 0 » pour « Alavés — Getafe » et « 1 - 0 » pour
+    // « Getafe — Alavés » désignent des vainqueurs OPPOSÉS. Les compter
+    // ensemble sans les réorienter revient à additionner des choses
+    // différentes, et c'est ainsi qu'un pronostic s'est retrouvé inversé sur
+    // le mur public.
+    const memeSens =
+      String(l.team1_name ?? '').toLowerCase() === String(m.ligne.team1_name ?? '').toLowerCase();
+    const scoreOriente = memeSens ? l.score : inverserScore(l.score);
+
     if (produiteParUneVersionDefectueuse(l.created_at)) {
       m.ecartees++;
       m.secours.total++;
       if (l.winner_correct) m.secours.justes++;
       if (l.score_correct) m.secours.exacts++;
-      if (l.score) m.secours.scores.set(l.score, (m.secours.scores.get(l.score) ?? 0) + 1);
+      if (scoreOriente) m.secours.scores.set(scoreOriente, (m.secours.scores.get(scoreOriente) ?? 0) + 1);
     } else {
       m.total++;
       if (l.winner_correct) m.justes++;
       if (l.score_correct) m.exacts++;
-      if (l.score) m.scores.set(l.score, (m.scores.get(l.score) ?? 0) + 1);
+      if (scoreOriente) m.scores.set(scoreOriente, (m.scores.get(scoreOriente) ?? 0) + 1);
     }
     parMatch.set(cle, m);
   }
@@ -299,8 +324,28 @@ export async function construirePreuves(): Promise<{
     const buts = lireScore(pronoScore);
     const reels = lireScore(l.real_score);
 
-    const issueCorrecte = m.justes * 2 > m.total;
-    const scoreExact = m.exacts * 2 > m.total;
+    // ── LA CARTE SE JUGE SUR CE QU'ELLE MONTRE ────────────────────────────
+    //
+    // L'issue était comptée à part, en additionnant les verdicts de chaque
+    // analyse. Ces analyses existent dans LES DEUX SENS — « Alavés — Getafe »
+    // et « Getafe — Alavés » — et leurs scores étaient mis dans le même sac,
+    // puis relus dans le sens de la carte. Un « 1 - 0 » qui voulait dire
+    // « Alavés gagne » devenait « Getafe gagne » à l'affichage.
+    //
+    // Résultat, le 16/08/2026 sur le mur public : une carte annonçant
+    // « pronostic Getafe 1 - 0 » à côté de « résultat 0 - 3 », présentée comme
+    // une RÉUSSITE. Un visiteur n'a pas besoin d'être expert pour voir le
+    // mensonge, et c'est précisément ce mur qui doit inspirer confiance.
+    //
+    // Le verdict se déduit donc maintenant de ce qui est écrit sur la carte :
+    // le pronostic affiché contre le résultat affiché. Une carte ne peut plus
+    // se contredire elle-même, quelle que soit l'orientation des analyses.
+    const issuePredite = buts ? issue(buts[0], buts[1]) : null;
+    const issueReelle = reels ? issue(reels[0], reels[1]) : null;
+
+    const issueCorrecte = !!issuePredite && !!issueReelle && issuePredite === issueReelle;
+    const scoreExact =
+      issueCorrecte && !!buts && !!reels && buts[0] === reels[0] && buts[1] === reels[1];
     if (issueCorrecte) reussites++;
 
     // La preuve existante peut avoir été dépubliée à la main : on ne réécrit
@@ -366,15 +411,6 @@ export async function construirePreuves(): Promise<{
  * retiennent l'attention, pas à établir un palmarès. Un club absent n'est pas
  * jugé faible — sa preuve s'affiche simplement plus bas.
  */
-const CLUBS_CONNUS = [
-  'real madrid', 'barcelon', 'atletico', 'sevilla', 'valencia',
-  'paris saint', 'marseille', 'monaco', 'lyon', 'lille',
-  'manchester', 'liverpool', 'arsenal', 'chelsea', 'tottenham', 'newcastle',
-  'bayern', 'dortmund', 'leipzig', 'leverkusen',
-  'juventus', 'milan', 'inter', 'napoli', 'roma',
-  'ajax', 'psv', 'benfica', 'porto', 'sporting', 'celtic', 'rangers',
-  'galatasaray', 'fenerbah', 'besiktas', 'al ahly',
-];
 
 /** Compétitions dont le nom seul impose le niveau. */
 const COMPETITIONS_MAJEURES = [
@@ -390,23 +426,33 @@ const COMPETITIONS_MAJEURES = [
 /**
  * Poids d'une affiche : plus il est élevé, plus la carte remonte.
  *
- * Deux ingrédients seulement, tous deux lisibles : combien de clubs connus
- * s'affrontent, et le niveau de la compétition. Un match de préparation perd
- * des points — l'enjeu n'est pas le même, et une preuve en vraie compétition
- * convainc davantage.
+ * LE NOM DES CLUBS PASSE AVANT LA COMPÉTITION.
+ *
+ * Les deux critères étaient auparavant additionnés, et la pénalité appliquée
+ * aux matchs de préparation suffisait à enterrer une affiche connue : le
+ * 16 août 2026, FC Barcelone — Bâle et Schalke — Real Madrid, tous deux
+ * réussis le jour même, sortaient hors des dix premières cartes derrière des
+ * rencontres que personne ne reconnaît.
+ *
+ * La notoriété est donc devenue un palier à part entière : deux grands clubs
+ * passent devant un seul, qui passe devant aucun. Le niveau de la compétition
+ * ne départage plus qu'à notoriété égale — un amical du Real reste devant une
+ * finale entre deux inconnus, parce que c'est le nom qui arrête le regard.
  */
-function poidsAffiche(p: Preuve): number {
+function poidsAffiche(p: Preuve, grandsClubs: string[]): number {
   const nom = `${p.equipe1} ${p.equipe2}`.toLowerCase();
-  const connus = CLUBS_CONNUS.filter((c) => nom.includes(c)).length;
+  const connus = grandsClubs.filter((c) => nom.includes(c)).length;
 
   const competition = String(p.competition ?? '');
   const niveau = COMPETITIONS_MAJEURES.find((c) => c.motif.test(competition))?.poids ?? 1;
 
   // Deux gros clubs valent plus que deux fois un seul : c'est l'affiche qui
   // compte, pas la somme des notoriétés.
-  const notoriete = connus >= 2 ? 6 : connus === 1 ? 3 : 0;
+  const notoriete = connus >= 2 ? 2 : connus === 1 ? 1 : 0;
 
-  return notoriete + niveau - (estAmical(competition) ? 3 : 0);
+  // Multiplié par cent : aucun cumul de points de compétition ne peut faire
+  // passer une affiche inconnue devant une affiche connue.
+  return notoriete * 100 + niveau - (estAmical(competition) ? 3 : 0);
 }
 
 export async function getPreuvesPubliques(limite = 10): Promise<{
@@ -440,6 +486,9 @@ export async function getPreuvesPubliques(limite = 10): Promise<{
   const toutes = (data ?? []).map(versPreuve);
   if (!toutes.length) return vide;
 
+  // Liste reglee depuis l administration, avec repli sur celle du code.
+  const { grandsClubs } = await lireReglages();
+
   // ── LES AFFICHES QUI PARLENT PASSENT EN PREMIER ───────────────────────────
   //
   // Un visiteur ne lit pas dix cartes : il en regarde deux. Si ces deux-là
@@ -452,8 +501,8 @@ export async function getPreuvesPubliques(limite = 10): Promise<{
   // moins connues restent, simplement plus bas.
   const ordonnees = [...toutes].sort((a, b) => {
     if (a.miseEnAvant !== b.miseEnAvant) return a.miseEnAvant ? -1 : 1;
-    const poidsA = poidsAffiche(a);
-    const poidsB = poidsAffiche(b);
+    const poidsA = poidsAffiche(a, grandsClubs);
+    const poidsB = poidsAffiche(b, grandsClubs);
     if (poidsA !== poidsB) return poidsB - poidsA;
     if (a.scoreExact !== b.scoreExact) return a.scoreExact ? -1 : 1;
     return String(b.dateMatch ?? '').localeCompare(String(a.dateMatch ?? ''));

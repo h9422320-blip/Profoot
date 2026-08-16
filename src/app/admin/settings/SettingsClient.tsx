@@ -23,6 +23,9 @@ export default function SettingsClient({
   const [contactEmail, setContactEmail] = useState(reglages.contactEmail);
   const [maintenance, setMaintenance] = useState(reglages.maintenance);
   const [message, setMessage] = useState(reglages.maintenanceMessage);
+  // Une ligne par club. Saisie libre, volontairement : ajouter un club ne doit
+  // pas demander un deploiement.
+  const [clubs, setClubs] = useState(reglages.grandsClubs.join("\n"));
 
   const [confirmation, setConfirmation] = useState(false);
   const [retour, setRetour] = useState<{ ok: boolean; texte: string } | null>(null);
@@ -32,7 +35,8 @@ export default function SettingsClient({
     appName !== reglages.appName ||
     contactEmail !== reglages.contactEmail ||
     maintenance !== reglages.maintenance ||
-    message !== reglages.maintenanceMessage;
+    message !== reglages.maintenanceMessage ||
+    clubs !== reglages.grandsClubs.join("\n");
 
   function soumettre() {
     // Activer la maintenance coupe le site pour tous les visiteurs : cette
@@ -49,6 +53,7 @@ export default function SettingsClient({
     donnees.set("contactEmail", contactEmail);
     if (maintenance) donnees.set("maintenance", "on");
     donnees.set("maintenanceMessage", message);
+    donnees.set("grandsClubs", clubs);
 
     demarrer(async () => {
       const r = await enregistrerReglages(donnees);
@@ -205,6 +210,39 @@ export default function SettingsClient({
                 <Eye className="w-3.5 h-3.5" /> Prévisualiser la page de maintenance
               </a>
             </div>
+          </div>
+
+          {/* ── Les affiches qui remontent en tête du mur de preuves ──────────
+              Un visiteur ne lit pas dix cartes : il en regarde deux. Si ces
+              deux-là opposent des clubs qu'il ne connaît pas, il referme la
+              page sans avoir vu que l'outil a aussi vu juste sur Barcelone ou
+              le Real. */}
+          <div className="bg-[#16242e] border border-[#2e4757] rounded-[20px] p-5 sm:p-6 space-y-4">
+            <div>
+              <h2 className="text-sm font-black text-white">Grands clubs du mur de preuves</h2>
+              <p className="text-xs text-white/40 mt-1 leading-relaxed">
+                Toute preuve impliquant un de ces clubs passe en haut de la page d&apos;analyse.
+                Une ligne par club. Rien n&apos;est masqué : les autres réussites restent, plus bas.
+              </p>
+            </div>
+
+            <label className="block space-y-2">
+              <span className="text-xs font-bold text-white/50 uppercase tracking-widest">
+                Un club par ligne
+              </span>
+              <textarea
+                value={clubs}
+                onChange={(e) => setClubs(e.target.value)}
+                rows={8}
+                spellCheck={false}
+                className="w-full bg-[#1d2f3a] border border-[#2e4757] rounded-[14px] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#10b981] transition-colors resize-y font-mono"
+              />
+            </label>
+
+            <p className="text-[11px] text-white/30 leading-relaxed">
+              Écrivez un fragment du nom, en minuscules : « barcelon » attrape aussi bien
+              « FC Barcelone » que « Barcelona ». Videz le champ pour revenir à la liste d&apos;origine.
+            </p>
           </div>
 
           <AnimatePresence>
