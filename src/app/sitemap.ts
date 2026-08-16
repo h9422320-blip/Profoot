@@ -10,10 +10,37 @@ import type { MetadataRoute } from 'next';
  */
 const SITE_URL = 'https://profootai.com';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
+  // ── LES FICHES DE CLUB SONT LE VOLUME ────────────────────────────────────
+  //
+  // Sept pages étaient déclarées à Google, dont quatre pages légales. Un site
+  // de football sans surface indexable ne peut pas être trouvé, quels que
+  // soient ses titres et ses balises.
+  //
+  // Chaque club suivi porte une fiche réelle — classement, bilan, forme — et
+  // devient une porte d'entrée : quelqu'un qui cherche « classement Real
+  // Madrid » peut arriver ici, puis découvrir l'analyse.
+  //
+  // La liste est lue en base et non calculée : le plan du site ne doit jamais
+  // dépendre du fournisseur de données pour s'afficher.
+  let clubs: MetadataRoute.Sitemap = [];
+  try {
+    const { listerClubs } = await import('@/lib/club-reel');
+    clubs = (await listerClubs()).map((c) => ({
+      url: `${SITE_URL}/club/${c.id}`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    }));
+  } catch {
+    // Réserve illisible : le plan du site garde ses pages principales plutôt
+    // que d'échouer entièrement.
+  }
+
   return [
+    ...clubs,
     { url: SITE_URL, lastModified: now, changeFrequency: 'daily', priority: 1 },
     // Le mur de preuves est PUBLIC et c'est la seule page qui porte du contenu
     // renouvelé : des pronostics datés confrontés à de vrais résultats. Il

@@ -26,7 +26,7 @@ import { lireMatchsReels, type MatchReel } from "@/lib/matchs-reels";
  */
 
 export const metadata: Metadata = {
-  title: "Matchs du jour et résultats — ProFoot AI",
+  title: "Matchs du jour et résultats",
   description:
     "Le calendrier des matchs de football : rencontres du jour, à venir et résultats des grands championnats européens. Mis à jour en continu par ProFoot AI.",
   alternates: { canonical: "https://profootai.com/matches" },

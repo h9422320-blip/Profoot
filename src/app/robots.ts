@@ -41,7 +41,6 @@ export default function robots(): MetadataRoute.Robots {
           // qu'ils seront alimentés par de vraies données — c'est ce qui vient
           // d'être fait pour /matches.
           '/stats',
-          '/club',
           '/match',
         ],
       },
