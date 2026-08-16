@@ -396,7 +396,25 @@ export async function construirePreuves(): Promise<{
       .eq('fixture_id', l.fixture_id ?? -1)
       .maybeSingle();
 
-    const fiche = await ficheDuMatch(l.fixture_id);
+    // ── ON NE REDEMANDE PAS CE QU'ON SAIT DÉJÀ ────────────────────────────
+    //
+    // La compétition et la date d'une rencontre TERMINÉE ne changent plus.
+    // Les redemander à chaque reconstruction coûtait un appel par match :
+    // le 16 août 2026, quelques reconstructions successives ont porté le quota
+    // du fournisseur à 7 055 sur 7 500 — au-delà, plus aucune analyse ne
+    // fonctionne pour personne jusqu'au lendemain.
+    //
+    // La fiche n'est donc interrogée que si l'information manque.
+    const dejaConnue =
+      !!(existante as any)?.competition &&
+      /^\d{4}-\d{2}-\d{2}T/.test(String((existante as any)?.date_match ?? ''));
+
+    const fiche = dejaConnue
+      ? {
+          competition: (existante as any).competition as string,
+          date: (existante as any).date_match as string,
+        }
+      : await ficheDuMatch(l.fixture_id);
 
     const valeurs: Record<string, any> = {
       fixture_id: l.fixture_id ?? null,
