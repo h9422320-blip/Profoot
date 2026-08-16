@@ -33,6 +33,64 @@ function setCache<T>(key: string, data: T, ttlMs: number): void {
   memoryCache.set(key, { data, timestamp: Date.now(), ttl: ttlMs });
 }
 
+// ---------------------------------------------------------------------------
+// Cache conservé en base
+// ---------------------------------------------------------------------------
+//
+// POURQUOI IL EXISTE
+//
+// Le cache ci-dessus ne vit qu'en mémoire du serveur, et cette mémoire
+// disparaît à chaque démarrage à froid. Sur un hébergement sans serveur, cela
+// arrive plusieurs fois par heure : chaque redémarrage redemandait au
+// fournisseur des données déjà connues.
+//
+// Le 16 août 2026, le quota journalier a atteint 98 % — à 100 %, plus AUCUNE
+// analyse ne fonctionne pour personne jusqu'au lendemain, y compris pour les
+// abonnés payants.
+//
+// Conservé en base, le cache survit aux redémarrages. Et quand le fournisseur
+// refuse de répondre — quota épuisé, panne —, une réponse périmée est servie
+// plutôt qu'une erreur : une donnée d'il y a deux heures vaut infiniment mieux
+// qu'un écran vide devant quelqu'un qui vient de payer.
+
+/** Réponse conservée, même expirée : elle sert de dernier recours. */
+async function lireEnBase<T>(cle: string): Promise<{ contenu: T; expiree: boolean } | null> {
+  try {
+    const { createAdminClient } = await import('./supabase-admin');
+    const { data, error } = await createAdminClient()
+      .from('cache_api')
+      .select('contenu, expire_le')
+      .eq('cle', cle)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return {
+      contenu: data.contenu as T,
+      expiree: new Date(data.expire_le).getTime() < Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function ecrireEnBase(cle: string, contenu: unknown, ttlMs: number): Promise<void> {
+  try {
+    const { createAdminClient } = await import('./supabase-admin');
+    await createAdminClient().from('cache_api').upsert(
+      {
+        cle,
+        contenu,
+        expire_le: new Date(Date.now() + ttlMs).toISOString(),
+        ecrit_le: new Date().toISOString(),
+      },
+      { onConflict: 'cle' }
+    );
+  } catch {
+    // Un cache qui n'a pas pu s'écrire ne doit jamais faire échouer l'appel
+    // qui vient pourtant de réussir.
+  }
+}
+
 // TTL Constants
 const TTL = {
   FIXTURES_LIVE: 60 * 1000,           // 1 minute for live data
@@ -58,6 +116,24 @@ async function apiFootballFetch<T = any>(endpoint: string, ttl: number = TTL.FIX
     return cached;
   }
 
+  // Le cache conservé en base, avant d'aller chez le fournisseur. C'est ce qui
+  // rend un démarrage à froid gratuit.
+  const enBase = await lireEnBase<T>(cacheKey);
+  if (enBase && !enBase.expiree) {
+    setCache(cacheKey, enBase.contenu, ttl);
+    return enBase.contenu;
+  }
+
+  /** Dernier recours : une réponse périmée vaut mieux qu'un écran vide. */
+  const secours = (raison: string): T | null => {
+    if (!enBase) return null;
+    console.warn(`[API-FOOTBALL] ${raison} sur ${endpoint} — réponse conservée servie.`);
+    // Remise en mémoire brièvement : inutile de réinterroger la base à chaque
+    // appel pendant une panne.
+    setCache(cacheKey, enBase.contenu, 5 * 60 * 1000);
+    return enBase.contenu;
+  };
+
   const url = `${API_BASE}${endpoint}`;
   try {
     const controller = new AbortController();
@@ -75,19 +151,33 @@ async function apiFootballFetch<T = any>(endpoint: string, ttl: number = TTL.FIX
 
     if (!res.ok) {
       console.error(`[API-FOOTBALL] HTTP ${res.status} on ${endpoint}`);
-      return null;
+      // 429 : quota journalier épuisé. C'est LE cas où il ne faut surtout pas
+      // renvoyer un vide — l'abonné a payé, il doit voir quelque chose.
+      return secours(`HTTP ${res.status}`);
     }
 
     const json = await res.json();
+
+    // Le fournisseur répond parfois 200 avec une erreur de quota dans le corps.
+    // Sans ce contrôle, une réponse vide était mise en cache comme si elle
+    // était valide, et la panne devenait durable.
+    const erreurs = (json as any)?.errors;
+    const enErreur = Array.isArray(erreurs) ? erreurs.length > 0 : !!erreurs && Object.keys(erreurs).length > 0;
+    if (enErreur) {
+      console.error(`[API-FOOTBALL] Erreur du fournisseur sur ${endpoint} :`, JSON.stringify(erreurs).slice(0, 200));
+      return secours('erreur du fournisseur');
+    }
+
     setCache(cacheKey, json, ttl);
+    void ecrireEnBase(cacheKey, json, ttl);
     return json as T;
   } catch (err: any) {
     if (err.name === "AbortError") {
       console.error(`[API-FOOTBALL] Timeout on ${endpoint}`);
-    } else {
-      console.error(`[API-FOOTBALL] Network error on ${endpoint}:`, err.message);
+      return secours('délai dépassé');
     }
-    return null;
+    console.error(`[API-FOOTBALL] Network error on ${endpoint}:`, err.message);
+    return secours('erreur réseau');
   }
 }
 
