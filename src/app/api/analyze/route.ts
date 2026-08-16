@@ -10,6 +10,7 @@ import { lireReserve, ecrireReserve } from "@/lib/api-football";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation } from "@/lib/score-probable";
+import { lirePredictionFigee, figerPrediction } from "@/lib/prediction-figee";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
@@ -979,6 +980,27 @@ export async function POST(req: Request) {
     ? String(lieuConnu.teams?.home?.id) === String(id1)
     : null;
 
+  // ── SANS SAVOIR QUI REÇOIT, LA PRÉDICTION N'EST PAS FIABLE ─────────────────
+  //
+  // L'équipe qui reçoit gagne 15 % de rendement, celle qui se déplace en perd
+  // 8 %. Sur deux équipes proches, cela suffit à INVERSER le favori.
+  //
+  // Quand l'appel au fournisseur échoue, la rencontre reste introuvable et le
+  // code met les deux coefficients à 1 : l'analyse aboutit quand même, en
+  // silence, avec un favori qui peut être l'inverse du bon. Le 16 août 2026,
+  // Lens — PSG a été analysé 36 fois sans cette information et 4 fois avec :
+  // les 4 ont vu juste, les 36 se sont trompées. Même match, même jour.
+  //
+  // On note donc explicitement ce manque, pour ne jamais figer une prédiction
+  // bâtie dessus.
+  const lieuInconnu = equipe1AJoueADomicile === null;
+  if (lieuInconnu) {
+    console.warn(
+      `[BACKEND_ANALYZE] Rencontre introuvable pour ${team1.name} — ${team2.name} : ` +
+        `l'avantage du terrain ne peut pas être appliqué, la prédiction ne sera pas figée.`
+    );
+  }
+
   // Les statistiques utilisées sont celles du championnat quand elles existent,
   // et celles reconstituées depuis les derniers matchs sinon.
   // Un match amical ne se predit pas comme un match de championnat : effectifs
@@ -996,6 +1018,51 @@ export async function POST(req: Request) {
     // du championnat et l'autre quatorzième.
     { equipe1: classement1, equipe2: classement2 }
   );
+
+  // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────
+  //
+  // Le premier calcul complet fait foi. Tous les suivants le relisent, dans le
+  // sens où l'utilisateur a saisi les équipes. Deux abonnés du même match ne
+  // peuvent plus recevoir des réponses contraires selon l'heure à laquelle ils
+  // cliquent, ni selon que le fournisseur répondait ou non à cet instant.
+  //
+  // Une prédiction bâtie sans savoir qui reçoit n'est jamais figée : elle ne
+  // doit pas devenir la référence d'un match.
+  const fixtureDeReference = targetFutureMatch ?? null;
+  const figeable = !lieuInconnu && !!fixtureDeReference?.fixture?.id && !matchDirect;
+
+  if (figeable) {
+    const deja = await lirePredictionFigee(fixtureDeReference.fixture.id, id1);
+    if (deja) {
+      scoreCalcule.buts1 = deja.buts1;
+      scoreCalcule.buts2 = deja.buts2;
+      scoreCalcule.probaVictoire1 = deja.probaVictoire1;
+      scoreCalcule.probaNul = deja.probaNul;
+      scoreCalcule.probaVictoire2 = deja.probaVictoire2;
+      scoreCalcule.confiance = deja.confiance;
+      if (deja.butsAttendus1 !== null) scoreCalcule.butsAttendus1 = Number(deja.butsAttendus1);
+      if (deja.butsAttendus2 !== null) scoreCalcule.butsAttendus2 = Number(deja.butsAttendus2);
+    } else {
+      // Enregistré dans le sens officiel : l'équipe qui reçoit en premier.
+      const e1Domicile = equipe1AJoueADomicile === true;
+      await figerPrediction({
+        fixtureId: fixtureDeReference.fixture.id,
+        domicileId: Number(e1Domicile ? id1 : id2),
+        domicileNom: e1Domicile ? team1.name : team2.name,
+        exterieurId: Number(e1Domicile ? id2 : id1),
+        exterieurNom: e1Domicile ? team2.name : team1.name,
+        butsDomicile: e1Domicile ? scoreCalcule.buts1 : scoreCalcule.buts2,
+        butsExterieur: e1Domicile ? scoreCalcule.buts2 : scoreCalcule.buts1,
+        probaDomicile: e1Domicile ? scoreCalcule.probaVictoire1 : scoreCalcule.probaVictoire2,
+        probaNul: scoreCalcule.probaNul,
+        probaExterieur: e1Domicile ? scoreCalcule.probaVictoire2 : scoreCalcule.probaVictoire1,
+        confiance: scoreCalcule.confiance,
+        xgDomicile: e1Domicile ? scoreCalcule.butsAttendus1 : scoreCalcule.butsAttendus2,
+        xgExterieur: e1Domicile ? scoreCalcule.butsAttendus2 : scoreCalcule.butsAttendus1,
+        calculeeLe: new Date().toISOString(),
+      });
+    }
+  }
 
   /**
    * Impose les chiffres calculés à la réponse du modèle.
