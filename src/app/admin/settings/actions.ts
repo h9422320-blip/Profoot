@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { ecrireReglages, invaliderCacheReglages } from '@/lib/app-settings';
 
-const ADMIN_EMAIL = 'h9422320@gmail.com';
+import { estAdmin } from '@/lib/admins';
 
 /**
  * Enregistre la configuration.
@@ -17,7 +17,7 @@ export async function enregistrerReglages(formData: FormData) {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || user.email?.toLowerCase() !== ADMIN_EMAIL) {
+  if (!user || !estAdmin(user.email)) {
     return { ok: false as const, erreur: "Action réservée à l'administrateur." };
   }
 

@@ -3,6 +3,7 @@ import { getRevenusMatchsUniques } from './match-unique';
 import { ACCES_OFFERTS, niveauOffert, normalizePlan, PLANS, PlanKey, PlanTier } from '@/lib/subscription';
 import { TAUX_XOF } from '@/lib/partenaires';
 import { getPrecisionReelle } from '@/lib/precision-reelle';
+import { ADMIN_EMAILS } from '@/lib/admins';
 
 /**
  * Statistiques réelles de ProFoot AI, lues directement dans la base.
@@ -304,7 +305,6 @@ export interface AdminMetrics {
 
 // ───────────────────────────── Utilitaires ─────────────────────────────
 
-const ADMIN_EMAILS = ['h9422320@gmail.com'];
 
 function cleGranulaire(d: Date, granularite: 'jour' | 'mois'): string {
   const iso = d.toISOString();

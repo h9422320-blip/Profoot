@@ -16,6 +16,7 @@
 import { createAdminClient } from './supabase-admin';
 import { PLANS, PlanTier, normalizePlan, niveauOffert } from './subscription';
 import { nomDuPays, drapeau } from './origine-acheteurs';
+import { ADMIN_EMAILS } from '@/lib/admins';
 
 export interface AnalyseUtilisateur {
   id: string;
@@ -95,7 +96,6 @@ export interface FicheUtilisateur {
   avertissements: string[];
 }
 
-const ADMIN_EMAILS = ['h9422320@gmail.com'];
 
 export async function getFicheUtilisateur(userId: string): Promise<FicheUtilisateur | null> {
   const sb = createAdminClient();

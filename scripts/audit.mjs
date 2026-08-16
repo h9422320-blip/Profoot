@@ -711,11 +711,40 @@ async function verifierPartenaires() {
   const emails = [...bloc.matchAll(/'([^']+@[^']+)'/g)].map((m) => m[1]);
   ok(`${emails.length} accès VIP offerts : ${emails.join(', ')}`);
 
-  const adminBloc = source.slice(source.indexOf('const ADMIN_EMAILS'), source.indexOf('const PERMANENT_PREMIUM_EMAILS'));
-  if (!adminBloc.includes('h9422320@gmail.com')) alerte("le compte administrateur n'est plus dans la liste des administrateurs");
-  else if (adminBloc.split("'").filter((x) => x.includes('@')).length > 1)
-    alerte("plusieurs comptes disposent de l'accès administrateur");
-  else ok('accès administrateur réservé au seul compte fondateur');
+  // ── Qui a les clés de l'administration ──────────────────────────────────
+  //
+  // La liste vit désormais dans un module unique, et non plus dans le module
+  // d'abonnement. L'audit doit lire LÀ où la décision est prise : la lire
+  // ailleurs le laisserait muet le jour où quelqu'un s'ajoute.
+  //
+  // Deux dangers opposés, tous deux silencieux :
+  //  – le fondateur disparaît de la liste et se retrouve dehors ;
+  //  – une adresse s'ajoute sans qu'on l'ait décidé.
+  const ATTENDUS = ['h9422320@gmail.com', 'traoreismaela753@gmail.com'];
+
+  const sourceAdmins = fs.readFileSync('src/lib/admins.ts', 'utf8');
+  const blocAdmins = sourceAdmins.slice(
+    sourceAdmins.indexOf('ADMIN_EMAILS'),
+    sourceAdmins.indexOf('];', sourceAdmins.indexOf('ADMIN_EMAILS'))
+  );
+  const admins = [...blocAdmins.matchAll(/'([^']+@[^']+)'/g)].map((m) => m[1].toLowerCase());
+
+  if (!admins.includes('h9422320@gmail.com'))
+    alerte("le compte fondateur n'est plus administrateur — accès perdu au prochain déploiement");
+
+  const inattendus = admins.filter((e) => !ATTENDUS.includes(e));
+  if (inattendus.length) alerte(`administrateur(s) non prévu(s) : ${inattendus.join(', ')}`);
+
+  const manquants = ATTENDUS.filter((e) => !admins.includes(e));
+  if (manquants.length) attention(`administrateur(s) attendu(s) mais absent(s) : ${manquants.join(', ')}`);
+
+  if (!inattendus.length && !manquants.length)
+    ok(`${admins.length} administrateur(s), conformes : ${admins.join(', ')}`);
+
+  // Une adresse écrite avec une majuscule ne serait jamais reconnue, puisque la
+  // comparaison se fait en minuscules.
+  const casse = [...blocAdmins.matchAll(/'([^']+@[^']+)'/g)].map((m) => m[1]).filter((e) => e !== e.toLowerCase());
+  if (casse.length) alerte(`adresse(s) administrateur avec une majuscule, donc jamais reconnue(s) : ${casse.join(', ')}`);
 }
 
 // ── 10. Équipes sélectionnables ──────────────────────────────────────────────

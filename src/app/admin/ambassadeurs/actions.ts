@@ -5,8 +5,8 @@ import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { COOKIE_ADMIN, cleAdminAttendue, cleValide } from "@/lib/admin-access";
+import { estAdmin } from "@/lib/admins";
 
-const ADMIN_EMAIL = "h9422320@gmail.com";
 const TAILLE_MAX = 5 * 1024 * 1024;
 const TYPES_ACCEPTES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -22,7 +22,9 @@ async function verifierAdmin(): Promise<boolean> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || user.email !== ADMIN_EMAIL) return false;
+  // Comparaison insensible a la casse : une majuscule a l inscription ne
+  // doit pas fermer la porte a quelqu un d autorise.
+  if (!estAdmin(user?.email)) return false;
 
   const attendue = cleAdminAttendue();
   if (attendue) {

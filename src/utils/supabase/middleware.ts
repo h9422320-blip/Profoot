@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { maintenanceActive } from '@/lib/app-settings'
+import { estAdmin } from '@/lib/admins'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -67,7 +68,7 @@ export async function updateSession(request: NextRequest) {
 
   // --- SECURITE ADMIN STRICTE ---
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!activeUser || activeUser.email?.toLowerCase() !== 'h9422320@gmail.com') {
+    if (!estAdmin(activeUser?.email)) {
       const url = request.nextUrl.clone()
       url.pathname = '/analyze' // Rediriger les curieux vers la page d'analyse
       const redirectResponse = NextResponse.redirect(url)
@@ -86,7 +87,7 @@ export async function updateSession(request: NextRequest) {
   const cheminsToujoursOuverts = [
     '/maintenance', '/admin', '/a/', '/login', '/api/payments', '/_next', '/favicon',
   ];
-  const estAdministrateur = activeUser?.email?.toLowerCase() === 'h9422320@gmail.com';
+  const estAdministrateur = estAdmin(activeUser?.email);
   const cheminOuvert = cheminsToujoursOuverts.some((p) => request.nextUrl.pathname.startsWith(p));
 
   if (!estAdministrateur && !cheminOuvert) {

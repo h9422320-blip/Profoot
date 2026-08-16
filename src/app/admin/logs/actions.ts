@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { rafraichirStatutsPaiement } from '@/lib/echecs-paiement';
 
-const ADMIN_EMAIL = 'h9422320@gmail.com';
+import { estAdmin } from '@/lib/admins';
 
 /**
  * Relève à la demande le sort des demandes de paiement.
@@ -21,7 +21,7 @@ export async function releverPaiements() {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || user.email?.toLowerCase() !== ADMIN_EMAIL) {
+  if (!user || !estAdmin(user.email)) {
     return { ok: false as const, erreur: "Action réservée à l'administrateur." };
   }
 

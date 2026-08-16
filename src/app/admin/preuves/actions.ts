@@ -9,17 +9,25 @@ import {
   saisirScoreReel,
 } from '@/lib/preuves';
 
-const ADMIN_EMAIL = 'h9422320@gmail.com';
+import { estAdmin as adresseAutorisee } from '@/lib/admins';
 
 /**
  * L'identité est revérifiée dans chaque action, et pas seulement à l'affichage
  * de la page : une action serveur est une adresse appelable directement. Sans
  * ce contrôle, n'importe qui pourrait publier une preuve sur la page d'accueil.
+ *
+ * Renvoie aussi QUI agit : la saisie d'un score est signée, et depuis qu'il y a
+ * plusieurs administrateurs, la signer avec une adresse écrite en dur
+ * attribuerait à l'un ce que l'autre a fait.
  */
-async function estAdmin(): Promise<boolean> {
+async function administrateurConnecte(): Promise<string | null> {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  return user?.email?.toLowerCase() === ADMIN_EMAIL;
+  return adresseAutorisee(user?.email) ? user!.email!.trim().toLowerCase() : null;
+}
+
+async function estAdmin(): Promise<boolean> {
+  return (await administrateurConnecte()) !== null;
 }
 
 const refus = { ok: false as const, erreur: "Action réservée à l'administrateur." };
@@ -51,7 +59,8 @@ export async function reconstruirePreuves() {
  * pouvait cocher « correct » lui-même, la preuve ne prouverait plus rien.
  */
 export async function enregistrerScoreReel(formData: FormData) {
-  if (!(await estAdmin())) return refus;
+  const parQui = await administrateurConnecte();
+  if (!parQui) return refus;
 
   const id = String(formData.get('id') ?? '');
   const buts1 = Number(formData.get('buts1'));
@@ -63,7 +72,7 @@ export async function enregistrerScoreReel(formData: FormData) {
   if (buts1 > 30 || buts2 > 30)
     return { ok: false as const, erreur: 'Ce score paraît erroné — vérifiez la saisie.' };
 
-  const r = await saisirScoreReel(id, buts1, buts2, ADMIN_EMAIL);
+  const r = await saisirScoreReel(id, buts1, buts2, parQui);
   if (!r.ok) return { ok: false as const, erreur: r.erreur ?? 'Enregistrement impossible.' };
 
   revalidatePath('/admin/preuves');

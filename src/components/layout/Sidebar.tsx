@@ -10,6 +10,7 @@ import {
 import { useState, useEffect } from "react";
 import { logout } from "@/app/login/actions";
 import { createClient } from "@/utils/supabase/client";
+import { estAdmin } from "@/lib/admins";
 import Image from "next/image";
 
 import { useLanguage } from "@/context/LanguageContext";
@@ -50,7 +51,7 @@ export function Sidebar() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) {
         setUserEmail(user.email);
-        setIsAdmin(user.email === 'h9422320@gmail.com');
+        setIsAdmin(estAdmin(user.email));
       }
     });
 

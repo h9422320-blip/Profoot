@@ -5,7 +5,7 @@ import { createClient as createServerClient } from '@/utils/supabase/server';
 import { ecrireOffres, CLES_OFFRES, type ModificationOffre } from '@/lib/offres';
 import type { PlanKey } from '@/lib/subscription';
 
-const ADMIN_EMAIL = 'h9422320@gmail.com';
+import { estAdmin } from '@/lib/admins';
 
 /**
  * Enregistre les prix et quotas.
@@ -18,7 +18,7 @@ export async function enregistrerOffres(formData: FormData) {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || user.email?.toLowerCase() !== ADMIN_EMAIL) {
+  if (!user || !estAdmin(user.email)) {
     return { ok: false as const, erreur: "Action réservée à l'administrateur." };
   }
 

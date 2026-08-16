@@ -96,7 +96,10 @@ export function planFromAmount(amountXof: number): PlanKey | null {
 }
 
 // Comptes avec droits permanents (fondateur/équipe). Les admins ont tous les accès.
-const ADMIN_EMAILS = ['h9422320@gmail.com'];
+// Les administrateurs sont désormais listés dans un module unique. Les tenir
+// ici en double signifiait qu'ajouter quelqu'un ouvrait /admin sans lui donner
+// les droits correspondants — ou l'inverse.
+import { ADMIN_EMAILS } from './admins';
 const PERMANENT_PREMIUM_EMAILS = ['abdoulayecamara2708@gmail.com'];
 
 /**

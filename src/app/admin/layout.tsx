@@ -5,8 +5,7 @@ import AdminLayoutClient from "./AdminLayoutClient";
 import { COOKIE_ADMIN, cleAdminAttendue, cleValide } from "@/lib/admin-access";
 import { getAlertes } from "@/lib/admin-metrics";
 import { lireReglages } from "@/lib/app-settings";
-
-const ADMIN_EMAIL = "h9422320@gmail.com";
+import { estAdmin } from "@/lib/admins";
 
 /**
  * Double verrou sur l'administration.
@@ -28,7 +27,7 @@ export default async function AdminLayout({
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!estAdmin(user?.email)) {
     redirect("/analyze");
   }
 
