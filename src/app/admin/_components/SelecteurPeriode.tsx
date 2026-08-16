@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { CalendarDays, X } from "lucide-react";
+import CalendrierPlage from "./CalendrierPlage";
 
 const RACCOURCIS = [
   { cle: "7j", libelle: "7 jours" },
@@ -40,7 +41,6 @@ export default function SelecteurPeriode() {
     setOuvert(false);
   }
 
-  const aujourdhui = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="relative">
@@ -73,45 +73,43 @@ export default function SelecteurPeriode() {
       </div>
 
       {ouvert && (
-        <div className="absolute right-0 mt-2 z-50 w-[280px] bg-[#16242e] border border-[#2e4757] rounded-[18px] p-4 shadow-2xl space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white/70 uppercase tracking-widest">Choisir des dates</span>
-            <button onClick={() => setOuvert(false)} className="text-white/40 hover:text-white">
-              <X className="w-4 h-4" />
+        <>
+          {/* Voile de fermeture : sur un téléphone le panneau occupe presque
+              tout l'écran, et sans lui on ne sait plus comment en sortir. */}
+          <div className="fixed inset-0 z-40" onClick={() => setOuvert(false)} />
+
+          <div className="absolute right-0 mt-2 z-50 w-[300px] max-w-[calc(100vw-2rem)] bg-[#16242e] border border-[#2e4757] rounded-[18px] p-4 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+                Choisir une période
+              </span>
+              <button
+                onClick={() => setOuvert(false)}
+                className="text-white/40 hover:text-white"
+                aria-label="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <CalendrierPlage
+              du={du}
+              au={au}
+              onChange={(d, a) => {
+                setDu(d);
+                setAu(a);
+              }}
+            />
+
+            <button
+              onClick={appliquerPlage}
+              disabled={!du || !au}
+              className="w-full py-2.5 min-h-[44px] rounded-[12px] bg-[#10b981] text-black font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#0ea472] transition-colors"
+            >
+              Appliquer
             </button>
           </div>
-
-          <label className="block space-y-1">
-            <span className="text-[11px] font-semibold text-white/50">Du</span>
-            <input
-              type="date"
-              value={du}
-              max={au || aujourdhui}
-              onChange={(e) => setDu(e.target.value)}
-              className="w-full bg-[#1d2f3a] border border-[#2e4757] rounded-[12px] px-3 py-2 text-sm text-white focus:outline-none focus:border-[#10b981]"
-            />
-          </label>
-
-          <label className="block space-y-1">
-            <span className="text-[11px] font-semibold text-white/50">Au</span>
-            <input
-              type="date"
-              value={au}
-              min={du || undefined}
-              max={aujourdhui}
-              onChange={(e) => setAu(e.target.value)}
-              className="w-full bg-[#1d2f3a] border border-[#2e4757] rounded-[12px] px-3 py-2 text-sm text-white focus:outline-none focus:border-[#10b981]"
-            />
-          </label>
-
-          <button
-            onClick={appliquerPlage}
-            disabled={!du || !au}
-            className="w-full py-2 rounded-[12px] bg-[#10b981] text-black font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#0ea472] transition-colors"
-          >
-            Appliquer
-          </button>
-        </div>
+        </>
       )}
     </div>
   );

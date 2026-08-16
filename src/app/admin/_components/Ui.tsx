@@ -96,3 +96,30 @@ export function Vide({ message }: { message: string }) {
     </div>
   );
 }
+
+/**
+ * Petite étiquette libre.
+ *
+ * `Etiquette` ne sait afficher qu'un niveau d'offre — c'est voulu, elle garantit
+ * que « VIP » s'écrit partout pareil. Celle-ci porte un texte quelconque : une
+ * part de chiffre d'affaires, un état, une mention.
+ */
+export function Puce({
+  texte,
+  teinte = "neutre",
+}: {
+  texte: string;
+  teinte?: "violet" | "vert" | "or" | "neutre";
+}) {
+  const styles = {
+    violet: "bg-[#8b5cf6]/15 text-[#a78bfa] border-[#8b5cf6]/30",
+    vert: "bg-[#10b981]/15 text-[#10b981] border-[#10b981]/30",
+    or: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    neutre: "bg-white/5 text-white/40 border-white/10",
+  };
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${styles[teinte]}`}>
+      {texte}
+    </span>
+  );
+}

@@ -1,0 +1,142 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+const JOURS = ["L", "M", "M", "J", "V", "S", "D"];
+const MOIS = [
+  "janvier", "février", "mars", "avril", "mai", "juin",
+  "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+];
+
+/** Clé AAAA-MM-JJ en heure LOCALE. */
+function cle(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Calendrier de sélection d'une plage de dates.
+ *
+ * Deux clics : le premier pose le début, le second la fin. Un troisième
+ * recommence une nouvelle plage — c'est le geste attendu, et l'obligation de
+ * vider un champ avant de recommencer est la première chose qui agace.
+ *
+ * Les dates sont manipulées en heure LOCALE, jamais via `toISOString()`. Celle
+ * ci convertit en temps universel : passé une certaine heure du soir, le 16
+ * août devient le 15, et l'administration afficherait la mauvaise journée.
+ */
+export default function CalendrierPlage({
+  du,
+  au,
+  onChange,
+}: {
+  du: string;
+  au: string;
+  onChange: (du: string, au: string) => void;
+}) {
+  const aujourdhui = new Date();
+  const depart = du ? new Date(du + "T12:00:00") : aujourdhui;
+  const [moisAffiche, setMoisAffiche] = useState(
+    new Date(depart.getFullYear(), depart.getMonth(), 1)
+  );
+
+  const maxCle = cle(aujourdhui);
+
+  function choisir(jour: string) {
+    // Une plage complète existe déjà, ou le clic précède le début : on
+    // recommence à partir de ce jour.
+    if ((du && au) || !du || jour < du) {
+      onChange(jour, "");
+      return;
+    }
+    onChange(du, jour);
+  }
+
+  const premier = new Date(moisAffiche.getFullYear(), moisAffiche.getMonth(), 1);
+  const nbJours = new Date(moisAffiche.getFullYear(), moisAffiche.getMonth() + 1, 0).getDate();
+  // Lundi en première colonne : getDay() met dimanche à 0.
+  const decalage = (premier.getDay() + 6) % 7;
+
+  const cases: (string | null)[] = [
+    ...Array(decalage).fill(null),
+    ...Array.from({ length: nbJours }, (_, i) =>
+      cle(new Date(moisAffiche.getFullYear(), moisAffiche.getMonth(), i + 1))
+    ),
+  ];
+
+  return (
+    <div className="select-none">
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={() => setMoisAffiche(new Date(moisAffiche.getFullYear(), moisAffiche.getMonth() - 1, 1))}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+          aria-label="Mois précédent"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-[13px] font-black text-white capitalize">
+          {MOIS[moisAffiche.getMonth()]} {moisAffiche.getFullYear()}
+        </span>
+        <button
+          type="button"
+          onClick={() => setMoisAffiche(new Date(moisAffiche.getFullYear(), moisAffiche.getMonth() + 1, 1))}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+          aria-label="Mois suivant"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-0.5 mb-1">
+        {JOURS.map((j, i) => (
+          <span key={i} className="text-[10px] font-bold text-white/25 text-center py-1">
+            {j}
+          </span>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-0.5">
+        {cases.map((jour, i) => {
+          if (!jour) return <span key={i} />;
+
+          const futur = jour > maxCle;
+          const estDebut = jour === du;
+          const estFin = jour === au;
+          const dansPlage = !!du && !!au && jour > du && jour < au;
+          const bord = estDebut || estFin;
+
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={futur}
+              onClick={() => choisir(jour)}
+              className={`h-9 text-[12px] font-bold transition-colors ${
+                bord
+                  ? "bg-[#10b981] text-black rounded-[10px]"
+                  : dansPlage
+                    ? "bg-[#10b981]/20 text-white"
+                    : futur
+                      ? "text-white/15 cursor-not-allowed"
+                      : "text-white/70 hover:bg-white/10 rounded-[10px]"
+              } ${dansPlage ? "" : "rounded-[10px]"}`}
+            >
+              {Number(jour.slice(-2))}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Dire où on en est : après le premier clic, rien à l'écran n'indique
+          qu'il faut en faire un second. */}
+      <p className="text-[11px] text-white/35 mt-3 text-center">
+        {!du
+          ? "Cliquez la date de début"
+          : !au
+            ? "Cliquez maintenant la date de fin"
+            : `Du ${du.split("-").reverse().join("/")} au ${au.split("-").reverse().join("/")}`}
+      </p>
+    </div>
+  );
+}

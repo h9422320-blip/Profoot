@@ -14,7 +14,8 @@ const ADMIN_EMAIL = "h9422320@gmail.com";
  * Une action serveur est un point d'entrée à part entière : elle ne traverse
  * pas le gabarit et n'hérite donc d'aucune de ses protections. Sans ce
  * contrôle, n'importe quel compte connecté pourrait écrire dans les données
- * commerciales en appelant l'action directement.
+ * commerciales en appelant l'action directement — ici, s'attribuer une part du
+ * chiffre d'affaires.
  */
 async function verifierAdmin(): Promise<boolean> {
   const supabase = await createServerClient();
@@ -32,142 +33,70 @@ async function verifierAdmin(): Promise<boolean> {
 }
 
 /**
- * Saisie d'un relevé hebdomadaire de vues.
+ * Règle la part du chiffre d'affaires d'un partenaire.
  *
- * Les réseaux sociaux ne permettent pas de lire ces chiffres automatiquement
- * sans une intégration par plateforme et une autorisation de l'influenceur. Le
- * relevé est donc saisi à la main, chaque lundi, comme convenu avec le
- * partenaire.
+ * Le pourcentage se modifie ici et nulle part ailleurs : c'est le seul chiffre
+ * qui décide de ce qu'on doit à quelqu'un. Écrit en dur dans le code, il aurait
+ * demandé un déploiement à chaque renégociation.
  */
-export async function enregistrerReleve(formData: FormData) {
+export async function reglerPartCa(formData: FormData) {
   if (!(await verifierAdmin())) {
     return { ok: false, message: "Accès refusé." };
   }
 
   const partnerId = String(formData.get("partner_id") ?? "");
-  const debut = String(formData.get("period_start") ?? "");
-  const fin = String(formData.get("period_end") ?? "");
-  const vues = Number(formData.get("views") ?? 0);
-  const publications = Number(formData.get("posts") ?? 0);
-  const notes = String(formData.get("notes") ?? "").trim() || null;
+  const part = Number(formData.get("part_ca_pct"));
+  const depuis = String(formData.get("remuneration_depuis") ?? "").trim() || null;
 
-  if (!partnerId || !debut || !fin) {
-    return { ok: false, message: "Période incomplète." };
+  if (!partnerId) return { ok: false, message: "Partenaire inconnu." };
+
+  // Cent pour cent est déjà la limite du raisonnable : au-delà, le projet
+  // reverserait plus qu'il n'encaisse. Un zéro reste permis — il suspend la
+  // rémunération sans effacer le partenaire.
+  if (!Number.isFinite(part) || part < 0 || part > 100) {
+    return { ok: false, message: "La part doit être comprise entre 0 et 100 %." };
   }
-  if (new Date(fin) < new Date(debut)) {
-    return { ok: false, message: "La fin de période précède son début." };
-  }
-
-  const sb = createAdminClient();
-  // `upsert` sur (partenaire, début de période) : ressaisir une semaine déjà
-  // enregistrée la corrige au lieu de la compter deux fois.
-  const { error } = await sb.from("partner_reports").upsert(
-    {
-      partner_id: partnerId,
-      period_start: debut,
-      period_end: fin,
-      views: Number.isFinite(vues) ? Math.max(0, Math.round(vues)) : 0,
-      posts: Number.isFinite(publications) ? Math.max(0, Math.round(publications)) : 0,
-      notes,
-    },
-    { onConflict: "partner_id,period_start" }
-  );
-
-  if (error) {
-    console.error("[PARTENAIRES] Relevé non enregistré :", error.message);
-    return { ok: false, message: "Enregistrement impossible." };
+  if (depuis && isNaN(new Date(depuis).getTime())) {
+    return { ok: false, message: "Date de départ invalide." };
   }
 
-  revalidatePath(`/admin/partenaires/${partnerId}`);
+  const { error } = await createAdminClient()
+    .from("partners")
+    .update({ part_ca_pct: part, remuneration_depuis: depuis })
+    .eq("id", partnerId);
+
+  if (error) return { ok: false, message: error.message };
+
   revalidatePath("/admin/partenaires");
-  return { ok: true, message: "Relevé enregistré." };
-}
-
-/** Supprime un relevé saisi par erreur. */
-export async function supprimerReleve(formData: FormData) {
-  if (!(await verifierAdmin())) return { ok: false, message: "Accès refusé." };
-
-  const releveId = String(formData.get("releve_id") ?? "");
-  const partnerId = String(formData.get("partner_id") ?? "");
-  if (!releveId) return { ok: false, message: "Relevé inconnu." };
-
-  const sb = createAdminClient();
-  const { error } = await sb.from("partner_reports").delete().eq("id", releveId);
-
-  if (error) {
-    console.error("[PARTENAIRES] Suppression impossible :", error.message);
-    return { ok: false, message: "Suppression impossible." };
-  }
-
   revalidatePath(`/admin/partenaires/${partnerId}`);
-  revalidatePath("/admin/partenaires");
-  return { ok: true, message: "Relevé supprimé." };
+  revalidatePath("/admin");
+  return { ok: true, message: `Part réglée à ${part} % du chiffre d'affaires mensuel.` };
 }
 
 /**
- * Modifie un relevé existant, identifié par son identifiant.
+ * Marque le forfait d'un partenaire comme versé.
  *
- * Distinct de l'enregistrement : celui-ci reconnaît une semaine à sa date de
- * début, ce qui ne permet pas de corriger la période elle-même. Ici l'on sait
- * exactement quelle ligne modifier, y compris ses dates.
+ * Hérité des anciens contrats à forfait. Conservé parce que ces montants ont
+ * réellement été engagés et doivent continuer d'apparaître au bilan : les
+ * effacer ferait mentir l'historique.
  */
-export async function modifierReleve(formData: FormData) {
-  if (!(await verifierAdmin())) return { ok: false, message: "Accès refusé." };
-
-  const releveId = String(formData.get("releve_id") ?? "");
-  const partnerId = String(formData.get("partner_id") ?? "");
-  const debut = String(formData.get("period_start") ?? "");
-  const fin = String(formData.get("period_end") ?? "");
-  const vues = Number(formData.get("views") ?? 0);
-  const publications = Number(formData.get("posts") ?? 0);
-  const notes = String(formData.get("notes") ?? "").trim() || null;
-
-  if (!releveId || !debut || !fin) return { ok: false, message: "Période incomplète." };
-  if (new Date(fin) < new Date(debut)) {
-    return { ok: false, message: "La fin de période précède son début." };
-  }
-
-  const sb = createAdminClient();
-  const { error } = await sb
-    .from("partner_reports")
-    .update({
-      period_start: debut,
-      period_end: fin,
-      views: Number.isFinite(vues) ? Math.max(0, Math.round(vues)) : 0,
-      posts: Number.isFinite(publications) ? Math.max(0, Math.round(publications)) : 0,
-      notes,
-    })
-    .eq("id", releveId);
-
-  if (error) {
-    console.error("[PARTENAIRES] Modification impossible :", error.message);
-    return { ok: false, message: "Modification impossible." };
-  }
-
-  revalidatePath(`/admin/partenaires/${partnerId}`);
-  revalidatePath("/admin/partenaires");
-  return { ok: true, message: "Relevé modifié." };
-}
-
-/** Marque le versement comme effectué, à la date du jour. */
 export async function marquerVerse(formData: FormData) {
-  if (!(await verifierAdmin())) return { ok: false, message: "Accès refusé." };
+  if (!(await verifierAdmin())) {
+    return { ok: false, message: "Accès refusé." };
+  }
 
   const partnerId = String(formData.get("partner_id") ?? "");
+  const verse = String(formData.get("paid") ?? "") === "true";
   if (!partnerId) return { ok: false, message: "Partenaire inconnu." };
 
-  const sb = createAdminClient();
-  const { error } = await sb
+  const { error } = await createAdminClient()
     .from("partners")
-    .update({ paid: true, paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .update({ paid: verse, paid_at: verse ? new Date().toISOString() : null })
     .eq("id", partnerId);
 
-  if (error) {
-    console.error("[PARTENAIRES] Versement non enregistré :", error.message);
-    return { ok: false, message: "Enregistrement impossible." };
-  }
+  if (error) return { ok: false, message: error.message };
 
-  revalidatePath(`/admin/partenaires/${partnerId}`);
   revalidatePath("/admin/partenaires");
-  return { ok: true, message: "Versement enregistré." };
+  revalidatePath(`/admin/partenaires/${partnerId}`);
+  return { ok: true, message: verse ? "Forfait marqué comme versé." : "Versement annulé." };
 }

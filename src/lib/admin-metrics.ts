@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase-admin';
 import { getRevenusMatchsUniques } from './match-unique';
 import { ACCES_OFFERTS, niveauOffert, normalizePlan, PLANS, PlanKey, PlanTier } from '@/lib/subscription';
-import { TAUX_POUR_MILLE_USD, TAUX_XOF } from '@/lib/partenaires';
+import { TAUX_XOF } from '@/lib/partenaires';
 import { getPrecisionReelle } from '@/lib/precision-reelle';
 
 /**
@@ -733,21 +733,42 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
   // Un total isolé ne dit rien. « 20 comptes » prend son sens rapporté aux
   // 3 abonnés, et « 20 000 FCFA » rapporté au coût des partenaires.
 
-  // Coût des partenaires : lu directement plutôt que via le module dédié, qui
-  // recharge toute la liste des comptes — déjà chargée ici.
+  // Part reversée aux partenaires.
+  //
+  // Ce n'est plus un coût fixe engagé d'avance : les partenaires sont associés
+  // au projet et touchent un pourcentage des recettes du mois. Un mois sans
+  // recette ne doit donc rien — l'ancien calcul aux vues facturait au contraire
+  // l'attention, qu'elle rapporte ou non.
+  //
+  // Lu directement plutôt que via le module dédié, qui recharge toute la liste
+  // des comptes — déjà chargée ici.
   let coutPartenairesXof = 0;
   try {
-    const [{ data: contrats }, { data: relevesPartenaires }] = await Promise.all([
-      supabase.from('partners').select('amount, currency'),
-      supabase.from('partner_reports').select('views'),
-    ]);
+    const moisCourant = new Date().toISOString().slice(0, 7);
+    const { data: contrats } = await supabase
+      .from('partners')
+      .select('amount, currency, paid, part_ca_pct, remuneration_depuis');
+
+    // Recettes du mois en cours, base du calcul de chaque part.
+    const recettesDuMois = abosEnrichis
+      .filter((s) => String(s.souscritLe).slice(0, 7) === moisCourant)
+      .reduce((t, s) => t + s.montant, 0);
+
     for (const c of contrats ?? []) {
-      coutPartenairesXof += Number((c as any).amount ?? 0) * (TAUX_XOF[(c as any).currency] ?? 0);
+      const pct = Number((c as any).part_ca_pct ?? 0);
+      const depuis = (c as any).remuneration_depuis as string | null;
+      // Rien n'est dû avant l'entrée en vigueur du partenariat : les recettes
+      // antérieures ont été faites sans lui.
+      if (pct > 0 && depuis && String(depuis).slice(0, 7) <= moisCourant) {
+        coutPartenairesXof += (recettesDuMois * pct) / 100;
+      }
+      // Forfaits hérités des anciens contrats, déjà versés.
+      if ((c as any).paid) {
+        coutPartenairesXof += Number((c as any).amount ?? 0) * (TAUX_XOF[(c as any).currency] ?? 0);
+      }
     }
-    const vues = (relevesPartenaires ?? []).reduce((t, r: any) => t + (r.views ?? 0), 0);
-    coutPartenairesXof += (vues / 1000) * TAUX_POUR_MILLE_USD * (TAUX_XOF.USD ?? 0);
   } catch {
-    // Table absente : le coût reste nul, aucune page ne doit tomber pour ça.
+    // Table absente : la part reste nulle, aucune page ne doit tomber pour ça.
   }
 
   const precision = await getPrecisionReelle().catch(() => null);

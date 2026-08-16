@@ -1,14 +1,32 @@
 /**
- * Partenaires influenceurs : contrats, dépenses et retombées.
+ * Partenaires ambassadeurs : contrats, part du chiffre d'affaires, versements.
+ *
+ * LE MODÈLE DE RÉMUNÉRATION
+ *
+ * Un partenaire n'est plus payé aux vues. Il est associé au projet et touche un
+ * POURCENTAGE DES RECETTES ENCAISSÉES CHAQUE MOIS. Kader : 35 %. Si le mois
+ * rapporte un million, il reçoit trois cent cinquante mille.
+ *
+ * Ce changement n'est pas cosmétique. Payer aux vues, c'est payer de
+ * l'attention, qu'elle rapporte ou non ; payer au pourcentage, c'est ne rien
+ * devoir un mois sans recette. Le montant dû n'est donc jamais saisi à la main :
+ * il se déduit des abonnements réellement encaissés.
+ *
+ * CE QUI COMPTE, ET À PARTIR DE QUAND
+ *
+ * Chaque partenaire porte une date de départ (`remuneration_depuis`). Les
+ * recettes antérieures ne lui reviennent pas : elles ont été faites sans lui.
+ * Sans cette date, un partenaire arrivé aujourd'hui toucherait un pourcentage
+ * de tout l'historique du projet.
  *
  * L'accès VIP d'un partenaire reste ouvert par la liste d'adresses du module
  * d'abonnement — une panne de base ne doit jamais lui retirer son accès. Ce
  * module porte l'autre moitié : qui est la personne, ce qui a été convenu,
- * combien elle a coûté, ce qu'elle a rapporté.
+ * et ce qu'on lui doit.
  */
 
 import { createAdminClient } from './supabase-admin';
-import { niveauOffert } from './subscription';
+import { niveauOffert, PLANS, normalizePlan, type PlanKey } from './subscription';
 
 export interface Partenaire {
   id: string;
@@ -28,17 +46,25 @@ export interface Partenaire {
   status: string;
   notes: string | null;
   created_at: string;
+  /** Part du chiffre d'affaires mensuel, en pourcentage. */
+  part_ca_pct: number;
+  /** Date à partir de laquelle les recettes lui sont comptées. */
+  remuneration_depuis: string | null;
 }
 
-export interface ReleveePartenaire {
-  id: string;
-  partner_id: string;
-  period_start: string;
-  period_end: string;
-  views: number;
-  posts: number;
-  signups: number;
-  notes: string | null;
+/** Ce qu'un mois a rapporté, et ce qu'il doit au partenaire. */
+export interface MoisPartenaire {
+  /** Premier jour du mois, au format AAAA-MM. */
+  mois: string;
+  libelle: string;
+  /** Recettes encaissées ce mois-là, à partir de la date de départ. */
+  recettesXof: number;
+  /** Nombre d'abonnements encaissés dans le mois. */
+  ventes: number;
+  /** Part due au partenaire pour ce mois. */
+  duXof: number;
+  /** Le mois est-il terminé ? Un mois en cours peut encore monter. */
+  clos: boolean;
 }
 
 /** Ce que l'administration affiche pour chaque partenaire. */
@@ -51,30 +77,22 @@ export interface PartenaireEnrichi extends Partenaire {
   inscrit: boolean;
   inscritLe: string | null;
   derniereConnexion: string | null;
-  /** Cumul des vues relevées, toutes semaines confondues. */
-  vuesCumulees: number;
-  publications: number;
-  /** Ce que ses vues valent au tarif convenu, en dollars. */
-  duPourVuesUsd: number;
-  releves: ReleveePartenaire[];
+  /** Un poste par mois depuis le début du partenariat, du plus récent au plus ancien. */
+  mois: MoisPartenaire[];
+  /** Recettes du mois en cours qui lui sont comptées. */
+  recettesMoisEnCoursXof: number;
+  /** Ce qu'il touche pour le mois en cours, à ce jour. */
+  duMoisEnCoursXof: number;
+  /** Somme de tout ce qui lui est dû depuis le début, mois clos compris. */
+  duCumuleXof: number;
 }
-
-/**
- * Tarif convenu avec les influenceurs : 1 dollar pour mille vues.
- *
- * Identique pour tous les partenaires. Ce n'est donc pas une valeur calculée à
- * partir de ce qui a été versé, mais le prix du contrat : ce que rapportent
- * mille vues à celui qui les apporte.
- */
-export const TAUX_POUR_MILLE_USD = 1;
 
 /**
  * Taux de conversion vers le franc CFA.
  *
  * L'euro est arrimé au franc CFA à une parité fixe et officielle. Le dollar
  * flotte : sa valeur est une approximation, affichée comme telle partout où
- * elle sert. Ces taux ne servent qu'à rapprocher dépenses et recettes ; les
- * montants des contrats restent toujours présentés dans leur devise d'origine.
+ * elle sert.
  */
 export const TAUX_XOF: Record<string, number> = {
   XOF: 1,
@@ -96,22 +114,99 @@ export function montantPartenaire(montant: number, devise: string): string {
   return `${valeur} ${symbole[devise] ?? devise}`;
 }
 
-/** Ce que les vues relevées valent au tarif convenu, en dollars. */
-export function montantDuPourVues(vues: number): number {
-  return (Number(vues ?? 0) / 1000) * TAUX_POUR_MILLE_USD;
+/** Montant encaissé pour un abonnement, d'après l'offre souscrite. */
+function montantAbonnement(plan: string | null): number {
+  const cle = normalizePlan(plan) as PlanKey | null;
+  return cle ? PLANS[cle].amountXof : 0;
+}
+
+/**
+ * Recettes encaissées, regroupées par mois.
+ *
+ * Lues dans les abonnements et non dans un compteur tenu à part : un chiffre
+ * recopié finit toujours par diverger de la réalité, et c'est sur ce chiffre
+ * qu'on paie quelqu'un.
+ */
+async function recettesParMois(depuis: Date): Promise<Map<string, { xof: number; ventes: number }>> {
+  const parMois = new Map<string, { xof: number; ventes: number }>();
+  const { data, error } = await createAdminClient()
+    .from('subscriptions')
+    .select('plan, created_at')
+    .gte('created_at', depuis.toISOString());
+
+  if (error) {
+    console.warn('[PARTENAIRES] Recettes illisibles :', error.message);
+    return parMois;
+  }
+
+  for (const ligne of data ?? []) {
+    const montant = montantAbonnement(ligne.plan);
+    if (!montant) continue;
+    const mois = String(ligne.created_at).slice(0, 7); // AAAA-MM
+    const poste = parMois.get(mois) ?? { xof: 0, ventes: 0 };
+    poste.xof += montant;
+    poste.ventes += 1;
+    parMois.set(mois, poste);
+  }
+  return parMois;
+}
+
+const NOMS_MOIS = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+];
+
+function libelleMois(mois: string): string {
+  const [annee, m] = mois.split('-');
+  return `${NOMS_MOIS[Number(m) - 1]} ${annee}`;
+}
+
+/**
+ * Découpe le partenariat en mois, du départ à aujourd'hui.
+ *
+ * Les mois sans recette apparaissent quand même, à zéro : un mois creux fait
+ * partie du bilan, le masquer donnerait une image flatteuse et fausse.
+ */
+function construireMois(
+  depuis: Date,
+  recettes: Map<string, { xof: number; ventes: number }>,
+  partPct: number
+): MoisPartenaire[] {
+  const mois: MoisPartenaire[] = [];
+  const maintenant = new Date();
+  const moisCourant = maintenant.toISOString().slice(0, 7);
+
+  const curseur = new Date(depuis.getFullYear(), depuis.getMonth(), 1);
+  const fin = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+
+  while (curseur <= fin) {
+    const cle = `${curseur.getFullYear()}-${String(curseur.getMonth() + 1).padStart(2, '0')}`;
+    const poste = recettes.get(cle) ?? { xof: 0, ventes: 0 };
+    mois.push({
+      mois: cle,
+      libelle: libelleMois(cle),
+      recettesXof: poste.xof,
+      ventes: poste.ventes,
+      duXof: Math.round((poste.xof * partPct) / 100),
+      clos: cle !== moisCourant,
+    });
+    curseur.setMonth(curseur.getMonth() + 1);
+  }
+
+  return mois.reverse(); // le mois en cours en premier
 }
 
 /**
  * Liste des partenaires, enrichie de ce qui vit ailleurs : l'accès réellement
- * ouvert, l'existence du compte, et le cumul des relevés.
+ * ouvert, l'existence du compte, et la part du chiffre d'affaires.
  */
 export async function getPartenaires(): Promise<PartenaireEnrichi[]> {
   const sb = createAdminClient();
 
-  const [{ data: partenaires, error }, { data: releves }] = await Promise.all([
-    sb.from('partners').select('*').order('created_at', { ascending: true }),
-    sb.from('partner_reports').select('*').order('period_start', { ascending: false }),
-  ]);
+  const { data: partenaires, error } = await sb
+    .from('partners')
+    .select('*')
+    .order('created_at', { ascending: true });
 
   if (error) {
     console.warn('[PARTENAIRES] Table absente ou illisible :', error.message);
@@ -136,22 +231,46 @@ export async function getPartenaires(): Promise<PartenaireEnrichi[]> {
     console.warn('[PARTENAIRES] Comptes illisibles :', erreur?.message);
   }
 
+  // Une seule lecture des recettes pour tout le monde, à partir de la date de
+  // départ la plus ancienne.
+  const departs = (partenaires as Partenaire[])
+    .map((p) => (p.remuneration_depuis ? new Date(p.remuneration_depuis) : null))
+    .filter((d): d is Date => !!d && !isNaN(d.getTime()));
+  const plusAncien = departs.length ? new Date(Math.min(...departs.map((d) => d.getTime()))) : new Date();
+  const recettes = await recettesParMois(plusAncien);
+
+  const moisCourant = new Date().toISOString().slice(0, 7);
+
   return (partenaires as Partenaire[]).map((p) => {
     const compte = comptes.get(p.email.toLowerCase());
-    const siens = ((releves ?? []) as ReleveePartenaire[]).filter((r) => r.partner_id === p.id);
-    const vuesCumulees = siens.reduce((t, r) => t + (r.views ?? 0), 0);
+    const partPct = Number(p.part_ca_pct ?? 0);
+    const depart = p.remuneration_depuis ? new Date(p.remuneration_depuis) : null;
+
+    // Chaque partenaire ne voit que les mois qui le concernent : les recettes
+    // d'avant son arrivée ont été faites sans lui.
+    const siennes = new Map<string, { xof: number; ventes: number }>();
+    if (depart && !isNaN(depart.getTime())) {
+      const moisDepart = depart.toISOString().slice(0, 7);
+      for (const [mois, poste] of recettes) {
+        if (mois >= moisDepart) siennes.set(mois, poste);
+      }
+    }
+
+    const mois = depart && !isNaN(depart.getTime()) ? construireMois(depart, siennes, partPct) : [];
+    const enCours = mois.find((m) => m.mois === moisCourant);
+
     return {
       ...p,
+      part_ca_pct: partPct,
       accesOuvert: niveauOffert(p.email),
-      // Permet d ouvrir la fiche du compte depuis la page du partenaire.
       userId: compte?.id ?? null,
       inscrit: !!compte,
       inscritLe: compte?.created_at ?? null,
       derniereConnexion: compte?.last_sign_in_at ?? null,
-      vuesCumulees,
-      publications: siens.reduce((t, r) => t + (r.posts ?? 0), 0),
-      duPourVuesUsd: montantDuPourVues(vuesCumulees),
-      releves: siens,
+      mois,
+      recettesMoisEnCoursXof: enCours?.recettesXof ?? 0,
+      duMoisEnCoursXof: enCours?.duXof ?? 0,
+      duCumuleXof: mois.reduce((t, m) => t + m.duXof, 0),
     };
   });
 }
@@ -162,86 +281,53 @@ export async function getPartenaire(id: string): Promise<PartenaireEnrichi | nul
   return tous.find((p) => p.id === id) ?? null;
 }
 
-/** Totaux du budget engagé, par devise — sans conversion arbitraire. */
-export function totauxParDevise(partenaires: PartenaireEnrichi[]) {
-  const totaux = new Map<string, { engage: number; verse: number; nombre: number }>();
-  for (const p of partenaires) {
-    const t = totaux.get(p.currency) ?? { engage: 0, verse: 0, nombre: 0 };
-    t.engage += Number(p.amount ?? 0);
-    if (p.paid) t.verse += Number(p.amount ?? 0);
-    t.nombre += 1;
-    totaux.set(p.currency, t);
-  }
-  return [...totaux.entries()]
-    .map(([devise, t]) => ({ devise, ...t }))
-    .sort((a, b) => b.engage - a.engage);
-}
-
 /**
- * Le tableau de bord économique : ce que les partenaires coûtent, ce que
- * l'application encaisse, et ce qu'il reste.
+ * Le bilan de l'ensemble des partenaires.
  *
- * Tout est rapporté au franc CFA pour être comparable — c'est le seul moyen de
- * répondre à la question « est-ce que ça vaut le coup ». Les taux employés sont
- * affichés à l'écran pour que le chiffre reste vérifiable.
+ * Ce que le projet encaisse, ce qu'il en reverse, et ce qu'il lui reste. La
+ * part reversée n'est plus un coût fixe engagé d'avance : elle suit les
+ * recettes, et vaut zéro si le mois ne rapporte rien.
  */
 export interface EconomiePartenaires {
-  vuesTotales: number;
-  publicationsTotales: number;
-  /** Dû au tarif convenu, en dollars, pour l'ensemble des vues relevées. */
-  duPourVuesUsd: number;
-  /** Forfaits déjà versés, converti. */
+  /** Recettes du mois en cours, toutes offres confondues. */
+  recettesMoisXof: number;
+  /** Total reversé aux partenaires pour le mois en cours. */
+  partPartenairesMoisXof: number;
+  /** Ce qui reste au projet ce mois-ci. */
+  resteAuProjetMoisXof: number;
+  /** Somme due depuis le début des partenariats. */
+  duCumuleXof: number;
+  /** Part cumulée du chiffre d'affaires reversée, en pourcentage. */
+  partTotalePct: number;
+  /** Forfaits déjà versés, converti — hérité des anciens contrats. */
   verseXof: number;
-  /** Forfaits engagés mais pas encore versés, converti. */
-  resteAVerserXof: number;
-  /** Dû pour les vues, converti. */
-  duPourVuesXof: number;
-  /** Total de ce que la campagne coûte : forfaits engagés + dû sur les vues. */
-  coutTotalXof: number;
-  /** Recettes encaissées depuis le début, lues dans les abonnements. */
-  recettesXof: number;
-  /** Recettes moins coût total. Négatif tant que la campagne n'a pas payé. */
-  resultatXof: number;
-  /** Recettes rapportées au coût. `null` si rien n'a encore été dépensé. */
-  retourSurInvestissement: number | null;
-  /** Recettes nécessaires pour couvrir le coût, exprimées en abonnements VIP. */
-  abonnementsPourRentabiliser: number;
+  nombrePartenaires: number;
 }
 
-export function calculerEconomie(
-  partenaires: PartenaireEnrichi[],
-  recettesXof: number,
-  prixAbonnementXof: number
-): EconomiePartenaires {
-  const vuesTotales = partenaires.reduce((t, p) => t + p.vuesCumulees, 0);
-  const publicationsTotales = partenaires.reduce((t, p) => t + p.publications, 0);
+export function calculerEconomie(partenaires: PartenaireEnrichi[]): EconomiePartenaires {
+  const moisCourant = new Date().toISOString().slice(0, 7);
 
-  const duPourVuesUsd = montantDuPourVues(vuesTotales);
-  const duPourVuesXof = versXof(duPourVuesUsd, 'USD');
+  // Les recettes du mois sont celles du projet, pas la somme par partenaire :
+  // additionner les vues de chacun compterait plusieurs fois le même argent
+  // dès qu'il y a deux partenaires.
+  const recettesMoisXof = Math.max(
+    0,
+    ...partenaires.map((p) => p.mois.find((m) => m.mois === moisCourant)?.recettesXof ?? 0)
+  );
 
-  let verseXof = 0;
-  let engageXof = 0;
-  for (const p of partenaires) {
-    const converti = versXof(Number(p.amount ?? 0), p.currency);
-    engageXof += converti;
-    if (p.paid) verseXof += converti;
-  }
-
-  const coutTotalXof = engageXof + duPourVuesXof;
-  const resultatXof = recettesXof - coutTotalXof;
+  const partPartenairesMoisXof = partenaires.reduce((t, p) => t + p.duMoisEnCoursXof, 0);
+  const partTotalePct = partenaires.reduce((t, p) => t + Number(p.part_ca_pct ?? 0), 0);
 
   return {
-    vuesTotales,
-    publicationsTotales,
-    duPourVuesUsd,
-    verseXof,
-    resteAVerserXof: engageXof - verseXof,
-    duPourVuesXof,
-    coutTotalXof,
-    recettesXof,
-    resultatXof,
-    retourSurInvestissement: coutTotalXof > 0 ? recettesXof / coutTotalXof : null,
-    abonnementsPourRentabiliser:
-      prixAbonnementXof > 0 ? Math.ceil(coutTotalXof / prixAbonnementXof) : 0,
+    recettesMoisXof,
+    partPartenairesMoisXof,
+    resteAuProjetMoisXof: recettesMoisXof - partPartenairesMoisXof,
+    duCumuleXof: partenaires.reduce((t, p) => t + p.duCumuleXof, 0),
+    partTotalePct,
+    verseXof: partenaires.reduce(
+      (t, p) => t + (p.paid ? versXof(Number(p.amount ?? 0), p.currency) : 0),
+      0
+    ),
+    nombrePartenaires: partenaires.length,
   };
 }
