@@ -61,6 +61,17 @@ export async function updateSession(request: NextRequest) {
     // en conservant les cookies (notamment l'effacement de session) posés par Supabase.
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    // LA PAGE DEMANDÉE EST MÉMORISÉE.
+    //
+    // Sans cela, la connexion renvoyait TOUJOURS vers l'analyse : quelqu'un qui
+    // demandait l'administration se connectait, atterrissait ailleurs, et en
+    // concluait qu'il n'avait pas les droits. Il lui fallait deviner qu'il
+    // devait retaper l'adresse.
+    //
+    // Seul le chemin est conservé, jamais une adresse complète : un paramètre
+    // libre permettrait d'expédier quelqu'un vers un site tiers depuis notre
+    // propre page de connexion.
+    url.searchParams.set('suite', request.nextUrl.pathname)
     const redirectResponse = NextResponse.redirect(url)
     supabaseResponse.cookies.getAll().forEach(cookie => redirectResponse.cookies.set(cookie))
     return redirectResponse

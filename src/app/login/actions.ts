@@ -44,6 +44,27 @@ function destinationApres(formData: FormData): string {
   const propre = (v: FormDataEntryValue | null) =>
     typeof v === 'string' && /^[a-z0-9_-]{1,40}$/i.test(v) ? v : null
 
+  // LA PAGE RÉELLEMENT DEMANDÉE PASSE EN PREMIER.
+  //
+  // Quelqu'un qui ouvrait /admin sans session se connectait, puis atterrissait
+  // sur l'analyse — et en concluait qu'il n'avait pas les droits. Il fallait
+  // deviner qu'il devait retaper l'adresse.
+  //
+  // On n'accepte QU'UN CHEMIN INTERNE, jamais une adresse complète : sans cette
+  // contrainte, un lien de connexion truqué renverrait la personne vers un site
+  // tiers juste après avoir saisi son mot de passe. Les deux barres obliques
+  // sont refusées explicitement — « //ailleurs.com » est une adresse externe
+  // valide pour un navigateur, tout en ressemblant à un chemin interne.
+  const suite = formData.get('suite')
+  if (
+    typeof suite === 'string' &&
+    suite.startsWith('/') &&
+    !suite.startsWith('//') &&
+    /^\/[a-z0-9/_-]{0,60}$/i.test(suite)
+  ) {
+    return suite
+  }
+
   const t1 = propre(formData.get('t1'))
   const t2 = propre(formData.get('t2'))
 

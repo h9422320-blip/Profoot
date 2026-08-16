@@ -10,7 +10,6 @@ import {
 import { useState, useEffect } from "react";
 import { logout } from "@/app/login/actions";
 import { createClient } from "@/utils/supabase/client";
-import { estAdmin } from "@/lib/admins";
 import Image from "next/image";
 
 import { useLanguage } from "@/context/LanguageContext";
@@ -25,10 +24,20 @@ export function Sidebar() {
   const [isPro, setIsPro] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Le lien vers l'administration N'EXISTAIT PAS.
+  //
+  // `isAdmin` était calculé, puis n'affichait rien. Un administrateur devait
+  // donc connaître l'adresse et la taper à la main — et comme la connexion
+  // renvoie toujours vers l'analyse, il se retrouvait à croire qu'il n'avait
+  // pas les droits. C'est exactement ce qui est arrivé au deuxième
+  // administrateur le jour de son ajout.
   const mainNav = [
     { href: "/analyze", label: t("sidebar.tacticalAnalysis"), icon: Brain },
     { href: "/competitions", label: t("sidebar.competitions"), icon: Trophy },
     { href: "/expert", label: "Agent VIP (ProFoot)", icon: Shield, special: true },
+    ...(isAdmin
+      ? [{ href: "/admin", label: "Administration", icon: Shield, special: false }]
+      : []),
   ];
 
   // Fonction pour compter les analyses du jour
@@ -49,10 +58,7 @@ export function Sidebar() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email) {
-        setUserEmail(user.email);
-        setIsAdmin(estAdmin(user.email));
-      }
+      if (user?.email) setUserEmail(user.email);
     });
 
     // Check Pro Status
@@ -60,6 +66,10 @@ export function Sidebar() {
       .then(res => res.json())
       .then(data => {
         setIsPro(data.isPro);
+        // C est le SERVEUR qui dit qui est administrateur. Le calculer dans le
+        // navigateur obligerait a y embarquer la liste des adresses, qui
+        // partirait alors dans le code public de chaque visiteur.
+        setIsAdmin(!!data.isAdmin);
       })
       .catch(console.error);
 

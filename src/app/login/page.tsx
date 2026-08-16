@@ -18,19 +18,32 @@ import { ProFootLogo } from '@/components/ui/ProFootLogo'
  */
 function ChampsMatchPaye() {
   const [equipes, setEquipes] = useState<{ t1: string; t2: string } | null>(null)
+  // Page demandée avant d'être renvoyé ici. Sans elle, quelqu'un qui ouvrait
+  // /admin se connectait puis atterrissait sur l'analyse, et en concluait qu'il
+  // n'avait pas les droits.
+  const [suite, setSuite] = useState<string | null>(null)
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
     const t1 = p.get('t1')
     const t2 = p.get('t2')
     if (t1 && t2) setEquipes({ t1, t2 })
+
+    // Un chemin interne uniquement. La validation est refaite côté serveur —
+    // celle-ci n'est qu'un confort, le navigateur n'est jamais une autorité.
+    const s = p.get('suite')
+    if (s && s.startsWith('/') && !s.startsWith('//')) setSuite(s)
   }, [])
 
-  if (!equipes) return null
   return (
     <>
-      <input type="hidden" name="t1" value={equipes.t1} />
-      <input type="hidden" name="t2" value={equipes.t2} />
+      {suite && <input type="hidden" name="suite" value={suite} />}
+      {equipes && (
+        <>
+          <input type="hidden" name="t1" value={equipes.t1} />
+          <input type="hidden" name="t2" value={equipes.t2} />
+        </>
+      )}
     </>
   )
 }
