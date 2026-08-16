@@ -136,7 +136,11 @@ function CartePreuve({ p }: { p: Preuve }) {
 }
 
 export default async function SectionPreuves({
-  limite = 8,
+  // Huit cartes coupaient des réussites du jour : la victoire du Barça et
+  // celle du Real, toutes deux justes, tombaient hors du mur. Un visiteur ne
+  // fait pas défiler indéfiniment, mais rien de correct ne doit disparaître
+  // faute de place.
+  limite = 16,
   avecEntete = true,
 }: {
   limite?: number;

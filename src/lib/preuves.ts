@@ -78,6 +78,28 @@ const PERIODES_DEFECTUEUSES: { debut: string; fin: string; raison: string }[] = 
   },
 ];
 
+/**
+ * La colonne `masquee_par_admin` existe-t-elle ?
+ *
+ * Elle est arrivée après la table. Tant que le script SQL n'a pas été exécuté,
+ * la demander ferait échouer TOUTE la reconstruction du mur — pour un simple
+ * confort. On la sonde une fois, puis on s'en souvient.
+ */
+let colonneMasquageDisponible: boolean | null = null;
+
+async function masquageDisponible(sb: ReturnType<typeof createAdminClient>): Promise<boolean> {
+  if (colonneMasquageDisponible !== null) return colonneMasquageDisponible;
+  const { error } = await sb.from('preuves').select('masquee_par_admin').limit(1);
+  colonneMasquageDisponible = !error;
+  if (error) {
+    console.warn(
+      "[PREUVES] Colonne masquee_par_admin absente : un retrait manuel sera annulé " +
+        'à la prochaine reconstruction. Exécutez le script SQL fourni.'
+    );
+  }
+  return colonneMasquageDisponible;
+}
+
 const produiteParUneVersionDefectueuse = (creeeLe: string | null | undefined) => {
   if (!creeeLe) return false;
   const t = new Date(creeeLe).getTime();
@@ -86,13 +108,27 @@ const produiteParUneVersionDefectueuse = (creeeLe: string | null | undefined) =>
   );
 };
 
-async function competitionDuMatch(fixtureId: number | null): Promise<string | null> {
-  if (!fixtureId) return null;
+/**
+ * La compétition ET la date réelles d'une rencontre, lues sur sa fiche.
+ *
+ * La date affichée était celle de la VÉRIFICATION, pas celle du match : une
+ * rencontre du 13 août contrôlée le 16 s'annonçait « 16 août » sur la carte.
+ * Un visiteur qui connaît le calendrier voit l'erreur, et une date fausse jette
+ * le doute sur le pronostic lui-même.
+ *
+ * Elle sert aussi à classer : à notoriété égale, c'est le match du jour qui
+ * doit passer devant.
+ */
+async function ficheDuMatch(
+  fixtureId: number | null
+): Promise<{ competition: string | null; date: string | null }> {
+  if (!fixtureId) return { competition: null, date: null };
   try {
     const data = await apiFootball<any>(`/fixtures?id=${fixtureId}`, CACHE_TTL.STANDINGS);
-    return data?.response?.[0]?.league?.name ?? null;
+    const f = data?.response?.[0];
+    return { competition: f?.league?.name ?? null, date: f?.fixture?.date ?? null };
   } catch {
-    return null;
+    return { competition: null, date: null };
   }
 }
 
@@ -311,6 +347,8 @@ export async function construirePreuves(): Promise<{
       );
   }
 
+  const avecMasquage = await masquageDisponible(sb);
+
   let reussites = 0;
   let creees = 0;
 
@@ -352,9 +390,13 @@ export async function construirePreuves(): Promise<{
     // jamais « publiee » sur une ligne déjà connue.
     const { data: existante } = await sb
       .from('preuves')
-      .select('id, publiee')
+      // Toutes les colonnes : la liste varie selon que le script SQL a été
+      // exécuté ou non, et une liste dynamique empêche le typage de suivre.
+      .select('*')
       .eq('fixture_id', l.fixture_id ?? -1)
       .maybeSingle();
+
+    const fiche = await ficheDuMatch(l.fixture_id);
 
     const valeurs: Record<string, any> = {
       fixture_id: l.fixture_id ?? null,
@@ -364,8 +406,10 @@ export async function construirePreuves(): Promise<{
       team2_logo: l.team2_logo ?? null,
       // La fiche du match fait foi ; le libellé enregistré à l'analyse ne sert
       // que de repli quand le fournisseur ne répond pas.
-      competition: (await competitionDuMatch(l.fixture_id)) ?? l.competition ?? null,
-      date_match: m.dateMatch,
+      competition: fiche.competition ?? l.competition ?? null,
+      // La date du match, pas celle du controle. Repli sur la date de
+      // verification quand le fournisseur ne repond pas.
+      date_match: fiche.date ?? m.dateMatch,
       prono_issue: buts ? issue(buts[0], buts[1]) : null,
       prono_score: pronoScore,
       score_reel: l.real_score ?? null,
@@ -376,10 +420,21 @@ export async function construirePreuves(): Promise<{
       updated_at: new Date().toISOString(),
     };
 
-    // Un échec ne peut jamais devenir publié — la base le refuserait de toute
-    // façon, mais autant ne pas le lui demander.
-    if (!existante) valeurs.publiee = issueCorrecte;
-    else if (!issueCorrecte) valeurs.publiee = false;
+    // ── UNE RÉUSSITE EST PUBLIÉE, MÊME SI ELLE A ÉTÉ RATÉE AVANT ──────────
+    //
+    // La règle précédente ne posait `publiee` qu'à la création. Une preuve
+    // d'abord classée ratée — puis devenue juste, parce que le résultat est
+    // arrivé plus tard ou parce qu'un défaut d'orientation a été corrigé —
+    // restait cachée pour toujours.
+    //
+    // Cas réel : Santa Clara — Academico Viseu, pronostic 1-0, résultat 1-0.
+    // Un SCORE EXACT invisible sur le mur.
+    //
+    // Le seul cas où l'on ne republie pas, c'est un retrait décidé à la main :
+    // il est marqué par `masquee_par_admin`, et rien d'automatique ne revient
+    // dessus.
+    const retireeALaMain = avecMasquage && (existante as any)?.masquee_par_admin === true;
+    valeurs.publiee = issueCorrecte && !retireeALaMain;
 
     if (existante) {
       await sb.from('preuves').update(valeurs).eq('id', existante.id);
@@ -504,8 +559,17 @@ export async function getPreuvesPubliques(limite = 10): Promise<{
     const poidsA = poidsAffiche(a, grandsClubs);
     const poidsB = poidsAffiche(b, grandsClubs);
     if (poidsA !== poidsB) return poidsB - poidsA;
+    // À notoriété égale, LE PLUS RÉCENT D'ABORD.
+    //
+    // Le score exact passait avant la date : une belle réussite d'il y a trois
+    // jours reléguait la victoire du Barça du jour même plus bas que le premier
+    // écran. Or c'est le match d'aujourd'hui qui prouve que l'outil marche
+    // aujourd'hui.
+    const dateA = String(a.dateMatch ?? '');
+    const dateB = String(b.dateMatch ?? '');
+    if (dateA.slice(0, 10) !== dateB.slice(0, 10)) return dateB.localeCompare(dateA);
     if (a.scoreExact !== b.scoreExact) return a.scoreExact ? -1 : 1;
-    return String(b.dateMatch ?? '').localeCompare(String(a.dateMatch ?? ''));
+    return dateB.localeCompare(dateA);
   });
 
   const ilYAUneSemaine = Date.now() - 7 * 86400000;
@@ -624,7 +688,16 @@ export async function basculerPublication(
 
   const { error } = await sb
     .from('preuves')
-    .update({ publiee, updated_at: new Date().toISOString() })
+    // Le retrait manuel est mémorisé : sans cela, la reconstruction
+    // quotidienne remettrait en ligne une preuve que l'administrateur vient
+    // d'enlever, et il croirait le bouton cassé.
+    .update({
+      publiee,
+      // Mémorisé seulement si la colonne existe : sinon la mise à jour entière
+      // échouerait et le bouton paraîtrait cassé.
+      ...((await masquageDisponible(sb)) ? { masquee_par_admin: !publiee } : {}),
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id);
 
   return error ? { ok: false, erreur: error.message } : { ok: true };
