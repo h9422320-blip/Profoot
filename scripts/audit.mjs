@@ -692,6 +692,72 @@ async function verifierPartenaires() {
   else ok('accès administrateur réservé au seul compte fondateur');
 }
 
+// ── 10. Équipes sélectionnables ──────────────────────────────────────────────
+
+/**
+ * Un sélecteur d'équipes en panne ne produit AUCUNE erreur.
+ *
+ * L'abonné cherche son club, ne le trouve pas, et en conclut que
+ * l'application ne connaît pas son match. Il ne se plaint pas : il ne
+ * revient pas. C'est arrivé au FC Bâle le 16/08/2026, le jour de
+ * Bâle–Barcelone, et rien ne l'a signalé — c'est un utilisateur qui l'a vu.
+ *
+ * Les trois pannes possibles sont silencieuses :
+ *   – la réserve se vide ou vieillit, et le sélecteur ne propose plus rien ;
+ *   – un championnat disparaît de la relecture, et tout un pays s'évapore ;
+ *   – deux clubs partagent un identifiant, et on analyse le mauvais.
+ */
+async function verifierEquipes() {
+  titre('10. ÉQUIPES SÉLECTIONNABLES');
+
+  const { data, error } = await sb
+    .from('equipes')
+    .select('id, api_id, nom, championnat, mise_a_jour_le');
+
+  if (error) {
+    // Sans la réserve l'application interroge le fournisseur : elle fonctionne,
+    // mais chaque démarrage à froid coûte cinquante-huit appels.
+    attention(`réserve d'équipes illisible (${error.message}) — le fournisseur est interrogé à chaque fois`);
+    return;
+  }
+  if (!data?.length) {
+    alerte("aucune équipe en réserve — le sélecteur dépend entièrement du fournisseur");
+    return;
+  }
+
+  const heures = (Date.now() - Math.max(...data.map((e) => new Date(e.mise_a_jour_le).getTime()))) / 3600000;
+  if (heures > 48) alerte(`réserve d'équipes vieille de ${Math.round(heures)} h — la tâche quotidienne ne tourne plus`);
+  else if (heures > 26) attention(`réserve d'équipes vieille de ${Math.round(heures)} h`);
+  else ok(`${data.length} équipes en réserve, relues il y a ${heures < 1 ? 'moins d’une heure' : Math.round(heures) + ' h'}`);
+
+  // Un même identifiant pour deux clubs fait analyser le mauvais, sans rien
+  // signaler. Arsenal (Angleterre) et Arsenal (Biélorussie) l'ont déjà fait.
+  const doublons = data.length - new Set(data.map((e) => e.id)).size;
+  if (doublons > 0) alerte(`${doublons} identifiant(s) d'équipe en double — un club peut en analyser un autre`);
+  else ok('aucun identifiant d’équipe en double');
+
+  // Un championnat qui fond signale une relecture partielle : une première
+  // division compte rarement moins de huit clubs.
+  const parLigue = {};
+  for (const e of data) parLigue[e.championnat] = (parLigue[e.championnat] || 0) + 1;
+  const maigres = Object.entries(parLigue).filter(([, n]) => n < 8);
+  if (maigres.length)
+    alerte(`championnat(s) incomplet(s) : ${maigres.map(([l, n]) => `${l} (${n} équipes)`).join(', ')}`);
+  else ok(`${Object.keys(parLigue).length} championnats couverts, tous complets`);
+
+  // Témoins : des clubs qui DOIVENT être sélectionnables. Choisis hors des
+  // cinq grands championnats, là où les trous se forment sans qu'on les voie.
+  // Numéros relevés dans la réserve, jamais devinés : écrits de mémoire, deux
+  // d'entre eux étaient faux et l'audit accusait l'application à tort.
+  const TEMOINS = [
+    [551, 'FC Bâle'], [257, 'Rangers'], [42, 'Arsenal'],
+    [556, 'Qarabag'], [566, 'Ludogorets'], [568, 'Sheriff Tiraspol'],
+  ];
+  const absents = TEMOINS.filter(([id]) => !data.some((e) => e.api_id === id));
+  if (absents.length) alerte(`club(s) introuvable(s) dans le sélecteur : ${absents.map(([, n]) => n).join(', ')}`);
+  else ok(`clubs témoins tous sélectionnables (${TEMOINS.map(([, n]) => n).join(', ')})`);
+}
+
 // ── Exécution ────────────────────────────────────────────────────────────────
 
 console.log(`AUDIT PROFOOT — ${new Date().toLocaleString('fr-FR')}`);
@@ -706,6 +772,7 @@ for (const [nom, verification] of [
   ['agent', verifierAgentVip],
   ['site', verifierSitePublic],
   ['partenaires', verifierPartenaires],
+  ['équipes', verifierEquipes],
 ]) {
   try {
     await verification();
