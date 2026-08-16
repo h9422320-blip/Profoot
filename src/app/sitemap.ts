@@ -23,6 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Ouvertes au public le 16/08/2026. Ce sont, avec le mur de preuves, les
     // seules pages du site qui portent du contenu football indexable : tout le
     // reste vit derrière la connexion, et Google ne voyait donc rien à référencer.
+    { url: `${SITE_URL}/matches`, lastModified: now, changeFrequency: 'hourly', priority: 0.95 },
     { url: `${SITE_URL}/competitions`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${SITE_URL}/standings`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${SITE_URL}/pricing`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },

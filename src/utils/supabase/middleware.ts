@@ -65,12 +65,24 @@ export async function updateSession(request: NextRequest) {
   // Restent protégés : l'analyse par IA, l'Agent VIP, l'historique personnel et
   // tout ce qui touche au compte. C'est le produit payant, il ne s'indexe pas.
   //
-  // /matches, /club et /match restent fermés pour une autre raison : ils
-  // affichent encore des rencontres écrites à la main, datées d'avril 2026,
-  // avec des pronostics inventés. Les ouvrir publierait de fausses données.
-  const protectedPaths = ['/dashboard', '/analyze', '/match', '/matches', '/club', '/settings', '/history', '/stats', '/search', '/ia-center', '/expert', '/payment-success', '/payment-failed', '/admin'];
+  // /matches a rejoint les pages publiques le 16/08/2026, une fois branchée
+  // sur de vraies rencontres. Elle affichait jusque-là des matchs écrits à la
+  // main, datés d'avril 2026, avec des pronostics inventés.
+  //
+  // /club, /match et /stats restent fermés pour cette même raison, encore non
+  // corrigée chez eux.
+  const protectedPaths = ['/dashboard', '/analyze', '/match', '/club', '/settings', '/history', '/stats', '/search', '/ia-center', '/expert', '/payment-success', '/payment-failed', '/admin'];
 
-  const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path));
+  // Comparaison sur le SEGMENT complet, et non sur le simple début du chemin.
+  //
+  // « /match » est un préfixe de « /matches » : une comparaison par début de
+  // chaîne fermait la page publique des matchs en même temps que les fiches de
+  // rencontre. La page répondait « connectez-vous » sans qu'aucune règle ne la
+  // désigne — introuvable à la lecture du code.
+  const chemin = request.nextUrl.pathname;
+  const isProtectedPath = protectedPaths.some(
+    (path) => chemin === path || chemin.startsWith(path + '/')
+  );
 
   if (!activeUser && isProtectedPath) {
     // Non connecté (ou session expirée) sur une page protégée : redirection vers /login,
