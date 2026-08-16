@@ -284,12 +284,24 @@ export async function clientsLeses(
       continue;
     }
 
-    const { data: abos } = await sb
+    const { data: abos, error: erreurAbo } = await sb
       .from('subscriptions')
       .select('status')
       .eq('user_id', i.user_id)
       .order('created_at', { ascending: false })
       .limit(1);
+
+    // NE JAMAIS CONFONDRE « PAS D'ABONNEMENT » AVEC « JE N'AI PAS PU LIRE ».
+    //
+    // Une lecture qui échoue rendait `abos` indéfini, et le code en concluait
+    // qu'aucun abonnement n'existait : l'alerte la plus grave du système — « un
+    // client a payé sans rien recevoir » — se déclenchait sur un simple hoquet
+    // réseau. Une alerte qui crie au vol pour une lecture ratée finit ignorée le
+    // jour où le vol est réel.
+    if (erreurAbo) {
+      examenPartiel = true;
+      continue;
+    }
 
     const statut = (abos as any[])?.[0]?.status;
     if (statut !== 'active' && statut !== 'trialing') {
