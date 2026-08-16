@@ -54,7 +54,7 @@ function setCache<T>(key: string, data: T, ttlMs: number): void {
 // qu'un écran vide devant quelqu'un qui vient de payer.
 
 /** Réponse conservée, même expirée : elle sert de dernier recours. */
-async function lireEnBase<T>(cle: string): Promise<{ contenu: T; expiree: boolean } | null> {
+export async function lireReserve<T>(cle: string): Promise<{ contenu: T; expiree: boolean } | null> {
   try {
     const { createAdminClient } = await import('./supabase-admin');
     const { data, error } = await createAdminClient()
@@ -73,7 +73,7 @@ async function lireEnBase<T>(cle: string): Promise<{ contenu: T; expiree: boolea
   }
 }
 
-async function ecrireEnBase(cle: string, contenu: unknown, ttlMs: number): Promise<void> {
+export async function ecrireReserve(cle: string, contenu: unknown, ttlMs: number): Promise<void> {
   try {
     const { createAdminClient } = await import('./supabase-admin');
     await createAdminClient().from('cache_api').upsert(
@@ -118,7 +118,7 @@ async function apiFootballFetch<T = any>(endpoint: string, ttl: number = TTL.FIX
 
   // Le cache conservé en base, avant d'aller chez le fournisseur. C'est ce qui
   // rend un démarrage à froid gratuit.
-  const enBase = await lireEnBase<T>(cacheKey);
+  const enBase = await lireReserve<T>(cacheKey);
   if (enBase && !enBase.expiree) {
     setCache(cacheKey, enBase.contenu, ttl);
     return enBase.contenu;
@@ -169,7 +169,7 @@ async function apiFootballFetch<T = any>(endpoint: string, ttl: number = TTL.FIX
     }
 
     setCache(cacheKey, json, ttl);
-    void ecrireEnBase(cacheKey, json, ttl);
+    void ecrireReserve(cacheKey, json, ttl);
     return json as T;
   } catch (err: any) {
     if (err.name === "AbortError") {

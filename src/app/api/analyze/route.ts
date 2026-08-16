@@ -6,6 +6,7 @@ import { openRouterDisponible } from "@/lib/openrouter";
 import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
 import { toTeaser } from "@/lib/analysis-teaser";
+import { lireReserve, ecrireReserve } from "@/lib/api-football";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation } from "@/lib/score-probable";
@@ -46,6 +47,37 @@ async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DA
   const cached = apiFootballCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < ttl) return cached.data;
 
+  // ── LA RÉSERVE EN BASE, AVANT D'APPELER LE FOURNISSEUR ───────────────────
+  //
+  // Ce cache-ci ne vit qu'en mémoire du serveur, et cette mémoire disparaît à
+  // chaque démarrage à froid — plusieurs fois par heure. C'est LA route la plus
+  // appelée du site : chaque redémarrage redemandait au fournisseur des
+  // classements et des statistiques déjà connus.
+  //
+  // Le 16 août 2026, le quota journalier a atteint 98 %. À 100 %, plus aucune
+  // analyse ne fonctionne pour personne — y compris pour un abonné qui vient
+  // de payer.
+  const enReserve = await lireReserve(`apifb:${endpoint}`);
+  if (enReserve && !enReserve.expiree) {
+    setBounded(apiFootballCache, cacheKey, { data: enReserve.contenu, timestamp: Date.now() });
+    return enReserve.contenu;
+  }
+
+  /**
+   * Dernier recours quand le fournisseur ne répond pas.
+   *
+   * Une donnée d'il y a deux heures vaut infiniment mieux qu'une analyse
+   * refusée à quelqu'un qui vient de payer. En revanche, sans rien en réserve,
+   * on renvoie null : le moteur sait travailler avec moins de données, il ne
+   * saurait pas travailler avec des données fausses.
+   */
+  const secours = (raison: string) => {
+    if (!enReserve) return null;
+    console.warn(`[BACKEND_ANALYZE] ${raison} sur ${endpoint} — donnée conservée servie.`);
+    setBounded(apiFootballCache, cacheKey, { data: enReserve.contenu, timestamp: Date.now() });
+    return enReserve.contenu;
+  };
+
   const url = `https://v3.football.api-sports.io${endpoint}`;
   try {
     const controller = new AbortController();
@@ -59,14 +91,31 @@ async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DA
 
     if (!res.ok) {
       console.error(`[BACKEND_ANALYZE] API-Football error on ${endpoint}: ${res.status}`);
-      return null;
+      return secours(`HTTP ${res.status}`);
     }
     const data = await res.json();
+
+    // Le fournisseur répond parfois 200 avec une erreur dans le corps. Mettre
+    // cette réponse vide en réserve rendrait la panne durable : chaque appel
+    // suivant lirait un vide considéré comme valide.
+    const erreurs = (data as any)?.errors;
+    const enErreur = Array.isArray(erreurs)
+      ? erreurs.length > 0
+      : !!erreurs && Object.keys(erreurs).length > 0;
+    if (enErreur) {
+      console.error(
+        `[BACKEND_ANALYZE] Erreur du fournisseur sur ${endpoint} :`,
+        JSON.stringify(erreurs).slice(0, 200)
+      );
+      return secours('erreur du fournisseur');
+    }
+
     setBounded(apiFootballCache, cacheKey, { data, timestamp: Date.now() });
+    void ecrireReserve(`apifb:${endpoint}`, data, ttl);
     return data;
   } catch (e: any) {
     console.error(`[BACKEND_ANALYZE] Exception on ${endpoint}:`, e.message);
-    return null;
+    return secours(e.name === 'AbortError' ? 'délai dépassé' : 'erreur réseau');
   }
 }
 
