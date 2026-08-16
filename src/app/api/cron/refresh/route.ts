@@ -37,7 +37,10 @@ export async function GET(request: Request) {
     // `force` ignore les caches : c'est tout l'intérêt d'une tâche planifiée.
     const [statuses, teams] = await Promise.all([
       getAllCompetitionStatuses(Object.keys(LEAGUE_IDS), true),
-      getLiveTeams(),
+      // `true` : on relit chez le fournisseur au lieu de servir la réserve.
+      // C'est ce passage qui la rafraîchit — sans lui, elle vieillirait jusqu'à
+      // expiration et le premier visiteur du jour paierait l'attente.
+      getLiveTeams(true),
     ]);
 
     const resume = Object.values(statuses).map((s) => ({

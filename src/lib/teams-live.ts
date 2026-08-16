@@ -54,8 +54,98 @@ export const CLUB_LEAGUES = [
 ] as const;
 
 const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 h : les effectifs bougent rarement
+/** Au-delà, la copie en base est relue chez le fournisseur. */
+const FRAICHEUR_BASE_MS = 24 * 60 * 60 * 1000;
 let cache: { teams: LiveTeam[]; at: number; season: number } | null = null;
 let inFlight: Promise<LiveTeam[]> | null = null;
+
+/**
+ * Les équipes conservées en base.
+ *
+ * Un démarrage à froid coûtait cinquante-huit appels au fournisseur, parce que
+ * la liste ne vivait qu'en mémoire du serveur — mémoire perdue à chaque
+ * redémarrage. Ici, une seule lecture.
+ *
+ * Renvoie `null` si la table est absente, vide ou trop ancienne : l'appelant
+ * repart alors vers le fournisseur. Cette table est une réserve, jamais la
+ * seule source — l'application doit continuer de fonctionner sans elle.
+ */
+async function lireEnBase(): Promise<LiveTeam[] | null> {
+  try {
+    const { createAdminClient } = await import('./supabase-admin');
+    const { data, error } = await createAdminClient()
+      .from('equipes')
+      .select('id, api_id, nom, logo, pays, championnat, stade, mise_a_jour_le');
+
+    if (error || !data?.length) return null;
+
+    const plusRecente = Math.max(
+      ...data.map((l: any) => new Date(l.mise_a_jour_le).getTime())
+    );
+    if (Date.now() - plusRecente > FRAICHEUR_BASE_MS) return null;
+
+    return data.map((l: any) => ({
+      id: l.id,
+      apiId: l.api_id,
+      name: l.nom,
+      logo: l.logo ?? '',
+      country: l.pays ?? '',
+      league: l.championnat ?? '',
+      stadium: l.stade ?? '',
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Enregistre la liste fraîchement relue.
+ *
+ * Les lignes que ce passage n'a pas revues sont supprimées : ce sont les
+ * équipes reléguées. Sans cette suppression, La Liga finirait par proposer
+ * vingt-neuf équipes, les promues s'ajoutant aux reléguées — c'est un défaut
+ * qui s'était déjà produit.
+ */
+async function ecrireEnBase(teams: LiveTeam[]): Promise<void> {
+  if (!teams.length) return;
+  try {
+    const { createAdminClient } = await import('./supabase-admin');
+    const admin = createAdminClient();
+    const instant = new Date().toISOString();
+
+    // Par lots : un envoi unique de huit cents lignes dépasse les limites de
+    // taille de requête.
+    for (let i = 0; i < teams.length; i += 200) {
+      const { error } = await admin.from('equipes').upsert(
+        teams.slice(i, i + 200).map((t) => ({
+          id: t.id,
+          api_id: t.apiId,
+          nom: t.name,
+          logo: t.logo,
+          pays: t.country,
+          championnat: t.league,
+          stade: t.stadium,
+          mise_a_jour_le: instant,
+        })),
+        { onConflict: 'id' }
+      );
+      if (error) throw new Error(error.message);
+    }
+
+    // Uniquement parmi les championnats qu'on vient de relire : un club ajouté
+    // par la recherche, sans championnat, ne doit pas être balayé.
+    const championnats = [...new Set(teams.map((t) => t.league).filter(Boolean))];
+    await admin
+      .from('equipes')
+      .delete()
+      .lt('mise_a_jour_le', instant)
+      .in('championnat', championnats);
+  } catch (e: any) {
+    // Ne jamais faire échouer un chargement d'équipes parce que la réserve
+    // n'a pas pu être écrite.
+    console.warn('[TEAMS] Équipes non enregistrées en base :', e?.message);
+  }
+}
 
 /** Slug lisible et stable, dérivé du nom officiel. */
 export function slugify(name: string): string {
@@ -113,23 +203,67 @@ async function fetchLeagueTeams(leagueKey: string, season: number): Promise<Live
  * Les appels concurrents partagent la même requête pour ne pas multiplier
  * les allers-retours vers l'API.
  */
-export async function getLiveTeams(): Promise<LiveTeam[]> {
+export async function getLiveTeams(forcer = false): Promise<LiveTeam[]> {
   const season = getSeason('epl');
-  if (cache && cache.season === season && Date.now() - cache.at < CACHE_TTL) {
+  if (!forcer && cache && cache.season === season && Date.now() - cache.at < CACHE_TTL) {
     return cache.teams;
   }
-  if (inFlight) return inFlight;
+  if (!forcer && inFlight) return inFlight;
 
   inFlight = (async () => {
-    // Par paquets, et non tous d'un coup : vingt-cinq requêtes simultanées font
-    // dépasser la minute allouée à la fonction, et le sélecteur revient vide —
-    // exactement le défaut qu'on cherche à corriger.
+    // La réserve en base d'abord : une lecture au lieu de cinquante-huit appels
+    // au fournisseur. C'est ce qui rend un démarrage à froid instantané.
+    if (!forcer) {
+      const enBase = await lireEnBase();
+      if (enBase?.length) {
+        cache = { teams: enBase, at: Date.now(), season };
+        return enBase;
+      }
+    }
+
+    // Par paquets, et non tous d'un coup : cinquante-huit requêtes simultanées
+    // font dépasser la minute allouée à la fonction, et le sélecteur revient
+    // vide — exactement le défaut qu'on cherche à corriger.
     const teams: LiveTeam[] = [];
     const PAR_PAQUET = 8;
     for (let i = 0; i < CLUB_LEAGUES.length; i += PAR_PAQUET) {
       const paquet = CLUB_LEAGUES.slice(i, i + PAR_PAQUET);
       const lists = await Promise.all(paquet.map((l) => fetchLeagueTeams(l, season)));
       teams.push(...lists.flat());
+    }
+
+    // ── DEUX CLUBS NE PEUVENT PAS PARTAGER UN IDENTIFIANT ────────────────────
+    //
+    // L'identifiant est dérivé du nom : Arsenal (Angleterre) et Arsenal
+    // (Biélorussie) produisaient le même, tout comme Rangers (Écosse) et
+    // Ranger's (Andorre). Choisir l'un pouvait alors analyser l'autre — un
+    // pronostic sur la mauvaise équipe, que rien n'aurait signalé.
+    //
+    // Le premier rencontré garde l'identifiant simple. L'ordre de
+    // `CLUB_LEAGUES` place les grands championnats en tête : « arsenal » reste
+    // donc celui d'Angleterre, et les identifiants déjà enregistrés dans les
+    // analyses passées gardent leur sens. Le second est distingué par son
+    // numéro chez le fournisseur.
+    const vus = new Set<string>();
+    for (const t of teams) {
+      if (vus.has(t.id)) {
+        t.id = `${t.id}${t.apiId}`;
+      }
+      vus.add(t.id);
+    }
+
+    // On n'écrit QUE si la relecture est complète.
+    //
+    // Une panne partielle du fournisseur renverrait quelques championnats
+    // seulement ; les enregistrer effacerait de la réserve tous les autres, et
+    // le sélecteur se viderait durablement — bien après la fin de la panne.
+    const championnatsObtenus = new Set(teams.map((t) => t.league));
+    if (championnatsObtenus.size >= CLUB_LEAGUES.length * 0.9) {
+      await ecrireEnBase(teams);
+    } else if (teams.length) {
+      console.warn(
+        `[TEAMS] Relecture partielle (${championnatsObtenus.size}/${CLUB_LEAGUES.length} championnats) — réserve laissée intacte.`
+      );
     }
 
     // Un échec total (clé absente, API en panne) ne doit pas écraser un cache
