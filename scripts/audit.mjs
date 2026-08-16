@@ -538,6 +538,7 @@ async function verifierClientsLeses() {
   let payees = 0;
   let appels = 0;
   let partiel = false;
+  let nonVerifiees = 0;
 
   for (const i of data) {
     if (!i.consumed_at) {
@@ -546,13 +547,27 @@ async function verifierClientsLeses() {
       if (!statut) {
         // Interroger la boutique coûte un appel réseau : plafonné, car l'audit
         // ne doit jamais devenir la chose la plus lente de la journée.
-        if (appels >= 60) { partiel = true; continue; }
+        if (appels >= 60) { partiel = true; nonVerifiees++; continue; }
         appels++;
         try {
           const r = await fetch(`https://api.chariow.com/v1/sales/${i.sale_id}`, {
             headers: { Authorization: `Bearer ${env.CHARIOW_API_KEY}`, Accept: 'application/json' },
           });
           statut = (await r.json())?.data?.status ?? null;
+
+          // LE STATUT RELEVÉ EST CONSERVÉ.
+          //
+          // Sans cela, les mêmes paniers abandonnés étaient réinterrogés à
+          // chaque passage. Ils s'accumulent : à soixante-trois ventes pour un
+          // plafond de soixante appels, une part croissante n'était plus
+          // vérifiée du tout — et c'est précisément ce contrôle qui attrape le
+          // client débité dont la notification n'est jamais arrivée. Le trou
+          // grandissait en silence, sans jamais rien casser.
+          //
+          // Un statut définitif ne change plus : le relever une fois suffit.
+          if (['completed', 'settled', 'abandoned', 'failed'].includes(statut)) {
+            await sb.from('payment_intents').update({ statut_boutique: statut }).eq('sale_id', i.sale_id);
+          }
         } catch {
           // Boutique injoignable : on ne conclut pas à un client lésé.
           continue;
@@ -611,6 +626,7 @@ async function verifierClientsLeses() {
     // le jour où le vol est réel.
     if (erreurAbo) {
       partiel = true;
+      nonVerifiees++;
       continue;
     }
 
@@ -622,7 +638,17 @@ async function verifierClientsLeses() {
   if (leses.length) leses.forEach((l) => alerte(`a payé sans recevoir son abonnement : ${l}`));
   else if (payees > 0) ok(`${payees} paiement(s) encaissé(s), tous ont reçu leur abonnement`);
 
-  if (partiel) attention("toutes les demandes n'ont pas pu être vérifiées auprès de la boutique");
+  // Le message dit COMBIEN et POURQUOI.
+  //
+  // « toutes les demandes n'ont pas pu être vérifiées » ne disait ni l'ampleur
+  // ni la cause, et accusait la boutique alors que l'échec pouvait venir d'une
+  // lecture en base. Un avertissement qu'on ne sait pas interpréter finit
+  // ignoré.
+  if (partiel)
+    attention(
+      `${nonVerifiees} demande(s) non vérifiée(s) : plafond de 60 relevés atteint — ` +
+        `elles le seront au prochain passage`
+    );
 }
 
 // ── 7. Agent VIP ─────────────────────────────────────────────────────────────
