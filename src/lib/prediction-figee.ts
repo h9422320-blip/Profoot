@@ -115,6 +115,34 @@ export async function lirePredictionFigee(
 }
 
 /**
+ * La prédiction telle qu'elle est stockée : l'équipe qui reçoit en premier.
+ *
+ * Sert au mur de preuves, qui connaît les équipes par leur NOM et non par leur
+ * identifiant chez le fournisseur.
+ */
+export async function lirePredictionBrute(
+  fixtureId: number | null | undefined
+): Promise<{ domicileNom: string; butsDomicile: number; butsExterieur: number } | null> {
+  if (!fixtureId) return null;
+  try {
+    const { data, error } = await createAdminClient()
+      .from('predictions_match')
+      .select('domicile_nom, buts_domicile, buts_exterieur')
+      .eq('fixture_id', fixtureId)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return {
+      domicileNom: data.domicile_nom,
+      butsDomicile: data.buts_domicile,
+      butsExterieur: data.buts_exterieur,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fige la prédiction d'une rencontre, si elle n'existe pas déjà.
  *
  * `onConflict do nothing` : la PREMIÈRE prédiction complète fait foi. Une

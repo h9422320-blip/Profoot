@@ -29,6 +29,7 @@
 import { apiFootball, CACHE_TTL } from './api-football';
 import { createAdminClient } from './supabase-admin';
 import { lireReglages } from './app-settings';
+import { lirePredictionBrute } from './prediction-figee';
 
 /**
  * La compétition réelle d'une rencontre, lue sur sa fiche.
@@ -142,6 +143,29 @@ async function ficheDuMatch(
 function inverserScore(score: string | null | undefined): string | null {
   const lu = lireScore(score);
   return lu ? `${lu[1]} - ${lu[0]}` : null;
+}
+
+/**
+ * La prédiction de référence, remise dans le sens de la carte.
+ *
+ * Elle est stockée avec l'équipe qui REÇOIT en premier ; la carte, elle, garde
+ * l'ordre de la rencontre tel qu'il a été enregistré. Comparer les noms est le
+ * seul rapprochement possible ici — le mur ne manipule pas les identifiants du
+ * fournisseur.
+ */
+function pronoDansLeSensDeLaCarte(
+  figee: { domicileNom: string; butsDomicile: number; butsExterieur: number },
+  equipe1DeLaCarte: string | null | undefined
+): string | null {
+  const memeEquipe = (a: string, b: string) => {
+    const n = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const x = n(a), y = n(b);
+    return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+  };
+  if (!equipe1DeLaCarte) return null;
+  return memeEquipe(equipe1DeLaCarte, figee.domicileNom)
+    ? `${figee.butsDomicile} - ${figee.butsExterieur}`
+    : `${figee.butsExterieur} - ${figee.butsDomicile}`;
 }
 
 /** Issue d'un match à partir de deux buts. */
@@ -355,9 +379,27 @@ export async function construirePreuves(): Promise<{
   for (const m of parMatch.values()) {
     const l = m.ligne;
 
-    // Le pronostic retenu est celui qu'a vu la majorité des utilisateurs.
+    // ── LA PRÉDICTION DE RÉFÉRENCE FAIT FOI, PAS UN VOTE ──────────────────
+    //
+    // Le pronostic retenu était celui qu'avait vu la MAJORITÉ des utilisateurs.
+    // C'est ce qui a causé le malentendu de Lens — Paris Saint-Germain : sur
+    // quarante analyses, trente-six avaient été calculées sans savoir qui
+    // recevait — le fournisseur ne répondait plus — et désignaient le PSG ;
+    // quatre, complètes, désignaient Lens et avaient raison. La majorité a
+    // donc enterré la bonne réponse.
+    //
+    // Un vote ne fait pas une vérité. Depuis que chaque rencontre porte une
+    // prédiction de référence — figée au premier calcul complet, celui qui
+    // dispose de l'avantage du terrain —, c'est elle qui fait foi. Le vote ne
+    // sert plus que de repli pour les matchs antérieurs à ce mécanisme.
+    const figee = await lirePredictionBrute(l.fixture_id);
+    const pronoDeReference = figee ? pronoDansLeSensDeLaCarte(figee, l.team1_name) : null;
+
     const pronoScore =
-      [...m.scores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? l.score ?? null;
+      pronoDeReference ??
+      [...m.scores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ??
+      l.score ??
+      null;
 
     const buts = lireScore(pronoScore);
     const reels = lireScore(l.real_score);

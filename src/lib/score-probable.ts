@@ -368,10 +368,31 @@ export function calculerScoreProbable(
   // 52 % pouvait donc afficher « 1-1 » : deux affirmations exactes, mais qui se
   // contredisent aux yeux de celui qui parie. On annonce donc le score le plus
   // probable PARMI ceux qui donnent l'issue annoncée.
+  // ── LE SCORE LE PLUS REPRÉSENTATIF, PAS LE PLUS FRÉQUENT ─────────────────
+  //
+  // Retenir le score le plus PROBABLE de l'issue gagnante donne presque
+  // toujours « 1-0 » : c'est mécaniquement le scénario de victoire le plus
+  // fréquent, quelles que soient les équipes. Mesuré le 16 août 2026 après une
+  // première correction : 1-0 sur 69 % des affiches, contre 27 % avant. Chaque
+  // prédiction restait juste isolément, mais un moteur qui répond « 1-0 » sept
+  // fois sur dix a l'air en panne — c'est exactement le reproche qu'on faisait
+  // au « 2-1 » servi par le modèle de langage.
+  //
+  // On choisit donc, parmi les scores de l'issue annoncée, celui qui colle le
+  // mieux aux BUTS ATTENDUS des deux équipes. Une attaque à 2,3 buts attendus
+  // n'annonce plus 1-0 comme une attaque à 1,1. La cohérence est intacte — le
+  // score reste pris dans l'issue annoncée — et la variété revient d'elle-même,
+  // parce qu'elle vient des équipes.
+  //
+  // La probabilité est conservée pour départager deux scores aussi proches l'un
+  // que l'autre des buts attendus.
+  const ecartAuxAttendus = (i: number, j: number) =>
+    Math.abs(i - butsAttendus1) + Math.abs(j - butsAttendus2);
+
   const meilleurParIssue = {
-    victoire1: { buts1: 1, buts2: 0, proba: -1 },
-    nul: { buts1: 0, buts2: 0, proba: -1 },
-    victoire2: { buts1: 0, buts2: 1, proba: -1 },
+    victoire1: { buts1: 1, buts2: 0, proba: -1, ecart: Infinity },
+    nul: { buts1: 0, buts2: 0, proba: -1, ecart: Infinity },
+    victoire2: { buts1: 0, buts2: 1, proba: -1, ecart: Infinity },
   };
   let victoire1 = 0, nul = 0, victoire2 = 0, lesDeux = 0;
   const total = [0, 0, 0, 0]; // au moins 1, 2, 3 ou 4 buts au total
@@ -380,7 +401,13 @@ export function calculerScoreProbable(
     for (let j = 0; j <= BUTS_MAX; j++) {
       const p = p1[i] * p2[j];
       const issue = i > j ? 'victoire1' : i === j ? 'nul' : 'victoire2';
-      if (p > meilleurParIssue[issue].proba) meilleurParIssue[issue] = { buts1: i, buts2: j, proba: p };
+      const ecart = ecartAuxAttendus(i, j);
+      const actuel = meilleurParIssue[issue];
+      // Un score très improbable ne peut pas gagner sur la seule proximité :
+      // on écarte la queue de distribution avant de comparer.
+      const credible = p >= actuel.proba * 0.25 || actuel.proba < 0;
+      if (credible && (ecart < actuel.ecart || (ecart === actuel.ecart && p > actuel.proba)))
+        meilleurParIssue[issue] = { buts1: i, buts2: j, proba: p, ecart };
       if (issue === 'victoire1') victoire1 += p;
       else if (issue === 'nul') nul += p;
       else victoire2 += p;
