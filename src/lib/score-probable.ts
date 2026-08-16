@@ -121,7 +121,65 @@ const CONFIANCE_MAX_PEU_FIABLE = 70;
 
 /** Reconnaît une compétition dont les résultats ne se prédisent pas. */
 export function competitionPeuFiable(nom: string | null | undefined): boolean {
-  return /friendl|amical|pre-?season|test/i.test(String(nom ?? ''));
+  return /friendl|amical|pre-?season|test|trophy|summer|cup of champions/i.test(String(nom ?? ''));
+}
+
+/**
+ * Vraies compétitions internationales, par identifiant.
+ *
+ * Le fournisseur range TOUTES les compétitions sans pays sous « World » : la
+ * Ligue des champions comme la Como Cup. Cette liste sépare les deux. Les
+ * identifiants sont stables dans le temps, contrairement aux libellés.
+ */
+const COMPETITIONS_INTERNATIONALES = new Set([
+  1, // Coupe du monde
+  2, // Ligue des champions UEFA
+  3, // Ligue Europa UEFA
+  4, // Championnat d'Europe
+  5, // Ligue des nations UEFA
+  6, // Coupe d'Afrique des nations
+  9, // Copa América
+  11, // CONMEBOL Sudamericana
+  12, // Ligue des champions CAF
+  13, // Copa Libertadores
+  15, // Coupe du monde des clubs
+  16, // Ligue des champions CONCACAF
+  531, // Supercoupe de l'UEFA
+  848, // Ligue Europa Conference
+]);
+
+/**
+ * Ce match est-il une rencontre de préparation ?
+ *
+ * POURQUOI PAS SEULEMENT LE NOM
+ *
+ * La détection reposait sur le mot « friendly ». Elle laissait donc passer tous
+ * les tournois de pré-saison qui portent un vrai nom : Lens a disputé trois
+ * matchs de « Como Cup » en juillet — dont un 3-0 contre Crystal Palace — qui
+ * comptaient dans le calcul comme des rencontres officielles et le faisaient
+ * paraître plus fort que le Paris Saint-Germain.
+ *
+ * Le signal structurel est ailleurs : ces tournois n'appartiennent à aucun pays,
+ * le fournisseur les range sous « World ». Les vraies compétitions
+ * internationales y sont aussi — d'où la liste ci-dessus, qui les protège.
+ *
+ * Résultat : tout tournoi sans pays et non répertorié est traité comme de la
+ * préparation, quel que soit son nom. Emirates Cup, Audi Cup, Soccer Champions
+ * Tour et les suivants sont couverts sans avoir à les énumérer.
+ */
+export function estMatchDePreparation(league: {
+  id?: number | string | null;
+  name?: string | null;
+  country?: string | null;
+} | null | undefined): boolean {
+  if (!league) return false;
+
+  const id = Number(league.id);
+  if (Number.isFinite(id) && COMPETITIONS_INTERNATIONALES.has(id)) return false;
+
+  if (String(league.country ?? '').toLowerCase() === 'world') return true;
+
+  return competitionPeuFiable(league.name);
 }
 
 /**

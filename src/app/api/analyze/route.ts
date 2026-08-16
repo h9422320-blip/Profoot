@@ -8,7 +8,7 @@ import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-
 import { toTeaser } from "@/lib/analysis-teaser";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
-import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques } from "@/lib/score-probable";
+import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation } from "@/lib/score-probable";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
@@ -814,7 +814,7 @@ export async function POST(req: Request) {
     //
     // On les écarte donc — mais seulement s'il reste assez de matchs officiels.
     // En début de saison, un amical vaut mieux que rien.
-    const officiels = termines.filter((f: any) => !competitionPeuFiable(f?.league?.name));
+    const officiels = termines.filter((f: any) => !estMatchDePreparation(f?.league));
     const joues = officiels.length >= MATCHS_OFFICIELS_SUFFISANTS ? officiels : termines;
 
     let marques = 0;
