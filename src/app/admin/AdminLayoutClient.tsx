@@ -315,7 +315,12 @@ export default function AdminLayoutClient({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-7xl mx-auto space-y-8"
+            // 1280 px laissaient une bande vide de cinq cents pixels à droite
+            // sur un écran de bureau : de la place perdue sur des pages faites
+            // pour comparer des chiffres. La limite reste, plus large, parce
+            // qu'une ligne de texte qui traverse un écran entier devient
+            // pénible à lire.
+            className="max-w-[1680px] mx-auto space-y-8"
           >
             {children}
           </motion.div>

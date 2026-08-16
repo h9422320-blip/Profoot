@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+const VERT = "#0f766e";
+const VERT_PALE = "#0f766e26";      // le même, très transparent
+const VERT_PALE_BORD = "#0f766e66";
+
 const JOURS = ["L", "M", "M", "J", "V", "S", "D"];
 const MOIS = [
   "janvier", "février", "mars", "avril", "mai", "juin",
@@ -64,47 +68,63 @@ export default function CalendrierPlage({
     ),
   ];
 
+  const aujourdhuiCle = cle(aujourdhui);
+
   return (
     <div className="select-none">
       <div className="flex items-center justify-between mb-3">
         <button
           type="button"
           onClick={() => setMoisAffiche(new Date(moisAffiche.getFullYear(), moisAffiche.getMonth() - 1, 1))}
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
           aria-label="Mois précédent"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-5 h-5" />
         </button>
-        <span className="text-[13px] font-black text-white capitalize">
+        <span className="text-[16px] font-black text-slate-900 capitalize tracking-tight">
           {MOIS[moisAffiche.getMonth()]} {moisAffiche.getFullYear()}
         </span>
         <button
           type="button"
           onClick={() => setMoisAffiche(new Date(moisAffiche.getFullYear(), moisAffiche.getMonth() + 1, 1))}
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
           aria-label="Mois suivant"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-0.5 mb-1">
+      <div className="grid grid-cols-7 gap-1 mb-1">
         {JOURS.map((j, i) => (
-          <span key={i} className="text-[10px] font-bold text-white/25 text-center py-1">
+          <span
+            key={i}
+            className="text-[11px] font-black text-slate-400 text-center py-1 uppercase tracking-wide"
+          >
             {j}
           </span>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 gap-1">
         {cases.map((jour, i) => {
           if (!jour) return <span key={i} />;
 
           const futur = jour > maxCle;
-          const estDebut = jour === du;
-          const estFin = jour === au;
+          const bord = jour === du || jour === au;
           const dansPlage = !!du && !!au && jour > du && jour < au;
-          const bord = estDebut || estFin;
+
+          // Les couleurs de sélection sont posées EN STYLE DIRECT, pas en
+          // classes.
+          //
+          // Écrites en classes utilitaires, elles ne s'appliquaient pas : les
+          // bornes du 5 et du 16 restaient transparentes et la plage choisie
+          // était tout simplement invisible. Or c'est LA chose que ce composant
+          // doit montrer. Un style direct ne dépend d'aucune génération de CSS.
+          const style: React.CSSProperties = bord
+            ? { backgroundColor: VERT, color: "#ffffff" }
+            : dansPlage
+              ? { backgroundColor: VERT_PALE, color: VERT }
+              : {};
 
           return (
             <button
@@ -112,15 +132,21 @@ export default function CalendrierPlage({
               type="button"
               disabled={futur}
               onClick={() => choisir(jour)}
-              className={`h-9 text-[12px] font-bold transition-colors ${
-                bord
-                  ? "bg-[#10b981] text-black rounded-[10px]"
-                  : dansPlage
-                    ? "bg-[#10b981]/20 text-white"
-                    : futur
-                      ? "text-white/15 cursor-not-allowed"
-                      : "text-white/70 hover:bg-white/10 rounded-[10px]"
-              } ${dansPlage ? "" : "rounded-[10px]"}`}
+              style={{
+                ...style,
+                ...(jour === aujourdhuiCle && !bord && !dansPlage
+                  ? { boxShadow: `inset 0 0 0 1.5px ${VERT_PALE_BORD}` }
+                  : {}),
+              }}
+              // Cases hautes de 44 px : c'est la taille minimale qu'un pouce
+              // atteint sans se tromper de jour.
+              className={`h-11 rounded-[12px] text-[15px] font-bold transition-colors ${
+                bord || dansPlage
+                  ? ""
+                  : futur
+                    ? "text-slate-300 cursor-not-allowed"
+                    : "text-slate-700 hover:bg-slate-100"
+              }`}
             >
               {Number(jour.slice(-2))}
             </button>
@@ -130,7 +156,11 @@ export default function CalendrierPlage({
 
       {/* Dire où on en est : après le premier clic, rien à l'écran n'indique
           qu'il faut en faire un second. */}
-      <p className="text-[11px] text-white/35 mt-3 text-center">
+      <p
+        className={`text-[13px] mt-4 text-center font-bold ${
+          du && au ? "text-[#0f766e]" : "text-slate-500"
+        }`}
+      >
         {!du
           ? "Cliquez la date de début"
           : !au
