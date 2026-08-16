@@ -533,14 +533,40 @@ export function predireIssueFinale(
   const q2 = Array.from({ length: SUP + 1 }, (_, j) => (part === 0 ? (j === 0 ? 1 : 0) : poisson(j, restant2)));
 
   let v1 = 0, n = 0, v2 = 0;
-  let meilleur = { s1: butsActuels1, s2: butsActuels2, proba: -1 };
+
+  // ── LE MEILLEUR SCORE DE CHAQUE ISSUE, ET NON LE MEILLEUR TOUT COURT ──────
+  //
+  // Le score le plus probable pris toutes issues confondues CONTREDIT
+  // régulièrement les pourcentages affichés juste à côté. Ce n'est pas une
+  // erreur de calcul, c'est une propriété du modèle : une victoire se répartit
+  // sur des dizaines de scores (2-1, 3-1, 2-0, 3-2…) tandis qu'un nul se
+  // concentre sur trois ou quatre (1-1, 2-2, 0-0). Le nul peut donc être le
+  // score unique le plus fréquent alors que « victoire » est de loin l'issue
+  // la plus probable.
+  //
+  // Constaté le 16 août 2026 : FC Barcelone — Bâle affichait 49 % de victoire
+  // du Barça et annonçait « 1-1 » ; Lens — PSG donnait le PSG à 38 % et
+  // annonçait « 1-1 ». Deux affirmations contraires sur le même écran.
+  // Un utilisateur ne se demande pas laquelle croire : il cesse de croire les
+  // deux.
+  //
+  // On retient donc le score le plus probable À L'INTÉRIEUR de l'issue
+  // annoncée. C'est exactement ce que fait déjà le calcul d'avant-match.
+  const meilleurParIssue = {
+    victoire1: { s1: butsActuels1, s2: butsActuels2, proba: -1 },
+    nul: { s1: butsActuels1, s2: butsActuels2, proba: -1 },
+    victoire2: { s1: butsActuels1, s2: butsActuels2, proba: -1 },
+  };
 
   for (let i = 0; i <= SUP; i++) {
     for (let j = 0; j <= SUP; j++) {
       const p = q1[i] * q2[j];
       const final1 = butsActuels1 + i;
       const final2 = butsActuels2 + j;
-      if (p > meilleur.proba) meilleur = { s1: final1, s2: final2, proba: p };
+
+      const cle = final1 > final2 ? 'victoire1' : final1 === final2 ? 'nul' : 'victoire2';
+      if (p > meilleurParIssue[cle].proba) meilleurParIssue[cle] = { s1: final1, s2: final2, proba: p };
+
       if (final1 > final2) v1 += p;
       else if (final1 === final2) n += p;
       else v2 += p;
@@ -556,6 +582,13 @@ export function predireIssueFinale(
     else if (pv2 >= pn) pv2 += ecart;
     else pn += ecart;
   }
+
+  // L'issue annoncée se lit sur les pourcentages RÉELLEMENT AFFICHÉS, après
+  // arrondi : un reliquat d'arrondi ferait sinon passer une issue devant une
+  // autre à l'écran sans que le score suive.
+  const issueRetenue: 'victoire1' | 'nul' | 'victoire2' =
+    pn >= pv1 && pn >= pv2 ? 'nul' : pv1 >= pv2 ? 'victoire1' : 'victoire2';
+  const meilleur = meilleurParIssue[issueRetenue];
 
   // Le verdict nomme ce qui est le plus probable, sans jamais présenter une
   // issue serrée comme acquise.
