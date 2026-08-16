@@ -16,24 +16,33 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
+        // Ne sont interdits que les chemins qui n'ont rien à faire dans un
+        // moteur de recherche : le produit payant, les espaces personnels, et
+        // les pages qui affichent encore des données écrites à la main.
+        //
+        // Les compétitions, les classements et les tarifs en sont sortis le
+        // 16/08/2026 : ils ne contiennent que des données publiques, et les
+        // interdire revenait à n'offrir à Google que la page d'accueil.
         disallow: [
           '/api/',
           '/admin',
+          // Le produit payant lui-même.
           '/analyze',
-          '/competitions',
           '/expert',
+          // Espaces personnels : rien d'indexable, et rien à exposer.
           '/history',
-          '/pricing',
           '/settings',
-          '/matches',
-          '/standings',
-          '/stats',
           '/search',
           '/ia-center',
-          '/club',
-          '/match',
           '/payment-success',
           '/payment-failed',
+          // Fermés tant qu'ils affichent des rencontres écrites à la main,
+          // datées d'avril 2026, avec des pronostics inventés. À rouvrir dès
+          // qu'ils seront alimentés par de vraies données.
+          '/matches',
+          '/stats',
+          '/club',
+          '/match',
         ],
       },
     ],

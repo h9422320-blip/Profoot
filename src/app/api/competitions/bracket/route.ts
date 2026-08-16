@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { genererAnalyseJSON } from '@/lib/analyse-modele';
 import { openRouterDisponible } from '@/lib/openrouter';
-import { requireUser } from '@/lib/subscription';
 
 // Appel Gemini : dépasse les 10 s accordées par défaut à une fonction serverless.
 export const maxDuration = 60;
@@ -18,8 +17,10 @@ const COMPETITION_NAMES: Record<string, string> = {
 };
 
 export async function GET(request: Request) {
-  const guard = await requireUser();
-  if (!guard.ok) return guard.response;
+  // Lecture publique : cette route ne renvoie que des données de football
+  // librement consultables — classements, leaders, matchs joués. Aucun contenu
+  // payant, aucune donnée de compte. Elle alimente une page désormais indexée
+  // par Google, et exiger un compte y rendait la page vide pour un visiteur.
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');

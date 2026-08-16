@@ -52,7 +52,23 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Protéger toutes les pages de l'application (tout sauf accueil, login, signup, pages légales et API publiques)
-  const protectedPaths = ['/dashboard', '/analyze', '/match', '/matches', '/club', '/competitions', '/settings', '/history', '/standings', '/pricing', '/stats', '/search', '/ia-center', '/expert', '/payment-success', '/payment-failed', '/admin'];
+  // ── CE QUI EST OUVERT À GOOGLE, ET POURQUOI ──────────────────────────────
+  //
+  // Tout le contenu football se trouvait derrière la connexion : Google ne
+  // voyait que la page d'accueil et les mentions légales, soit sept pages en
+  // tout. Un site de football sans page indexable ne peut pas être trouvé.
+  //
+  // Sont désormais publics : les tarifs — une page de prix cachée derrière une
+  // connexion coûte aussi des ventes —, les compétitions et les classements,
+  // qui ne contiennent que des données publiques de football.
+  //
+  // Restent protégés : l'analyse par IA, l'Agent VIP, l'historique personnel et
+  // tout ce qui touche au compte. C'est le produit payant, il ne s'indexe pas.
+  //
+  // /matches, /club et /match restent fermés pour une autre raison : ils
+  // affichent encore des rencontres écrites à la main, datées d'avril 2026,
+  // avec des pronostics inventés. Les ouvrir publierait de fausses données.
+  const protectedPaths = ['/dashboard', '/analyze', '/match', '/matches', '/club', '/settings', '/history', '/stats', '/search', '/ia-center', '/expert', '/payment-success', '/payment-failed', '/admin'];
 
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path));
 

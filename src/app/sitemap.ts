@@ -20,6 +20,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // était accessible mais absent d'ici, donc laissé à la découverte au
     // hasard. C'est pourtant la page qui distingue ce site de ses concurrents.
     { url: `${SITE_URL}/preuves`, lastModified: now, changeFrequency: 'daily', priority: 0.95 },
+    // Ouvertes au public le 16/08/2026. Ce sont, avec le mur de preuves, les
+    // seules pages du site qui portent du contenu football indexable : tout le
+    // reste vit derrière la connexion, et Google ne voyait donc rien à référencer.
+    { url: `${SITE_URL}/competitions`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${SITE_URL}/standings`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${SITE_URL}/pricing`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${SITE_URL}/signup`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${SITE_URL}/login`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${SITE_URL}/support`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },

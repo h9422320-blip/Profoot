@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/subscription';
 import { LEAGUE_IDS, getSeason, getSeasonLabel } from '@/lib/api-football';
 
 export const maxDuration = 60;
@@ -18,8 +17,10 @@ const LIGUES = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1'];
  * vides tant que la saison n'a pas commencé — plutôt qu'inventées.
  */
 export async function GET() {
-  const guard = await requireUser();
-  if (!guard.ok) return guard.response;
+  // Lecture publique : cette route ne renvoie que des données de football
+  // librement consultables — classements, leaders, matchs joués. Aucun contenu
+  // payant, aucune donnée de compte. Elle alimente une page désormais indexée
+  // par Google, et exiger un compte y rendait la page vide pour un visiteur.
 
   const key = process.env.API_FOOTBALL_KEY;
   if (!key) return NextResponse.json({ classements: {} });
