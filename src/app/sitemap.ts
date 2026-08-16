@@ -39,8 +39,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // que d'échouer entièrement.
   }
 
+  // Les rencontres du moment : ce sont les pages les plus recherchées d'un site
+  // de football — « PSG Lens score », « résultat Barcelone » — et les seules
+  // dont l'intérêt est daté. Elles se renouvellent d'elles-mêmes.
+  let rencontres: MetadataRoute.Sitemap = [];
+  try {
+    const { lireMatchsReels } = await import('@/lib/matchs-reels');
+    rencontres = (await lireMatchsReels()).map((m) => ({
+      url: `${SITE_URL}/match/${m.id}`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: m.statut === 'termine' ? 0.5 : 0.8,
+    }));
+  } catch {
+    // Fournisseur muet : les autres pages restent déclarées.
+  }
+
   return [
     ...clubs,
+    ...rencontres,
     { url: SITE_URL, lastModified: now, changeFrequency: 'daily', priority: 1 },
     // Le mur de preuves est PUBLIC et c'est la seule page qui porte du contenu
     // renouvelé : des pronostics datés confrontés à de vrais résultats. Il

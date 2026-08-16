@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CalendarDays, Radio, CheckCircle2 } from "lucide-react";
 import { lireMatchsReels, type MatchReel } from "@/lib/matchs-reels";
 
@@ -121,7 +122,12 @@ function Carte({ m }: { m: MatchReel }) {
   const joue = m.buts1 !== null && m.buts2 !== null;
 
   return (
-    <article className="rounded-[20px] border border-border-card bg-card/60 p-4 space-y-3">
+    // Chaque carte mène à sa fiche : c'est ce qui relie les pages entre elles
+    // et permet à un moteur de découvrir les rencontres depuis cette liste.
+    <Link
+      href={`/match/${m.id}`}
+      className="block rounded-[20px] border border-border-card bg-card/60 p-4 space-y-3 hover:border-primary/40 transition-colors"
+    >
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 truncate">
           {m.competition}
@@ -141,7 +147,7 @@ function Carte({ m }: { m: MatchReel }) {
       </div>
 
       {m.stade && <p className="text-[10px] text-white/25 truncate">{m.stade}</p>}
-    </article>
+    </Link>
   );
 }
 
