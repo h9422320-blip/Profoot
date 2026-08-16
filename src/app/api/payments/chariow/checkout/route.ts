@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUser, PLANS, PlanKey, normalizePlan } from '@/lib/subscription';
+import { lireOffre } from '@/lib/offres';
 import { initCheckout } from '@/lib/chariow';
 import { detecterPaysAcheteur, ipAcheteur } from '@/lib/pays-acheteur';
 import { createAdminClient } from '@/lib/supabase-admin';
@@ -43,6 +44,11 @@ export async function POST(req: Request) {
         { status: 409 }
       );
     }
+
+    // Prix reellement pratique : celui de l'administration, avec repli sur le
+    // code. Il doit correspondre au produit Chariow, sinon l'acheteur voit un
+    // prix et en paie un autre.
+    const prixOffre = (await lireOffre(plan)).prixXof;
 
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';
@@ -101,7 +107,7 @@ export async function POST(req: Request) {
         user_id: user.id,
         plan,
         email: user.email,
-        amount: PLANS[plan].amountXof,
+        amount: prixOffre,
       };
       // Notre propre trace de l'origine de l'acheteur. Elle ne dépend d'aucun
       // service tiers : si le prestataire change sa façon d'afficher les pays,
@@ -130,7 +136,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       checkoutUrl: session.checkoutUrl,
       plan,
-      amount: PLANS[plan].amountXof,
+      amount: prixOffre,
       currency: 'XOF',
     });
   } catch (error: any) {

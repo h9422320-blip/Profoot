@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, CreditCard, Brain, Settings, Bell, Search,
   Menu, X, ChevronRight, LogOut, ExternalLink, Wrench, AlertTriangle,
   Info, CheckCircle2, ArrowRight, Megaphone, Gauge, MessageSquare, CalendarDays,
-  ShieldCheck,
+  ShieldCheck, Tag,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import type { Alerte } from "@/lib/admin-metrics";
@@ -20,6 +20,7 @@ const SIDEBAR_ITEMS = [
   { name: "Partenaires", href: "/admin/partenaires", icon: Megaphone },
   { name: "Finances", href: "/admin/finances", icon: CreditCard },
   { name: "Analyses IA", href: "/admin/system", icon: Brain },
+  { name: "Offres et tarifs", href: "/admin/offres", icon: Tag },
   { name: "Agent VIP", href: "/admin/agent-vip", icon: MessageSquare },
   { name: "La journée", href: "/admin/journee", icon: CalendarDays },
   { name: "Diagnostic", href: "/admin/diagnostic", icon: Gauge },

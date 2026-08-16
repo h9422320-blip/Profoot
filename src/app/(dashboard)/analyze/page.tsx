@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import AnalyzeClient from "./AnalyzeClient";
 import SectionPreuves from "@/components/preuves/SectionPreuves";
+import { lireOffre } from "@/lib/offres";
+import { UNLIMITED } from "@/lib/subscription";
 
 /**
  * La page d'analyse.
@@ -28,9 +30,19 @@ import SectionPreuves from "@/components/preuves/SectionPreuves";
  */
 export const revalidate = 300;
 
-export default function AnalyzePage() {
+export default async function AnalyzePage() {
+  // Le prix et le quota affichés dans le paywall viennent du réglage, jamais du
+  // code : c'est l'endroit exact où un tarif périmé coûte une vente. La page
+  // étant régénérée toutes les cinq minutes, un changement s'y voit aussitôt.
+  const essentiel = await lireOffre("essential_monthly");
+
   return (
     <AnalyzeClient
+      offreEntree={{
+        libelle: essentiel.libelle,
+        prixXof: essentiel.prixXof,
+        analyses: essentiel.limiteAnalyses === UNLIMITED ? null : essentiel.limiteAnalyses,
+      }}
       preuves={
         <Suspense fallback={null}>
           <SectionPreuves />

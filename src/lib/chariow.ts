@@ -162,12 +162,28 @@ export function planFromProductId(productId: string | undefined): PlanKey | null
  * confiance : 1) ID produit, 2) métadonnées du checkout, 3) montant en XOF.
  * Le montant sert aussi de contrôle croisé quand une source primaire existe.
  */
-export function resolvePaidPlan(input: {
-  productId?: string;
-  metadataPlan?: string;
-  amountValue?: number;
-  amountCurrency?: string;
-}): PlanKey | null {
+export function resolvePaidPlan(
+  input: {
+    productId?: string;
+    metadataPlan?: string;
+    amountValue?: number;
+    amountCurrency?: string;
+  },
+  /**
+   * Prix RÉELLEMENT pratiqués, tels que réglés dans l'administration.
+   *
+   * Indispensable depuis que les prix sont modifiables. Le contrôle croisé
+   * plus bas refuse un paiement dont le montant désigne une autre offre que le
+   * produit — protection utile contre une boutique mal configurée, mais qui se
+   * retournait contre l'acheteur au premier changement de tarif : le jour où
+   * l'offre Essentiel passerait au prix qu'avait l'offre Pro, tout paiement
+   * Essentiel serait refusé et le client débité sans rien recevoir.
+   *
+   * Quand le montant correspond au prix actuel du produit identifié, il n'y a
+   * rien à croiser : c'est exactement ce qu'on attendait.
+   */
+  prixActuels?: Partial<Record<PlanKey, number>>
+): PlanKey | null {
   const byProduct = planFromProductId(input.productId);
   // `normalizePlan` accepte aussi les anciens libellés : un paiement lancé
   // avant cette mise à jour et confirmé après reste correctement rattaché.
@@ -184,6 +200,24 @@ export function resolvePaidPlan(input: {
 
   const plan = byProduct ?? byMetadata ?? byAmount;
   if (!plan) return null;
+
+  // Le montant est un prix que CETTE offre a réellement pratiqué — son prix
+  // actuel, ou l'un de ses anciens. Le contrôle croisé n'a plus rien à
+  // vérifier, même si ce montant se trouve être aujourd'hui celui d'une autre
+  // offre : l'acheteur a payé le prix affiché pour le produit qu'il a choisi.
+  //
+  // La protection contre une boutique mal configurée reste entière : un montant
+  // que cette offre n'a jamais pratiqué passe toujours par le contrôle croisé.
+  const prixDeCetteOffre = [
+    prixActuels?.[plan] ?? PLANS[plan].amountXof,
+    ...((PLANS[plan].montantsPrecedents as readonly number[]) ?? []),
+  ];
+  if (
+    input.amountCurrency?.toUpperCase() === 'XOF' &&
+    typeof input.amountValue === 'number' &&
+    prixDeCetteOffre.includes(input.amountValue)
+  )
+    return plan;
 
   // Contrôle croisé : si le montant XOF est connu mais ne correspond pas au
   // plan déduit, on refuse (protège contre un produit mal configuré côté store).

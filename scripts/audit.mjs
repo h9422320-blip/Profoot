@@ -44,7 +44,14 @@ const SITE = 'https://profootai.com';
  * promis un prix et la page de paiement en aurait réclamé un autre, ce qui fait
  * abandonner l'achat au moment précis où l'on tenait enfin l'acheteur.
  */
-const TARIFS = { Essentiel: 3000, Pro: 5000, 'VIP Annuel': 30000, 'Match à l\'unité': 600 };
+const TARIFS = { Essentiel: 2000, Pro: 5000, 'VIP Annuel': 15000, 'Match à l\'unité': 600 };
+
+/** Correspondance entre la clé d'une offre en base et son nom d'affichage. */
+const NOM_OFFRE = {
+  essential_monthly: 'Essentiel',
+  pro_monthly: 'Pro',
+  vip_yearly: 'VIP Annuel',
+};
 
 // ── Journal ──────────────────────────────────────────────────────────────────
 
@@ -143,6 +150,18 @@ async function verifierApiFootball() {
 
 async function verifierBoutique() {
   titre('2. BOUTIQUE ET TARIFS');
+
+  // Les prix se règlent depuis l'administration : ce sont donc CEUX-LÀ que
+  // l'application annonce, et non ceux écrits plus haut. Sans cette relecture,
+  // un changement de prix depuis l'administration ferait crier l'audit alors
+  // que la boutique est juste — ou, bien pire, le laisserait muet le jour où
+  // les deux ont réellement divergé.
+  const { data: offresReglees } = await sb.from('offres').select('cle, prix_xof');
+  for (const o of offresReglees ?? []) {
+    const nom = NOM_OFFRE[o.cle];
+    if (nom && Number(o.prix_xof) > 0) TARIFS[nom] = Number(o.prix_xof);
+  }
+
   const produits = [
     ['Essentiel', env.CHARIOW_PRODUCT_ID_ESSENTIAL],
     ['Pro', env.CHARIOW_PRODUCT_ID_PRO],

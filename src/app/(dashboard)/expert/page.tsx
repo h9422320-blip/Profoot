@@ -74,6 +74,15 @@ export default function ExpertAgentPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingCheckout, setLoadingCheckout] = useState(false);
+  // L'offre la moins chère qui ouvre l'Agent VIP, telle que réglée dans
+  // l'administration. Le serveur la désigne ; cette page se contente de
+  // l'afficher.
+  const [offreVip, setOffreVip] = useState<{
+    cle: string;
+    libelle: string;
+    prixXof: number;
+    dureeJours: number;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,10 +93,15 @@ export default function ExpertAgentPage() {
       });
     });
 
-    // L'Agent IA VIP est réservé à l'abonnement Annuel (droit "vip").
+    // L'accès à l'Agent VIP se lit sur le droit "vip", jamais sur le nom de
+    // l'offre : les trois offres l'ouvrent désormais, et ce droit est le seul
+    // à suivre le réglage de l'administration.
     fetch('/api/payments/status')
       .then(res => res.json())
-      .then(data => setIsPro(!!data.vip))
+      .then(data => {
+        setIsPro(!!data.vip);
+        if (data.offreVip) setOffreVip(data.offreVip);
+      })
       .catch(() => setIsPro(false));
   }, []);
 
@@ -175,7 +189,9 @@ export default function ExpertAgentPage() {
       const res = await fetch('/api/payments/chariow/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: 'yearly', fuseau: fuseauDuNavigateur() })
+        // On envoie vers l'offre la moins chère qui ouvre l'Agent VIP, telle
+        // que réglée dans l'administration — pas vers l'annuel par défaut.
+        body: JSON.stringify({ plan: offreVip?.cle ?? 'yearly', fuseau: fuseauDuNavigateur() })
       });
       
       const data = await res.json();
@@ -215,7 +231,7 @@ export default function ExpertAgentPage() {
             </h1>
             
             <p className="text-base md:text-lg text-white/60 font-medium leading-relaxed mb-12 max-w-md mx-auto relative z-10">
-              L'Agent IA <strong className="text-white font-bold">ProFoot Expert</strong> est une exclusivité réservée aux membres de l'<strong className="text-white font-bold">Abonnement Annuel</strong> : un analyste football personnel disponible 24h/24, connecté à l'actualité en temps réel — statistiques, tactiques, pronostics, transferts, sans aucune limite.
+              L'Agent IA <strong className="text-white font-bold">ProFoot Expert</strong> est réservé aux <strong className="text-white font-bold">abonnés ProFoot</strong> : un analyste football personnel disponible 24h/24, connecté à l'actualité en temps réel — statistiques, tactiques, pronostics, transferts, sans aucune limite.
             </p>
             
             <div className="relative z-10 w-full sm:w-auto mx-auto mt-4 group">
@@ -231,7 +247,11 @@ export default function ExpertAgentPage() {
                   <>
                     <span className="text-base sm:text-lg">Débloquer l'Accès VIP</span>
                     <div className="flex items-center">
-                      <span className="bg-black/10 px-3 py-1 rounded-full text-xs sm:text-sm font-bold">30 000 FCFA/an</span>
+                      <span className="bg-black/10 px-3 py-1 rounded-full text-xs sm:text-sm font-bold">
+                        {offreVip
+                          ? `dès ${offreVip.prixXof.toLocaleString("fr-FR")} FCFA${offreVip.dureeJours >= 365 ? "/an" : "/mois"}`
+                          : "Voir les offres"}
+                      </span>
                       <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-1.5" />
                     </div>
                   </>

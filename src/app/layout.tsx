@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { PLANS } from "@/lib/subscription";
 import { LanguageProvider } from "@/context/LanguageContext";
 
 import { Analytics } from "@vercel/analytics/react";
@@ -124,9 +125,18 @@ export default function RootLayout({
                     // Ces montants sont ceux que Google affiche dans ses
                     // résultats : ils doivent suivre les tarifs réels, sinon le
                     // visiteur arrive sur un prix différent de celui annoncé.
-                    { "@type": "Offer", name: "Essentiel", price: "3000", priceCurrency: "XOF" },
-                    { "@type": "Offer", name: "Pro", price: "5000", priceCurrency: "XOF" },
-                    { "@type": "Offer", name: "VIP Annuel", price: "30000", priceCurrency: "XOF" },
+                    //
+                    // Ils sont lus dans le code et NON dans le réglage de
+                    // l'administration, volontairement : cette page enveloppe
+                    // tout le site, et une lecture en base ici rendrait chaque
+                    // page dynamique — la page d'accueil comprise. Après un
+                    // changement de prix durable, reporter la valeur ici.
+                    ...Object.values(PLANS).map((p) => ({
+                      "@type": "Offer",
+                      name: p.label,
+                      price: String(p.amountXof),
+                      priceCurrency: "XOF",
+                    })),
                   ],
                 },
               ],

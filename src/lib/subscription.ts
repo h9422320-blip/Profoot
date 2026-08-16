@@ -26,21 +26,28 @@ export interface Entitlements {
 
 // Configuration des offres — montants en FCFA (XOF), source de vérité pour le
 // checkout ET la validation des webhooks. Ne jamais dupliquer ces montants ailleurs.
+// Le prix, le quota et l'accès VIP sont modifiables depuis l'administration
+// (table `offres`) : ces valeurs servent de REPLI quand la table est
+// injoignable, et de référence pour reconnaître un paiement.
+//
+// `montantsPrecedents` conserve tous les tarifs jamais pratiqués. C'est ce qui
+// permet à un abonné ayant payé 3 000 FCFA d'être encore reconnu après le
+// passage à 2 000 : sans cette liste, son paiement deviendrait orphelin.
 export const PLANS = {
   essential_monthly: {
-    amountXof: 3000, durationDays: 30, tier: 'ESSENTIAL' as PlanTier,
-    vip: false, analysisLimit: 10, label: 'Essentiel',
-    montantsPrecedents: [9000],
+    amountXof: 2000, durationDays: 30, tier: 'ESSENTIAL' as PlanTier,
+    vip: true, analysisLimit: 20, label: 'Essentiel',
+    montantsPrecedents: [9000, 3000],
   },
   pro_monthly: {
     amountXof: 5000, durationDays: 30, tier: 'PRO' as PlanTier,
-    vip: false, analysisLimit: 20, label: 'Pro',
+    vip: true, analysisLimit: 50, label: 'Pro',
     montantsPrecedents: [15000],
   },
   vip_yearly: {
-    amountXof: 30000, durationDays: 365, tier: 'VIP' as PlanTier,
+    amountXof: 15000, durationDays: 365, tier: 'VIP' as PlanTier,
     vip: true, analysisLimit: UNLIMITED, label: 'VIP Annuel',
-    montantsPrecedents: [60000],
+    montantsPrecedents: [60000, 30000],
   },
 } as const;
 
@@ -173,6 +180,13 @@ export async function computeEntitlements(
 ): Promise<Entitlements> {
   const email = user.email?.toLowerCase() ?? '';
 
+  // Import différé : `offres.ts` importe ce module pour ses valeurs de repli.
+  // Un import statique créerait un cycle. Le cache interne du module évite
+  // d'interroger la base à chaque calcul de droits.
+  const { lireOffres } = await import('./offres');
+  const offres = await lireOffres().catch(() => null);
+  const offresPro = offres?.pro_monthly;
+
   if (ADMIN_EMAILS.includes(email)) {
     return {
       plan: 'VIP', premium: true, vip: true, analysisLimit: UNLIMITED,
@@ -187,7 +201,8 @@ export async function computeEntitlements(
   }
   if (PERMANENT_PREMIUM_EMAILS.includes(email)) {
     return {
-      plan: 'PRO', premium: true, vip: false, analysisLimit: PLANS.pro_monthly.analysisLimit,
+      plan: 'PRO', premium: true, vip: offresPro?.agentVip ?? PLANS.pro_monthly.vip,
+      analysisLimit: offresPro?.limiteAnalyses ?? PLANS.pro_monthly.analysisLimit,
       expiresAt: null, periodStart: null, isAdmin: false,
     };
   }
@@ -220,14 +235,19 @@ export async function computeEntitlements(
     const key = normalizePlan(sub.plan);
     if (!key) continue;
     const config = PLANS[key];
+    // Le quota et l'acces a l'Agent VIP sont modifiables depuis
+    // l'administration : un abonne en cours suit TOUJOURS la valeur actuelle.
+    // Faire monter le quota de dix a vingt doit profiter aux abonnes existants
+    // le jour meme, sans qu'ils aient a se reabonner.
+    const reglee = offres?.[key];
 
     if (RANK[config.tier] <= RANK[best.plan]) continue;
 
     best = {
       plan: config.tier,
       premium: true,
-      vip: config.vip,
-      analysisLimit: config.analysisLimit,
+      vip: reglee?.agentVip ?? config.vip,
+      analysisLimit: reglee?.limiteAnalyses ?? config.analysisLimit,
       expiresAt: sub.expires_at,
       periodStart: sub.created_at
         ? currentPeriodStart(sub.created_at, config.durationDays).toISOString()

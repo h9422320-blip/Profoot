@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionEntitlements, PLANS, UNLIMITED } from '@/lib/subscription';
 import { getQuotaState } from '@/lib/analysis-quota';
 import { matchDebloqueParCle } from '@/lib/match-unique';
+import { lireOffres } from '@/lib/offres';
 
 /**
  * Droits d'accès et consommation de l'utilisateur connecté — seule source que
@@ -26,9 +27,27 @@ export async function GET(req: Request) {
       ? await matchDebloqueParCle(user.id, cle)
       : null;
 
+    // La MOINS CHÈRE des offres qui ouvrent l'Agent VIP.
+    //
+    // L'Agent VIP n'est plus réservé à l'offre annuelle : les trois offres y
+    // donnent accès. Une page qui continuerait d'annoncer « 30 000 FCFA/an »
+    // pour y entrer ferait fuir quelqu'un qui pouvait l'obtenir pour 2 000.
+    const offres = await lireOffres().catch(() => null);
+    const offreVip = offres
+      ? (Object.values(offres)
+          .filter((o) => o.agentVip)
+          .sort((a, b) => a.prixXof - b.prixXof)[0] ?? null)
+      : null;
+
     return NextResponse.json({
       // isPro conservé pour compatibilité avec l'interface existante.
       isPro: entitlements.premium,
+      offreVip: offreVip && {
+        cle: offreVip.cle,
+        libelle: offreVip.libelle,
+        prixXof: offreVip.prixXof,
+        dureeJours: offreVip.dureeJours,
+      },
       premium: entitlements.premium,
       matchDebloque: matchDebloqueDemande,
       vip: entitlements.vip,

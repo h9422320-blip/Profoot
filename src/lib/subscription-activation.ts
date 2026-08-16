@@ -24,12 +24,26 @@ export async function activateSubscriptionFromSale(
     return { activated: false, reason: `Vente non finalisée (statut: ${sale.status}).` };
   }
 
-  const plan = resolvePaidPlan({
-    productId: sale.product?.id,
-    metadataPlan: sale.custom_metadata?.plan,
-    amountValue: sale.amount?.value,
-    amountCurrency: sale.amount?.currency,
-  });
+  // Les prix réglés dans l'administration sont transmis au résolveur : sans
+  // eux, un changement de tarif ferait refuser des paiements parfaitement
+  // valides, et l'acheteur serait débité sans rien recevoir.
+  const { lireOffres } = await import('@/lib/offres');
+  const offres = await lireOffres().catch(() => null);
+  const prixActuels = offres
+    ? (Object.fromEntries(
+        Object.values(offres).map((o) => [o.cle, o.prixXof])
+      ) as Partial<Record<PlanKey, number>>)
+    : undefined;
+
+  const plan = resolvePaidPlan(
+    {
+      productId: sale.product?.id,
+      metadataPlan: sale.custom_metadata?.plan,
+      amountValue: sale.amount?.value,
+      amountCurrency: sale.amount?.currency,
+    },
+    prixActuels
+  );
   if (!plan) {
     return {
       activated: false,

@@ -378,8 +378,28 @@ const FR_TEAM_ALIASES: Record<string, string[]> = {
  * dans le navigateur : les faire descendre déjà rendues évite un aller-retour
  * réseau supplémentaire sur des connexions mobiles souvent lentes, ce qui est
  * le cas de la quasi-totalité des visiteurs.
+ *
+ * `offreEntree` descend elle aussi du serveur : le prix et le quota de l'offre
+ * d'entrée se règlent depuis l'administration, et un tarif périmé écrit en dur
+ * dans le paywall coûterait une vente à chaque affichage.
  */
-export default function AnalyzePage({ preuves }: { preuves?: React.ReactNode }) {
+export interface OffreEntree {
+  libelle: string;
+  prixXof: number;
+  /** `null` pour une offre sans limite. */
+  analyses: number | null;
+}
+
+export default function AnalyzePage({
+  preuves,
+  offreEntree,
+}: {
+  preuves?: React.ReactNode;
+  offreEntree?: OffreEntree;
+}) {
+  const offre = offreEntree ?? { libelle: "Essentiel", prixXof: 2000, analyses: 20 };
+  const prixOffre = offre.prixXof.toLocaleString("fr-FR");
+  const quotaOffre = offre.analyses === null ? "des analyses illimitées" : `${offre.analyses} analyses complètes`;
   const [team1, setTeam1] = useState<string | null>(null);
   const [team2, setTeam2] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -1505,6 +1525,8 @@ export default function AnalyzePage({ preuves }: { preuves?: React.ReactNode }) 
                       equipe2Nom={result.matchUnique?.equipe2Nom ?? ''}
                       prixMatch={result.matchUnique?.prix ?? 600}
                       achatUniteDisponible={!!result.matchUnique?.disponible}
+                      prixAbonnement={offre.prixXof}
+                      quotaAbonnement={offre.analyses}
                     />
                   </div>
                 )}
@@ -1525,8 +1547,8 @@ export default function AnalyzePage({ preuves }: { preuves?: React.ReactNode }) 
                         Tu débloques souvent des matchs ?
                       </p>
                       <p className="text-[12px] text-white/60 leading-relaxed">
-                        L&apos;abonnement Essentiel à 3 000 FCFA te donne 10 analyses complètes par
-                        mois — soit six fois moins cher au match.
+                        L&apos;abonnement {offre.libelle} à {prixOffre} FCFA te donne {quotaOffre} par
+                        mois.
                       </p>
                       <Link
                         href="/pricing"

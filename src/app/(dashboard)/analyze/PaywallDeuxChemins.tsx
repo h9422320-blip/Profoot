@@ -30,6 +30,8 @@ export default function PaywallDeuxChemins({
   equipe2Nom,
   prixMatch,
   achatUniteDisponible,
+  prixAbonnement,
+  quotaAbonnement,
 }: {
   equipe1Id: string;
   equipe2Id: string;
@@ -37,6 +39,10 @@ export default function PaywallDeuxChemins({
   equipe2Nom: string;
   prixMatch: number;
   achatUniteDisponible: boolean;
+  /** Prix de l'offre d'entrée, tel que réglé dans l'administration. */
+  prixAbonnement: number;
+  /** Nombre d'analyses de cette offre — `null` si elle est illimitée. */
+  quotaAbonnement: number | null;
 }) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -165,12 +171,17 @@ export default function PaywallDeuxChemins({
             : { background: "linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)", color: "#101c24" }
         }
       >
-        {achatUniteDisponible ? "S'abonner — dès 3 000 FCFA / mois" : "🔒 Débloquer l'analyse complète"}
+        {achatUniteDisponible
+          ? `S'abonner — dès ${prixAbonnement.toLocaleString("fr-FR")} FCFA / mois`
+          : "🔒 Débloquer l'analyse complète"}
       </Link>
 
       {achatUniteDisponible && (
         <p className="text-[11px] text-[#10B981] font-bold mt-2.5 text-center">
-          Meilleure valeur : 10 analyses complètes par mois
+          Meilleure valeur :{" "}
+          {quotaAbonnement === null
+            ? "analyses illimitées"
+            : `${quotaAbonnement} analyses complètes par mois`}
         </p>
       )}
     </div>

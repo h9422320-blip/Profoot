@@ -127,10 +127,19 @@ export async function executerAudit(): Promise<ResultatAudit> {
   }
 
   // ── Boutique ──────────────────────────────────────────────────────────────
+  // Le prix attendu est celui que l'application ANNONCE réellement, donc celui
+  // de l'administration — pas celui du code. Sans cela, changer un prix depuis
+  // l'administration ferait crier l'audit alors que la boutique est juste, ou
+  // pire : le laisserait muet alors que les deux ont divergé.
+  const { lireOffres } = await import('./offres');
+  const offresBoutique = await lireOffres().catch(() => null);
+  const prixAnnonce = (cle: keyof typeof PLANS) =>
+    offresBoutique?.[cle]?.prixXof ?? PLANS[cle].amountXof;
+
   const produits: [string, string | undefined, number][] = [
-    ['Essentiel', process.env.CHARIOW_PRODUCT_ID_ESSENTIAL, PLANS.essential_monthly.amountXof],
-    ['Pro', process.env.CHARIOW_PRODUCT_ID_PRO ?? process.env.CHARIOW_PRODUCT_ID_MONTHLY, PLANS.pro_monthly.amountXof],
-    ['VIP Annuel', process.env.CHARIOW_PRODUCT_ID_VIP ?? process.env.CHARIOW_PRODUCT_ID_YEARLY, PLANS.vip_yearly.amountXof],
+    ['Essentiel', process.env.CHARIOW_PRODUCT_ID_ESSENTIAL, prixAnnonce('essential_monthly')],
+    ['Pro', process.env.CHARIOW_PRODUCT_ID_PRO ?? process.env.CHARIOW_PRODUCT_ID_MONTHLY, prixAnnonce('pro_monthly')],
+    ['VIP Annuel', process.env.CHARIOW_PRODUCT_ID_VIP ?? process.env.CHARIOW_PRODUCT_ID_YEARLY, prixAnnonce('vip_yearly')],
   ];
   for (const [nom, id, attendu] of produits) {
     if (!id) {
