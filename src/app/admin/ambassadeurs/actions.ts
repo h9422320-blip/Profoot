@@ -1,10 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient as createServerClient } from "@/utils/supabase/server";
-import { COOKIE_ADMIN, cleAdminAttendue, cleValide } from "@/lib/admin-access";
 import { estAdmin } from "@/lib/admins";
 
 const TAILLE_MAX = 5 * 1024 * 1024;
@@ -26,11 +24,18 @@ async function verifierAdmin(): Promise<boolean> {
   // doit pas fermer la porte a quelqu un d autorise.
   if (!estAdmin(user?.email)) return false;
 
-  const attendue = cleAdminAttendue();
-  if (attendue) {
-    const jeton = (await cookies()).get(COOKIE_ADMIN)?.value;
-    if (!cleValide(jeton, attendue)) return false;
-  }
+  // LE VERROU PAR LIEN PERSONNEL A ÉTÉ RETIRÉ le 16/08/2026, sur demande.
+  //
+  // Il exigeait, en plus du compte, un cookie déposé par un lien secret
+  // (/a/<clé>). Il protégeait contre une session volée : la voler ne suffisait
+  // pas, il fallait aussi connaître le lien. Il rendait en revanche l'arrivée
+  // d'un nouvel administrateur incompréhensible — connecté, autorisé, et
+  // pourtant renvoyé vers l'accueil sans un mot d'explication.
+  //
+  // Le contrôle du compte ci-dessus reste entier : il est désormais seul.
+  // Pour le rétablir, remettre ici la vérification du cookie et renseigner
+  // ADMIN_ACCESS_KEY ; le module admin-access et la route /a/<clé> sont
+  // conservés intacts à cette fin.
   return true;
 }
 

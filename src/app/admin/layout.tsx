@@ -1,23 +1,20 @@
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import AdminLayoutClient from "./AdminLayoutClient";
-import { COOKIE_ADMIN, cleAdminAttendue, cleValide } from "@/lib/admin-access";
 import { getAlertes } from "@/lib/admin-metrics";
 import { lireReglages } from "@/lib/app-settings";
 import { estAdmin } from "@/lib/admins";
 
 /**
- * Double verrou sur l'administration.
+ * Porte d'entrée de l'administration.
  *
- * 1. Le compte connecté doit être celui de l'administrateur.
- * 2. Si une clé d'accès est configurée, le navigateur doit porter le cookie
- *    posé par le lien personnel.
+ * Une seule condition : être connecté avec une adresse figurant dans la liste
+ * des administrateurs. Cette liste vit dans `src/lib/admins.ts`, et la
+ * comparaison y est faite en minuscules.
  *
- * Le second verrou signifie qu'une session volée ne suffit pas : il faut aussi
- * connaître le lien. Quand aucune clé n'est configurée, seul le premier verrou
- * s'applique — ainsi un oubli de configuration ne coupe jamais l'accès à
- * l'administrateur légitime.
+ * Ce contrôle est répété dans chaque action serveur, et non pas seulement ici :
+ * une action est une adresse appelable directement, elle ne traverse pas ce
+ * gabarit et n'hérite donc d'aucune de ses protections.
  */
 export default async function AdminLayout({
   children,
@@ -31,13 +28,18 @@ export default async function AdminLayout({
     redirect("/analyze");
   }
 
-  const attendue = cleAdminAttendue();
-  if (attendue) {
-    const jeton = (await cookies()).get(COOKIE_ADMIN)?.value;
-    if (!cleValide(jeton, attendue)) {
-      redirect("/analyze");
-    }
-  }
+  // LE VERROU PAR LIEN PERSONNEL A ÉTÉ RETIRÉ le 16/08/2026, sur demande.
+  //
+  // Il exigeait, en plus du compte, un cookie déposé par un lien secret
+  // (/a/<clé>). Il protégeait contre une session volée : la voler ne suffisait
+  // pas, il fallait aussi connaître le lien. Il rendait en revanche l'arrivée
+  // d'un nouvel administrateur incompréhensible — connecté, autorisé, et
+  // pourtant renvoyé vers l'accueil sans un mot d'explication.
+  //
+  // Le contrôle du compte ci-dessus reste entier : il est désormais seul.
+  // Pour le rétablir, remettre ici la vérification du cookie et renseigner
+  // ADMIN_ACCESS_KEY ; le module admin-access et la route /a/<clé> sont
+  // conservés intacts à cette fin.
 
   const [alertes, reglages] = await Promise.all([getAlertes(), lireReglages()]);
 
