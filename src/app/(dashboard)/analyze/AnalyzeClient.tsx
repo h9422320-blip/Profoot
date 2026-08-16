@@ -11,7 +11,16 @@ import { clubs, getClub, matches, competitions } from "@/lib/data";
 const futureMatches = matches.filter(m => m.status === "upcoming");
 
 // Group clubs by league for the picker
-const leagueOrder = ["ucl", "epl", "laliga", "ligue1", "seriea", "bundesliga", "eredivisie", "ligaportugal", "proleague", "premiership", "superlig", "can"];
+const leagueOrder = [
+  "ucl", "epl", "laliga", "ligue1", "seriea", "bundesliga",
+  "eredivisie", "ligaportugal", "proleague", "premiership", "superlig",
+  // Ajoutés le 16/08/2026 : sans la Suisse, le FC Bâle était introuvable un
+  // jour de Bâle–Barcelone, et le match ne pouvait pas être analysé.
+  "suisse", "autriche", "grece", "danemark", "norvege", "suede",
+  "pologne", "tchequie", "croatie", "serbie", "ukraine", "roumanie",
+  "championship", "ligue2", "segunda", "serieb", "bundesliga2",
+  "can",
+];
 const leagueLabels: Record<string, string> = {
   epl: "Premier League",
   laliga: "La Liga",
@@ -23,6 +32,23 @@ const leagueLabels: Record<string, string> = {
   proleague: "Jupiler Pro League",
   premiership: "Scottish Premiership",
   superlig: "Süper Lig",
+  suisse: "Super League (Suisse)",
+  autriche: "Bundesliga (Autriche)",
+  grece: "Super League (Grèce)",
+  danemark: "Superliga (Danemark)",
+  norvege: "Eliteserien (Norvège)",
+  suede: "Allsvenskan (Suède)",
+  pologne: "Ekstraklasa (Pologne)",
+  tchequie: "Chance Liga (Tchéquie)",
+  croatie: "HNL (Croatie)",
+  serbie: "Super Liga (Serbie)",
+  ukraine: "Premier League (Ukraine)",
+  roumanie: "Liga I (Roumanie)",
+  championship: "Championship (Angleterre)",
+  ligue2: "Ligue 2",
+  segunda: "LaLiga 2",
+  serieb: "Serie B",
+  bundesliga2: "2. Bundesliga",
   ucl: "Autres Europe",
   can: "CAN",
   caf: "Clubs Africains",
@@ -47,32 +73,69 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
 }) {
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // Clubs trouvés hors des championnats préchargés.
+  const [resultatsDistants, setResultatsDistants] = useState<any[]>([]);
+  const [rechercheEnCours, setRechercheEnCours] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setSelectedLeague(null);
       setSearchQuery("");
+      setResultatsDistants([]);
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  // Recherche locale, insensible aux accents.
+  //
+  // « Bâle » et « bale », « Atlético » et « atletico » doivent se rejoindre :
+  // sur un clavier de téléphone, presque personne ne met les accents.
+  const sansAccent = (t: string) =>
+    t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
-  // Search across all clubs with French alias support
-  const searchResults = searchQuery.trim().length >= 2
+  const resultatsLocaux = searchQuery.trim().length >= 2
     ? Object.values(clubs).filter((c: any) => {
-        const q = searchQuery.toLowerCase().trim();
-        if (c.name.toLowerCase().includes(q) || c.shortName.toLowerCase().includes(q)) return true;
-        // Check French aliases
+        const q = sansAccent(searchQuery);
+        if (sansAccent(c.name).includes(q) || sansAccent(c.shortName ?? "").includes(q)) return true;
         for (const [englishName, aliases] of Object.entries(FR_TEAM_ALIASES)) {
-          const matchesAlias = aliases.some(alias => alias.includes(q) || q.includes(alias));
-          if (matchesAlias && c.name.toLowerCase().includes(englishName.toLowerCase())) return true;
+          const matchesAlias = aliases.some(alias => sansAccent(alias).includes(q) || q.includes(sansAccent(alias)));
+          if (matchesAlias && sansAccent(c.name).includes(sansAccent(englishName))) return true;
         }
         return false;
       })
     : [];
 
+  // Rien en local : on va chercher le club partout, quel que soit son
+  // championnat. C'est ce qui évite qu'un abonné cherche « Bâle » un soir de
+  // Bâle–Barcelone et reparte en croyant que son match n'existe pas.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 3 || resultatsLocaux.length > 0) {
+      setResultatsDistants([]);
+      setRechercheEnCours(false);
+      return;
+    }
+    setRechercheEnCours(true);
+    const minuteur = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/teams/search?q=${encodeURIComponent(q)}`);
+        const d = await r.json();
+        setResultatsDistants(d.teams ?? []);
+      } catch {
+        setResultatsDistants([]);
+      } finally {
+        setRechercheEnCours(false);
+      }
+    }, 350); // on attend la fin de la frappe plutôt qu'un appel par lettre
+    return () => clearTimeout(minuteur);
+  }, [searchQuery, resultatsLocaux.length]);
+
+  const searchResults = resultatsLocaux.length > 0 ? resultatsLocaux : resultatsDistants;
   const showSearch = searchQuery.trim().length >= 2;
+
+  // Placé APRÈS les hooks : sortir avant eux les rendrait conditionnels, ce que
+  // React interdit — la recherche cesserait de fonctionner à la réouverture.
+  if (!isOpen) return null;
 
   return (
     <div
@@ -119,7 +182,14 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
           {/* Search results */}
           {showSearch ? (
             <div className="space-y-1 px-2">
-              {searchResults.length === 0 ? (
+              {rechercheEnCours && searchResults.length === 0 ? (
+                /* Ne jamais annoncer l'échec tant qu'on cherche encore : le
+                   club est peut-être hors des championnats préchargés, et
+                   « Aucun résultat » ferait renoncer avant la réponse. */
+                <p className="text-xs text-white/40 text-center py-6 font-semibold">
+                  Recherche dans tous les championnats…
+                </p>
+              ) : searchResults.length === 0 ? (
                 <p className="text-xs text-white/30 text-center py-6 font-semibold">Aucun résultat</p>
               ) : (
                 searchResults.map((c: any) => (

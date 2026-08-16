@@ -123,6 +123,27 @@ export const LEAGUE_IDS: Record<string, number> = {
   premiership: 179,
   superlig: 203,
   can: 6,
+  // Reste de l'Europe. Ajoutés le 16/08/2026 : le sélecteur ignorait la Suisse
+  // le jour de Bâle–Barcelone, et l'utilisateur ne pouvait tout simplement pas
+  // analyser le match.
+  suisse: 207,
+  autriche: 218,
+  grece: 197,
+  danemark: 119,
+  norvege: 103,
+  suede: 113,
+  pologne: 106,
+  tchequie: 345,
+  croatie: 210,
+  serbie: 286,
+  ukraine: 333,
+  roumanie: 283,
+  // Deuxièmes divisions dont les clubs sont connus du public.
+  championship: 40,
+  ligue2: 62,
+  segunda: 141,
+  serieb: 136,
+  bundesliga2: 79,
 };
 
 /**
