@@ -36,11 +36,6 @@ export default function robots(): MetadataRoute.Robots {
           '/ia-center',
           '/payment-success',
           '/payment-failed',
-          // Fermés tant qu'ils affichent des rencontres écrites à la main,
-          // datées d'avril 2026, avec des pronostics inventés. À rouvrir dès
-          // qu'ils seront alimentés par de vraies données — c'est ce qui vient
-          // d'être fait pour /matches.
-          '/stats',
         ],
       },
     ],

@@ -69,10 +69,9 @@ export async function updateSession(request: NextRequest) {
   // sur de vraies rencontres. Elle affichait jusque-là des matchs écrits à la
   // main, datés d'avril 2026, avec des pronostics inventés.
   //
-  // /club puis /match ont suivi le 16/08/2026, une fois branchés sur des
-  // données réelles. Seule /stats reste fermée : elle affiche encore des
-  // chiffres écrits à la main.
-  const protectedPaths = ['/dashboard', '/analyze', '/settings', '/history', '/stats', '/search', '/ia-center', '/expert', '/payment-success', '/payment-failed', '/admin'];
+  // /club, /match et /stats ont suivi le 16/08/2026, une fois branchés sur
+  // des données réelles et rendus par le serveur.
+  const protectedPaths = ['/dashboard', '/analyze', '/settings', '/history', '/search', '/ia-center', '/expert', '/payment-success', '/payment-failed', '/admin'];
 
   // Comparaison sur le SEGMENT complet, et non sur le simple début du chemin.
   //

@@ -1,28 +1,25 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { BarChart3, Target } from "lucide-react";
-import { competitions } from "@/lib/data";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Target, Brain } from "lucide-react";
+import { getSeasonLabel, getTopScorers } from "@/lib/api-football";
 
 /**
- * Meilleurs buteurs — données réelles.
+ * Les meilleurs buteurs des grands championnats.
  *
- * Cette page affichait une liste écrite à la main dans le référentiel : Haaland
- * 29 buts, Lewandowski 26, et un sous-titre « Saison 2025-26 » figé. Ces
- * chiffres étaient ceux d'une saison révolue, présentés comme l'actualité.
+ * CE QUI A CHANGÉ
  *
- * Ils viennent maintenant d'API-Football. Tant que la saison n'a pas produit de
- * statistiques, la liste reste vide et la page le dit — un classement vide est
- * honnête, un classement périmé ne l'est pas.
+ * Les chiffres étaient déjà réels — la liste écrite à la main, Haaland 29 buts
+ * et Lewandowski 26 figés sur une saison révolue, avait été retirée. Le défaut
+ * restant était ailleurs : la page les chargeait DANS LE NAVIGATEUR. Un moteur
+ * de recherche recevait donc une page vide, et un visiteur sur connexion lente
+ * un écran d'attente.
+ *
+ * Elle est maintenant rendue par le serveur : les buteurs se trouvent dans la
+ * page envoyée. C'est ce qui permet de répondre à « meilleur buteur Ligue 1 ».
+ *
+ * Un classement vide reste affiché comme vide. Un classement périmé serait un
+ * mensonge ; un classement absent n'en est pas un.
  */
-
-interface Buteur {
-  nom: string;
-  club: string;
-  logoClub: string | null;
-  buts: number;
-  passes: number;
-}
 
 const LIGUES = [
   { id: "epl", label: "Premier League" },
@@ -31,114 +28,103 @@ const LIGUES = [
   { id: "ligue1", label: "Ligue 1" },
 ];
 
-export default function StatsPage() {
-  const [buteurs, setButeurs] = useState<Record<string, Buteur[]>>({});
-  const [saison, setSaison] = useState<string | null>(null);
-  const [chargement, setChargement] = useState(true);
+export const metadata: Metadata = {
+  title: "Meilleurs buteurs des grands championnats",
+  description:
+    "Le classement des meilleurs buteurs de Premier League, La Liga, Serie A et Ligue 1 : buts et passes décisives de la saison en cours.",
+  alternates: { canonical: "https://profootai.com/stats" },
+};
 
-  useEffect(() => {
-    let annule = false;
-    fetch("/api/topscorers/live")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (annule || !d) return;
-        setButeurs(d.buteurs ?? {});
-        setSaison(d.saison ?? null);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!annule) setChargement(false);
-      });
-    return () => {
-      annule = true;
-    };
-  }, []);
+export const revalidate = 1800;
+
+export default async function StatsPage() {
+  const saison = getSeasonLabel("epl");
+
+  // Un championnat qui ne répond pas ne doit pas emporter les trois autres.
+  const paires = await Promise.all(
+    LIGUES.map(async (l) => {
+      try {
+        return [l.id, (await getTopScorers(l.id)) ?? []] as const;
+      } catch {
+        return [l.id, []] as const;
+      }
+    })
+  );
+  const buteurs = Object.fromEntries(paires) as Record<string, any[]>;
+  const total = Object.values(buteurs).reduce((n, b) => n + b.length, 0);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Statistiques</h1>
-        <p className="text-foreground/50 text-sm mt-1">
-          Meilleurs buteurs et passeurs{saison ? ` • Saison ${saison}` : ""}
+    <div className="space-y-8 pb-20 pt-4">
+      <header className="space-y-2">
+        <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+          Meilleurs buteurs
+        </h1>
+        <p className="text-foreground/50 text-sm font-semibold">
+          Premier League, La Liga, Serie A et Ligue 1 — saison {saison}
         </p>
+      </header>
+
+      {total === 0 && (
+        <p className="text-sm text-white/40 py-8 text-center rounded-[20px] border border-border-card bg-card/60">
+          La saison n&apos;a pas encore produit de statistiques de buteurs. Revenez après les
+          premières journées.
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {LIGUES.map((ligue) => (
+          <Classement key={ligue.id} titre={ligue.label} liste={buteurs[ligue.id] ?? []} />
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {LIGUES.map((ligue) => {
-          const comp = competitions.find((c) => c.id === ligue.id);
-          const liste = buteurs[ligue.id] ?? [];
-          return (
-            <div key={ligue.id} className="bg-card border border-border-card rounded-[16px] overflow-hidden">
-              <div className="px-5 py-4 border-b border-border-card flex items-center gap-3">
-                {comp && <img src={comp.logo} alt={comp.shortName} className="w-5 h-5 object-contain" />}
-                <h2 className="text-sm font-bold text-foreground">{ligue.label}</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium border border-primary/20">
-                  Buteurs
-                </span>
-              </div>
-
-              {chargement ? (
-                <div className="divide-y divide-border-card/50">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="flex items-center gap-4 px-5 py-3 animate-pulse">
-                      <div className="w-5 h-3 rounded bg-foreground/10" />
-                      <div className="w-6 h-6 rounded-full bg-foreground/10" />
-                      <div className="flex-1 h-3 rounded bg-foreground/10" />
-                      <div className="w-8 h-3 rounded bg-foreground/10" />
-                    </div>
-                  ))}
-                </div>
-              ) : liste.length === 0 ? (
-                <div className="px-5 py-8 text-center">
-                  <p className="text-xs text-foreground/40">
-                    Aucun buteur pour l'instant — la saison n'a pas encore produit de statistiques.
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-border-card/50">
-                  {liste.map((b, i) => (
-                    <div
-                      key={`${b.nom}-${i}`}
-                      className="flex items-center gap-4 px-5 py-3 hover:bg-sidebar/30 transition-colors"
-                    >
-                      <span
-                        className={`text-xs font-black w-5 text-center ${
-                          i === 0 ? "text-warning" : i < 3 ? "text-primary" : "text-foreground/40"
-                        }`}
-                      >
-                        {i + 1}
-                      </span>
-                      {b.logoClub && (
-                        <img src={b.logoClub} alt={b.club} className="w-6 h-6 rounded-full bg-card p-0.5" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">{b.nom}</p>
-                        <p className="text-[10px] text-foreground/40">{b.club}</p>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-center">
-                          <div className="text-sm font-black text-foreground">{b.buts}</div>
-                          <div className="text-[9px] text-foreground/30 uppercase tracking-wider">Buts</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-sm font-black text-foreground/60">{b.passes}</div>
-                          <div className="text-[9px] text-foreground/30 uppercase tracking-wider">Passes</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center gap-2 text-[11px] text-foreground/30">
-        <BarChart3 className="w-3.5 h-3.5" />
-        <Target className="w-3.5 h-3.5" />
-        <span>Chiffres relevés en direct sur la compétition en cours.</span>
-      </div>
+      <Link
+        href="/analyze"
+        className="flex items-center justify-center gap-2 w-full sm:w-auto sm:self-start px-6 py-4 min-h-[52px] rounded-full font-black text-[14px] text-[#06231a] bg-primary hover:bg-primary/90 transition"
+      >
+        <Brain className="w-4 h-4" />
+        Analyser un match avec l&apos;IA
+      </Link>
     </div>
+  );
+}
+
+function Classement({ titre, liste }: { titre: string; liste: any[] }) {
+  return (
+    <section className="rounded-[20px] border border-border-card bg-card/60 overflow-hidden">
+      <div className="px-5 py-4 border-b border-border-card flex items-center gap-2.5">
+        <Target className="w-4 h-4 text-primary" />
+        <h2 className="text-[13px] font-black text-white">{titre}</h2>
+      </div>
+
+      {liste.length === 0 ? (
+        <p className="px-5 py-6 text-[13px] text-white/35">
+          Aucun buteur classé pour le moment.
+        </p>
+      ) : (
+        <ol className="divide-y divide-border-card">
+          {liste.slice(0, 10).map((b, i) => (
+            <li key={i} className="flex items-center gap-3 px-5 py-3">
+              <span className="w-5 text-[13px] font-black text-white/30 tabular-nums shrink-0">
+                {i + 1}
+              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {b.logoClub && (
+                <img src={b.logoClub} alt="" className="w-5 h-5 object-contain shrink-0" loading="lazy" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-bold text-white truncate">{b.nom}</p>
+                <p className="text-[11px] text-white/35 truncate">{b.club}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[15px] font-black text-primary tabular-nums">{b.buts}</p>
+                {b.passes > 0 && (
+                  <p className="text-[10px] text-white/30">{b.passes} passe{b.passes > 1 ? "s" : ""}</p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
