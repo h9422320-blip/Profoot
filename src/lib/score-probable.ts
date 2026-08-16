@@ -199,11 +199,52 @@ export function melangerStatistiques(
   return { butsMarques: pour * matiere, butsEncaisses: contre * matiere, matchsJoues: matiere };
 }
 
+/**
+ * Ce que vaut une équipe d'après son classement, ramené à un multiplicateur.
+ *
+ * POURQUOI CE COMPLÉMENT
+ *
+ * Le calcul ne connaissait que les buts marqués et encaissés sur les derniers
+ * matchs. Il ignorait CONTRE QUI. Un club battant Boulogne 4-1 en amical y
+ * pesait autant qu'un club gagnant une finale européenne — et le Paris
+ * Saint-Germain se retrouvait à égalité avec des adversaires qu'il domine
+ * largement sur une saison.
+ *
+ * Le classement corrige cela. Il est déjà récupéré par le moteur, et c'est la
+ * mesure la plus fiable dont on dispose : trente-huit journées valent mieux que
+ * douze matchs récents.
+ *
+ * On s'appuie sur les POINTS, pas sur le rang. Deux équipes séparées d'une
+ * place peuvent l'être de vingt points ou d'un seul ; le rang efface cette
+ * différence, les points la conservent. Paris a fini premier avec 76 points,
+ * Lens deuxième avec 70 : l'écart est réel mais mince, et le calcul doit le
+ * refléter tel quel plutôt que d'inventer une domination.
+ *
+ * L'effet est volontairement borné à ±15 % : le classement pèse dans la
+ * balance, il ne remplace pas la forme du moment.
+ */
+export interface ForceClassement {
+  points: number;
+  pointsMoyens: number;
+}
+
+const INFLUENCE_CLASSEMENT = 0.15;
+
+export function forceDepuisClassement(c: ForceClassement | null | undefined): number {
+  if (!c || !c.pointsMoyens || c.pointsMoyens <= 0) return 1;
+  // Rapport à la moyenne du championnat, puis compression : une équipe à deux
+  // fois la moyenne n'est pas deux fois plus forte sur un match.
+  const rapport = c.points / c.pointsMoyens;
+  return borner(1 + (rapport - 1) * INFLUENCE_CLASSEMENT, 1 - INFLUENCE_CLASSEMENT, 1 + INFLUENCE_CLASSEMENT);
+}
+
 export function calculerScoreProbable(
   equipe1: StatistiquesEquipe,
   equipe2: StatistiquesEquipe,
   equipe1AJoueADomicile: boolean | null = null,
-  peuFiable = false
+  peuFiable = false,
+  /** Classements de fin de saison, quand ils sont connus. */
+  classements?: { equipe1?: ForceClassement | null; equipe2?: ForceClassement | null }
 ): ScoreProbable {
   const joues1 = Math.max(1, equipe1.matchsJoues);
   const joues2 = Math.max(1, equipe2.matchsJoues);
@@ -238,8 +279,21 @@ export function calculerScoreProbable(
   const facteur2 =
     equipe1AJoueADomicile === null ? 1 : equipe1AJoueADomicile ? DESAVANTAGE_EXTERIEUR : AVANTAGE_DOMICILE;
 
-  const butsAttendus1 = borner(forceAttaque1 * forceDefense2 * moyenne * facteur1, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
-  const butsAttendus2 = borner(forceAttaque2 * forceDefense1 * moyenne * facteur2, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+  // Le classement entre ici : il rehausse l attaque de la meilleure equipe et
+  // durcit sa defense, sans jamais ecraser la forme du moment.
+  const rang1 = forceDepuisClassement(classements?.equipe1);
+  const rang2 = forceDepuisClassement(classements?.equipe2);
+
+  const butsAttendus1 = borner(
+    forceAttaque1 * forceDefense2 * moyenne * facteur1 * (rang1 / rang2),
+    BUTS_ATTENDUS_MIN,
+    BUTS_ATTENDUS_MAX
+  );
+  const butsAttendus2 = borner(
+    forceAttaque2 * forceDefense1 * moyenne * facteur2 * (rang2 / rang1),
+    BUTS_ATTENDUS_MIN,
+    BUTS_ATTENDUS_MAX
+  );
 
   // Grille complète des scores : chaque case est la probabilité de ce score
   // exact. Tout le reste — issue, deux équipes marquent, nombre de buts — s'en

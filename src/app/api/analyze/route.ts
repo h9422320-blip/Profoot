@@ -672,7 +672,7 @@ export async function POST(req: Request) {
     console.log(`[BACKEND_ANALYZE] Championnats retenus : ${t1League} et ${t2League}.`);
   }
 
-  let t1Stats = null, t2Stats = null, t1Injuries = null, t2Injuries = null, t1Squad = null, t2Squad = null, t1TopScorers = null, t2TopScorers = null, t1Standings = null, t2Standings = null;
+  let t1Stats = null, t2Stats = null, t1Injuries = null, t2Injuries = null, t1Squad = null, t2Squad = null, t1TopScorers = null, t2TopScorers = null, t1Standings = null, t2Standings = null, t1StandingsPrecedent = null, t2StandingsPrecedent = null;
 
   if (id1 && id2) {
     const statsRes = await Promise.all([
@@ -685,27 +685,69 @@ export async function POST(req: Request) {
       fetchApiFootball(`/players/topscorers?season=${t1Season}&league=${t1League}`),
       fetchApiFootball(`/players/topscorers?season=${t2Season}&league=${t2League}`),
       fetchApiFootball(`/standings?season=${t1Season}&league=${t1League}`, CACHE_TTL.API_DATA),
-      fetchApiFootball(`/standings?season=${t2Season}&league=${t2League}`, CACHE_TTL.API_DATA)
+      fetchApiFootball(`/standings?season=${t2Season}&league=${t2League}`, CACHE_TTL.API_DATA),
+      // Repli : en ouverture de saison, le classement en cours est vide de sens.
+      fetchApiFootball(`/standings?season=${t1Season - 1}&league=${t1League}`, CACHE_TTL.API_DATA),
+      fetchApiFootball(`/standings?season=${t2Season - 1}&league=${t2League}`, CACHE_TTL.API_DATA)
     ]);
-    [t1Stats, t2Stats, t1Injuries, t2Injuries, t1Squad, t2Squad, t1TopScorers, t2TopScorers, t1Standings, t2Standings] = statsRes;
+    [t1Stats, t2Stats, t1Injuries, t2Injuries, t1Squad, t2Squad, t1TopScorers, t2TopScorers, t1Standings, t2Standings, t1StandingsPrecedent, t2StandingsPrecedent] = statsRes;
 
     // La bascule sur la saison précédente et la relance en cas de réponse vide
     // sont désormais assurées par statistiquesEquipe, au plus près de la lecture.
   }
 
-  // Extract Standings Info (For League Level/Rank Context)
-  const extractStandings = (standingsRes: any, teamId: string) => {
+  /**
+   * Le classement d'une équipe — et surtout, un classement QUI VEUT DIRE
+   * QUELQUE CHOSE.
+   *
+   * En ouverture de saison, tout le monde est à zéro point et le fournisseur
+   * range les équipes par ordre alphabétique. Le moteur annonçait ainsi « Paris
+   * Saint-Germain classé 13e sur 18 » la veille du Trophée des Champions — et
+   * l'écrivait noir sur blanc dans le prompt envoyé au modèle. Un classement à
+   * zéro point n'est pas un classement : c'est une liste.
+   *
+   * On bascule donc sur la saison précédente tant que le championnat n'a pas
+   * commencé. Le PSG y figure 1er avec 76 points, Lens 2e avec 70 — deux
+   * informations vraies, là où « 13e » et « 14e » étaient deux mensonges.
+   */
+  const lireClassement = (standingsRes: any, teamId: string) => {
     try {
-      const leageStandings = standingsRes?.response?.[0]?.league?.standings?.[0] || [];
-      const teamStanding = leageStandings.find((s: any) => s.team.id.toString() === teamId.toString());
-      if (teamStanding) {
-        return `Classé ${teamStanding.rank}e sur ${leageStandings.length}. Forme ligue: ${teamStanding.form}. Points: ${teamStanding.points}.`;
-      }
-    } catch(e) {}
-    return "Classement inconnu ou non applicable (ex: match amical).";
+      const table = standingsRes?.response?.[0]?.league?.standings?.[0] || [];
+      if (!table.length) return null;
+      // Championnat pas encore commencé : le classement ne distingue rien.
+      const totalPoints = table.reduce((t: number, s: any) => t + (Number(s.points) || 0), 0);
+      if (totalPoints === 0) return null;
+
+      const ligne = table.find((s: any) => String(s.team?.id) === String(teamId));
+      if (!ligne) return null;
+      return {
+        rang: Number(ligne.rank),
+        equipes: table.length,
+        points: Number(ligne.points) || 0,
+        forme: ligne.form ?? null,
+        // Repère indispensable : 70 points ne veulent rien dire sans savoir ce
+        // que valent les autres.
+        pointsMoyens: totalPoints / table.length,
+        pointsMax: Math.max(...table.map((s: any) => Number(s.points) || 0)),
+      };
+    } catch {
+      return null;
+    }
   };
-  const stand1 = extractStandings(t1Standings, id1);
-  const stand2 = extractStandings(t2Standings, id2);
+
+  const classement1 =
+    lireClassement(t1Standings, id1) ?? lireClassement(t1StandingsPrecedent, id1);
+  const classement2 =
+    lireClassement(t2Standings, id2) ?? lireClassement(t2StandingsPrecedent, id2);
+
+  const decrire = (c: ReturnType<typeof lireClassement>) =>
+    c
+      ? `Classé ${c.rang}e sur ${c.equipes} avec ${c.points} points (moyenne du championnat : ${Math.round(c.pointsMoyens)}).` +
+        (c.forme ? ` Forme : ${c.forme}.` : '')
+      : "Classement inconnu ou non applicable (ex: match amical).";
+
+  const stand1 = decrire(classement1);
+  const stand2 = decrire(classement2);
 
   // Extract squad player names
   function extractSquad(squadRes: any) {
@@ -746,10 +788,35 @@ export async function POST(req: Request) {
    * précis qu'une saison complète de championnat, mais infiniment plus juste
    * que de déclarer deux équipes équivalentes.
    */
+  /**
+   * Nombre de matchs officiels en dessous duquel on accepte les amicaux.
+   *
+   * Quatre rencontres officielles suffisent à décrire une équipe. En dessous,
+   * mieux vaut un amical qu'une moyenne calculée sur deux matchs.
+   */
+  const MATCHS_OFFICIELS_SUFFISANTS = 4;
+
   const statistiquesDepuisMatchs = (fixtures: any[], teamId: string) => {
-    const joues = (fixtures || []).filter((f: any) =>
+    const termines = (fixtures || []).filter((f: any) =>
       ['FT', 'AET', 'PEN'].includes(f?.fixture?.status?.short)
     );
+
+    // ── LES MATCHS DE PRÉPARATION NE DISENT RIEN DE LA VRAIE FORCE ───────────
+    //
+    // Un amical d'été se joue avec des remplaçants, sans enjeu, contre ce qui
+    // se présente. Les compter à égalité avec une finale européenne fausse tout.
+    //
+    // Cas mesuré : à la veille du Trophée des Champions, le moteur voyait Lens
+    // à 2,00 buts marqués par match et le Paris Saint-Germain à 1,83 — donc
+    // Lens devant. Les douze derniers matchs de Lens contenaient un 4-1 contre
+    // Boulogne et un 3-0 contre Crystal Palace, tous deux amicaux ; ceux du PSG,
+    // un 3-0 encaissé à Majorque avec une équipe remaniée.
+    //
+    // On les écarte donc — mais seulement s'il reste assez de matchs officiels.
+    // En début de saison, un amical vaut mieux que rien.
+    const officiels = termines.filter((f: any) => !competitionPeuFiable(f?.league?.name));
+    const joues = officiels.length >= MATCHS_OFFICIELS_SUFFISANTS ? officiels : termines;
+
     let marques = 0;
     let encaisses = 0;
     for (const f of joues) {
@@ -873,7 +940,12 @@ export async function POST(req: Request) {
     brutes1,
     brutes2,
     equipe1AJoueADomicile,
-    competitionPeuFiable(nomCompetition)
+    competitionPeuFiable(nomCompetition),
+    // Le classement de fin de saison entre dans le calcul, et plus seulement
+    // dans le texte envoyé au modèle. Sans lui, deux équipes aux moyennes de
+    // buts voisines sont déclarées égales — même quand l'une a fini première
+    // du championnat et l'autre quatorzième.
+    { equipe1: classement1, equipe2: classement2 }
   );
 
   /**
