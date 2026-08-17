@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { competitions } from "@/lib/data";
 import { getSeasonLabel } from "@/lib/api-football";
+// Le MÊME calcul que celui qui a rempli la réserve d'équipes : un lien de
+// classement doit tomber exactement sur l'identifiant de la fiche, sinon il
+// mène à une page introuvable.
+import { slugify as slugClub } from "@/lib/teams-live";
 
 const leagueOrder = ["epl", "laliga", "seriea", "bundesliga", "ligue1"];
 
@@ -103,11 +107,23 @@ export default function StandingsPage() {
                             <span className={`text-xs font-bold ${isUCL ? "text-primary" : "text-foreground/50"}`}>{row.rang}</span>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
+                            {/* Chaque club mène à sa fiche.
+                                Le classement cite les huit cents clubs suivis
+                                sans jamais y renvoyer : un moteur découvre les
+                                pages en suivant les liens, et ces fiches
+                                n'étaient atteignables que par le plan du site.
+                                C'est aussi le geste attendu par le lecteur —
+                                voir le détail d'une équipe du tableau. */}
+                            <Link
+                              href={`/club/${slugClub(row.equipe)}`}
+                              className="flex items-center gap-2 group/club"
+                            >
                               <img src={row.logo} alt={row.equipe} className="w-6 h-6 rounded-full bg-card" />
-                              <span className="text-xs font-semibold text-foreground">{row.equipe}</span>
+                              <span className="text-xs font-semibold text-foreground group-hover/club:text-primary transition-colors">
+                                {row.equipe}
+                              </span>
                               {isChampion && <Trophy className="w-3 h-3 text-warning" />}
-                            </div>
+                            </Link>
                           </td>
                           <td className="px-4 py-3 text-center text-xs text-foreground/60">{row.joues}</td>
                           <td className="px-4 py-3 text-center text-xs text-foreground/60">{row.gagnes}</td>
