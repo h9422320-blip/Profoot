@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isRateLimited, clientIp } from '@/lib/rateLimit';
-import { getSeason, getNextEdition } from '@/lib/api-football';
+import { getSeason, getNextEdition, LEAGUE_IDS } from '@/lib/api-football';
 
 const API_KEY = process.env.API_FOOTBALL_KEY || "";
 
@@ -9,13 +9,16 @@ const API_KEY = process.env.API_FOOTBALL_KEY || "";
  * classements de la SAISON PASSÉE (la phase de ligue 2025-26 de la Ligue des
  * Champions, avec Arsenal à 24 points), affichés comme s'ils étaient actuels.
  * La saison est désormais calculée.
+ *
+ * LA CORRESPONDANCE VIVAIT ICI, EN DOUBLE
+ *
+ * Quatorze compétitions y étaient recopiées à la main, alors que le référentiel
+ * en connaît soixante-deux. Résultat : la page du championnat suisse annonçait
+ * « En cours — FC Lugano en tête » et affichait juste en dessous « aucun
+ * classement disponible » — la route refusait l'identifiant qu'elle ne
+ * connaissait pas. Une seule liste, celle du référentiel, désormais.
  */
-const LEAGUE_MAP: Record<string, number> = {
-  ucl: 2, uel: 3, uecl: 848,
-  epl: 39, ligue1: 61, laliga: 140, seriea: 135, bundesliga: 78,
-  eredivisie: 88, ligaportugal: 94, proleague: 144, premiership: 179, superlig: 203,
-  can: 6,
-};
+const LEAGUE_MAP: Record<string, number> = LEAGUE_IDS;
 
 async function fetchApiFootball(endpoint: string) {
   const url = `https://v3.football.api-sports.io${endpoint}`;

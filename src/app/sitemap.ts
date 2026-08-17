@@ -59,8 +59,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // vers les fiches de ses clubs engagés.
   let pagesCompetitions: MetadataRoute.Sitemap = [];
   try {
-    const { competitions } = await import('@/lib/data');
-    pagesCompetitions = competitions.map((c) => ({
+    // Le catalogue des compétitions RÉELLEMENT suivies, et non les quatorze du
+    // référentiel écrit à la main : les quarante-quatre autres championnats
+    // avaient une page complète, mais aucune n'était déclarée à Google.
+    const { listerCompetitionsSuivies } = await import('@/lib/competitions-suivies');
+    pagesCompetitions = listerCompetitionsSuivies().map((c) => ({
       url: `${SITE_URL}/competitions/${c.id}`,
       lastModified: now,
       changeFrequency: 'daily' as const,

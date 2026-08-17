@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getCompetition, clubs, cupParticipants } from "@/lib/data";
+import { trouverCompetitionSuivie } from "@/lib/competitions-suivies";
 import { getSeasonLabel } from "@/lib/api-football";
 import { ArrowLeft, Calendar, MapPin, Search, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -13,7 +14,17 @@ export default function CompetitionClient() {
   const [wcView, setWcView] = useState<"groups" | "bracket">("groups");
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   
-  const competition = getCompetition(id as string);
+  // Le référentiel écrit à la main ne connaît que quatorze compétitions ; le
+  // moteur en suit soixante-deux et la liste les affiche toutes. Sans ce repli,
+  // ouvrir le championnat suisse depuis la liste affichait « compétition non
+  // trouvée » alors que le classement, lui, arrivait bien du serveur.
+  const connue = getCompetition(id as string);
+  const suivie = connue ? undefined : trouverCompetitionSuivie(String(id));
+  const competition = connue
+    ? { name: connue.name, country: connue.country, logo: connue.logo }
+    : suivie
+      ? { name: suivie.nom, country: suivie.pays, logo: suivie.logo }
+      : undefined;
   const leagueClubs = Object.values(clubs)
     .filter(c => c.league === id || (cupParticipants[id as string] && cupParticipants[id as string].includes(c.id)))
     .sort((a, b) => a.ranking - b.ranking);

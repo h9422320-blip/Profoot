@@ -1,9 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { competitions } from "@/lib/data";
+import { trouverCompetitionSuivie } from "@/lib/competitions-suivies";
 import { getSeasonLabel } from "@/lib/api-football";
 import { listerClubsDuChampionnat } from "@/lib/club-reel";
 import CompetitionClient from "./CompetitionClient";
+
+/**
+ * Le nom et le pays d'une compétition.
+ *
+ * Le référentiel écrit à la main n'en connaît que quatorze. Le moteur en suit
+ * soixante-deux, et la liste les affiche toutes depuis le 17 août : sans ce
+ * repli, ouvrir le championnat suisse depuis la liste menait à « compétition
+ * non trouvée » — un lien qui promet une page et n'en donne aucune.
+ */
+function ficheCompetition(id: string) {
+  const connue = competitions.find((c) => c.id === id);
+  if (connue) return { nom: connue.name, pays: connue.country, logo: connue.logo };
+  const suivie = trouverCompetitionSuivie(id);
+  if (suivie) return { nom: suivie.nom, pays: suivie.pays, logo: suivie.logo };
+  return undefined;
+}
 
 /**
  * La page d'une compétition.
@@ -34,12 +51,12 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const comp = competitions.find((c) => c.id === id);
+  const comp = ficheCompetition(id);
   if (!comp) return { title: "Compétition introuvable" };
 
   const saison = getSeasonLabel(id);
-  const titre = `${comp.name} — classement, calendrier et résultats`;
-  const description = `${comp.name} ${saison} : classement, calendrier des matchs, résultats et analyses par intelligence artificielle. Suivez la compétition sur ProFoot AI.`;
+  const titre = `${comp.nom} — classement, calendrier et résultats`;
+  const description = `${comp.nom} ${saison} : classement, calendrier des matchs, résultats et analyses par intelligence artificielle. Suivez la compétition sur ProFoot AI.`;
 
   return {
     title: titre,
@@ -55,7 +72,7 @@ export default async function PageCompetition({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const comp = competitions.find((c) => c.id === id);
+  const comp = ficheCompetition(id);
   const clubs = await listerClubsDuChampionnat(id);
   const saison = getSeasonLabel(id);
 
@@ -66,12 +83,12 @@ export default async function PageCompetition({
       {comp && (
         <section className="sr-only">
           <h1>
-            {comp.name} — saison {saison}
+            {comp.nom} — saison {saison}
           </h1>
           <p>
             Classement, calendrier des matchs, résultats et analyses par intelligence artificielle
-            de {comp.name}
-            {comp.country ? ` (${comp.country})` : ""}.
+            de {comp.nom}
+            {comp.pays ? ` (${comp.pays})` : ""}.
           </p>
           {clubs.length > 0 && (
             <>
