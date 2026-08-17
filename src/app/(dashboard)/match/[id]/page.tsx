@@ -86,6 +86,28 @@ export default async function FicheRencontre({ params }: { params: Promise<{ id:
         }}
       />
 
+      {/* Fil d'Ariane : Google l'affiche à la place de l'adresse dans ses
+          résultats, et il se lit — contrairement à une URL. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Accueil", item: "https://profootai.com" },
+              { "@type": "ListItem", position: 2, name: "Matchs", item: "https://profootai.com/matches" },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: `${m.equipe1} — ${m.equipe2}`,
+                item: `https://profootai.com/match/${m.id}`,
+              },
+            ],
+          }),
+        }}
+      />
+
       <header className="rounded-[24px] border border-border-card bg-card/60 p-5 sm:p-7 space-y-5">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[11px] font-black uppercase tracking-[0.2em] text-primary truncate">

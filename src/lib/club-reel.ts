@@ -59,6 +59,36 @@ export async function listerClubs(): Promise<
 }
 
 /**
+ * Les dernières rencontres d'un club, terminées ou à venir.
+ *
+ * Les fiches de club ne renvoyaient vers AUCUN match : un visiteur venu pour
+ * « classement Real Madrid » n'avait nulle part où aller ensuite, et un moteur
+ * n'avait aucun lien à suivre vers les fiches de rencontre. Ces deux manques
+ * n'en font qu'un — un lien sert autant au lecteur qu'au robot.
+ */
+export async function lireMatchsDuClub(
+  apiId: number
+): Promise<
+  { id: number; equipe1: string; equipe2: string; buts1: number | null; buts2: number | null; date: string }[]
+> {
+  if (!apiId) return [];
+  try {
+    const { apiFootball, CACHE_TTL } = await import('./api-football');
+    const data = await apiFootball<any>(`/fixtures?team=${apiId}&last=5`, CACHE_TTL.TEAM_INFO);
+    return (data?.response ?? []).map((f: any) => ({
+      id: f.fixture.id,
+      equipe1: f.teams?.home?.name ?? '',
+      equipe2: f.teams?.away?.name ?? '',
+      buts1: f.goals?.home ?? null,
+      buts2: f.goals?.away ?? null,
+      date: String(f.fixture?.date ?? ''),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Les clubs d'un championnat donné.
  *
  * Sert aux pages de compétition : lister les équipes engagées et renvoyer vers

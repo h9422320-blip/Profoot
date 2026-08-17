@@ -235,9 +235,20 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
               </div>
             </div>
 
+            {/* LE NOM DE LA MARQUE EST DANS LE TITRE PRINCIPAL.
+                Il n'y était pas : le titre disait « PRÉDIT CHAQUE MATCH AVANT
+                QU'IL NE COMMENCE » sans jamais nommer le produit. Or le titre
+                principal est l'un des signaux les plus forts pour associer un
+                nom à un site, et l'objectif est précisément de sortir premier
+                quand quelqu'un tape « ProFoot AI ».
+                La promesse reste en tête et en gros ; le nom vient dessous,
+                dans le même titre. */}
             <h1 className="hero-title">
               PRÉDIT CHAQUE MATCH<br />
               AVANT QU'IL <span className="text-emerald-gradient">NE COMMENCE.</span>
+              <span className="block mt-3 text-[15px] sm:text-lg font-bold tracking-normal text-white/55">
+                ProFoot AI — l&apos;analyse de match par intelligence artificielle
+              </span>
             </h1>
 
             <p className="hero-subtitle">

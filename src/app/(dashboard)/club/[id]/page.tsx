@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Trophy, Activity, Brain } from "lucide-react";
-import { lireClub } from "@/lib/club-reel";
+import { lireClub, lireMatchsDuClub } from "@/lib/club-reel";
 
 /**
  * La fiche publique d'un club.
@@ -57,6 +57,7 @@ export default async function FicheClub({ params }: { params: Promise<{ id: stri
   if (!club) notFound();
 
   const c = club.classement;
+  const rencontres = await lireMatchsDuClub(club.apiId);
 
   return (
     <div className="space-y-8 pb-20 pt-4">
@@ -76,6 +77,35 @@ export default async function FicheClub({ params }: { params: Promise<{ id: stri
             ...(club.stade
               ? { homeLocation: { "@type": "StadiumOrArena", name: club.stade } }
               : {}),
+          }),
+        }}
+      />
+
+      {/* Fil d'Ariane.
+          Il dit au moteur où cette page se situe dans le site, et Google
+          l'affiche à la place de l'adresse dans ses résultats — « profootai.com
+          › Clubs › Real Madrid » se lit, une URL non. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Accueil", item: "https://profootai.com" },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Classements",
+                item: "https://profootai.com/standings",
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: club.nom,
+                item: `https://profootai.com/club/${club.id}`,
+              },
+            ],
           }),
         }}
       />
@@ -161,6 +191,36 @@ export default async function FicheClub({ params }: { params: Promise<{ id: stri
           <Activity className="w-4 h-4 shrink-0" />
           Le classement de {club.nom} n&apos;est pas encore disponible pour cette saison.
         </p>
+      )}
+
+      {rencontres.length > 0 && (
+        // Les fiches de club ne renvoyaient vers AUCUN match : un visiteur venu
+        // pour « classement Real Madrid » n'avait nulle part où aller ensuite,
+        // et un moteur n'avait aucun lien à suivre vers les rencontres. Les deux
+        // manques n'en font qu'un.
+        <section className="space-y-3">
+          <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">
+            Derniers matchs de {club.nom}
+          </h2>
+          <div className="space-y-2">
+            {rencontres.map((r) => (
+              <Link
+                key={r.id}
+                href={`/match/${r.id}`}
+                className="flex items-center justify-between gap-3 rounded-[16px] border border-border-card bg-card/60 px-4 py-3 hover:border-primary/40 transition-colors"
+              >
+                <span className="text-[13px] font-bold text-white truncate">
+                  {r.equipe1} — {r.equipe2}
+                </span>
+                <span className="text-[14px] font-black text-white tabular-nums shrink-0">
+                  {r.buts1 !== null && r.buts2 !== null
+                    ? `${r.buts1} - ${r.buts2}`
+                    : new Date(r.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Le seul appel à l'action de la page : c'est là que le visiteur venu de
