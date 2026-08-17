@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, Radio, CheckCircle2 } from "lucide-react";
+import { CalendarDays, Radio, CheckCircle2, CalendarX } from "lucide-react";
 import { lireMatchsReels, type MatchReel } from "@/lib/matchs-reels";
 
 /**
@@ -42,6 +42,9 @@ export default async function MatchesPage() {
 
   const duJour = matchs.filter((m) => m.statut === "aujourdhui");
   const aVenir = matchs.filter((m) => m.statut === "a_venir");
+  // Reportées et annulées : elles tombaient dans « à venir » et s'affichaient
+  // avec la date d'hier, ce qui se lit comme un bug plutôt que comme un report.
+  const reportes = matchs.filter((m) => m.statut === "reporte");
   // Les résultats sont plafonnés : deux cents cartes de plus n'apportent rien à
   // un lecteur et alourdissent une page consultée presque uniquement au
   // téléphone.
@@ -76,6 +79,11 @@ export default async function MatchesPage() {
       <Section titre="En cours et aujourd'hui" icone={<Radio className="w-4 h-4" />} matchs={duJour} />
       <Section titre="À venir" icone={<CalendarDays className="w-4 h-4" />} matchs={aVenir} />
       <Section titre="Résultats" icone={<CheckCircle2 className="w-4 h-4" />} matchs={termines} />
+      <Section
+        titre="Reportés ou annulés"
+        icone={<CalendarX className="w-4 h-4" />}
+        matchs={reportes}
+      />
     </div>
   );
 }
@@ -135,6 +143,10 @@ function Carte({ m }: { m: MatchReel }) {
         <span className="text-[10px] font-bold text-white/40 shrink-0">
           {m.minute !== null ? (
             <span className="text-primary">{m.minute}&apos;</span>
+          ) : m.statut === "reporte" ? (
+            // La date prévue n'a plus de valeur : l'annoncer sèchement laisserait
+            // croire que la rencontre se joue encore ce jour-là.
+            <span className="text-amber-400/80">Reporté</span>
           ) : (
             `${jour} · ${heure}`
           )}

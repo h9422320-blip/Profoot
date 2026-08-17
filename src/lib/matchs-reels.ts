@@ -37,7 +37,7 @@ export interface MatchReel {
   /** Date ISO du coup d'envoi. */
   date: string;
   stade: string | null;
-  statut: 'aujourdhui' | 'a_venir' | 'termine';
+  statut: 'aujourdhui' | 'a_venir' | 'termine' | 'reporte';
   /** Minute en cours, pour une rencontre commencée. */
   minute: number | null;
   buts1: number | null;
@@ -47,8 +47,19 @@ export interface MatchReel {
 /** Les championnats que l'application suit — les autres sont ignorés. */
 const LIGUES_SUIVIES = new Set(Object.values(LEAGUE_IDS));
 
-const TERMINE = ['FT', 'AET', 'PEN'];
-const EN_COURS = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
+// Un match gagné sur tapis vert est décidé : il appartient aux résultats.
+const TERMINE = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+const EN_COURS = ['1H', '2H', '2E', 'HT', 'ET', 'BT', 'P', 'LIVE'];
+
+/**
+ * Reporté, annulé, interrompu.
+ *
+ * Ces rencontres n'ont ni résultat ni horaire tenu. Sans cette catégorie, elles
+ * tombaient dans « à venir » : le 17 août, la page annonçait donc cinq matchs
+ * « à venir » datés du 16 — Braga–Gil Vicente, Jagiellonia–Pogoń… Un lecteur y
+ * lit une erreur d'affichage, pas un report.
+ */
+const REPORTE = ['PST', 'CANC', 'ABD', 'SUSP', 'INT'];
 
 function jourISO(decalage: number): string {
   const d = new Date();
@@ -64,9 +75,11 @@ function convertir(f: any, jourDuJour: string): MatchReel | null {
 
   const statut: MatchReel['statut'] = TERMINE.includes(code)
     ? 'termine'
-    : dateMatch.slice(0, 10) === jourDuJour || EN_COURS.includes(code)
-      ? 'aujourdhui'
-      : 'a_venir';
+    : REPORTE.includes(code)
+      ? 'reporte'
+      : dateMatch.slice(0, 10) === jourDuJour || EN_COURS.includes(code)
+        ? 'aujourdhui'
+        : 'a_venir';
 
   return {
     id: f.fixture.id,
