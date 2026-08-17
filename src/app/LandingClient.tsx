@@ -139,7 +139,14 @@ const testimonials = [
   { name: "Claire P.", role: "Étudiante en sport", text: "ProFoot m'aide énormément dans mes études. Les analyses sont claires, précises et très bien présentées.", rating: 4 },
 ];
 
-export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.ReactNode }) {
+export default function LandingPage({
+  ambassadeurs,
+  preuves,
+}: {
+  ambassadeurs?: React.ReactNode;
+  /** Le mur de preuves, rendu par le serveur — voir src/app/page.tsx. */
+  preuves?: React.ReactNode;
+}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -319,6 +326,13 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
             </div>
           </div>
         </section>
+
+        {/* LA PREUVE VIENT JUSTE APRÈS LA PROMESSE.
+            Le titre annonce « prédit chaque match avant qu'il ne commence » et
+            le badge « pronostics vérifiés après chaque match ». La première
+            chose qu'on doit lire ensuite, c'est de quoi le vérifier — pas un
+            argumentaire de plus. */}
+        {preuves}
 
         {/* Les ambassadeurs viennent APRÈS la promesse produit : le visiteur
             doit d'abord comprendre ce qu'on lui propose. */}
