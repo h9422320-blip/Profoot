@@ -25,6 +25,45 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  /**
+   * En-têtes de sécurité.
+   *
+   * POURQUOI ILS ONT ÉTÉ AJOUTÉS
+   *
+   * Le navigateur intégré de TikTok affiche « ce site peut être dangereux » sur
+   * profootai.com. Ce n'est pas la cause du signalement — un domaine récent
+   * suffit à le déclencher — mais ces en-têtes sont exactement ce qu'inspectent
+   * les outils qui notent la réputation d'un site, et leur absence n'aide pas
+   * un domaine qui doit faire ses preuves.
+   *
+   * Ils sont surtout utiles en eux-mêmes : ils ferment des portes réellement
+   * ouvertes.
+   */
+  async headers() {
+    return [
+      {
+        source: "/:chemin*",
+        headers: [
+          // Empêche qu'un fichier soit interprété comme autre chose que ce
+          // qu'il annonce — une image traitée comme du code, par exemple.
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Interdit d'enfermer le site dans le cadre d'un autre : c'est ainsi
+          // qu'on fait cliquer quelqu'un sur un bouton qu'il ne voit pas.
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // L'adresse complète de la page n'est plus transmise aux sites
+          // tiers ; seul le domaine l'est.
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Caméra, micro et position ne servent jamais ici : autant les
+          // refuser explicitement.
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
