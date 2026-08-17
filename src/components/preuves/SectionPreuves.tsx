@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Crosshair, ShieldCheck } from "lucide-react";
+import { Check, Crosshair, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
 import {
   getPreuvesPubliques,
   libelleCompetition,
@@ -21,6 +21,17 @@ import {
  * Ici, on montre gratuitement, avant tout paywall, des pronostics émis AVANT
  * le match et confrontés au résultat réel.
  *
+ * CE QUI A ÉTÉ REPRIS LE 17 AOÛT 2026 — L'APPARENCE, ET ELLE SEULE
+ *
+ * La preuve était là, mais elle avait l'allure d'une note de bas de page :
+ * un titre gris de dix pixels, trois nombres alignés sans hiérarchie, et le
+ * pronostic empilé sous le résultat — deux lignes qu'il fallait LIRE pour
+ * comprendre qu'elles disaient la même chose. Or c'est cette coïncidence qui
+ * vend. Elle doit se voir, pas se déchiffrer.
+ *
+ * Rien n'a changé de ce qui est affiché : mêmes preuves, mêmes décomptes,
+ * même règle de publication. Seule la mise en forme a été refaite.
+ *
  * CONÇUE POUR UN TÉLÉPHONE
  *
  * Quasiment tous les visiteurs arrivent depuis un mobile. Une carte par ligne,
@@ -39,12 +50,12 @@ function Badge({
 }) {
   const styles =
     ton === "or"
-      ? "text-[#FBBF24] bg-[#FBBF24]/10 border-[#FBBF24]/25"
-      : "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/25";
+      ? "text-[#FDE047] bg-[#FBBF24]/12 border-[#FBBF24]/35 shadow-[0_0_18px_-6px_rgba(251,191,36,0.7)]"
+      : "text-[#34D399] bg-[#10B981]/12 border-[#10B981]/30";
 
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full border whitespace-nowrap ${styles}`}
+      className={`inline-flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-[0.1em] px-2.5 py-1.5 rounded-full border whitespace-nowrap ${styles}`}
     >
       {children}
     </span>
@@ -59,79 +70,124 @@ function CartePreuve({ p }: { p: Preuve }) {
       })
     : null;
 
+  // Un score exact est rare : la carte le porte d'elle-même, en or, avant même
+  // qu'on lise le badge.
+  const or = p.scoreExact;
+
   return (
-    <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-[#10B981]/15 rounded-[20px] p-4 shadow-sm flex flex-col gap-3">
-      {/* En-tête : compétition et date. La compétition passe à la ligne si elle
-          est longue ; la date, elle, ne rétrécit jamais. */}
-      <div className="flex items-center justify-between gap-2 min-w-0">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-white/35 leading-tight min-w-0">
-          {libelleCompetition(p.competition) ?? "Match"}
-        </span>
-        {date && (
-          <span className="text-[10px] font-semibold text-white/30 shrink-0">{date}</span>
-        )}
-      </div>
+    <article
+      className={`relative overflow-hidden rounded-[22px] border p-4 flex flex-col gap-3.5 ${
+        or
+          ? "border-[#FBBF24]/30 bg-gradient-to-br from-[#FBBF24]/[0.08] via-[#1d2f3a]/70 to-[#1d2f3a]/70"
+          : "border-[#10B981]/20 bg-gradient-to-br from-[#10B981]/[0.06] via-[#1d2f3a]/70 to-[#1d2f3a]/70"
+      }`}
+    >
+      {/* Halo d'angle : il donne du relief à la carte sans rien recouvrir. */}
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute -top-14 -right-10 w-32 h-32 rounded-full blur-3xl ${
+          or ? "bg-[#FBBF24]/15" : "bg-[#10B981]/12"
+        }`}
+      />
 
-      {/* LES DEUX ÉQUIPES, L'UNE SOUS L'AUTRE.
-          Les mettre côte à côte laissait moins de 110 pixels par nom sur un
-          téléphone : « Borussia Monchengladbach » y était coupé. Empilées,
-          chacune dispose de toute la largeur de la carte, et le nom passe à la
-          ligne plutôt que d'être tronqué — un nom d'équipe amputé enlève
-          justement ce qui rend la preuve vérifiable. */}
-      <div className="flex flex-col gap-2">
-        {[
-          { nom: p.equipe1, logo: p.logo1 },
-          { nom: p.equipe2, logo: p.logo2 },
-        ].map((e, i) => (
-          <div key={i} className="flex items-center gap-2.5">
-            {e.logo ? (
-              <img src={e.logo} alt="" className="w-6 h-6 object-contain shrink-0" loading="lazy" />
-            ) : (
-              <span className="w-6 h-6 shrink-0" />
-            )}
-            <span className="text-[13px] font-extrabold text-white/90 leading-tight min-w-0">
-              {e.nom}
+      <div className="relative flex flex-col gap-3.5">
+        {/* En-tête : compétition et date. La compétition passe à la ligne si elle
+            est longue ; la date, elle, ne rétrécit jamais. */}
+        <div className="flex items-start justify-between gap-2 min-w-0">
+          <span className="text-[9.5px] font-black uppercase tracking-[0.14em] text-white/40 leading-tight min-w-0">
+            {libelleCompetition(p.competition) ?? "Match"}
+          </span>
+          {date && (
+            <span className="text-[9.5px] font-bold uppercase tracking-wider text-white/30 shrink-0">
+              {date}
             </span>
+          )}
+        </div>
+
+        {/* LES DEUX ÉQUIPES, L'UNE SOUS L'AUTRE.
+            Les mettre côte à côte laissait moins de 110 pixels par nom sur un
+            téléphone : « Borussia Monchengladbach » y était coupé. Empilées,
+            chacune dispose de toute la largeur de la carte, et le nom passe à la
+            ligne plutôt que d'être tronqué — un nom d'équipe amputé enlève
+            justement ce qui rend la preuve vérifiable. */}
+        <div className="flex flex-col gap-2.5">
+          {[
+            { nom: p.equipe1, logo: p.logo1 },
+            { nom: p.equipe2, logo: p.logo2 },
+          ].map((e, i) => (
+            <div key={i} className="flex items-center gap-3">
+              {e.logo ? (
+                <span className="w-8 h-8 shrink-0 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center p-1.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={e.logo} alt="" className="w-full h-full object-contain" loading="lazy" />
+                </span>
+              ) : (
+                <span className="w-8 h-8 shrink-0" />
+              )}
+              <span className="text-[14.5px] font-black text-white leading-tight min-w-0">
+                {e.nom}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* LE CŒUR DE LA PREUVE.
+            Avant : « pronostic » puis « résultat », deux lignes empilées qu'il
+            fallait lire l'une après l'autre pour constater qu'elles disaient la
+            même chose. Face à face, la coïncidence se voit d'un seul coup d'œil.
+
+            Le signe du milieu est une COCHE, jamais un signe égal : un pronostic
+            réussi sans être exact (2-1 annoncé, 3-1 joué) reste une réussite,
+            et écrire « = » entre deux scores différents serait faux. */}
+        <div className="rounded-[18px] border border-white/[0.07] bg-black/25 p-3">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0 text-center">
+              <span className="block text-[8.5px] font-black uppercase tracking-[0.12em] text-white/35 leading-tight">
+                Annoncé avant
+              </span>
+              <span className="block mt-1.5 text-[20px] font-black text-white tabular-nums leading-none">
+                {p.pronoScore ?? "—"}
+              </span>
+            </div>
+
+            <span
+              className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center border ${
+                or
+                  ? "bg-[#FBBF24]/15 border-[#FBBF24]/40 text-[#FDE047]"
+                  : "bg-[#10B981]/15 border-[#10B981]/40 text-[#34D399]"
+              }`}
+            >
+              {or ? <Crosshair className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+            </span>
+
+            <div className="flex-1 min-w-0 text-center">
+              <span className="block text-[8.5px] font-black uppercase tracking-[0.12em] text-[#34D399]/70 leading-tight">
+                Résultat réel
+              </span>
+              <span className="block mt-1.5 text-[20px] font-black text-[#34D399] tabular-nums leading-none">
+                {p.scoreReel ?? "—"}
+              </span>
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* Le cœur de la preuve : ce qui était annoncé, ce qui s'est passé. */}
-      <div className="rounded-[16px] bg-white/[0.04] divide-y divide-white/5">
-        <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 shrink-0">
-            Pronostic ProFoot
-          </span>
-          <span className="text-[13px] font-black text-white tabular-nums shrink-0">
-            {p.pronoScore ?? "—"}
-          </span>
         </div>
-        <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 shrink-0">
-            Résultat réel
-          </span>
-          <span className="text-[13px] font-black text-[#10B981] tabular-nums shrink-0">
-            {p.scoreReel ?? "—"}
-          </span>
-        </div>
-      </div>
 
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <Badge>
-          <CheckCircle2 className="w-3 h-3" />
-          Réussi
-        </Badge>
-        {p.scoreExact && (
-          <Badge ton="or">
-            <Crosshair className="w-3 h-3" />
-            Score exact
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Badge>
+            <Check className="w-3 h-3" strokeWidth={3} />
+            Réussi
           </Badge>
-        )}
-        <span className="text-[10px] text-white/30 leading-tight">
-          {libelleIssue(p.pronoIssue, p.equipe1, p.equipe2)}
-        </span>
+          {p.scoreExact && (
+            <Badge ton="or">
+              <Crosshair className="w-3 h-3" />
+              Score exact
+            </Badge>
+          )}
+          <span className="text-[10px] font-semibold text-white/35 leading-tight">
+            {libelleIssue(p.pronoIssue, p.equipe1, p.equipe2)}
+          </span>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -181,50 +237,103 @@ export function MurPreuves({
     bilan.scoresExacts > 0 && {
       valeur: bilan.scoresExacts,
       libelle: bilan.scoresExacts > 1 ? "scores exacts" : "score exact",
+      ton: "or" as const,
     },
-    { valeur: bilan.reussites, libelle: bilan.reussites > 1 ? "pronostics réussis" : "pronostic réussi" },
-    bilan.competitions > 1 && { valeur: bilan.competitions, libelle: "compétitions" },
-  ].filter(Boolean) as { valeur: number; libelle: string }[];
+    {
+      valeur: bilan.reussites,
+      libelle: bilan.reussites > 1 ? "pronostics réussis" : "pronostic réussi",
+      ton: "vert" as const,
+    },
+    bilan.competitions > 1 && {
+      valeur: bilan.competitions,
+      libelle: "compétitions",
+      ton: "blanc" as const,
+    },
+  ].filter(Boolean) as { valeur: number; libelle: string; ton: "or" | "vert" | "blanc" }[];
+
+  const colonnes =
+    reperes.length >= 3 ? "grid-cols-3" : reperes.length === 2 ? "grid-cols-2" : "grid-cols-1";
 
   return (
-    <section className="space-y-3.5">
+    <section className="space-y-4">
       {avecEntete && (
-      <div className="flex items-center justify-between gap-3 px-1">
-        <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40">
-          Nos pronostics vérifiés
-        </h4>
-        {total > preuves.length && (
-          <Link
-            href="/preuves"
-            // Quarante-quatre pixels de haut : c'est la taille d'un pouce sur
-            // un écran tactile. Un lien plus petit se rate une fois sur trois.
-            className="text-[10px] font-black uppercase tracking-wider text-[#10B981] hover:text-[#2DD4BF] transition-colors shrink-0 min-h-[44px] px-2 -mr-2 flex items-center"
-          >
-            Voir tout
-          </Link>
-        )}
-      </div>
+        <header className="px-1 flex flex-col gap-3">
+          <span className="inline-flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-[0.16em] text-[#34D399]">
+            <Sparkles className="w-3 h-3" />
+            Preuves publiques
+          </span>
+
+          {/* LE TITRE. Il était en dix pixels, gris, en capitales : une étiquette
+              administrative posée sur ce que le site a de plus convaincant. */}
+          <h2 className="text-[23px] sm:text-[30px] font-black text-white leading-[1.08] tracking-tight">
+            L&apos;IA l&apos;avait dit{" "}
+            <span className="bg-gradient-to-r from-[#10B981] to-[#2DD4BF] bg-clip-text text-transparent">
+              avant tout le monde
+            </span>
+          </h2>
+
+          <p className="text-[12.5px] text-white/50 leading-relaxed max-w-prose">
+            Des millions de données analysées.{" "}
+            <span className="text-white/75 font-semibold">
+              Voici les résultats, vérifiés un par un.
+            </span>
+          </p>
+
+          {total > preuves.length && (
+            <Link
+              href="/preuves"
+              // Quarante-quatre pixels de haut : c'est la taille d'un pouce sur
+              // un écran tactile. Un lien plus petit se rate une fois sur trois.
+              className="self-start inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-full border border-[#10B981]/30 bg-[#10B981]/10 text-[11px] font-black uppercase tracking-wider text-[#34D399] hover:bg-[#10B981]/20 hover:border-[#10B981]/50 transition-colors"
+            >
+              Voir les {total} preuves
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
+        </header>
       )}
 
-      {/* Bandeau. Les repères s'empilent proprement si l'écran est étroit. */}
-      <div className="rounded-[20px] border border-[#10B981]/20 bg-[#10B981]/[0.06] p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <ShieldCheck className="w-4 h-4 text-[#10B981] shrink-0" />
-          <span className="text-[12px] font-black text-white leading-tight">
-            Annoncés avant le match, confirmés après
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-x-5 gap-y-2">
-          {reperes.map((r) => (
-            <div key={r.libelle} className="min-w-0">
-              <span className="block text-[22px] font-black text-[#10B981] leading-none tabular-nums">
-                {r.valeur}
-              </span>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/40 mt-1 whitespace-nowrap">
-                {r.libelle}
-              </span>
-            </div>
-          ))}
+      {/* LE BANDEAU DE CHIFFRES.
+          Trois nombres de vingt-deux pixels posés côte à côte se lisaient comme
+          une note technique. Ce sont pourtant les seuls chiffres du site qu'on
+          peut vérifier un par un : ils méritent la place. */}
+      <div className="relative overflow-hidden rounded-[24px] border border-[#10B981]/25 bg-gradient-to-br from-[#10B981]/[0.13] via-[#12303a]/60 to-[#1d2f3a]/40 p-5">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-20 -right-12 w-52 h-52 rounded-full bg-[#10B981]/20 blur-3xl"
+        />
+
+        <div className="relative flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#34D399] shrink-0" />
+            <span className="text-[12px] font-black text-white leading-tight">
+              Annoncés avant le match, confirmés après
+            </span>
+          </div>
+
+          <div className={`grid ${colonnes} divide-x divide-white/10`}>
+            {reperes.map((r) => (
+              <div key={r.libelle} className="px-3 first:pl-0 last:pr-0 min-w-0">
+                <span
+                  className={`block text-[32px] sm:text-[36px] font-black leading-none tabular-nums ${
+                    r.ton === "or"
+                      ? "text-[#FDE047] drop-shadow-[0_0_14px_rgba(251,191,36,0.35)]"
+                      : r.ton === "vert"
+                        ? "text-[#34D399] drop-shadow-[0_0_14px_rgba(16,185,129,0.35)]"
+                        : "text-white/90"
+                  }`}
+                >
+                  {r.valeur}
+                </span>
+                {/* Neuf pixels, mais à 55 % de blanc : à 45 % le libellé se
+                    perdait sous le chiffre. Il tient sur deux lignes dans un
+                    tiers d'écran de téléphone — mesuré, pas supposé. */}
+                <span className="block mt-2 text-[9px] font-black uppercase tracking-[0.1em] text-white/55 leading-[1.3]">
+                  {r.libelle}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
