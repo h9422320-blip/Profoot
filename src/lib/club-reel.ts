@@ -59,6 +59,30 @@ export async function listerClubs(): Promise<
 }
 
 /**
+ * Les clubs d'un championnat donné.
+ *
+ * Sert aux pages de compétition : lister les équipes engagées et renvoyer vers
+ * leur fiche crée une vingtaine de liens internes par compétition. Un moteur
+ * découvre les pages en suivant les liens, et une page vers laquelle rien ne
+ * pointe est traitée comme secondaire.
+ */
+export async function listerClubsDuChampionnat(
+  championnat: string
+): Promise<{ id: string; nom: string; logo: string | null }[]> {
+  try {
+    const { data, error } = await createAdminClient()
+      .from('equipes')
+      .select('id, nom, logo')
+      .eq('championnat', championnat)
+      .order('nom');
+    if (error || !data) return [];
+    return data.map((e: any) => ({ id: e.id, nom: e.nom, logo: e.logo }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Un club et son classement du moment.
  *
  * Renvoie `null` si le club est inconnu : la page affichera une 404 plutôt

@@ -55,9 +55,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Fournisseur muet : les autres pages restent déclarées.
   }
 
+  // Une page par compétition suivie. Chacune porte son propre titre et renvoie
+  // vers les fiches de ses clubs engagés.
+  let pagesCompetitions: MetadataRoute.Sitemap = [];
+  try {
+    const { competitions } = await import('@/lib/data');
+    pagesCompetitions = competitions.map((c) => ({
+      url: `${SITE_URL}/competitions/${c.id}`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: 0.7,
+    }));
+  } catch {
+    // Référentiel illisible : les autres pages restent déclarées.
+  }
+
   return [
     ...clubs,
     ...rencontres,
+    ...pagesCompetitions,
     { url: SITE_URL, lastModified: now, changeFrequency: 'daily', priority: 1 },
     // Le mur de preuves est PUBLIC et c'est la seule page qui porte du contenu
     // renouvelé : des pronostics datés confrontés à de vrais résultats. Il
