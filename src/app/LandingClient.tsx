@@ -217,21 +217,30 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
         {/* HERO SECTION */}
         {/* ================================================================ */}
         <section className="hero-section">
+          {/* L'IMAGE DE FOND A ÉTÉ RETIRÉE.
+              C'était une photo hébergée chez un site tiers (Unsplash) qui
+              renvoie aujourd'hui une erreur 404 : le navigateur affichait donc
+              une vignette d'image cassée dans le coin supérieur gauche, juste
+              à côté du logo. Sur la page d'accueil, c'est la première chose que
+              voit un visiteur.
+              Le dégradé et le halo suffisent — ils étaient déjà là, dessous. */}
           <div className="hero-bg">
-            <img
-              src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=2070&auto=format&fit=crop"
-              alt=""
-              className="hero-bg-img"
-            />
             <div className="hero-overlay" />
             <div className="hero-glow" />
           </div>
 
           <div className="hero-content">
+            {/* « ProFoot 3.0 is Live ➔ » ne voulait rien dire pour un
+                visiteur : un numéro de version en anglais, sur un site
+                francophone, avec un anneau lumineux qui tourne — la signature
+                exacte des pages fabriquées à la chaîne. Personne n'a jamais
+                acheté parce qu'un logiciel était en « version 3.0 ».
+                À la place, un fait vérifiable, en français, que le mur de
+                preuves plus bas confirme. */}
             <div className="live-badge-wrapper">
               <div className="live-badge">
                 <div className="live-badge-dot" />
-                ProFoot 3.0 is Live ➔
+                Pronostics vérifiés après chaque match
               </div>
             </div>
 
@@ -255,7 +264,14 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
               L'intelligence artificielle au service du football. Des millions de données analysées en temps réel pour anticiper chaque résultat avec une précision mathématique.
             </p>
 
-            <div className="flex flex-col md:flex-row gap-4 mb-8 w-full md:w-auto px-4 md:px-0">
+            {/* `items-center` manquait.
+                Le conteneur occupe toute la largeur sur téléphone, et le bouton
+                est plafonné à 300 pixels par la feuille de style. Sans
+                alignement explicite, un enfant dont la largeur est bridée se
+                pose au DÉBUT de l'axe — c'est-à-dire à gauche. Le bouton
+                paraissait donc décalé, sur téléphone comme sur ordinateur.
+                Il est désormais centré à toutes les tailles d'écran. */}
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-8 w-full md:w-auto px-4 md:px-0">
               <Link href={user ? "/analyze" : "/signup"} className="hero-cta-primary w-full md:w-auto justify-center">
                 Démarrer l'analyse <ArrowRight className="w-4 h-4" />
               </Link>
