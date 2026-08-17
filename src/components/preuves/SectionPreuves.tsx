@@ -74,12 +74,12 @@ function CartePreuve({ p }: { p: Preuve }) {
   // qu'on lise le badge.
   const or = p.scoreExact;
 
-  return (
+  const carte = (
     <article
-      className={`relative overflow-hidden rounded-[22px] border p-4 flex flex-col gap-3.5 ${
+      className={`relative overflow-hidden rounded-[22px] border p-4 flex flex-col gap-3.5 transition-colors ${
         or
-          ? "border-[#FBBF24]/30 bg-gradient-to-br from-[#FBBF24]/[0.08] via-[#1d2f3a]/70 to-[#1d2f3a]/70"
-          : "border-[#10B981]/20 bg-gradient-to-br from-[#10B981]/[0.06] via-[#1d2f3a]/70 to-[#1d2f3a]/70"
+          ? "border-[#FBBF24]/30 hover:border-[#FBBF24]/55 bg-gradient-to-br from-[#FBBF24]/[0.08] via-[#1d2f3a]/70 to-[#1d2f3a]/70"
+          : "border-[#10B981]/20 hover:border-[#10B981]/45 bg-gradient-to-br from-[#10B981]/[0.06] via-[#1d2f3a]/70 to-[#1d2f3a]/70"
       }`}
     >
       {/* Halo d'angle : il donne du relief à la carte sans rien recouvrir. */}
@@ -188,6 +188,23 @@ function CartePreuve({ p }: { p: Preuve }) {
         </div>
       </div>
     </article>
+  );
+
+  // CHAQUE PREUVE MÈNE À SA FICHE DE MATCH.
+  //
+  // Soixante rencontres réelles étaient citées ici — PSG-Lens, City-Arsenal —
+  // sans jamais renvoyer nulle part, alors que leur fiche existe et qu'elle est
+  // indexable. Un moteur découvre les pages en suivant les liens, et le lecteur
+  // qui doute d'une preuve veut justement voir le détail du match.
+  //
+  // Sans identifiant de rencontre, la carte reste telle quelle : mieux vaut pas
+  // de lien qu'un lien mort.
+  if (!p.fixtureId) return carte;
+
+  return (
+    <Link href={`/match/${p.fixtureId}`} className="block">
+      {carte}
+    </Link>
   );
 }
 
