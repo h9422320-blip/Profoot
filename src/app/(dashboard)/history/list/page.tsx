@@ -63,7 +63,18 @@ export default function MobileHistoryListPage() {
     if (window.confirm("Supprimer cette analyse définitivement ?")) {
       const newHistory = history.filter(h => h.id !== id);
       setHistory(newHistory);
-      localStorage.setItem("profoot_user_history_v1", JSON.stringify(newHistory));
+      // SUR IPHONE EN NAVIGATION PRIVÉE, CETTE ÉCRITURE LÈVE UNE EXCEPTION.
+      //
+      // Safari y autorise la lecture du stockage local mais refuse l'écriture,
+      // en levant une erreur de quota. Sans protection, la suppression laissait
+      // l'écran figé : la ligne disparaissait, puis revenait au rechargement,
+      // et rien n'expliquait pourquoi. C'est le seul appel du projet qui n'était
+      // pas protégé — tous les autres le sont déjà.
+      try {
+        localStorage.setItem("profoot_user_history_v1", JSON.stringify(newHistory));
+      } catch {
+        /* l'affichage est déjà à jour ; la ligne réapparaîtra au rechargement */
+      }
     }
   };
 

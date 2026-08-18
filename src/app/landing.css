@@ -4,9 +4,20 @@
    ============================================================================ */
 
 /* ── BASE & RESETS ─────────────────────────────────────────────────────────── */
+/* ── LA HAUTEUR D'ÉCRAN SUR IPHONE ────────────────────────────────────────────
+   Sur Safari mobile, `100vh` vaut la hauteur de l'écran BARRES MASQUÉES. Tant
+   que la barre d'outils du bas est visible — c'est-à-dire tant qu'on n'a pas
+   fait défiler — une bande d'une centaine de pixels est donc cachée dessous.
+   C'est exactement là que se trouve le bouton d'appel à l'action.
+
+   `100dvh` suit la hauteur réellement visible. La ligne `100vh` est conservée
+   juste avant : les navigateurs qui ignorent `dvh` (iOS antérieur à 15.4) la
+   lisent, les autres la remplacent. Rien ne change sur ordinateur ni sur
+   Android, où les deux valeurs coïncident. */
 .landing-root {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background: #101c24; /* Slightly lighter than pitch black */
   color: #f8fafc;
   overflow-x: hidden;
@@ -116,7 +127,7 @@
 
 /* ── HERO SECTION ──────────────────────────────────────────────────────────── */
 .hero-section {
-  position: relative; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 120px 20px 60px; overflow: hidden; z-index: 10;
+  position: relative; min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 120px 20px 60px; overflow: hidden; z-index: 10;
 }
 @media (max-width: 768px) { .hero-section { padding-top: 100px; } }
 .hero-bg { position: absolute; inset: 0; z-index: 0; }
