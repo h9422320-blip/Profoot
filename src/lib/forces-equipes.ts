@@ -39,7 +39,7 @@
  * matchs joués, l'observation ne pèse encore qu'un cinquième.
  */
 
-import { apiFootball, CACHE_TTL } from './api-football';
+import { apiFootball, CACHE_TTL, lireReserve, ecrireReserve } from './api-football';
 
 /** Une rencontre réduite à ce qui sert au calcul. */
 export interface MatchSimple {
@@ -276,6 +276,17 @@ function versMatchsSimples(reponse: any[]): MatchSimple[] {
  * Renvoie `null` plutôt qu'un calcul bancal : l'appelant garde alors son ancien
  * chemin, qui reste juste.
  */
+/** Durée de vie du résultat calculé. Un championnat ne joue pas deux fois par jour. */
+const TTL_FORCES = 6 * 60 * 60 * 1000;
+
+/** Forme sérialisable : une `Map` ne survit pas à un aller-retour en JSON. */
+interface ForcesEnReserve {
+  equipes: [number, ForceEquipe][];
+  butsDomicile: number;
+  butsExterieur: number;
+  fiable: boolean;
+}
+
 export async function lireForcesLigue(
   ligueId: number | string | null | undefined,
   saison: number | string | null | undefined
@@ -283,6 +294,28 @@ export async function lireForcesLigue(
   const ligue = Number(ligueId);
   const an = Number(saison);
   if (!Number.isFinite(ligue) || !Number.isFinite(an)) return null;
+
+  // ── LE RÉSULTAT EST CONSERVÉ, PAS LA MATIÈRE PREMIÈRE ─────────────────────
+  //
+  // Une saison de championnat pèse 0,35 Mo chez le fournisseur ; deux saisons,
+  // 0,7 Mo à relire et à réanalyser à chaque analyse lancée après un démarrage
+  // à froid. Les forces calculées, elles, tiennent en quelques lignes — une
+  // vingtaine d'équipes et trois nombres chacune, trente fois moins.
+  const cle = `forces:${ligue}:${an}`;
+
+  try {
+    const enReserve = await lireReserve<ForcesEnReserve>(cle);
+    if (enReserve && !enReserve.expiree && Array.isArray(enReserve.contenu?.equipes)) {
+      return {
+        equipes: new Map(enReserve.contenu.equipes),
+        butsDomicile: enReserve.contenu.butsDomicile,
+        butsExterieur: enReserve.contenu.butsExterieur,
+        fiable: enReserve.contenu.fiable,
+      };
+    }
+  } catch {
+    // Réserve illisible : on recalcule plutôt que d'échouer.
+  }
 
   try {
     const [courante, passee] = await Promise.all([
@@ -295,7 +328,20 @@ export async function lireForcesLigue(
       versMatchsSimples(courante?.response ?? [])
     );
 
-    return forces.equipes.size > 0 ? forces : null;
+    if (forces.equipes.size === 0) return null;
+
+    void ecrireReserve(
+      cle,
+      {
+        equipes: [...forces.equipes],
+        butsDomicile: forces.butsDomicile,
+        butsExterieur: forces.butsExterieur,
+        fiable: forces.fiable,
+      } satisfies ForcesEnReserve,
+      TTL_FORCES
+    );
+
+    return forces;
   } catch {
     return null;
   }
