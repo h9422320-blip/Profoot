@@ -45,3 +45,4 @@ _*.txt
 # Donnees de mesure produites par les scripts du banc d essai.
 scripts/.poids-joueurs.json
 scripts/.observations-absents.json
+scripts/.xg.json
