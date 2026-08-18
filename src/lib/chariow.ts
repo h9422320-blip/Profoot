@@ -1,4 +1,5 @@
 import { PLANS, PlanKey, planFromAmount, normalizePlan } from '@/lib/subscription';
+import { deviseDuPays } from '@/lib/devise-acheteur';
 
 /**
  * Client de l'API Chariow (https://chariow.dev).
@@ -259,6 +260,7 @@ export async function initCheckout(params: {
   ipAcheteur?: string;
   redirectUrl: string;
 }): Promise<ChariowCheckoutSession> {
+  const devise = deviseDuPays(params.paysAcheteur);
   const body: Record<string, unknown> = {
     product_id: params.plan ? productIdForPlan(params.plan) : params.produitDirect,
     email: params.email,
@@ -269,6 +271,16 @@ export async function initCheckout(params: {
     // enregistre « États-Unis » dans le contexte de chaque vente, même pour un
     // acheteur à Conakry. C'est ce que montrait le tableau des ventes.
     ...(params.ipAcheteur ? { customer_ip: params.ipAcheteur } : {}),
+    // ── LA MONNAIE DE L'ACHETEUR ────────────────────────────────────────────
+    //
+    // Ce champ n'était pas transmis, et un acheteur à Paris se voyait donc
+    // facturer « F CFA 2 000 » — constaté en créant de vraies sessions avec une
+    // adresse française puis marocaine. Un montant dans une monnaie inconnue,
+    // sur une boutique ouest-africaine, fait renoncer ; certaines banques
+    // européennes refusent même d'emblée un débit en XOF.
+    //
+    // Les pays qui paient déjà gardent le franc CFA : rien ne change pour eux.
+    ...(devise !== 'XOF' ? { payment_currency: devise } : {}),
     // Reliera le paiement à l'utilisateur dans le webhook successful.sale.
     custom_metadata: {
       user_id: params.userId,
@@ -309,6 +321,24 @@ export async function initCheckout(params: {
   };
 
   let { res, json: data } = await post(body);
+
+  // ── UNE DEVISE REFUSÉE NE DOIT JAMAIS FAIRE PERDRE UNE VENTE ──────────────
+  //
+  // Rien ne garantit que Chariow accepte l'euro ou le dollar sur chaque
+  // produit. Si la demande est rejetée pour ce motif, on refait immédiatement
+  // la tentative dans la monnaie du produit : l'acheteur verra des francs CFA,
+  // ce qui est le comportement d'avant — mais il pourra payer.
+  if (!res.ok && devise !== 'XOF') {
+    const motif = JSON.stringify(data?.errors ?? data?.message ?? '').toLowerCase();
+    if (motif.includes('currency') || motif.includes('devise')) {
+      console.warn(
+        `Chariow a refusé la devise ${devise} pour ${params.paysAcheteur} ; ` +
+          `nouvelle tentative dans la monnaie du produit.`
+      );
+      const { payment_currency: _ignore, ...sansDevise } = body as Record<string, unknown>;
+      ({ res, json: data } = await post(sansDevise));
+    }
+  }
 
   // Le téléphone enregistré peut être invalide pour le pays détecté : plutôt
   // que de bloquer la vente, on refait la tentative avec le couple neutre.
