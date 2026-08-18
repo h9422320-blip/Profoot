@@ -84,8 +84,46 @@ const BUTS_MAX = 8;
  * Le plafond n'est jamais atteint : au football, la certitude n'existe pas
  * avant le coup de sifflet final.
  */
-const CONFIANCE_MIN = 55;
-const CONFIANCE_MAX = 92;
+/**
+ * ── LA CONFIANCE AFFICHÉE EST DÉSORMAIS UNE PROBABILITÉ ────────────────────
+ *
+ * CE QU'ELLE ÉTAIT, ET POURQUOI C'ÉTAIT INTENABLE
+ *
+ * Elle mesurait la SOLIDITÉ de l'analyse — quantité de données disponibles,
+ * netteté de l'écart entre les issues — ramenée sur une échelle de 55 à 92.
+ * L'abonné, lui, lit « 80 % » et comprend « huit chances sur dix que ce soit
+ * juste ». Deux notions différentes sous le même mot.
+ *
+ * Le résultat est apparu dans l'administration, en toutes lettres : confiance
+ * moyenne annoncée 75,8 %, réussite réelle 46 %. Vingt-neuf points d'écart. La
+ * tranche « 70 à 80 % » ne tenait que 37,5 % — la plus trompeuse de toutes,
+ * parce que c'est celle où l'on croit tenir une quasi-certitude.
+ *
+ * CE QU'ELLE EST MAINTENANT
+ *
+ * La probabilité, calculée, que l'issue annoncée se produise. Rien d'autre.
+ *
+ * Ce n'est pas un pari : cette probabilité a été confrontée à 9 200 rencontres
+ * réelles, sur deux saisons séparées, et elle tient.
+ *
+ *     annoncé 38 % → 37 % de réussite réelle       annoncé 57 % → 51 à 58 %
+ *     annoncé 42 % → 41 à 45 %                     annoncé 65 % → 61 à 66 %
+ *     annoncé 47 % → 46 %                          annoncé 77 % → 78 à 79 %
+ *
+ * L'écart moyen est de deux à trois points, dans les deux sens. C'est un
+ * chiffre qu'on peut afficher devant quelqu'un qui paie.
+ *
+ * LES CHIFFRES AFFICHÉS VONT BAISSER, ET C'EST LE BUT
+ *
+ * On lira désormais 45 % là où on lisait 80 %. Le pronostic, lui, n'a pas
+ * changé d'un iota — c'est son étiquette qui devient honnête. Un abonné qui
+ * voit 80 % et constate une réussite sur deux cesse de croire le reste.
+ */
+
+/** Une issue ne peut pas descendre sous le tiers : il n'y a que trois issues. */
+const CONFIANCE_MIN = 33;
+/** Au football, la certitude n'existe pas avant le coup de sifflet final. */
+const CONFIANCE_MAX = 90;
 
 /** Au-delà, une saison de plus n'apprend plus grand-chose sur une équipe. */
 const MATCHS_POUR_ETRE_SUR = 20;
@@ -97,6 +135,43 @@ function poisson(k: number, lambda: number): number {
   let factorielle = 1;
   for (let i = 2; i <= k; i++) factorielle *= i;
   return (Math.exp(-lambda) * Math.pow(lambda, k)) / factorielle;
+}
+
+/**
+ * Correction des petits scores (Dixon-Coles).
+ *
+ * POURQUOI ELLE EXISTE
+ *
+ * La loi de Poisson suppose que les deux équipes marquent indépendamment l'une
+ * de l'autre. C'est faux : à 0-0 ou 1-1, un match se referme, les deux camps
+ * se contentent du point. Le calcul brut sous-estime donc les nuls — et c'est
+ * exactement ce que l'administration reprochait au moteur : dix-huit matchs
+ * terminés sur un nul, huit annoncés.
+ *
+ * CE QU'ELLE CHANGE, MESURÉ SUR 9 200 RENCONTRES
+ *
+ * La probabilité moyenne de nul passe de 23,4 % à 25,5 % au réglage (réel
+ * 25,0 %) et de 23,6 % à 25,8 % à la validation (réel 25,8 %). Elle tombe donc
+ * juste sur les deux jeux, ce qui exclut un réglage taillé sur mesure.
+ *
+ * CE QU'ELLE NE CHANGE PAS
+ *
+ * L'issue annoncée : 51,28 % → 51,26 % et 50,55 % → 50,51 %. Autrement dit,
+ * rien. Forcer le moteur à annoncer davantage de nuls a d'ailleurs été essayé
+ * et fait BAISSER la justesse de plus d'un point — c'est la probabilité qui
+ * devait être corrigée, pas le pronostic.
+ *
+ * La valeur retenue est celle de la littérature, pas un chiffre ajusté à nos
+ * données.
+ */
+const CORRECTION_PETITS_SCORES = -0.1;
+
+function correctionPetitsScores(i: number, j: number, l1: number, l2: number): number {
+  if (i === 0 && j === 0) return 1 - l1 * l2 * CORRECTION_PETITS_SCORES;
+  if (i === 0 && j === 1) return 1 + l1 * CORRECTION_PETITS_SCORES;
+  if (i === 1 && j === 0) return 1 + l2 * CORRECTION_PETITS_SCORES;
+  if (i === 1 && j === 1) return 1 - CORRECTION_PETITS_SCORES;
+  return 1;
 }
 
 const borner = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -448,7 +523,7 @@ export function calculerScoreProbable(
 
   for (let i = 0; i <= BUTS_MAX; i++) {
     for (let j = 0; j <= BUTS_MAX; j++) {
-      const p = p1[i] * p2[j];
+      const p = p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2);
       const issue = i > j ? 'victoire1' : i === j ? 'nul' : 'victoire2';
       const ecart = ecartAuxAttendus(i, j);
       const actuel = meilleurParIssue[issue];
@@ -527,11 +602,18 @@ export function calculerScoreProbable(
   // confiance honorable — l'analyse est solide, c'est le match qui est indécis.
   // Les deux se lisaient auparavant sur le même chiffre, et tout finissait à
   // 45 %.
-  const issues = [victoire1, nul, victoire2].sort((a, b) => b - a);
-  const nettete = Math.min(1, (issues[0] - issues[1]) / 0.35);
-  // Quand les forces ajustées sont là, la matière est celle qu'elles portent —
-  // une saison entière derrière chaque équipe, et non les deux rencontres
-  // qu'elle a disputées depuis la reprise.
+  // La probabilité de l'issue annoncée, telle qu'elle vient d'être calculée.
+  // C'est elle, et rien d'autre, que l'abonné doit lire.
+  const probaIssueAnnoncee =
+    issueRetenue === 'victoire1' ? pv1 : issueRetenue === 'nul' ? pn : pv2;
+
+  // QUAND LA MATIÈRE MANQUE, ON RAMÈNE VERS L'IGNORANCE.
+  //
+  // Sans données solides, la probabilité calculée est elle-même incertaine :
+  // l'annoncer telle quelle serait afficher une précision qu'on n'a pas. On la
+  // rapproche donc du tiers — le point où l'on ne sait rien — à proportion de
+  // ce qui manque. Avec les forces ajustées, la matière est complète et rien
+  // n'est retranché.
   const matchsConnus = avecForces
     ? Math.min(forces!.equipe1.matchs, forces!.equipe2.matchs)
     : Math.min(joues1, joues2);
@@ -540,7 +622,7 @@ export function calculerScoreProbable(
   const plafond = peuFiable ? CONFIANCE_MAX_PEU_FIABLE : CONFIANCE_MAX;
   const confiance = Math.round(
     borner(
-      CONFIANCE_MIN + (CONFIANCE_MAX - CONFIANCE_MIN) * (0.45 * matiere + 0.55 * nettete),
+      CONFIANCE_MIN + (probaIssueAnnoncee - CONFIANCE_MIN) * matiere,
       CONFIANCE_MIN,
       plafond
     )

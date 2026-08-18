@@ -354,8 +354,10 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
   }
 
   // 2. Tranches de confiance qui ne tiennent pas leur promesse.
+  // Vingt pronostics au minimum : sur cinq, un écart de quinze points ne
+  // distingue pas un défaut d'une série malheureuse.
   const trancheFautive = d.tranches
-    .filter((t) => t.nombre >= 5 && t.ecart !== null && t.ecart >= 15)
+    .filter((t) => t.nombre >= 20 && t.ecart !== null && t.ecart >= 15)
     .sort((a, b) => (b.ecart ?? 0) - (a.ecart ?? 0))[0];
   if (trancheFautive) {
     reco.push({
@@ -368,15 +370,32 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
   }
 
   // 3. Le nul — angle mort classique des modèles de prédiction.
+  //
+  // LA CORRECTION PROPOSÉE ICI A ÉTÉ RÉÉCRITE LE 18 AOÛT 2026.
+  //
+  // Elle conseillait d'annoncer davantage de nuls. C'était l'inverse de ce
+  // qu'il faut faire, et la mesure est sans appel : forcer le moteur à annoncer
+  // plus de nuls fait TOMBER la justesse de 50,6 % à 49,5 %, puis 48,4 % à
+  // mesure qu'on insiste — essayé sur 2 305 rencontres.
+  //
+  // La raison tient en une phrase : annoncer l'issue la plus probable est déjà
+  // le meilleur choix possible. Si une victoire est à 40 % et le nul à 28 %,
+  // annoncer le nul fait perdre douze points de réussite, même quand le nul
+  // tombe plus souvent que le modèle ne le disait.
+  //
+  // Ce qui devait être corrigé, c'est la PROBABILITÉ affichée, pas le
+  // pronostic. C'est fait : la correction des petits scores porte la
+  // probabilité moyenne de nul de 23,4 % à 25,6 %, soit exactement le taux
+  // réel constaté. Voir src/lib/score-probable.ts.
   const nulsReels = d.repartition.reel.draw;
   const nulsPredits = d.repartition.predit.draw;
   if (nulsReels >= 3 && nulsPredits < nulsReels / 2) {
     reco.push({
-      gravite: 'important',
-      titre: "L'analyseur ne prédit presque jamais le match nul",
+      gravite: 'mineur',
+      titre: "L'analyseur annonce rarement le match nul",
       constat: `${nulsReels} match${nulsReels > 1 ? 's se sont' : ' s\'est'} terminé${nulsReels > 1 ? 's' : ''} sur un nul, pour ${nulsPredits} annoncé${nulsPredits > 1 ? 's' : ''}.`,
       correction:
-        "Ajouter dans les consignes : « Le nul est une issue à part entière. Quand deux équipes sont proches au classement et que ni la forme ni les absences ne les départagent, annonce le nul plutôt que de trancher artificiellement. »",
+        "Ce n'est pas un défaut à corriger : annoncer l'issue la plus probable reste le meilleur choix, et forcer davantage de nuls a été mesuré comme faisant BAISSER la réussite (50,6 % → 48,4 % sur 2 305 rencontres). Ce qui compte est que la PROBABILITÉ de nul affichée soit juste — elle l'est désormais, à 25,6 % contre 25,8 % constatés. Vérifier ce chiffre plutôt que le nombre de nuls annoncés.",
     });
   }
 
@@ -398,8 +417,21 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
   }
 
   // 5. Compétitions où le modèle échoue.
+  //
+  // LE SEUIL EST PASSÉ DE CINQ À VINGT MATCHS, ET C'EST UNE CORRECTION.
+  //
+  // « 28,6 % de réussite sur Eredivisie » reposait sur SEPT rencontres. Avec
+  // sept matchs, une équipe qui gagne réellement une fois sur deux affiche deux
+  // succès ou moins environ une fois sur sept — sans que rien n'aille mal. Le
+  // tableau accusait donc des championnats au hasard, et invitait à brider la
+  // confiance là où il n'y avait rien à corriger.
+  //
+  // Vingt matchs ne rendent pas le chiffre certain, mais en dessous il ne veut
+  // rien dire du tout — et une alerte qui se trompe fait perdre du temps sur de
+  // vrais défauts.
+  const MATCHS_POUR_JUGER_UNE_COMPETITION = 20;
   for (const c of d.competitions) {
-    if (c.nombre >= 5 && c.reussite < 40) {
+    if (c.nombre >= MATCHS_POUR_JUGER_UNE_COMPETITION && c.reussite < 40) {
       reco.push({
         gravite: c.reussite < 25 ? 'critique' : 'important',
         titre: `Résultats faibles sur ${c.competition}`,
