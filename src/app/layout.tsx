@@ -4,8 +4,25 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { PLANS } from "@/lib/subscription";
 import { LanguageProvider } from "@/context/LanguageContext";
 
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+
+/**
+ * Microsoft Clarity — cartes de chaleur et enregistrements de session.
+ *
+ * POURQUOI IL EST LÀ
+ *
+ * Quatre-vingt-douze pour cent des paiements n'aboutissent pas : 348 abandons
+ * et 41 échecs sur 424 tentatives. On sait QUE ça casse, on ne sait pas OÙ.
+ * Clarity montre le parcours réel — où le doigt s'arrête, où la page est
+ * quittée, quel bouton n'est jamais touché.
+ *
+ * L'identifiant est public : il figure en clair dans le code de n'importe
+ * quelle page mesurée. Le placer dans une variable d'environnement ne
+ * protégerait rien et rendrait la mesure muette en cas d'oubli au déploiement.
+ */
+const CLARITY_ID = "y4gues5jnw";
 
 const SITE_URL = "https://profootai.com";
 const DESCRIPTION =
@@ -83,7 +100,30 @@ export default function RootLayout({
         <link rel="icon" href="/icon.png?v=5" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* La liaison au serveur de Clarity est ouverte pendant que la page se
+            charge : la mesure ne coûte plus une négociation complète ensuite. */}
+        <link rel="preconnect" href="https://www.clarity.ms" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+        {/*
+          MICROSOFT CLARITY.
+
+          `afterInteractive` : le script part une fois la page utilisable, jamais
+          avant. Sur un téléphone en 3G — la quasi-totalité des visiteurs — une
+          mesure qui retarde l'affichage coûte plus de visiteurs qu'elle n'en
+          explique.
+
+          Le fragment officiel crée lui-même sa balise avec `async = 1` : le
+          téléchargement ne bloque donc rien, et un serveur Clarity injoignable
+          laisse le site intact.
+        */}
+        <Script id="microsoft-clarity" strategy="afterInteractive">
+          {`(function(c,l,a,r,i,t,y){
+              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "${CLARITY_ID}");`}
+        </Script>
 
         {/*
           Données structurées : c'est ce qui permet à Google d'afficher
