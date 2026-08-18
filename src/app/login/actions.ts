@@ -2,7 +2,33 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { createClient } from '@/utils/supabase/server'
+import { lireOrigine, metadonneesOrigine } from '@/lib/origine-visiteur'
+
+/**
+ * Relève le pays et l'appareil sur le compte courant.
+ *
+ * POURQUOI AUSSI À LA CONNEXION, ET PAS SEULEMENT À L'INSCRIPTION
+ *
+ * Huit cent soixante-trois comptes existent déjà sans aucune origine connue.
+ * Attendre de nouvelles inscriptions pour savoir d'où viennent les gens ferait
+ * perdre des semaines ; en relevant à chaque connexion, le parc se renseigne
+ * de lui-même à mesure que les abonnés reviennent.
+ *
+ * N'INTERROMPT JAMAIS RIEN
+ *
+ * Une mesure qui ferait échouer une connexion serait pire que pas de mesure du
+ * tout. Toute erreur est donc avalée : au pire, ce compte reste sans origine.
+ */
+async function releverOrigine(supabase: Awaited<ReturnType<typeof createClient>>) {
+  try {
+    const origine = lireOrigine(await headers())
+    await supabase.auth.updateUser({ data: metadonneesOrigine(origine) })
+  } catch {
+    /* la connexion prime sur la mesure */
+  }
+}
 
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
@@ -22,6 +48,8 @@ export async function login(formData: FormData) {
   if (error) {
     return { error: error.message }
   }
+
+  await releverOrigine(supabase)
 
   revalidatePath('/', 'layout')
   redirect(destinationApres(formData))
@@ -84,12 +112,19 @@ export async function signup(formData: FormData) {
 
   const supabase = await createClient()
 
+  // Le pays et l'appareil sont posés DÈS la création, dans le même appel : un
+  // compte créé puis abandonné garde ainsi sa trace, alors qu'un relevé fait
+  // seulement à la connexion suivante ne dirait jamais rien de celui qui ne
+  // revient pas — précisément celui qu'on cherche à comprendre.
+  const origine = lireOrigine(await headers())
+
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
         full_name: name,
+        ...metadonneesOrigine(origine),
       },
     },
   })

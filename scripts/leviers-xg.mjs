@@ -31,7 +31,7 @@ for (const [k, v] of Object.entries(env)) process.env[k] = v;
 const jiti = createJiti(import.meta.url);
 const { apiFootball, CACHE_TTL } = await jiti.import('../src/lib/api-football.ts');
 
-const LIGUES = [[39, 'Premier League'], [140, 'La Liga'], [135, 'Serie A'], [78, 'Bundesliga']];
+const LIGUES = [[39, 'Premier League'], [140, 'La Liga'], [135, 'Serie A']];
 const TERMINE = ['FT', 'AET', 'PEN'];
 const borner = (v, a, b) => Math.min(b, Math.max(a, v));
 const MAX = 8;
