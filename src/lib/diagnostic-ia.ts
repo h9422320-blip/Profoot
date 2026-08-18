@@ -89,12 +89,21 @@ export interface DiagnosticIA {
 /** Seuil en dessous duquel aucun pourcentage n'est publié. */
 export const MINIMUM_DIAGNOSTIC = 10;
 
+/**
+ * Tranches de PROBABILITÉ annoncée pour l'issue retenue.
+ *
+ * Elles allaient de 60 % à 90 % et plus, parce qu'elles découpaient l'indice de
+ * confiance. Ce n'est pas la bonne échelle : la probabilité d'une issue de
+ * football se situe presque toujours entre 35 % et 70 % — il y a trois issues
+ * possibles, et un match reste un match. Découpées comme avant, quatre-vingt-dix
+ * pour cent des rencontres tombaient dans une seule case.
+ */
 const TRANCHES: { libelle: string; min: number; max: number }[] = [
-  { libelle: 'Moins de 60 %', min: 0, max: 60 },
+  { libelle: 'Moins de 40 %', min: 0, max: 40 },
+  { libelle: '40 à 50 %', min: 40, max: 50 },
+  { libelle: '50 à 60 %', min: 50, max: 60 },
   { libelle: '60 à 70 %', min: 60, max: 70 },
-  { libelle: '70 à 80 %', min: 70, max: 80 },
-  { libelle: '80 à 90 %', min: 80, max: 90 },
-  { libelle: '90 % et plus', min: 90, max: 101 },
+  { libelle: '70 % et plus', min: 70, max: 101 },
 ];
 
 function pourcent(part: number, total: number): number {
@@ -119,7 +128,7 @@ export async function getDiagnosticIA(): Promise<DiagnosticIA> {
   const [{ data: verifiees, error }, attente] = await Promise.all([
     sb
       .from('analysis_history')
-      .select('score, real_score, predicted_winner, real_winner, winner_correct, score_correct, confidence, competition, fixture_id, team1_name, team2_name')
+      .select('score, real_score, predicted_winner, real_winner, winner_correct, score_correct, confidence, win_prob, draw_prob, lose_prob, competition, fixture_id, team1_name, team2_name')
       .not('verified_at', 'is', null)
       .limit(2000),
     sb.from('analysis_history').select('id', { count: 'exact', head: true }).is('verified_at', null),
@@ -183,11 +192,41 @@ export async function getDiagnosticIA(): Promise<DiagnosticIA> {
     return v.length ? v.reduce((t, x) => t + x, 0) / v.length : null;
   };
 
+  /**
+   * La PROBABILITÉ de l'issue annoncée — et non l'indice de confiance.
+   *
+   * CE QUE CE TABLEAU COMPARAIT, ET POURQUOI C'ÉTAIT FAUX
+   *
+   * Il confrontait l'indice de confiance à la réussite réelle et criait à la
+   * surconfiance : 75,8 % annoncés, 46 % réussis. Mais ces deux nombres ne
+   * répondent pas à la même question. La confiance dit « cette analyse
+   * repose-t-elle sur quelque chose ? » — données disponibles, netteté de
+   * l'écart. Elle peut valoir 90 % sur un match parfaitement documenté dont
+   * l'issue reste indécise.
+   *
+   * Ce qui doit être confronté à la réussite, c'est la probabilité de l'issue
+   * annoncée : « le PSG gagne à 47 % ». Elle, elle promet quelque chose de
+   * vérifiable, et c'est elle qu'on mesure ici.
+   */
+  const probaDeLIssueAnnoncee = (lot: any[]): number | null => {
+    const valeurs = lot
+      .map((l) => {
+        const issue = l.predicted_winner;
+        const p =
+          issue === 'team1' ? l.win_prob : issue === 'draw' ? l.draw_prob : issue === 'team2' ? l.lose_prob : null;
+        return typeof p === 'number' ? p : null;
+      })
+      .filter((p): p is number => p !== null);
+    return valeurs.length ? valeurs.reduce((t, p) => t + p, 0) / valeurs.length : null;
+  };
+
   const lignes = [...parMatch.values()].map((lot) => ({
     // Le verdict de la rencontre est celui de la majorité de ses analyses.
     winner_correct: lot.filter((l) => l.winner_correct).length * 2 > lot.length,
     score_correct: lot.filter((l) => l.score_correct).length * 2 > lot.length,
-    confidence: moyenneDuChamp(lot, 'confidence'),
+    // Conservé pour information : c'est la solidité de l'analyse, pas une promesse.
+    indiceConfiance: moyenneDuChamp(lot, 'confidence'),
+    confidence: probaDeLIssueAnnoncee(lot),
     competition: majoritaire(lot, 'competition'),
     predicted_winner: majoritaire(lot, 'predicted_winner'),
     real_winner: lot[0]?.real_winner ?? null,
@@ -340,8 +379,8 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
     reco.push({
       gravite: d.surconfiance >= 20 ? 'critique' : 'important',
       titre: "L'analyseur annonce plus de certitude qu'il n'en mérite",
-      constat: `Confiance moyenne annoncée : ${d.confianceMoyenne} %. Réussite réelle : ${d.reussiteVainqueur} %. Écart de ${d.surconfiance} points sur ${echantillon} matchs.`,
-      correction: `Dans les consignes de l'analyseur, imposer que l'indice de confiance reflète la réussite constatée : « Ta confiance doit correspondre à ta réussite réelle. Sur les cent derniers matchs, une confiance de ${d.confianceMoyenne} % a donné ${d.reussiteVainqueur} % de réussite : abaisse tes indices d'environ ${Math.round(d.surconfiance)} points. »`,
+      constat: `Probabilité moyenne annoncée pour l'issue retenue : ${d.confianceMoyenne} %. Réussite réelle : ${d.reussiteVainqueur} %. Écart de ${d.surconfiance} points sur ${echantillon} matchs.`,
+      correction: `Ce sont les PROBABILITÉS du moteur qui sont mal calibrées, pas l'indice de confiance affiché — ce dernier mesure la solidité de l'analyse et n'a pas à égaler la réussite. Rejouer le banc d'essai (scripts/calibrage-confiance.mjs) pour vérifier la courbe annoncé/constaté, et corriger le calcul des probabilités si l'écart s'y confirme.`,
     });
   } else if (d.surconfiance !== null && d.surconfiance <= -10) {
     reco.push({

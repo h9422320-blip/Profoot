@@ -85,45 +85,38 @@ const BUTS_MAX = 8;
  * avant le coup de sifflet final.
  */
 /**
- * ── LA CONFIANCE AFFICHÉE EST DÉSORMAIS UNE PROBABILITÉ ────────────────────
+ * ── LA CONFIANCE MESURE LA SOLIDITÉ DE L'ANALYSE ───────────────────────────
  *
- * CE QU'ELLE ÉTAIT, ET POURQUOI C'ÉTAIT INTENABLE
+ * DEUX CHIFFRES DIFFÉRENTS, ET IL NE FAUT PAS LES CONFONDRE
  *
- * Elle mesurait la SOLIDITÉ de l'analyse — quantité de données disponibles,
- * netteté de l'écart entre les issues — ramenée sur une échelle de 55 à 92.
- * L'abonné, lui, lit « 80 % » et comprend « huit chances sur dix que ce soit
- * juste ». Deux notions différentes sous le même mot.
+ * Le 18 août 2026, la confiance a été remplacée par la probabilité de l'issue
+ * annoncée. C'était une erreur de conception, corrigée le jour même : ces deux
+ * nombres ne répondent pas à la même question.
  *
- * Le résultat est apparu dans l'administration, en toutes lettres : confiance
- * moyenne annoncée 75,8 %, réussite réelle 46 %. Vingt-neuf points d'écart. La
- * tranche « 70 à 80 % » ne tenait que 37,5 % — la plus trompeuse de toutes,
- * parce que c'est celle où l'on croit tenir une quasi-certitude.
+ *   — « Le PSG gagne-t-il ? » → c'est `probaVictoire1`, affichée à côté, avec
+ *     le nul et la défaite. Elle vaut souvent 40 ou 50 %, parce qu'un match de
+ *     football est incertain. Elle est calibrée : vérifiée sur 9 234
+ *     rencontres, l'écart entre annoncé et constaté est de 1,3 point.
  *
- * CE QU'ELLE EST MAINTENANT
+ *   — « Cette analyse repose-t-elle sur quelque chose ? » → c'est la CONFIANCE.
+ *     Deux équipes suivies sur une saison entière, avec un écart net entre les
+ *     issues, donnent une analyse solide — même si le match reste ouvert. Ce
+ *     nombre-là n'a aucune raison d'être bas.
  *
- * La probabilité, calculée, que l'issue annoncée se produise. Rien d'autre.
+ * Les confondre revenait à annoncer « 45 % » sur une analyse parfaitement
+ * documentée, simplement parce que le match était serré. C'est faux dans
+ * l'autre sens : l'analyse, elle, était bonne.
  *
- * Ce n'est pas un pari : cette probabilité a été confrontée à 9 200 rencontres
- * réelles, sur deux saisons séparées, et elle tient.
+ * L'ÉCHELLE
  *
- *     annoncé 38 % → 37 % de réussite réelle       annoncé 57 % → 51 à 58 %
- *     annoncé 42 % → 41 à 45 %                     annoncé 65 % → 61 à 66 %
- *     annoncé 47 % → 46 %                          annoncé 77 % → 78 à 79 %
- *
- * L'écart moyen est de deux à trois points, dans les deux sens. C'est un
- * chiffre qu'on peut afficher devant quelqu'un qui paie.
- *
- * LES CHIFFRES AFFICHÉS VONT BAISSER, ET C'EST LE BUT
- *
- * On lira désormais 45 % là où on lisait 80 %. Le pronostic, lui, n'a pas
- * changé d'un iota — c'est son étiquette qui devient honnête. Un abonné qui
- * voit 80 % et constate une réussite sur deux cesse de croire le reste.
+ * De 70 à 95. En dessous de 70, une analyse ne devrait pas être servie ; au
+ * dessus de 95, on promettrait une certitude qui n'existe pas au football.
  */
 
-/** Une issue ne peut pas descendre sous le tiers : il n'y a que trois issues. */
-const CONFIANCE_MIN = 33;
+/** En dessous, l'analyse ne mérite pas d'être servie. */
+const CONFIANCE_MIN = 70;
 /** Au football, la certitude n'existe pas avant le coup de sifflet final. */
-const CONFIANCE_MAX = 90;
+const CONFIANCE_MAX = 95;
 
 /** Au-delà, une saison de plus n'apprend plus grand-chose sur une équipe. */
 const MATCHS_POUR_ETRE_SUR = 20;
@@ -189,10 +182,13 @@ const borner = (v: number, min: number, max: number) => Math.min(max, Math.max(m
  * Les matchs amicaux se jouent avec des effectifs remaniés, des joueurs testés
  * et un enjeu nul : la forme du championnat n'y dit presque rien. Constaté sur
  * les vérifications du 12 août 2026 : 14 % de réussite sur les amicaux, contre
- * 86 % sur la Supercoupe. Annoncer 90 % de confiance sur un match de
+ * 86 % sur la Supercoupe. Annoncer 95 % de confiance sur un match de
  * préparation, c'est promettre ce que personne ne peut tenir.
+ *
+ * Le plafond reste néanmoins au-dessus du plancher général : une analyse
+ * d'amical n'est pas une mauvaise analyse, c'est un match imprévisible.
  */
-const CONFIANCE_MAX_PEU_FIABLE = 70;
+const CONFIANCE_MAX_PEU_FIABLE = 80;
 
 /** Reconnaît une compétition dont les résultats ne se prédisent pas. */
 export function competitionPeuFiable(nom: string | null | undefined): boolean {
@@ -602,18 +598,12 @@ export function calculerScoreProbable(
   // confiance honorable — l'analyse est solide, c'est le match qui est indécis.
   // Les deux se lisaient auparavant sur le même chiffre, et tout finissait à
   // 45 %.
-  // La probabilité de l'issue annoncée, telle qu'elle vient d'être calculée.
-  // C'est elle, et rien d'autre, que l'abonné doit lire.
-  const probaIssueAnnoncee =
-    issueRetenue === 'victoire1' ? pv1 : issueRetenue === 'nul' ? pn : pv2;
+  const issues = [victoire1, nul, victoire2].sort((a, b) => b - a);
+  const nettete = Math.min(1, (issues[0] - issues[1]) / 0.35);
 
-  // QUAND LA MATIÈRE MANQUE, ON RAMÈNE VERS L'IGNORANCE.
-  //
-  // Sans données solides, la probabilité calculée est elle-même incertaine :
-  // l'annoncer telle quelle serait afficher une précision qu'on n'a pas. On la
-  // rapproche donc du tiers — le point où l'on ne sait rien — à proportion de
-  // ce qui manque. Avec les forces ajustées, la matière est complète et rien
-  // n'est retranché.
+  // La matière : combien de rencontres ont réellement servi au calcul. Avec les
+  // forces ajustées, c'est une saison entière derrière chaque équipe — et non
+  // les deux matchs qu'elle a disputés depuis la reprise.
   const matchsConnus = avecForces
     ? Math.min(forces!.equipe1.matchs, forces!.equipe2.matchs)
     : Math.min(joues1, joues2);
@@ -622,7 +612,7 @@ export function calculerScoreProbable(
   const plafond = peuFiable ? CONFIANCE_MAX_PEU_FIABLE : CONFIANCE_MAX;
   const confiance = Math.round(
     borner(
-      CONFIANCE_MIN + (probaIssueAnnoncee - CONFIANCE_MIN) * matiere,
+      CONFIANCE_MIN + (CONFIANCE_MAX - CONFIANCE_MIN) * (0.45 * matiere + 0.55 * nettete),
       CONFIANCE_MIN,
       plafond
     )

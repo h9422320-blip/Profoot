@@ -87,11 +87,15 @@ export default async function DiagnosticPage() {
               delai={0.1}
             />
             <Indicateur
-              libelle="Confiance annoncée"
+              libelle="Probabilité annoncée"
               valeur={`${d.confianceMoyenne} %`}
               teinte="violet"
               icone={<Gauge className="w-4 h-4" />}
-              aide="Indice moyen que l'analyseur s'attribue"
+              // Ce n'est PAS l'indice de confiance affiché à l'abonné : celui-là
+              // mesure la solidité de l'analyse et n'a pas à égaler la réussite.
+              // Ici, c'est la probabilité donnée à l'issue retenue — la seule
+              // qui promette quelque chose de vérifiable.
+              aide="Chance moyenne donnée à l'issue retenue"
               delai={0.15}
             />
             <Indicateur
@@ -160,8 +164,8 @@ export default async function DiagnosticPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Calibrage : la promesse tenue, tranche par tranche. */}
             <Panneau
-              titre="La confiance annoncée tient-elle ?"
-              sousTitre="Réussite réelle dans chaque tranche de certitude"
+              titre="Les probabilités tiennent-elles ?"
+              sousTitre="Quand le moteur donne X % à une issue, elle arrive combien de fois ?"
               icone={<Gauge className="w-4 h-4" />}
               teinte="violet"
             >
