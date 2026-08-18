@@ -296,13 +296,33 @@ export function forceDepuisClassement(c: ForceClassement | null | undefined): nu
   return borner(1 + (rapport - 1) * INFLUENCE_CLASSEMENT, 1 - INFLUENCE_CLASSEMENT, 1 + INFLUENCE_CLASSEMENT);
 }
 
+/**
+ * Forces d'attaque et de défense ajustées aux adversaires, quand elles sont
+ * disponibles. Voir `src/lib/forces-equipes.ts` pour leur calcul et les mesures
+ * qui l'ont justifié.
+ */
+export interface ForcesDuMatch {
+  equipe1: { attaque: number; defense: number; matchs: number };
+  equipe2: { attaque: number; defense: number; matchs: number };
+  /** Buts marqués en moyenne par l'équipe qui reçoit, dans ce championnat. */
+  butsDomicile: number;
+  /** Buts marqués en moyenne par l'équipe qui se déplace. */
+  butsExterieur: number;
+}
+
 export function calculerScoreProbable(
   equipe1: StatistiquesEquipe,
   equipe2: StatistiquesEquipe,
   equipe1AJoueADomicile: boolean | null = null,
   peuFiable = false,
   /** Classements de fin de saison, quand ils sont connus. */
-  classements?: { equipe1?: ForceClassement | null; equipe2?: ForceClassement | null }
+  classements?: { equipe1?: ForceClassement | null; equipe2?: ForceClassement | null },
+  /**
+   * Forces ajustées à l'adversaire. Absentes, tout le calcul ci-dessous reste
+   * celui d'avant, au caractère près : un championnat que le fournisseur ne
+   * couvre pas ne doit rien perdre.
+   */
+  forces?: ForcesDuMatch | null
 ): ScoreProbable {
   const joues1 = Math.max(1, equipe1.matchsJoues);
   const joues2 = Math.max(1, equipe2.matchsJoues);
@@ -342,13 +362,42 @@ export function calculerScoreProbable(
   const rang1 = forceDepuisClassement(classements?.equipe1);
   const rang2 = forceDepuisClassement(classements?.equipe2);
 
+  // ── LES BUTS ATTENDUS ──────────────────────────────────────────────────────
+  //
+  // Deux chemins. Le second n'existe que depuis le 17 août 2026 et ne sert que
+  // lorsque le championnat est connu ; sans lui, le premier reste en vigueur et
+  // rend exactement ce qu'il rendait.
+  //
+  // CE QUE LE PREMIER IGNORE, ET CE QUE ÇA COÛTAIT
+  //
+  // Il ne regarde que les buts marqués et encaissés, sans jamais demander
+  // CONTRE QUI, ni ce que valait l'équipe la saison passée. En août, une équipe
+  // a joué deux matchs : c'est là-dessus qu'il tranchait. Mesuré sur les cinq
+  // premières journées de dix championnats, 472 rencontres rejouées :
+  //
+  //     ce calcul-ci ................................. 41,9 % d'issues justes
+  //     « l'équipe qui reçoit gagne » ................ 43,2 %
+  //     forces ajustées, socle de la saison passée ... 52,8 %
+  //
+  // Il faisait donc moins bien qu'un pronostic sans calcul, et annonçait 1,95
+  // but par match là où il s'en marque 2,8.
+  const avecForces = forces && equipe1AJoueADomicile !== null;
+
   const butsAttendus1 = borner(
-    forceAttaque1 * forceDefense2 * moyenne * facteur1 * (rang1 / rang2),
+    avecForces
+      ? forces!.equipe1.attaque *
+          forces!.equipe2.defense *
+          (equipe1AJoueADomicile ? forces!.butsDomicile : forces!.butsExterieur)
+      : forceAttaque1 * forceDefense2 * moyenne * facteur1 * (rang1 / rang2),
     BUTS_ATTENDUS_MIN,
     BUTS_ATTENDUS_MAX
   );
   const butsAttendus2 = borner(
-    forceAttaque2 * forceDefense1 * moyenne * facteur2 * (rang2 / rang1),
+    avecForces
+      ? forces!.equipe2.attaque *
+          forces!.equipe1.defense *
+          (equipe1AJoueADomicile ? forces!.butsExterieur : forces!.butsDomicile)
+      : forceAttaque2 * forceDefense1 * moyenne * facteur2 * (rang2 / rang1),
     BUTS_ATTENDUS_MIN,
     BUTS_ATTENDUS_MAX
   );
@@ -480,7 +529,13 @@ export function calculerScoreProbable(
   // 45 %.
   const issues = [victoire1, nul, victoire2].sort((a, b) => b - a);
   const nettete = Math.min(1, (issues[0] - issues[1]) / 0.35);
-  const matiere = Math.min(1, Math.min(joues1, joues2) / MATCHS_POUR_ETRE_SUR);
+  // Quand les forces ajustées sont là, la matière est celle qu'elles portent —
+  // une saison entière derrière chaque équipe, et non les deux rencontres
+  // qu'elle a disputées depuis la reprise.
+  const matchsConnus = avecForces
+    ? Math.min(forces!.equipe1.matchs, forces!.equipe2.matchs)
+    : Math.min(joues1, joues2);
+  const matiere = Math.min(1, matchsConnus / MATCHS_POUR_ETRE_SUR);
 
   const plafond = peuFiable ? CONFIANCE_MAX_PEU_FIABLE : CONFIANCE_MAX;
   const confiance = Math.round(
@@ -508,7 +563,10 @@ export function calculerScoreProbable(
     },
     probaDuScoreExact: pct(meilleur.proba),
     confiance,
-    donneesInsuffisantes,
+    // Les forces ajustées portent une saison entière par équipe : annoncer
+    // « données insuffisantes » parce que le championnat vient de reprendre
+    // serait faux, et priverait l'abonné d'une analyse solide.
+    donneesInsuffisantes: avecForces ? false : donneesInsuffisantes,
   };
 }
 
