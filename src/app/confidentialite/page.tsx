@@ -128,7 +128,7 @@ export default function ConfidentialitePage() {
             </div>
             <div className="space-y-4 text-white/70 leading-relaxed">
               <p>
-                ProFoot AI utilise <strong className="text-white">Vercel Web Analytics</strong> pour mesurer l'audience 
+                ProFoot AI utilise <strong className="text-white">Vercel Web Analytics</strong> pour mesurer l'audience
                 du site (nombre de visiteurs, pages les plus visitées, pays des visiteurs). Cet outil :
               </p>
               <ul className="space-y-2 mt-3">
@@ -144,6 +144,54 @@ export default function ConfidentialitePage() {
                   </li>
                 ))}
               </ul>
+
+              {/* MICROSOFT CLARITY.
+                  Cet outil filme le parcours : le taire serait une omission, et
+                  les quatre points ci-dessus ne valent QUE pour Vercel — Clarity,
+                  lui, dépose bien des cookies. D'où un bloc distinct plutôt
+                  qu'une ligne ajoutée à la liste précédente. */}
+              <div className="mt-8 pt-6 border-t border-white/10 space-y-4">
+                <p>
+                  Depuis le 18 août 2026, ProFoot AI utilise également{" "}
+                  <strong className="text-white">Microsoft Clarity</strong>. Cet outil enregistre la façon
+                  dont les pages sont utilisées afin de repérer ce qui bloque — un bouton qu'on ne trouve
+                  pas, une étape de paiement où l'on renonce.
+                </p>
+                <p className="text-white/80">
+                  Concrètement, il enregistre vos <strong className="text-white">déplacements de doigt ou
+                  de souris, vos clics, votre défilement et les pages parcourues</strong>. Ces éléments
+                  peuvent être rejoués sous forme d'enregistrement de session, et sont agrégés en cartes
+                  de fréquentation.
+                </p>
+                <ul className="space-y-2 mt-3">
+                  {[
+                    "Le texte que vous saisissez est masqué par défaut : mots de passe, adresses e-mail et contenus de formulaires ne sont pas enregistrés.",
+                    "Clarity dépose deux cookies de mesure sur votre appareil (_clck et _clsk).",
+                    "Les données sont hébergées par Microsoft et ne sont ni vendues, ni cédées à des tiers.",
+                    "Elles servent uniquement à améliorer le site — jamais à cibler quelqu'un individuellement.",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="w-2 h-2 rounded-full bg-[#10b981] mt-2 flex-shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-sm text-white/50">
+                  Vous pouvez refuser cette mesure en activant le signal « Do Not Track » de votre
+                  navigateur, en utilisant un bloqueur de traceurs, ou en supprimant les cookies du site.
+                  Le fonctionnement de ProFoot AI n'en est pas affecté. Le détail du traitement est décrit
+                  dans la{" "}
+                  <a
+                    href="https://privacy.microsoft.com/fr-fr/privacystatement"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#10b981] hover:underline"
+                  >
+                    déclaration de confidentialité de Microsoft
+                  </a>
+                  .
+                </p>
+              </div>
             </div>
           </section>
 
