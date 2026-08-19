@@ -337,8 +337,8 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
         <section className="showcase-section">
           <div className="showcase-bg">
             <img
-              src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=2070&auto=format&fit=crop"
-              alt=""
+              src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=45&w=640&auto=format&fit=crop"
+              alt="" loading="lazy" decoding="async"
               className="showcase-bg-img"
             />
             <div className="showcase-overlay" />
@@ -441,8 +441,8 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
         <section className="final-cta-section">
           <div className="final-cta-bg">
             <img
-              src="https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?q=80&w=2070&auto=format&fit=crop"
-              alt=""
+              src="https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?q=45&w=640&auto=format&fit=crop"
+              alt="" loading="lazy" decoding="async"
               className="final-cta-bg-img"
             />
             <div className="final-cta-overlay" />
@@ -524,7 +524,7 @@ function CompetitionsFadeIn() {
         <div className="marquee-track">
           {doubledComps.map((c, i) => (
             <div key={`${c.name}-${i}`} className="marquee-item" title={c.name}>
-              <img src={c.logo} alt={c.name} className="competition-logo" />
+              <img src={c.logo} alt={c.name} className="competition-logo" loading="lazy" decoding="async" />
               <span className="marquee-name">{c.name}</span>
             </div>
           ))}
