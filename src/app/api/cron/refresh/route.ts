@@ -72,6 +72,41 @@ export async function GET(request: Request) {
       console.warn('[CRON] Construction des preuves impossible :', e?.message);
     }
 
+    // ── LES VENTES PAYÉES DONT L'ACCÈS NE S'EST PAS OUVERT ───────────────────
+    //
+    // Le 18 août 2026, deux clients ont payé deux mille francs et n'ont rien
+    // reçu : la notification de la boutique s'est perdue. Quatorze sur seize
+    // sont passées. L'un des deux a écrit le lendemain matin pour se plaindre,
+    // et personne ne savait encore que c'était arrivé.
+    //
+    // Le filet qui existait exigeait que l'acheteur REVIENNE et que son
+    // navigateur déclenche la vérification. Celui qui paie, ne voit rien et
+    // s'en va n'était jamais rattrapé — c'est pourtant le client le plus en
+    // colère.
+    //
+    // La réconciliation est branchée sur les DEUX tâches quotidiennes, à des
+    // heures différentes : un paiement perdu est repris en quelques heures au
+    // lieu de vingt-quatre, et si l'une échoue l'autre rattrape.
+    let ventes = null;
+    try {
+      const { reconcilierVentes } = await import('@/lib/reconciliation-ventes');
+      ventes = await reconcilierVentes(7);
+      if (ventes.reparees.length > 0) {
+        console.warn(
+          `[CRON] ${ventes.reparees.length} vente(s) payée(s) sans accès, réparée(s) : ` +
+            ventes.reparees.map((v) => v.email ?? v.saleId).join(', ')
+        );
+      }
+      if (ventes.sansTrace.length > 0) {
+        console.warn(
+          `[CRON] ${ventes.sansTrace.length} vente(s) encaissée(s) sans trace — à regarder à la main : ` +
+            ventes.sansTrace.map((v) => v.email ?? v.saleId).join(', ')
+        );
+      }
+    } catch (e: any) {
+      console.warn('[CRON] Réconciliation des ventes impossible :', e?.message);
+    }
+
     console.log(
       `[CRON] Rafraîchissement terminé en ${Date.now() - debut}ms — ` +
       `${Object.keys(statuses).length} compétitions, ${teams.length} équipes, ` +
@@ -84,6 +119,8 @@ export async function GET(request: Request) {
       competitions: Object.keys(statuses).length,
       equipes: teams.length,
       pronostics: precision,
+      ventesReparees: ventes?.reparees ?? [],
+      ventesSansTrace: ventes?.sansTrace ?? [],
       resume,
       horodatage: new Date().toISOString(),
     });

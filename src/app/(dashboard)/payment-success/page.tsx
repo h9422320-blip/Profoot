@@ -58,15 +58,33 @@ export default function PaymentSuccessPage() {
 
     (async () => {
       try {
-        // 1. Réconciliation : rattache les ventes Chariow non encore traitées.
-        await fetch('/api/payments/chariow/verify', { method: 'POST' }).catch(() => {});
+        // ── LA RÉCONCILIATION SE REFAIT PENDANT TOUTE L'ATTENTE ──────────────
+        //
+        // Elle n'était tentée QU'UNE FOIS, à la seconde où la page s'ouvrait.
+        // Or le mobile money confirme avec du retard : à cet instant précis, la
+        // boutique répond encore « en attente de paiement », la réconciliation
+        // ne trouve rien, et les trente secondes suivantes n'interrogent plus
+        // que NOTRE base — qui ne changera jamais si la notification se perd.
+        //
+        // C'est exactement ce qui est arrivé le 18 août 2026 à deux clients :
+        // payé, page quittée, notification perdue, aucun accès. L'un d'eux a
+        // écrit le lendemain matin pour se plaindre.
+        //
+        // On la retente donc toutes les quatre tentatives, soit environ toutes
+        // les huit secondes : dès que la boutique marque la vente encaissée, le
+        // passage suivant l'attrape.
+        const reconcilier = () =>
+          fetch('/api/payments/chariow/verify', { method: 'POST' }).catch(() => {});
 
-        // 2. Vérifie les droits. La fenêtre est large — trente secondes — parce
-        //    que le mobile money confirme parfois avec plusieurs secondes de
-        //    retard : abandonner trop tôt renverrait l'acheteur sur un contenu
-        //    encore verrouillé, ce qui est exactement ce qu'il vient de payer
-        //    pour éviter.
+        await reconcilier();
+
+        // Vérifie les droits. La fenêtre est large — trente secondes — parce
+        // que le mobile money confirme parfois avec plusieurs secondes de
+        // retard : abandonner trop tôt renverrait l'acheteur sur un contenu
+        // encore verrouillé, ce qui est exactement ce qu'il vient de payer
+        // pour éviter.
         for (let attempt = 0; attempt < 15 && !cancelled; attempt++) {
+          if (attempt > 0 && attempt % 4 === 0) await reconcilier();
           if (await checkStatus()) {
             if (cancelled) return;
             setState('active');

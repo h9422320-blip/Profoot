@@ -98,7 +98,33 @@ export async function GET(request: Request) {
         (verification ? ` Pronostics : ${verification.verifiees} vérifié(s), ${verification.enAttente} en attente.` : '')
     );
 
-    return NextResponse.json({ ...resultat, verification });
+    // ── SECOND PASSAGE SUR LES VENTES PAYÉES SANS ACCÈS ──────────────────────
+    //
+    // Le même travail que la tâche de minuit, cinq heures plus tard. Un client
+    // qui paie le matin n'attend donc pas le lendemain, et si l'un des deux
+    // passages échoue l'autre rattrape. Une vente déjà honorée est ignorée :
+    // repasser dessus ne peut pas offrir deux abonnements.
+    let ventes = null;
+    try {
+      const { reconcilierVentes } = await import('@/lib/reconciliation-ventes');
+      ventes = await reconcilierVentes(7);
+      if (ventes.reparees.length > 0) {
+        console.error(
+          `[AUDIT] ANOMALIE — paiements : ${ventes.reparees.length} vente(s) payée(s) sans accès, ` +
+            `réparée(s) : ${ventes.reparees.map((v) => v.email ?? v.saleId).join(', ')}`
+        );
+      }
+      if (ventes.sansTrace.length > 0) {
+        console.error(
+          `[AUDIT] ANOMALIE — paiements : ${ventes.sansTrace.length} vente(s) encaissée(s) sans trace, ` +
+            `impossible de savoir à qui ouvrir l'accès : ${ventes.sansTrace.map((v) => v.email ?? v.saleId).join(', ')}`
+        );
+      }
+    } catch (e: any) {
+      console.warn('[AUDIT] Réconciliation des ventes impossible :', e?.message);
+    }
+
+    return NextResponse.json({ ...resultat, verification, ventes });
   } catch (erreur: any) {
     console.error('[AUDIT] Exécution impossible :', erreur?.message);
     return NextResponse.json({ error: erreur?.message ?? 'Audit impossible' }, { status: 500 });
