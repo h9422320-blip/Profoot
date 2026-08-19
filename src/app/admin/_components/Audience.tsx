@@ -120,6 +120,31 @@ export default async function Audience() {
             Clarity n&apos;a rien renvoyé pour l&apos;instant. Ses chiffres n&apos;apparaissent
             qu&apos;après les premières visites, et le plafond est de dix appels par jour.
           </p>
+        ) : clarity.sessions === 0 ? (
+          /* Rien lu : on montre POURQUOI, et un extrait de ce que Clarity a
+             réellement répondu. Un panneau muet obligerait à ouvrir les
+             journaux du serveur pour comprendre. */
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 rounded-[14px] bg-warning/10 border border-warning/20 px-4 py-3.5">
+              <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <div className="text-[12px] leading-relaxed text-foreground/70">
+                <strong className="text-foreground">Aucune visite lue.</strong>
+                <br />
+                {clarity.probleme ??
+                  "Clarity a répondu, mais aucune session n'a pu être lue. Ses chiffres n'apparaissent qu'après quelques heures de collecte."}
+              </div>
+            </div>
+            {clarity.brut && (
+              <details className="text-[11px] text-foreground/45">
+                <summary className="cursor-pointer font-bold uppercase tracking-wider text-[10px]">
+                  Réponse brute de Clarity
+                </summary>
+                <pre className="mt-2 whitespace-pre-wrap break-all bg-sidebar/40 rounded-[10px] p-3 leading-relaxed">
+                  {clarity.brut}
+                </pre>
+              </details>
+            )}
+          </div>
         ) : (
           <>
             <div className="flex items-baseline gap-2 mb-1">

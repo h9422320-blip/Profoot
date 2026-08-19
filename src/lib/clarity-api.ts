@@ -50,29 +50,81 @@ export interface ApercuClarity {
   releveLe: string;
   /** Vrai quand la réponse vient de la réserve et non d'un appel neuf. */
   enReserve: boolean;
+  /**
+   * Ce qui a empêché la lecture, quand il y a lieu.
+   *
+   * Affiché tel quel dans l'administration : un panneau muet oblige à ouvrir
+   * les journaux du serveur pour comprendre, ce qui n'est pas à la portée de
+   * celui qui regarde son tableau de bord.
+   */
+  probleme?: string;
+  /**
+   * Aperçu brut de la réponse, quand aucune ligne n'a pu être lue.
+   *
+   * Le format exact de Clarity n'a jamais été observé ici — il est décrit dans
+   * leur documentation, pas vérifié sur pièce. Si la lecture échoue, ces
+   * quelques centaines de caractères permettent de corriger sans deviner.
+   */
+  brut?: string;
 }
 
 export const clarityConfigure = () => !!process.env.CLARITY_API_TOKEN;
 
-/** Additionne les sessions d'une dimension renvoyée par Clarity. */
+/**
+ * Additionne les sessions d'une dimension renvoyée par Clarity.
+ *
+ * LECTURE VOLONTAIREMENT TOLÉRANTE
+ *
+ * Le format exact n'a pas été observé sur pièce : il vient de la documentation.
+ * Plutôt que d'exiger un nom de champ précis — et de tout perdre s'il diffère
+ * d'une lettre — on cherche la première clé plausible parmi celles que Clarity
+ * emploie. Une intégration qui casse sur un nom de champ n'apprend rien à
+ * personne.
+ */
 function agreger(blocs: any[], nomDimension: string): LigneClarity[] {
-  const bloc = blocs.find((b) => String(b?.metricName ?? '').toLowerCase() === 'traffic');
-  const lignes: LigneClarity[] = [];
   const total = new Map<string, number>();
 
-  for (const info of bloc?.information ?? []) {
-    const valeur = info?.[nomDimension];
-    if (valeur == null) continue;
-    const sessions = Number(info?.sessionsCount ?? info?.sessionsWithMetricPercentage ?? 0);
-    if (!Number.isFinite(sessions)) continue;
-    total.set(String(valeur), (total.get(String(valeur)) ?? 0) + sessions);
+  // Tous les blocs sont parcourus, pas seulement « Traffic » : selon la
+  // dimension demandée, Clarity range les sessions sous des métriques
+  // différentes.
+  for (const bloc of Array.isArray(blocs) ? blocs : []) {
+    for (const info of bloc?.information ?? []) {
+      if (!info || typeof info !== 'object') continue;
+
+      // La valeur de la dimension : sous son nom exact, ou sous la première
+      // clé non numérique qu'on trouve.
+      const valeur =
+        info[nomDimension] ??
+        info[nomDimension.toLowerCase()] ??
+        Object.entries(info).find(
+          ([cle, v]) => typeof v === 'string' && !/count|percent|session|page/i.test(cle)
+        )?.[1];
+      if (valeur == null) continue;
+
+      const sessions = Number(
+        info.sessionsCount ??
+          info.sessionCount ??
+          info.totalSessionCount ??
+          info.sessionsWithMetricPercentage ??
+          0
+      );
+      if (!Number.isFinite(sessions) || sessions <= 0) continue;
+      total.set(String(valeur), (total.get(String(valeur)) ?? 0) + sessions);
+    }
   }
 
-  for (const [valeur, sessions] of total) lignes.push({ valeur, sessions });
-  return lignes.sort((a, b) => b.sessions - a.sessions);
+  return [...total]
+    .map(([valeur, sessions]) => ({ valeur, sessions }))
+    .sort((a, b) => b.sessions - a.sessions);
 }
 
-async function interroger(dimension: string, jours: number): Promise<any[] | null> {
+interface Reponse {
+  blocs: any[] | null;
+  probleme?: string;
+  brut?: string;
+}
+
+async function interroger(dimension: string, jours: number): Promise<Reponse> {
   const url = new URL(ENDPOINT);
   url.searchParams.set('numOfDays', String(jours));
   if (dimension) url.searchParams.set('dimension1', dimension);
@@ -84,15 +136,24 @@ async function interroger(dimension: string, jours: number): Promise<any[] | nul
     cache: 'no-store',
   });
 
+  const texte = await res.text().catch(() => '');
+
   if (res.status === 429) {
-    console.warn('[CLARITY] Plafond de dix appels par jour atteint.');
-    return null;
+    return { blocs: null, probleme: "Plafond de dix appels par jour atteint. Réessayez demain." };
+  }
+  if (res.status === 401 || res.status === 403) {
+    return { blocs: null, probleme: `Jeton refusé (${res.status}). Vérifiez CLARITY_API_TOKEN dans Vercel.` };
   }
   if (!res.ok) {
-    console.warn(`[CLARITY] Réponse ${res.status} : ${(await res.text().catch(() => '')).slice(0, 160)}`);
-    return null;
+    return { blocs: null, probleme: `Clarity a répondu ${res.status}.`, brut: texte.slice(0, 300) };
   }
-  return res.json().catch(() => null);
+
+  try {
+    const donnees = JSON.parse(texte);
+    return { blocs: Array.isArray(donnees) ? donnees : [donnees], brut: texte.slice(0, 400) };
+  } catch {
+    return { blocs: null, probleme: 'Réponse illisible de Clarity.', brut: texte.slice(0, 300) };
+  }
 }
 
 /**
@@ -116,21 +177,31 @@ export async function lireApercuClarity(jours: 1 | 2 | 3 = 3): Promise<ApercuCla
       interroger('Device', jours),
     ]);
 
-    if (!parPays && !parNavigateur && !parAppareil) {
+    const probleme = parPays.probleme ?? parNavigateur.probleme ?? parAppareil.probleme;
+
+    if (!parPays.blocs && !parNavigateur.blocs && !parAppareil.blocs) {
       // Plafond atteint ou service muet : on ressert la dernière valeur connue,
       // même périmée. Un chiffre d'hier vaut mieux qu'un écran vide.
       const perime = await lireReserve<ApercuClarity>(CLE);
-      return perime?.contenu ? { ...perime.contenu, enReserve: true } : null;
+      if (perime?.contenu) return { ...perime.contenu, enReserve: true, probleme };
+      return {
+        sessions: 0, pagesVues: 0, pays: [], navigateurs: [], appareils: [],
+        jours, releveLe: new Date().toISOString(), enReserve: false,
+        probleme: probleme ?? 'Clarity n’a rien renvoyé.',
+        brut: parPays.brut,
+      };
     }
 
-    const pays = parPays ? agreger(parPays, 'Country') : [];
+    const pays = agreger(parPays.blocs ?? [], 'Country');
     const sessions = pays.reduce((a, l) => a + l.sessions, 0);
 
-    const blocTrafic = (parPays ?? []).find(
-      (b: any) => String(b?.metricName ?? '').toLowerCase() === 'traffic'
-    );
-    const pagesVues = (blocTrafic?.information ?? []).reduce(
-      (a: number, i: any) => a + Number(i?.pagesViews ?? 0),
+    const pagesVues = (parPays.blocs ?? []).reduce(
+      (total: number, bloc: any) =>
+        total +
+        (bloc?.information ?? []).reduce(
+          (a: number, i: any) => a + Number(i?.pagesViews ?? i?.pageViews ?? 0),
+          0
+        ),
       0
     );
 
@@ -138,11 +209,14 @@ export async function lireApercuClarity(jours: 1 | 2 | 3 = 3): Promise<ApercuCla
       sessions,
       pagesVues: Number.isFinite(pagesVues) ? pagesVues : 0,
       pays,
-      navigateurs: parNavigateur ? agreger(parNavigateur, 'Browser') : [],
-      appareils: parAppareil ? agreger(parAppareil, 'Device') : [],
+      navigateurs: agreger(parNavigateur.blocs ?? [], 'Browser'),
+      appareils: agreger(parAppareil.blocs ?? [], 'Device'),
       jours,
       releveLe: new Date().toISOString(),
       enReserve: false,
+      // Rien n'a pu être lu alors que la réponse était valide : le format a
+      // changé. On garde un extrait pour corriger sans avoir à deviner.
+      ...(sessions === 0 ? { brut: parPays.brut, probleme } : probleme ? { probleme } : {}),
     };
 
     void ecrireReserve(CLE, apercu, TTL);
