@@ -1,5 +1,6 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import SelecteurPeriode from "./_components/SelecteurPeriode";
+import Audience from "./_components/Audience";
 import { Courbe, Barres, Camembert } from "./_components/Graphique";
 import { Etiquette, LienCompte, Vide, montant, dateCourte, ilYA } from "./_components/Ui";
 import { Panneau, Classement } from "./_components/Panneaux";
@@ -40,6 +41,9 @@ export default async function AdminOverview({
           },
         ]}
       />
+
+      {/* Qui est dans l'application maintenant, et d'où viennent les visiteurs. */}
+      <Audience />
 
       {m.avertissements.length > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/25 rounded-[16px] p-4 space-y-1">

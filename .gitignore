@@ -46,3 +46,6 @@ _*.txt
 scripts/.poids-joueurs.json
 scripts/.observations-absents.json
 scripts/.xg.json
+scripts/.resultat-xg.txt
+scripts/.socle-xg.log
+scripts/_*.mjs
