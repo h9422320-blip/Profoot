@@ -43,6 +43,48 @@ export const MODELES_OPENROUTER = [
 /** Modèle le moins cher capable de produire l'aperçu gratuit. */
 export const MODELE_ECONOMIQUE = 'google/gemini-3.5-flash-lite';
 
+/**
+ * Longueur maximale d'une réponse, en jetons.
+ *
+ * POURQUOI CE NOMBRE DOIT ÊTRE ÉCRIT NOIR SUR BLANC
+ *
+ * Sans ce champ, OpenRouter retient le maximum du modèle — 65 536 jetons — et
+ * exige que le solde du compte puisse couvrir ce maximum. Peu importe que la
+ * réponse n'en consomme réellement que deux mille : c'est la RÉSERVATION qui
+ * est refusée.
+ *
+ * Le 19 août 2026, l'application entière s'est arrêtée là-dessus : « vous
+ * demandez 65 536 jetons, vous ne pouvez en payer que 51 819 ». Cent cinquante
+ * analyses perdues en trois heures, sur le Real Madrid comme sur un club de
+ * quatrième division allemande, et l'abonné ne lisait qu'« erreur de connexion
+ * au modèle d'intelligence artificielle ».
+ *
+ * COMMENT LA VALEUR EST CHOISIE
+ *
+ * Une analyse complète rendue en JSON — scénarios, probabilités, comparaisons,
+ * forces et faiblesses — pèse deux à trois mille jetons. Huit mille laissent
+ * donc trois fois la marge nécessaire, tout en divisant la réservation par
+ * huit. Une réponse tronquée serait pire qu'une réponse absente : elle
+ * produirait un JSON illisible.
+ */
+export const JETONS_REPONSE = 8000;
+
+/**
+ * Lit le nombre de jetons réellement finançables dans un refus de paiement.
+ *
+ * OpenRouter le dit en toutes lettres : « you can only afford 51819 ». Plutôt
+ * que d'abandonner, on relance immédiatement en dessous de ce plafond. Le solde
+ * peut ainsi descendre très bas sans que l'abonné voie jamais une erreur.
+ */
+function jetonsFinancables(detail: string): number | null {
+  const m = detail.match(/afford\s+(\d+)/i);
+  if (!m) return null;
+  const finançables = Number(m[1]);
+  if (!Number.isFinite(finançables) || finançables < 600) return null;
+  // Une marge de sécurité : le solde bouge entre le refus et la relance.
+  return Math.max(600, Math.floor(finançables * 0.8));
+}
+
 export const openRouterDisponible = () => !!process.env.OPENROUTER_API_KEY;
 
 /**
@@ -72,28 +114,52 @@ export async function appelerOpenRouter(
   /** Consigne système, quand l'appelant en fournit une. */
   systeme?: string
 ): Promise<string> {
-  const reponse = await fetch(OPENROUTER, {
-    method: 'POST',
-    signal,
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      // Renseignés dans le classement public d'OpenRouter, et utiles pour
-      // retrouver la consommation de l'application dans leur tableau de bord.
-      'HTTP-Referer': 'https://profootai.com',
-      'X-Title': 'ProFoot AI',
-    },
-    body: JSON.stringify({
-      model: modele,
-      messages: systeme
-        ? [
-            { role: 'system', content: systeme },
-            { role: 'user', content: prompt },
-          ]
-        : [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-    }),
-  });
+  const envoyer = (jetons: number) =>
+    fetch(OPENROUTER, {
+      method: 'POST',
+      signal,
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        // Renseignés dans le classement public d'OpenRouter, et utiles pour
+        // retrouver la consommation de l'application dans leur tableau de bord.
+        'HTTP-Referer': 'https://profootai.com',
+        'X-Title': 'ProFoot AI',
+      },
+      body: JSON.stringify({
+        model: modele,
+        messages: systeme
+          ? [
+              { role: 'system', content: systeme },
+              { role: 'user', content: prompt },
+            ]
+          : [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        // Voir `JETONS_REPONSE` : sans ce champ, OpenRouter réserve le maximum
+        // du modèle et refuse la requête dès que le solde ne le couvre plus.
+        max_tokens: jetons,
+      }),
+    });
+
+  let reponse = await envoyer(JETONS_REPONSE);
+
+  // ── UN SOLDE JUSTE NE DOIT PAS ARRÊTER L'APPLICATION ──────────────────────
+  //
+  // Quand le crédit ne couvre plus la réservation demandée, OpenRouter répond
+  // 402 en indiquant combien il peut financer. On relance aussitôt sous ce
+  // plafond plutôt que d'abandonner : l'abonné obtient son analyse, et le
+  // fondateur découvre le problème dans ses journaux, pas par un client fâché.
+  if (reponse.status === 402) {
+    const detail = await reponse.clone().text().catch(() => '');
+    const repli = jetonsFinancables(detail);
+    if (repli && repli < JETONS_REPONSE) {
+      console.warn(
+        `[OpenRouter] Crédit juste sur ${modele} : réservation ramenée de ${JETONS_REPONSE} à ${repli} jetons. ` +
+          `Le solde du compte OpenRouter mérite d'être rechargé.`
+      );
+      reponse = await envoyer(repli);
+    }
+  }
 
   if (!reponse.ok) {
     const detail = await reponse.text().catch(() => '');

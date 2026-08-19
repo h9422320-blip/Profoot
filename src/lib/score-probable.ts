@@ -395,6 +395,50 @@ export function calculerScoreProbable(
    */
   forces?: ForcesDuMatch | null
 ): ScoreProbable {
+  // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
+  //
+  // Les statistiques viennent d'un fournisseur extérieur, et un club obscur de
+  // quatrième division peut en renvoyer d'incohérentes : champ absent, chaîne
+  // vide devenue `NaN`, nombre négatif.
+  //
+  // Un seul `NaN` traverse ensuite tout le calcul sans jamais lever d'erreur :
+  // mesuré, il ressortait en confiance `NaN`, qui devient `null` une fois
+  // transmise au navigateur. L'abonné voyait alors une analyse amputée sans que
+  // rien ne signale pourquoi.
+  //
+  // Nettoyer ici plutôt qu'à vingt endroits plus bas : tout ce qui suit peut
+  // dès lors compter sur des nombres réels.
+  const nombreSain = (v: unknown): number => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  };
+  equipe1 = {
+    butsMarques: nombreSain(equipe1?.butsMarques),
+    butsEncaisses: nombreSain(equipe1?.butsEncaisses),
+    matchsJoues: nombreSain(equipe1?.matchsJoues),
+  };
+  equipe2 = {
+    butsMarques: nombreSain(equipe2?.butsMarques),
+    butsEncaisses: nombreSain(equipe2?.butsEncaisses),
+    matchsJoues: nombreSain(equipe2?.matchsJoues),
+  };
+  if (forces) {
+    forces = {
+      equipe1: {
+        attaque: nombreSain(forces.equipe1?.attaque) || 1,
+        defense: nombreSain(forces.equipe1?.defense) || 1,
+        matchs: nombreSain(forces.equipe1?.matchs),
+      },
+      equipe2: {
+        attaque: nombreSain(forces.equipe2?.attaque) || 1,
+        defense: nombreSain(forces.equipe2?.defense) || 1,
+        matchs: nombreSain(forces.equipe2?.matchs),
+      },
+      butsDomicile: nombreSain(forces.butsDomicile) || MOYENNE_PAR_DEFAUT,
+      butsExterieur: nombreSain(forces.butsExterieur) || MOYENNE_PAR_DEFAUT,
+    };
+  }
+
   const joues1 = Math.max(1, equipe1.matchsJoues);
   const joues2 = Math.max(1, equipe2.matchsJoues);
 
