@@ -5,6 +5,7 @@ import { PLANS } from "@/lib/subscription";
 import { LanguageProvider } from "@/context/LanguageContext";
 
 import Script from "next/script";
+import SignalReact from "@/components/SignalReact";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -124,6 +125,31 @@ export default function RootLayout({
             __html:
               "(function(){try{var d=document,h=d.documentElement;" +
               "h.className=h.className+' js-ok';" +
+              // Les polices distantes ont été chargées en « print » pour ne pas
+              // retenir l'affichage. On les applique dès qu'elles arrivent.
+              //
+              // ATTENTION À L'ORDRE : ce script est le PREMIER élément de
+              // l'en-tête, donc la balise des polices n'existe pas encore quand
+              // il s'exécute. Une première version la cherchait tout de suite et
+              // ne trouvait rien — les polices restaient en « print » pour
+              // toujours, et le site s'affichait éternellement avec la police du
+              // téléphone. On réessaie donc plus tard, à plusieurs reprises.
+              "var basculer=function(){" +
+              "var p=d.querySelector('link[data-police-distante]');" +
+              "if(p){p.media='all';return true;}return false;};" +
+              "if(d.addEventListener){d.addEventListener('DOMContentLoaded',basculer);}" +
+              "setTimeout(basculer,500);setTimeout(basculer,2000);setTimeout(basculer,5000);" +
+              // SI REACT N'A PAS PRIS LA MAIN AU BOUT DE QUATRE SECONDES, ON
+              // REND TOUT VISIBLE.
+              //
+              // Les sections attendent d'être révélées au défilement, ce qui
+              // suppose que React tourne. S'il ne démarre pas — fichier trop
+              // lourd, connexion coupée, navigateur qui refuse — elles
+              // resteraient invisibles pour toujours. On retire alors la classe
+              // qui les masque : le visiteur voit le site sans animation, ce
+              // qui vaut infiniment mieux qu'un écran vide.
+              "setTimeout(function(){if(!h.getAttribute('data-react-ok')){" +
+              "h.className=h.className.replace(' js-ok','');}},4000);" +
               "var prevenu=false;" +
               "function alerter(){if(prevenu)return;prevenu=true;" +
               "var b=d.body;if(!b)return;" +
@@ -168,7 +194,49 @@ export default function RootLayout({
         {/* La liaison au serveur de Clarity est ouverte pendant que la page se
             charge : la mesure ne coûte plus une négociation complète ensuite. */}
         <link rel="preconnect" href="https://www.clarity.ms" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        {/*
+          ── LES POLICES NE BLOQUENT PLUS L'AFFICHAGE ────────────────────────
+
+          CE QUI SE PASSAIT
+
+          Cette feuille de style vient de Google. Chargée normalement, elle est
+          BLOQUANTE : tant que Google n'a pas répondu, le navigateur n'affiche
+          rien. Pas une lettre, pas un fond de couleur. Un écran blanc.
+
+          Le 19 août 2026, un contact au Maroc a filmé son iPhone : page
+          blanche, puis « Safari n'a pas pu ouvrir la page car le serveur ne
+          répondait plus ». Le serveur, lui, répondait très bien — c'est Google
+          qui ne répondait pas, et le site attendait derrière.
+
+          Plusieurs opérateurs d'Afrique du Nord et du Moyen-Orient
+          ralentissent ou filtrent les domaines de Google. Faire dépendre le
+          premier affichage d'un serveur tiers, c'est confier sa porte d'entrée
+          à quelqu'un d'autre.
+
+          CE QU'ON FAIT
+
+          `media="print"` : le navigateur télécharge la feuille sans jamais
+          attendre après elle. La page s'affiche immédiatement avec les polices
+          du téléphone, puis bascule sur les nôtres dès qu'elles arrivent — le
+          petit script en tête de page s'en charge.
+
+          Si Google ne répond jamais, le site reste parfaitement lisible. Une
+          police système vaut infiniment mieux qu'un écran blanc.
+        */}
+        <link
+          data-police-distante=""
+          href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet"
+          media="print"
+        />
+        <noscript>
+          {/* Sans JavaScript, personne ne peut basculer la feuille : on la
+              charge normalement. Le blocage éventuel est alors le moindre mal. */}
+          <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Space+Grotesk:wght@400;700&family=Outfit:wght@400;700;900&display=swap"
+            rel="stylesheet"
+          />
+        </noscript>
 
         {/*
           MICROSOFT CLARITY.
@@ -253,6 +321,7 @@ export default function RootLayout({
         <ThemeProvider>
           <LanguageProvider>
             {children}
+            <SignalReact />
             <Analytics />
             <SpeedInsights />
           </LanguageProvider>
