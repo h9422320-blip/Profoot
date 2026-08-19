@@ -58,21 +58,36 @@ export function Sidebar() {
 
   useEffect(() => {
     const supabase = createClient();
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) setUserEmail(user.email);
-    });
 
-    // Check Pro Status
-    fetch('/api/payments/status')
-      .then(res => res.json())
-      .then(data => {
-        setIsPro(data.isPro);
-        // C est le SERVEUR qui dit qui est administrateur. Le calculer dans le
-        // navigateur obligerait a y embarquer la liste des adresses, qui
-        // partirait alors dans le code public de chaque visiteur.
-        setIsAdmin(!!data.isAdmin);
-      })
-      .catch(console.error);
+      // ── POURQUOI CET APPEL EST CONDITIONNÉ ──────────────────────────────
+      //
+      // Cette barre latérale s'affiche aussi sur les pages PUBLIQUES :
+      // /matches, /competitions, /standings, /stats, /preuves, /pricing.
+      // L'appel partait donc pour chaque visiteur de passage, connecté ou
+      // non — et le serveur répondait 401, puisqu'il n'y avait personne à
+      // reconnaître.
+      //
+      // Un visiteur sans compte n'a ni offre ni droit d'administration :
+      // la réponse est connue d'avance. Interroger le serveur ne pouvait
+      // rien apprendre à personne, mais coûtait un appel de fonction à
+      // chaque page vue — le poste le plus lourd du quota de calcul.
+      if (!user) return;
+
+      // Check Pro Status
+      fetch('/api/payments/status')
+        .then(res => res.json())
+        .then(data => {
+          setIsPro(data.isPro);
+          // C est le SERVEUR qui dit qui est administrateur. Le calculer dans le
+          // navigateur obligerait a y embarquer la liste des adresses, qui
+          // partirait alors dans le code public de chaque visiteur.
+          setIsAdmin(!!data.isAdmin);
+        })
+        .catch(console.error);
+    });
 
     // Compter les analyses au chargement
     countTodayAnalyses();

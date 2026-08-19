@@ -4,7 +4,19 @@ import { ChevronLeft, Sparkles } from "lucide-react";
 import { MurPreuves } from "@/components/preuves/SectionPreuves";
 import { getPreuvesPubliques, libelleCompetition } from "@/lib/preuves";
 
-export const dynamic = "force-dynamic";
+/**
+ * DIX MINUTES DE CACHE, ET NON PLUS UN RECALCUL PAR VISITEUR.
+ *
+ * Cette page était refabriquée intégralement à chaque ouverture. Or elle est
+ * publique, déclarée à Google en priorité 0,95, et donc visitée ET explorée
+ * sans arrêt : chaque passage réveillait le serveur pour reconstruire une liste
+ * qui, elle, ne bouge que quelques fois par jour — un pronostic ne devient
+ * « vérifié » qu'au coup de sifflet final.
+ *
+ * Dix minutes de retard sur un résultat déjà acquis ne se voient pas. La
+ * facture, si.
+ */
+export const revalidate = 600;
 
 const SITE = "https://profootai.com";
 

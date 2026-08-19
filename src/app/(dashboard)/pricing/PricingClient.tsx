@@ -4,6 +4,7 @@ import { Check, Zap, Brain, TrendingUp, Shield, Star, Loader2, Crown, X, Flame, 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
+import { createClient } from "@/utils/supabase/client";
 
 type PlanTier = 'FREE' | 'ESSENTIAL' | 'PRO' | 'VIP';
 type PlanKey = 'essential_monthly' | 'pro_monthly' | 'vip_yearly';
@@ -156,14 +157,31 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
 
   // Le niveau affiché vient du serveur : le frontend ne décide jamais des
   // droits, il se contente de refléter ce que le backend applique réellement.
+  //
+  // La page des tarifs est PUBLIQUE, et c'est même l'une des plus visitées :
+  // beaucoup de gens y arrivent avant d'avoir un compte. Pour eux, le serveur
+  // répondait 401 — une réponse qui ne pouvait rien changer à l'affichage,
+  // puisque l'offre par défaut est déjà « FREE ». On ne l'interroge donc que
+  // lorsqu'il y a réellement quelqu'un à reconnaître.
   useEffect(() => {
-    fetch('/api/payments/status')
-      .then(res => res.json())
-      .then(data => {
-        if (data.plan) setPlan(data.plan as PlanTier);
+    // getSession lit la session déjà présente dans le navigateur : aucun appel
+    // réseau, et surtout aucune fonction Vercel réveillée pour rien.
+    createClient()
+      .auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!session) {
+          setCheckingStatus(false);
+          return;
+        }
+        fetch('/api/payments/status')
+          .then(res => res.json())
+          .then(data => {
+            if (data.plan) setPlan(data.plan as PlanTier);
+          })
+          .catch(err => console.error(err))
+          .finally(() => setCheckingStatus(false));
       })
-      .catch(err => console.error(err))
-      .finally(() => setCheckingStatus(false));
+      .catch(() => setCheckingStatus(false));
   }, []);
 
   const handleSubscribe = async (selectedPlan: PlanKey) => {
