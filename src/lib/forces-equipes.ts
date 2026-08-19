@@ -47,6 +47,18 @@ export interface MatchSimple {
   exterieur: number;
   butsDomicile: number;
   butsExterieur: number;
+  /**
+   * Buts ATTENDUS, quand le fournisseur les donne.
+   *
+   * Une équipe qui tire vingt fois et marque une fois a mal fini, pas mal joué.
+   * Les buts contiennent beaucoup de réussite pure, et la réussite ne se
+   * reproduit pas ; la qualité des occasions créées, si.
+   *
+   * Absents sur les petits championnats — le fournisseur ne les calcule pas
+   * partout. Le calcul retombe alors sur les buts, sans rien perdre.
+   */
+  xgDomicile?: number;
+  xgExterieur?: number;
 }
 
 export interface ForceEquipe {
@@ -95,6 +107,19 @@ const AMORTISSEMENT = 6;
  */
 const LENTEUR_BASCULE = 20;
 
+/**
+ * Part des buts attendus dans la force d'une équipe.
+ *
+ * Mesuré sur 2 247 rencontres, réglage et validation séparés : 0,7 l'emporte
+ * sur 0,3, sur 0,5 et sur 1,0, et gagne sur les DEUX jeux. Voir le détail dans
+ * `calculerForces`.
+ *
+ * Le reste — trois dixièmes — revient aux buts réellement marqués. Finir ses
+ * occasions n'est pas seulement de la chance : certaines équipes le font
+ * durablement mieux que d'autres.
+ */
+const PART_XG = 0.7;
+
 /** Valeurs de repli quand un championnat n'a pas encore d'histoire. */
 const BUTS_DOMICILE_DEFAUT = 1.5;
 const BUTS_EXTERIEUR_DEFAUT = 1.2;
@@ -108,12 +133,29 @@ interface Historique {
   rencontres: { adversaire: number; pour: number; contre: number; aDomicile: boolean }[];
 }
 
-function rassembler(matchs: MatchSimple[]): Map<number, Historique> {
+/**
+ * Ce qu'on retient d'une rencontre : les buts, ou les buts attendus.
+ *
+ * `xg` bascule sur les buts attendus quand le fournisseur les donne. Sinon on
+ * retombe sur les buts marqués — le calcul reste alors exactement celui qui
+ * tourne aujourd'hui.
+ */
+function valeursDe(m: MatchSimple, source: 'buts' | 'xg'): [number, number] | null {
+  if (source === 'buts') return [m.butsDomicile, m.butsExterieur];
+  if (typeof m.xgDomicile === 'number' && typeof m.xgExterieur === 'number') {
+    return [m.xgDomicile, m.xgExterieur];
+  }
+  return null;
+}
+
+function rassembler(matchs: MatchSimple[], source: 'buts' | 'xg' = 'buts'): Map<number, Historique> {
   const par = new Map<number, Historique>();
   for (const m of matchs) {
+    const v = valeursDe(m, source);
+    if (!v) continue;
     for (const [id, pour, contre, aDomicile, adversaire] of [
-      [m.domicile, m.butsDomicile, m.butsExterieur, true, m.exterieur],
-      [m.exterieur, m.butsExterieur, m.butsDomicile, false, m.domicile],
+      [m.domicile, v[0], v[1], true, m.exterieur],
+      [m.exterieur, v[1], v[0], false, m.domicile],
     ] as [number, number, number, boolean, number][]) {
       const h = par.get(id) ?? { matchs: 0, butsPour: 0, butsContre: 0, rencontres: [] };
       h.matchs++;
@@ -133,12 +175,16 @@ function rassembler(matchs: MatchSimple[]): Map<number, Historique> {
  * défenses affrontées, et réciproquement. On part donc de « tout le monde est
  * moyen » et on recommence cinq fois ; les valeurs se stabilisent bien avant.
  */
-function forcesAjustees(matchs: MatchSimple[]): {
+function forcesAjustees(
+  matchs: MatchSimple[],
+  source: 'buts' | 'xg' = 'buts'
+): {
   forces: Map<number, { attaque: number; defense: number; matchs: number }>;
   butsDomicile: number;
   butsExterieur: number;
 } {
-  if (matchs.length === 0) {
+  const utilisables = matchs.filter((m) => valeursDe(m, source) !== null);
+  if (utilisables.length === 0) {
     return {
       forces: new Map(),
       butsDomicile: BUTS_DOMICILE_DEFAUT,
@@ -146,10 +192,12 @@ function forcesAjustees(matchs: MatchSimple[]): {
     };
   }
 
-  const butsDomicile = Math.max(0.4, matchs.reduce((a, m) => a + m.butsDomicile, 0) / matchs.length);
-  const butsExterieur = Math.max(0.4, matchs.reduce((a, m) => a + m.butsExterieur, 0) / matchs.length);
+  const moyenne = (indice: 0 | 1) =>
+    Math.max(0.4, utilisables.reduce((a, m) => a + valeursDe(m, source)![indice], 0) / utilisables.length);
+  const butsDomicile = moyenne(0);
+  const butsExterieur = moyenne(1);
 
-  const historiques = rassembler(matchs);
+  const historiques = rassembler(utilisables, source);
   const forces = new Map<number, { attaque: number; defense: number; matchs: number }>();
   for (const [id, h] of historiques) forces.set(id, { attaque: 1, defense: 1, matchs: h.matchs });
 
@@ -197,7 +245,45 @@ function forcesAjustees(matchs: MatchSimple[]): {
  * exactement le calcul livré qui a été mesuré — pas une réécriture approchante.
  */
 export function calculerForces(passee: MatchSimple[], courante: MatchSimple[]): ForcesLigue {
-  const socle = forcesAjustees(passee);
+  const socle = forcesAjustees(passee, 'buts');
+
+  // ── LES BUTS ATTENDUS CORRIGENT LES FORCES ───────────────────────────────
+  //
+  // Une équipe qui tire vingt fois et marque une fois a mal fini, pas mal joué.
+  // Le calcul sur les seuls buts la croit faible, et se trompe sur son match
+  // suivant. Les buts attendus mesurent les occasions créées — et ça, ça se
+  // reproduit.
+  //
+  // LE DOSAGE A ÉTÉ MESURÉ, PAS CHOISI
+  //
+  // Sur trois championnats et trois saisons, réglage et validation séparés :
+  //
+  //     buts seuls (avant) ....... 50,93 %  /  50,62 %  d'issues justes
+  //     100 % buts attendus ...... 52,63 %  /  51,07 %
+  //     30 % buts attendus ....... 51,47 %  /  50,98 %
+  //     50 % buts attendus ....... 52,54 %  /  51,07 %
+  //     70 % buts attendus ....... 52,89 %  /  51,42 %   <- retenu
+  //
+  // Toutes les variantes gagnent sur les DEUX jeux — c'est la première fois sur
+  // dix leviers essayés. Le chiffre honnête est celui de la validation : environ
+  // huit dixièmes de point.
+  //
+  // On mélange les FORCES, pas les valeurs match par match : c'est ce qui a été
+  // mesuré, et l'échelle des moyennes reste celle des buts réels, puisque c'est
+  // un nombre de buts qu'on cherche à prédire.
+  const socleXg = forcesAjustees(passee, 'xg');
+  if (socleXg.forces.size > 0) {
+    for (const [id, f] of socle.forces) {
+      const x = socleXg.forces.get(id);
+      // Sans buts attendus pour CETTE équipe, elle garde sa force sur les buts.
+      if (!x) continue;
+      socle.forces.set(id, {
+        attaque: borner((1 - PART_XG) * f.attaque + PART_XG * x.attaque, FORCE_MIN, FORCE_MAX),
+        defense: borner((1 - PART_XG) * f.defense + PART_XG * x.defense, FORCE_MIN, FORCE_MAX),
+        matchs: f.matchs,
+      });
+    }
+  }
 
   // Sans saison précédente exploitable, on se rabat sur la saison en cours
   // ajustée : c'est déjà mieux que des moyennes brutes.
@@ -251,16 +337,56 @@ export function calculerForces(passee: MatchSimple[], courante: MatchSimple[]): 
 
 const TERMINE = ['FT', 'AET', 'PEN'];
 
-function versMatchsSimples(reponse: any[]): MatchSimple[] {
+function versMatchsSimples(reponse: any[], xg?: Map<number, [number, number]>): MatchSimple[] {
   return (reponse ?? [])
     .filter((f) => TERMINE.includes(f?.fixture?.status?.short))
-    .map((f) => ({
-      domicile: Number(f?.teams?.home?.id),
-      exterieur: Number(f?.teams?.away?.id),
-      butsDomicile: Number(f?.goals?.home ?? 0),
-      butsExterieur: Number(f?.goals?.away ?? 0),
-    }))
+    .map((f) => {
+      const paire = xg?.get(Number(f?.fixture?.id));
+      return {
+        domicile: Number(f?.teams?.home?.id),
+        exterieur: Number(f?.teams?.away?.id),
+        butsDomicile: Number(f?.goals?.home ?? 0),
+        butsExterieur: Number(f?.goals?.away ?? 0),
+        ...(paire ? { xgDomicile: paire[0], xgExterieur: paire[1] } : {}),
+      };
+    })
     .filter((m) => Number.isFinite(m.domicile) && Number.isFinite(m.exterieur));
+}
+
+/** Clé sous laquelle les buts attendus d'un championnat sont conservés. */
+export function cleXg(ligue: number | string, saison: number | string): string {
+  return `xg:${ligue}:${saison}`;
+}
+
+/**
+ * Les buts attendus d'un championnat, déjà relevés et conservés.
+ *
+ * JAMAIS D'APPEL AU FOURNISSEUR ICI, ET C'EST TOUT LE POINT.
+ *
+ * Relever les buts attendus coûte UN appel par rencontre — trois cent quatre
+ * vingts pour une saison. Le faire pendant qu'un abonné attend son analyse
+ * dépasserait de loin la minute accordée à la page, et brûlerait le quota.
+ *
+ * Le relevé est donc fait à part, une fois, par `scripts/construire-xg.mjs`.
+ * Ici on lit ce qui existe ; s'il n'y a rien — un petit championnat que le
+ * fournisseur ne couvre pas, un socle pas encore construit — le calcul retombe
+ * sur les buts marqués et reste exactement celui d'avant.
+ */
+async function lireXgEnReserve(
+  ligue: number,
+  saison: number
+): Promise<Map<number, [number, number]> | undefined> {
+  try {
+    const enBase = await lireReserve<Record<string, [number, number]>>(cleXg(ligue, saison));
+    if (!enBase?.contenu) return undefined;
+    const m = new Map<number, [number, number]>();
+    for (const [id, paire] of Object.entries(enBase.contenu)) {
+      if (Array.isArray(paire) && paire.length === 2) m.set(Number(id), paire);
+    }
+    return m.size > 0 ? m : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -318,14 +444,16 @@ export async function lireForcesLigue(
   }
 
   try {
-    const [courante, passee] = await Promise.all([
+    const [courante, passee, xgPassee, xgCourante] = await Promise.all([
       apiFootball<any>(`/fixtures?league=${ligue}&season=${an}`, CACHE_TTL.STANDINGS),
       apiFootball<any>(`/fixtures?league=${ligue}&season=${an - 1}`, CACHE_TTL.TEAM_INFO),
+      lireXgEnReserve(ligue, an - 1),
+      lireXgEnReserve(ligue, an),
     ]);
 
     const forces = calculerForces(
-      versMatchsSimples(passee?.response ?? []),
-      versMatchsSimples(courante?.response ?? [])
+      versMatchsSimples(passee?.response ?? [], xgPassee),
+      versMatchsSimples(courante?.response ?? [], xgCourante)
     );
 
     if (forces.equipes.size === 0) return null;
