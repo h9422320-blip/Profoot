@@ -386,10 +386,46 @@ export async function initCheckout(params: {
 export interface ChariowSale {
   id: string;
   status: string;
+  created_at?: string;
   amount?: { value?: number; currency?: string };
   product?: { id?: string; name?: string };
   customer?: { id?: string; email?: string };
   custom_metadata?: Record<string, string> | null;
+}
+
+/**
+ * Les ventes récentes de la boutique, tous statuts confondus.
+ *
+ * POURQUOI PAS `?status=completed`
+ *
+ * Chariow marque aussi des ventes « settled ». Filtrer côté boutique sur le
+ * seul « completed » en laisserait passer — et une vente encaissée qu'on ne
+ * voit pas est un client qui a payé pour rien. On lit tout et on trie ici.
+ *
+ * LA PAGINATION SE FAIT PAR CURSEUR
+ *
+ * `?page=2` est ignoré par cette API : elle renvoie les dix mêmes ventes. La
+ * taille de page se règle avec `per_page`, et la suite se demande avec l'URL
+ * fournie dans la réponse. S'être trompé là-dessus a fait conclure un jour
+ * « aucun paiement aujourd'hui » alors que seize mille francs étaient entrés.
+ */
+export async function listRecentSales(pagesMax = 5): Promise<ChariowSale[]> {
+  const ventes: ChariowSale[] = [];
+  let url: string | null = `${CHARIOW_API_URL}/sales?per_page=100`;
+
+  for (let page = 0; page < pagesMax && url; page++) {
+    const res: Response = await fetch(url, {
+      headers: { Authorization: `Bearer ${apiKey()}`, Accept: 'application/json' },
+    });
+    const data: any = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error('Erreur listing ventes Chariow:', res.status, data);
+      throw new Error(`Impossible de lire les ventes Chariow (${res.status}).`);
+    }
+    if (Array.isArray(data?.data)) ventes.push(...data.data);
+    url = data?.pagination?.next_page_url ?? null;
+  }
+  return ventes;
 }
 
 /**

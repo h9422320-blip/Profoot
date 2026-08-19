@@ -13,6 +13,7 @@ import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
 
 import { useLanguage } from "@/context/LanguageContext";
+import MessagePersonnel from "@/components/layout/MessagePersonnel";
 
 export function Sidebar() {
   const { t } = useLanguage();
@@ -177,6 +178,10 @@ export function Sidebar() {
         </nav>
 
         <div className="p-6 border-t border-border-card space-y-6 bg-gradient-to-t from-black/5 to-transparent">
+          {/* Placé JUSTE AU-DESSUS du compteur : c'est l'endroit qu'on regarde
+              quand on se demande à quoi on a droit. */}
+          <MessagePersonnel />
+
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-foreground/60">
               <BarChart2 className="w-4 h-4" />
