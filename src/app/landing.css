@@ -101,7 +101,19 @@
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.08); }
 }
-.fade-hidden { opacity: 0; transform: translateY(30px); }
+/* ── POURQUOI CETTE RÈGLE EST CONDITIONNÉE À `.js-ok` ─────────────────────────
+   Elle rendait invisible tout ce qui se trouve sous l'accroche, en attendant
+   que le JavaScript observe le défilement et rende chaque section visible.
+   Quand le JavaScript ne démarrait pas — un navigateur trop ancien pour lire le
+   fichier — le HTML était pourtant bien là, complet, mais en `opacity: 0`.
+   L'écran restait blanc. C'est exactement ce que voyait un contact au Maroc le
+   18 août 2026.
+
+   Un court script en tête de page pose `js-ok` sur la balise racine. S'il ne
+   s'exécute pas, cette règle ne s'applique pas et le contenu s'affiche tel
+   qu'il a été envoyé par le serveur : sans animation, mais LISIBLE et
+   utilisable. Une page sans fondu vaut infiniment mieux qu'une page blanche. */
+.js-ok .fade-hidden { opacity: 0; transform: translateY(30px); }
 .fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 /* ── NAVIGATION ────────────────────────────────────────────────────────────── */

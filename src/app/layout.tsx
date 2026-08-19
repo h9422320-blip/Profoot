@@ -97,6 +97,71 @@ export default function RootLayout({
       className="h-full antialiased scroll-smooth"
     >
       <head>
+        {/*
+          ── LE FILET DE SÉCURITÉ ────────────────────────────────────────────
+          PLACÉ EN PREMIER, ET ÉCRIT EN JAVASCRIPT DE 2015.
+
+          Ce script doit tourner sur le navigateur le plus vieux qui frappe à la
+          porte. Ni fonction fléchée, ni `let`, ni gabarit de chaîne : la moindre
+          syntaxe récente ici le ferait échouer, et c'est précisément lui qui
+          doit survivre quand tout le reste échoue.
+
+          IL FAIT DEUX CHOSES.
+
+          1. Il pose `js-ok` sur la balise racine. Les sections de la page
+             d'accueil sont en `opacity: 0` en attendant d'être révélées au
+             défilement ; sans cette classe, la règle ne s'applique pas et le
+             contenu envoyé par le serveur reste VISIBLE. Un navigateur trop
+             ancien voit donc le site, sans animation, plutôt qu'un écran blanc.
+
+          2. Il surveille les fichiers qui ne se chargent pas. Si l'un d'eux
+             échoue, il affiche un message qui dit quoi faire — au lieu de
+             laisser quelqu'un devant une page muette, qui repart sans jamais
+             dire pourquoi.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var d=document,h=d.documentElement;" +
+              "h.className=h.className+' js-ok';" +
+              "var prevenu=false;" +
+              "function alerter(){if(prevenu)return;prevenu=true;" +
+              "var b=d.body;if(!b)return;" +
+              "var n=d.createElement('div');" +
+              "n.setAttribute('style','position:fixed;left:0;right:0;bottom:0;z-index:2147483647;" +
+              "background:#10B981;color:#06231a;font:600 15px/1.45 system-ui,-apple-system,Arial,sans-serif;" +
+              "padding:16px 18px;text-align:center');" +
+              "n.innerHTML='Votre navigateur est un peu ancien et ProFoot AI ne peut pas s\\'afficher correctement.<br>" +
+              "Mettez-le \\u00e0 jour, ou ouvrez <b>profootai.com</b> dans Chrome ou Safari.';" +
+              "b.appendChild(n);}" +
+              "d.addEventListener('error',function(e){var c=e&&e.target;" +
+              "if(c&&c.tagName==='SCRIPT'&&String(c.src).indexOf('/_next/')>-1){alerter();}},true);" +
+              "window.addEventListener('error',function(e){" +
+              "var m=e&&e.message?String(e.message):'';" +
+              "if(m.indexOf('SyntaxError')>-1||m.indexOf('Unexpected')>-1){alerter();}});" +
+              "}catch(e){}})();",
+          }}
+        />
+        <noscript>
+          <div
+            style={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 2147483647,
+              background: '#10B981',
+              color: '#06231a',
+              font: '600 15px/1.45 system-ui,-apple-system,Arial,sans-serif',
+              padding: '16px 18px',
+              textAlign: 'center',
+            }}
+          >
+            ProFoot AI a besoin de JavaScript pour analyser les matchs. Activez-le dans les
+            réglages de votre navigateur.
+          </div>
+        </noscript>
+
         <link rel="icon" href="/icon.png?v=5" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
