@@ -47,7 +47,7 @@ export default function MentionsLegalesPage() {
               <p><span className="text-white font-semibold">Nom du service :</span> ProFoot AI</p>
               <p><span className="text-white font-semibold">Site web :</span> profoot-ai.com</p>
               <p><span className="text-white font-semibold">Nature :</span> Plateforme SaaS d'analyse de matchs de football propulsée par l'intelligence artificielle.</p>
-              <p><span className="text-white font-semibold">Contact :</span> contactprofootai@gmail.com</p>
+              <p><span className="text-white font-semibold">Contact :</span> <span className="break-all">contactprofootai@gmail.com</span></p>
             </div>
           </section>
 
@@ -90,7 +90,7 @@ export default function MentionsLegalesPage() {
               </p>
               <a 
                 href="mailto:contactprofootai@gmail.com" 
-                className="inline-flex items-center gap-2 bg-[#10b981]/10 border border-[#10b981]/30 rounded-xl px-5 py-3 text-[#10b981] hover:bg-[#10b981]/20 transition-colors font-medium"
+                className="inline-flex items-center gap-2 bg-[#10b981]/10 border border-[#10b981]/30 rounded-xl px-5 py-3 text-[#10b981] hover:bg-[#10b981]/20 transition-colors font-medium break-all"
               >
                 <Mail className="w-4 h-4" />
                 contactprofootai@gmail.com

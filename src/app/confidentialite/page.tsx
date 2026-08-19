@@ -223,7 +223,7 @@ export default function ConfidentialitePage() {
               </p>
               <a 
                 href="mailto:contactprofootai@gmail.com" 
-                className="inline-flex items-center gap-2 bg-[#10b981]/10 border border-[#10b981]/30 rounded-xl px-5 py-3 text-[#10b981] hover:bg-[#10b981]/20 transition-colors font-medium"
+                className="inline-flex items-center gap-2 bg-[#10b981]/10 border border-[#10b981]/30 rounded-xl px-5 py-3 text-[#10b981] hover:bg-[#10b981]/20 transition-colors font-medium break-all"
               >
                 <Mail className="w-4 h-4" />
                 contactprofootai@gmail.com

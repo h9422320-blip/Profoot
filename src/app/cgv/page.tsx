@@ -141,7 +141,7 @@ export default function CGVPage() {
               <p>
                 En cas de problème technique avéré de notre côté (panne de la plateforme, erreur de facturation), nous nous engageons 
                 à trouver une solution adaptée. Contactez-nous à : 
-                <a href="mailto:contactprofootai@gmail.com" className="text-[#10b981] hover:underline ml-1">contactprofootai@gmail.com</a>
+                <a href="mailto:contactprofootai@gmail.com" className="text-[#10b981] hover:underline ml-1 break-all">contactprofootai@gmail.com</a>
               </p>
             </div>
           </section>
@@ -185,7 +185,7 @@ export default function CGVPage() {
               <p>Pour toute question relative aux présentes conditions générales :</p>
               <a 
                 href="mailto:contactprofootai@gmail.com" 
-                className="inline-flex items-center gap-2 bg-[#10b981]/10 border border-[#10b981]/30 rounded-xl px-5 py-3 text-[#10b981] hover:bg-[#10b981]/20 transition-colors font-medium"
+                className="inline-flex items-center gap-2 bg-[#10b981]/10 border border-[#10b981]/30 rounded-xl px-5 py-3 text-[#10b981] hover:bg-[#10b981]/20 transition-colors font-medium break-all"
               >
                 <Mail className="w-4 h-4" />
                 contactprofootai@gmail.com
