@@ -101,14 +101,29 @@ function agreger(blocs: any[], nomDimension: string): LigneClarity[] {
         )?.[1];
       if (valeur == null) continue;
 
-      const sessions = Number(
-        info.sessionsCount ??
-          info.sessionCount ??
-          info.totalSessionCount ??
-          info.sessionsWithMetricPercentage ??
-          0
-      );
-      if (!Number.isFinite(sessions) || sessions <= 0) continue;
+      // ── LE NOMBRE DE SESSIONS, QUEL QUE SOIT SON NOM ──────────────────────
+      //
+      // Premier essai en production : les pays et les navigateurs remontaient
+      // correctement, mais TOUS À ZÉRO. Le champ existe, il ne s'appelle
+      // simplement pas comme prévu.
+      //
+      // Plutôt que de deviner une fois de plus, on prend la première valeur
+      // numérique dont le nom parle de sessions — et à défaut, n'importe quel
+      // nombre du bloc. Clarity peut renommer ses champs, la lecture tiendra.
+      let sessions = 0;
+      for (const [cle, v] of Object.entries(info)) {
+        if (!/session/i.test(cle)) continue;
+        const n = Number(v);
+        if (Number.isFinite(n) && n > sessions) sessions = n;
+      }
+      if (sessions === 0) {
+        for (const [cle, v] of Object.entries(info)) {
+          if (/percent|rate|ratio/i.test(cle)) continue;
+          const n = Number(v);
+          if (Number.isFinite(n) && n > sessions) sessions = n;
+        }
+      }
+      if (sessions <= 0) continue;
       total.set(String(valeur), (total.get(String(valeur)) ?? 0) + sessions);
     }
   }

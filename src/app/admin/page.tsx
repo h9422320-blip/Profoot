@@ -42,9 +42,6 @@ export default async function AdminOverview({
         ]}
       />
 
-      {/* Qui est dans l'application maintenant, et d'où viennent les visiteurs. */}
-      <Audience />
-
       {m.avertissements.length > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/25 rounded-[16px] p-4 space-y-1">
           {m.avertissements.map((a, i) => (
@@ -322,6 +319,11 @@ export default async function AdminOverview({
       <p className="text-[11px] text-white/25 text-center pt-2">
         Dernière lecture : {dateCourte(new Date().toISOString())} — les chiffres sont recalculés à chaque ouverture de la page.
       </p>
+
+      {/* En bas : le chiffre d'affaires et les comptes passent devant.
+          C'est ce qu'on vient voir en ouvrant l'administration. */}
+      <Audience />
+
     </div>
   );
 }
