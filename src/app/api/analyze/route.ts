@@ -59,8 +59,27 @@ async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DA
   // Le 16 août 2026, le quota journalier a atteint 98 %. À 100 %, plus aucune
   // analyse ne fonctionne pour personne — y compris pour un abonné qui vient
   // de payer.
+  /**
+   * UNE RÉPONSE VIDE N'EST PAS UNE DONNÉE.
+   *
+   * `{ response: [] }` arrive avec un code 200 et sans erreur : le fournisseur
+   * dit poliment « je n'ai rien ». Mise en réserve, cette absence devenait une
+   * vérité conservée six heures, resservie à chaque analyse sans que le
+   * fournisseur soit jamais rappelé. La panne ne pouvait donc plus se réparer
+   * d'elle-même.
+   *
+   * Constaté le 20 août 2026 : toutes les analyses annonçaient 2-1 — exactement
+   * ce que le moteur produit quand il ne reçoit AUCUNE statistique — en moins de
+   * deux secondes et sans consommer un centime d'IA. Deux cent deux entrées
+   * vides dormaient en réserve.
+   *
+   * Une absence n'est donc plus ni servie, ni écrite. Au pire, on redemande.
+   */
+  const vraimentVide = (d: any) =>
+    !d || (Array.isArray(d.response) ? d.response.length === 0 : d.response == null);
+
   const enReserve = await lireReserve(`apifb:${endpoint}`);
-  if (enReserve && !enReserve.expiree) {
+  if (enReserve && !enReserve.expiree && !vraimentVide(enReserve.contenu)) {
     setBounded(apiFootballCache, cacheKey, { data: enReserve.contenu, timestamp: Date.now() });
     return enReserve.contenu;
   }
@@ -74,7 +93,10 @@ async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DA
    * saurait pas travailler avec des données fausses.
    */
   const secours = (raison: string) => {
-    if (!enReserve) return null;
+    // Une réserve vide ne secourt personne : mieux vaut renvoyer null, ce que
+    // le moteur sait interpréter, qu'un « zéro match joué » qu'il prendra pour
+    // une mesure.
+    if (!enReserve || vraimentVide(enReserve.contenu)) return null;
     console.warn(`[BACKEND_ANALYZE] ${raison} sur ${endpoint} — donnée conservée servie.`);
     setBounded(apiFootballCache, cacheKey, { data: enReserve.contenu, timestamp: Date.now() });
     return enReserve.contenu;
@@ -113,7 +135,9 @@ async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DA
     }
 
     setBounded(apiFootballCache, cacheKey, { data, timestamp: Date.now() });
-    void ecrireReserve(`apifb:${endpoint}`, data, ttl);
+    // Une absence n'est jamais mise en réserve : elle se figerait pour des
+    // heures et l'application resservirait ce vide sans plus rien demander.
+    if (!vraimentVide(data)) void ecrireReserve(`apifb:${endpoint}`, data, ttl);
     return data;
   } catch (e: any) {
     console.error(`[BACKEND_ANALYZE] Exception on ${endpoint}:`, e.message);
@@ -993,10 +1017,65 @@ export async function POST(req: Request) {
     reference2
   );
 
+  /**
+   * DERNIER RECOURS : LA SAISON PRÉCÉDENTE.
+   *
+   * PLUS JAMAIS DE SCORE SORTI DU VIDE.
+   *
+   * Sans la moindre statistique, le moteur ne se tait pas : il applique ses
+   * valeurs par défaut et annonce 2-1 avec 44/27/29 — le même score pour toutes
+   * les affiches du jour. C'est arrivé le 19 août 2026, en pleine reprise des
+   * championnats : la saison 2026 venait de s'ouvrir, Barcelone y avait joué
+   * zéro match, et le fournisseur répondait donc « 0 but en 0 rencontre » sans
+   * la moindre erreur.
+   *
+   * Une équipe qui n'a pas encore joué cette saison a joué la précédente. Ces
+   * chiffres-là existent, ils sont complets, et ils valent infiniment mieux
+   * qu'un score inventé. On va donc les chercher plutôt que de rendre une
+   * prédiction que rien ne fonde.
+   *
+   * Ce rattrapage ne coûte deux appels QUE dans le cas où tout le reste a
+   * échoué — c'est-à-dire quelques jours par an, à la reprise.
+   */
   if (brutes1.matchsJoues === 0 || brutes2.matchsJoues === 0) {
     console.warn(
-      `[BACKEND_ANALYZE] Données introuvables — ${team1.name} ${brutes1.matchsJoues} matchs, ${team2.name} ${brutes2.matchsJoues}.`
+      `[BACKEND_ANALYZE] Données introuvables — ${team1.name} ${brutes1.matchsJoues} matchs, ${team2.name} ${brutes2.matchsJoues}. Repli sur la saison ${season - 1}.`
     );
+
+    const [ancien1, ancien2] = await Promise.all([
+      brutes1.matchsJoues === 0 && id1
+        ? fetchApiFootball(`/fixtures?team=${id1}&season=${season - 1}&last=15`, CACHE_TTL.TEAM_STATS, 8000)
+        : Promise.resolve(null),
+      brutes2.matchsJoues === 0 && id2
+        ? fetchApiFootball(`/fixtures?team=${id2}&season=${season - 1}&last=15`, CACHE_TTL.TEAM_STATS, 8000)
+        : Promise.resolve(null),
+    ]);
+
+    if (ancien1?.response?.length) {
+      const r = statistiquesDepuisMatchs(ancien1.response, String(id1));
+      if (r.matchsJoues > 0) {
+        brutes1.butsMarques = r.butsMarques;
+        brutes1.butsEncaisses = r.butsEncaisses;
+        brutes1.matchsJoues = r.matchsJoues;
+        console.log(`[BACKEND_ANALYZE] ${team1.name} rattrapé sur ${season - 1} : ${r.butsMarques}/${r.butsEncaisses} en ${r.matchsJoues}.`);
+      }
+    }
+    if (ancien2?.response?.length) {
+      const r = statistiquesDepuisMatchs(ancien2.response, String(id2));
+      if (r.matchsJoues > 0) {
+        brutes2.butsMarques = r.butsMarques;
+        brutes2.butsEncaisses = r.butsEncaisses;
+        brutes2.matchsJoues = r.matchsJoues;
+        console.log(`[BACKEND_ANALYZE] ${team2.name} rattrapé sur ${season - 1} : ${r.butsMarques}/${r.butsEncaisses} en ${r.matchsJoues}.`);
+      }
+    }
+
+    if (brutes1.matchsJoues === 0 || brutes2.matchsJoues === 0) {
+      console.error(
+        `[BACKEND_ANALYZE] Même la saison ${season - 1} est muette pour ${team1.name} — ${team2.name}. ` +
+          `Le score annoncé ne reposera sur aucune mesure.`
+      );
+    }
   } else if ((s1r.fixtures?.played?.total ?? 0) === 0 || (s2r.fixtures?.played?.total ?? 0) === 0) {
     console.log(
       `[BACKEND_ANALYZE] Statistiques reconstituées depuis les derniers matchs : ` +
