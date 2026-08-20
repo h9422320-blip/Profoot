@@ -125,8 +125,21 @@ export function passerellesDisponibles(): Passerelle[] {
             // Ces deux en-têtes ne sont pas décoratifs : OpenRouter s'en sert
             // pour attribuer la consommation, ce qui rend la facture lisible
             // quand plusieurs applications partagent la même clé.
+            //
+            // ── ASCII UNIQUEMENT, SANS EXCEPTION ────────────────────────────
+            //
+            // Ce titre contenait un tiret cadratin (—, code 8212). Un en-tête
+            // HTTP ne transporte que des octets : tout caractère au-delà de 255
+            // fait échouer la requête AVANT qu'elle parte, avec un TypeError
+            // qui ne ressemble en rien à une erreur réseau.
+            //
+            // Résultat, le 20 août 2026 : l'Agent VIP répondait « le réseau
+            // semble instable » à chaque question, sur les DEUX passerelles, en
+            // neuf millisecondes — aucun appel n'atteignait jamais OpenRouter.
+            // Le crédit était intact, la clé bonne, le modèle correct. Un seul
+            // caractère de ponctuation bloquait tout.
             'HTTP-Referer': 'https://profootai.com',
-            'X-Title': 'ProFoot AI — Agent VIP',
+            'X-Title': 'ProFoot AI - Agent VIP',
           },
         }),
     });
