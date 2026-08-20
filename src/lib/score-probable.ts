@@ -393,7 +393,19 @@ export function calculerScoreProbable(
    * celui d'avant, au caractère près : un championnat que le fournisseur ne
    * couvre pas ne doit rien perdre.
    */
-  forces?: ForcesDuMatch | null
+  forces?: ForcesDuMatch | null,
+  /**
+   * Correction apprise des pronostics passés de ce championnat.
+   *
+   * Deux facteurs, l'un pour l'équipe qui reçoit, l'autre pour celle qui se
+   * déplace. Absents ou neutres, le calcul rend exactement ce qu'il rendait :
+   * c'est un correctif, jamais un moteur parallèle.
+   *
+   * Ils viennent de `calibrage.ts`, qui compare les buts réellement marqués
+   * aux buts annoncés sur au moins trente rencontres du même championnat. En
+   * dessous de ce seuil, rien n'est transmis ici.
+   */
+  calibrage?: { domicile: number; exterieur: number } | null
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -498,21 +510,44 @@ export function calculerScoreProbable(
   // but par match là où il s'en marque 2,8.
   const avecForces = forces && equipe1AJoueADomicile !== null;
 
+  // ── LA CORRECTION APPRISE DES PRONOSTICS PASSÉS ───────────────────────────
+  //
+  // Le calcul ci-dessus ne s'est jamais retourné pour regarder ses propres
+  // résultats. S'il annonce depuis des semaines 2,1 buts par match dans un
+  // championnat où il s'en marque 2,8, il se trompe dans le même sens à chaque
+  // fois — et cette erreur-là, contrairement à l'imprévu d'un match, se corrige.
+  //
+  // Les deux facteurs sont attachés au CÔTÉ, pas à l'équipe : le premier
+  // s'applique à qui reçoit, le second à qui se déplace. Sans information sur
+  // le lieu, aucun des deux n'est appliqué — on ne saurait pas lequel est
+  // lequel, et se tromper de côté aggraverait le biais au lieu de le corriger.
+  const corrige = (valeur: number, cote: 'domicile' | 'exterieur') => {
+    if (!calibrage || equipe1AJoueADomicile === null) return valeur;
+    const f = cote === 'domicile' ? calibrage.domicile : calibrage.exterieur;
+    return Number.isFinite(f) && f > 0 ? valeur * f : valeur;
+  };
+
   const butsAttendus1 = borner(
-    avecForces
-      ? forces!.equipe1.attaque *
-          forces!.equipe2.defense *
-          (equipe1AJoueADomicile ? forces!.butsDomicile : forces!.butsExterieur)
-      : forceAttaque1 * forceDefense2 * moyenne * facteur1 * (rang1 / rang2),
+    corrige(
+      avecForces
+        ? forces!.equipe1.attaque *
+            forces!.equipe2.defense *
+            (equipe1AJoueADomicile ? forces!.butsDomicile : forces!.butsExterieur)
+        : forceAttaque1 * forceDefense2 * moyenne * facteur1 * (rang1 / rang2),
+      equipe1AJoueADomicile ? 'domicile' : 'exterieur'
+    ),
     BUTS_ATTENDUS_MIN,
     BUTS_ATTENDUS_MAX
   );
   const butsAttendus2 = borner(
-    avecForces
-      ? forces!.equipe2.attaque *
-          forces!.equipe1.defense *
-          (equipe1AJoueADomicile ? forces!.butsExterieur : forces!.butsDomicile)
-      : forceAttaque2 * forceDefense1 * moyenne * facteur2 * (rang2 / rang1),
+    corrige(
+      avecForces
+        ? forces!.equipe2.attaque *
+            forces!.equipe1.defense *
+            (equipe1AJoueADomicile ? forces!.butsExterieur : forces!.butsDomicile)
+        : forceAttaque2 * forceDefense1 * moyenne * facteur2 * (rang2 / rang1),
+      equipe1AJoueADomicile ? 'exterieur' : 'domicile'
+    ),
     BUTS_ATTENDUS_MIN,
     BUTS_ATTENDUS_MAX
   );

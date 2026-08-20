@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
 import { toTeaser } from "@/lib/analysis-teaser";
 import { lireReserve, ecrireReserve } from "@/lib/api-football";
+import { lireCalibrages, facteursPour } from "@/lib/calibrage";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
@@ -1199,7 +1200,14 @@ export async function POST(req: Request) {
     { equipe1: classement1, equipe2: classement2 },
     // Quand elles sont disponibles, ces forces remplacent les moyennes brutes.
     // Nulles, tout ce qui précède s'applique comme avant.
-    forcesDuMatch
+    forcesDuMatch,
+    // ── CE QUE LE MOTEUR A APPRIS DE SES PROPRES ERREURS ─────────────────
+    //
+    // Facteurs mesurés sur au moins trente rencontres passées de CE
+    // championnat, en confrontant les buts annoncés aux buts marqués. Sous ce
+    // seuil, `facteursPour` rend des facteurs neutres et le calcul est
+    // rigoureusement celui d'avant.
+    facteursPour(await lireCalibrages(), nomCompetition)
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────
