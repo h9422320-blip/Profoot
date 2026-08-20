@@ -22,8 +22,13 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error('[AGENT VIP] ANTHROPIC_API_KEY absente de la configuration.');
+  // Anthropic n'est plus la seule route possible : l'agent sait aussi passer
+  // par OpenRouter, qui donne accès au même modèle Claude. Exiger la clé
+  // Anthropic ici bloquerait l'agent alors qu'il a de quoi répondre — c'est
+  // exactement ce qui s'est produit la nuit du 20 août 2026, crédit Anthropic
+  // épuisé et crédit OpenRouter intact.
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENROUTER_API_KEY) {
+    console.error('[AGENT VIP] Aucune passerelle configurée (ANTHROPIC_API_KEY / OPENROUTER_API_KEY).');
     return Response.json(
       { error: "L'Agent IA n'est pas configuré. Contactez le support." },
       { status: 500 }

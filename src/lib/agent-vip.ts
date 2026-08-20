@@ -9,8 +9,14 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { OUTILS_FOOTBALL, executerOutil } from './outils-football';
+import {
+  passerellesDisponibles,
+  meriteUneAutrePasserelle,
+  MODELE_ANTHROPIC,
+  type Passerelle,
+} from './passerelle-claude';
 
-export const MODELE = 'claude-sonnet-5';
+export const MODELE = MODELE_ANTHROPIC;
 const JETONS_MAX = 16000;
 
 // Nombre d'allers-retours d'outils autorisés. L'agent enchaîne souvent
@@ -242,14 +248,14 @@ export interface ResultatAgent {
  * Lève une erreur en cas d'échec : c'est à l'appelant de décider quoi montrer
  * à l'utilisateur.
  */
-export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent> {
-  const cle = process.env.ANTHROPIC_API_KEY;
-  if (!cle) throw new Error('ANTHROPIC_API_KEY absente de la configuration.');
-
+async function interrogerAvec(
+  messages: any[],
+  passerelle: Passerelle
+): Promise<ResultatAgent> {
   const historique = preparerHistorique(messages);
   if (!historique.length) throw new Error('Aucune question reçue.');
 
-  const client = new Anthropic({ apiKey: cle });
+  const client = passerelle.client();
   const debut = Date.now();
   const outilsAppeles: string[] = [];
 
@@ -267,6 +273,20 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
 
   const outils = [
     ...OUTILS_FOOTBALL,
+    // ── LA RECHERCHE WEB N'EXISTE QUE CHEZ ANTHROPIC ──────────────────────
+    //
+    // `web_search_20250305` s'exécute sur les serveurs d'Anthropic : c'est un
+    // outil de la plateforme, pas une capacité du modèle. Une passerelle tierce
+    // ne peut pas le fournir, et le déclarer quand même ferait échouer chaque
+    // appel avec une erreur de validation — l'agent serait muet là où il aurait
+    // pu répondre.
+    //
+    // Sans lui, l'agent perd la presse, les rumeurs et le mercato. Il conserve
+    // TOUTES ses données football, qui viennent de nos propres outils. C'est un
+    // agent diminué, pas un agent en panne — et c'est très préférable à un
+    // abonné qui a payé et ne reçoit rien.
+    ...(passerelle.rechercheWeb
+      ? [
     // Recherche web native : elle couvre la presse, les rumeurs et le contexte
     // éditorial, hors du périmètre d'API-Football.
     //
@@ -283,7 +303,9 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
     // Relevé à 8 : la recherche web est devenue la source de vérité, elle doit
     // pouvoir croiser plusieurs angles sur une même question de mercato plutôt
     // que se contenter du premier article trouvé.
-    { type: 'web_search_20250305', name: 'web_search', max_uses: 8 },
+          { type: 'web_search_20250305', name: 'web_search', max_uses: 8 },
+        ]
+      : []),
   ] as Anthropic.ToolUnion[];
 
   let entrants = 0;
@@ -307,7 +329,7 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
   ) =>
     client.messages
       .stream({
-        model: MODELE,
+        model: passerelle.modele,
         max_tokens: sansOutils ? JETONS_SYNTHESE : JETONS_MAX,
         thinking: { type: 'adaptive' },
         // « medium » plutôt que « high » : sur ce modèle, l'écart de qualité est
@@ -319,7 +341,10 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
         messages,
         ...(sansOutils
           ? { tool_choice: { type: 'none' as const } }
-          : forcerRecherche
+          : // Imposer un outil qui n'a pas été déclaré fait échouer la requête.
+            // Sur une passerelle sans recherche web, l'agent choisit librement
+            // parmi nos outils football.
+            forcerRecherche && passerelle.rechercheWeb
             ? { tool_choice: { type: 'tool' as const, name: 'web_search' } }
             : {}),
       })
@@ -429,4 +454,56 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
     dureeMs: Date.now() - debut,
     motifArret: reponse.stop_reason,
   };
+}
+
+/**
+ * Interroge l'agent, en changeant de fournisseur plutôt que d'échouer.
+ *
+ * POURQUOI CETTE CASCADE EXISTE
+ *
+ * Dans la nuit du 20 août 2026, le crédit Anthropic s'est épuisé. L'Agent VIP —
+ * vendu dans les trois offres — s'est arrêté pour tous les abonnés, alors qu'un
+ * crédit OpenRouter dormait à côté et donnait accès au MÊME modèle.
+ *
+ * L'ordre est celui de `passerellesDisponibles` : Anthropic d'abord, puis le
+ * même Claude via OpenRouter, puis Gemini en dernier secours.
+ *
+ * On ne bascule que sur une panne de fournisseur — crédit épuisé, clé refusée,
+ * limite de débit, panne. Une question mal formée échouerait de la même façon
+ * partout ; réessayer ne ferait que payer trois fois la même erreur.
+ */
+export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent> {
+  const passerelles = passerellesDisponibles();
+
+  if (!passerelles.length)
+    throw new Error(
+      "Aucune passerelle configurée. Renseignez ANTHROPIC_API_KEY ou OPENROUTER_API_KEY."
+    );
+
+  let derniere: any = null;
+
+  for (const passerelle of passerelles) {
+    try {
+      const resultat = await interrogerAvec(messages, passerelle);
+      // Une réponse vide n'est pas une réponse : on laisse sa chance à la
+      // passerelle suivante plutôt que de servir du blanc à un abonné.
+      if (!resultat.texte && passerelle !== passerelles[passerelles.length - 1]) {
+        console.warn(`[AGENT VIP] ${passerelle.nom} n'a rien produit — passerelle suivante.`);
+        continue;
+      }
+      if (passerelle !== passerelles[0])
+        console.log(`[AGENT VIP] Servi par ${passerelle.nom}.`);
+      return resultat;
+    } catch (e: any) {
+      derniere = e;
+      const raison = e?.status ? `HTTP ${e.status}` : (e?.message ?? 'erreur inconnue');
+      if (!meriteUneAutrePasserelle(e)) {
+        console.error(`[AGENT VIP] ${passerelle.nom} — ${raison} (non rattrapable).`);
+        throw e;
+      }
+      console.warn(`[AGENT VIP] ${passerelle.nom} indisponible (${raison}) — bascule.`);
+    }
+  }
+
+  throw derniere ?? new Error("Aucune passerelle n'a répondu.");
 }
