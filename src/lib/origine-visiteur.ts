@@ -92,7 +92,15 @@ function navigateurDe(ua: string): string {
 export function lireOrigine(entetes: Headers): OrigineVisiteur {
   try {
     const ua = entetes.get('user-agent') || '';
-    const brut = (entetes.get('x-vercel-ip-country') || '').trim().toUpperCase();
+    // Cloudflare d'abord : derrière lui, l'en-tête Vercel désigne le point de
+    // présence qui a relayé la requête, pas le visiteur. Sans cette ligne,
+    // toute l'Afrique de l'Ouest serait comptée comme britannique — et la
+    // question « d'où viennent mes visiteurs » recevrait une réponse fausse.
+    const parCf = (entetes.get('cf-ipcountry') || '').trim().toUpperCase();
+    const brut =
+      /^[A-Z]{2}$/.test(parCf) && parCf !== 'XX' && parCf !== 'T1'
+        ? parCf
+        : (entetes.get('x-vercel-ip-country') || '').trim().toUpperCase();
     const pays = /^[A-Z]{2}$/.test(brut) ? brut : null;
 
     const integre = APPLICATIONS_INTEGREES.find(([motif]) => motif.test(ua))?.[1] ?? null;

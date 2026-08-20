@@ -40,7 +40,11 @@ export default async function PageDiagnostic() {
   // Ce que le SERVEUR voit de ce visiteur. Relevé ici parce que le navigateur,
   // lui, ne connaît ni son pays ni l'adresse par laquelle il est arrivé.
   const vuParLeServeur = {
-    pays: (h.get('x-vercel-ip-country') || '').toUpperCase() || 'inconnu',
+    // Cloudflare fait foi : derrière lui, l'en-tête Vercel donne le pays du
+    // relais et non celui du visiteur.
+    pays:
+      (h.get('cf-ipcountry') || h.get('x-vercel-ip-country') || '').toUpperCase() ||
+      'inconnu',
     ville: h.get('x-vercel-ip-city') || 'inconnue',
     agent: h.get('user-agent') || 'inconnu',
     langue: h.get('accept-language') || 'inconnue',

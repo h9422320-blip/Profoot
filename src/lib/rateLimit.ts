@@ -51,6 +51,20 @@ export function setBounded(cache: Map<string, any>, key: string, value: any, max
  * que la première, qui est sous contrôle de l'attaquant.
  */
 export function clientIp(req: Request): string {
+  // ── DERRIÈRE CLOUDFLARE, `x-vercel-forwarded-for` DÉSIGNE CLOUDFLARE ──────
+  //
+  // Depuis le 19 août 2026 le domaine passe par Cloudflare. L'adresse que
+  // Vercel inscrit est celle du relais, pas celle du visiteur : tous les
+  // utilisateurs d'un même point de présence — donc toute l'Afrique de l'Ouest,
+  // qui passe par Londres — partageaient un SEUL compteur de limitation. Il
+  // suffisait qu'une personne s'active pour que les autres soient refusées.
+  //
+  // `cf-connecting-ip` est posé par Cloudflare lui-même et écrase toute valeur
+  // que le client aurait tenté d'y mettre : il est aussi peu falsifiable que
+  // l'en-tête Vercel, et il désigne la bonne personne.
+  const cfIp = req.headers.get('cf-connecting-ip');
+  if (cfIp) return cfIp.trim();
+
   const vercelIp = req.headers.get('x-vercel-forwarded-for');
   if (vercelIp) return vercelIp.split(',')[0].trim();
 

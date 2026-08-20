@@ -87,6 +87,34 @@ export interface PaysDetecte {
  * un hébergeur qui ne le pose pas.
  */
 export function detecterPaysAcheteur(entetes: Headers, fuseauClient?: unknown): PaysDetecte {
+  // ── CLOUDFLARE D'ABORD, ET C'EST DÉSORMAIS VITAL ──────────────────────────
+  //
+  // Depuis que le domaine passe par Cloudflare (19 août 2026), Vercel ne voit
+  // plus l'adresse de l'acheteur : il voit celle du point de présence
+  // Cloudflare qui a relayé la requête. Or Cloudflare fait passer l'Afrique de
+  // l'Ouest par LONDRES.
+  //
+  // Relevé sur `profootai.com/cdn-cgi/trace` depuis la Guinée :
+  //
+  //     colo = LHR      <- le relais est à Londres
+  //     loc  = GN       <- le pays réel est la Guinée
+  //
+  // `x-vercel-ip-country` valait donc GB, et la page de paiement s'ouvrait en
+  // livres sterling avec Alipay et Amazon Pay. Un acheteur ouest-africain ne
+  // pouvait plus payer du tout — il n'y avait aucun moyen de paiement qu'il
+  // possède.
+  //
+  // Cloudflare, lui, connaît le vrai pays et le pose dans `CF-IPCountry`.
+  // C'est maintenant le signal de référence ; Vercel devient le repli, utile
+  // le jour où le domaine ne passerait plus par Cloudflare.
+  //
+  // « XX » et « T1 » sont les valeurs que Cloudflare renvoie quand il ne sait
+  // pas (réseau Tor, client inconnu) : elles ne doivent pas être prises pour
+  // un pays.
+  const parCloudflare = (entetes.get('cf-ipcountry') || '').trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(parCloudflare) && parCloudflare !== 'XX' && parCloudflare !== 'T1')
+    return { code: parCloudflare, source: 'ip' };
+
   const parIp = (entetes.get('x-vercel-ip-country') || '').trim().toUpperCase();
   if (/^[A-Z]{2}$/.test(parIp)) return { code: parIp, source: 'ip' };
 
@@ -117,7 +145,12 @@ const IPV6 = /^[0-9a-fA-F:]+$/;
  * première adresse est celle du client.
  */
 export function ipAcheteur(entetes: Headers): string | undefined {
+  // `cf-connecting-ip` porte l'adresse VRAIE de l'acheteur, telle que
+  // Cloudflare l'a reçue. Les autres en-têtes, derrière Cloudflare, peuvent
+  // commencer par l'adresse du relais londonien — ce qui ferait enregistrer
+  // « Royaume-Uni » dans le contexte de chaque vente guinéenne.
   const brut =
+    entetes.get('cf-connecting-ip') ||
     entetes.get('x-forwarded-for') ||
     entetes.get('x-real-ip') ||
     entetes.get('x-vercel-forwarded-for') ||
