@@ -331,11 +331,21 @@ async function interrogerAvec(
       .stream({
         model: passerelle.modele,
         max_tokens: sansOutils ? JETONS_SYNTHESE : JETONS_MAX,
-        thinking: { type: 'adaptive' },
-        // « medium » plutôt que « high » : sur ce modèle, l'écart de qualité est
-        // mince pour ce type de tâche alors que l'écart de temps ne l'est pas —
-        // et le plafond de 60 s de la plateforme est la vraie contrainte.
-        output_config: { effort: 'medium' },
+        // Réflexion adaptative et niveau d'effort sont propres à la plateforme
+        // Anthropic. Une passerelle tierce répond 400 si on les lui envoie —
+        // et un 400 ne déclenche pas de bascule, puisqu'il signale d'ordinaire
+        // une requête mal formée de notre part. L'agent échouait donc sans
+        // jamais essayer la passerelle suivante.
+        ...(passerelle.parametresAvances
+          ? {
+              thinking: { type: 'adaptive' as const },
+              // « medium » plutôt que « high » : sur ce modèle, l'écart de
+              // qualité est mince pour ce type de tâche alors que l'écart de
+              // temps ne l'est pas — et le plafond de 60 s de la plateforme est
+              // la vraie contrainte.
+              output_config: { effort: 'medium' as const },
+            }
+          : {}),
         system: instructions,
         tools: outils,
         messages,
@@ -477,7 +487,7 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
 
   if (!passerelles.length)
     throw new Error(
-      "Aucune passerelle configurée. Renseignez ANTHROPIC_API_KEY ou OPENROUTER_API_KEY."
+      "Aucune passerelle configurée. Renseignez OPENROUTER_API_KEY dans Vercel."
     );
 
   let derniere: any = null;

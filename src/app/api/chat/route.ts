@@ -27,8 +27,8 @@ export async function POST(req: Request) {
   // Anthropic ici bloquerait l'agent alors qu'il a de quoi répondre — c'est
   // exactement ce qui s'est produit la nuit du 20 août 2026, crédit Anthropic
   // épuisé et crédit OpenRouter intact.
-  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENROUTER_API_KEY) {
-    console.error('[AGENT VIP] Aucune passerelle configurée (ANTHROPIC_API_KEY / OPENROUTER_API_KEY).');
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.error('[AGENT VIP] OPENROUTER_API_KEY absente : aucune passerelle disponible.');
     return Response.json(
       { error: "L'Agent IA n'est pas configuré. Contactez le support." },
       { status: 500 }

@@ -40,6 +40,16 @@ export interface Passerelle {
   modele: string;
   /** La recherche web native d'Anthropic est-elle disponible ici ? */
   rechercheWeb: boolean;
+  /**
+   * Les réglages fins d'Anthropic passent-ils ici ?
+   *
+   * `thinking: {type:'adaptive'}` et `output_config: {effort}` sont propres à la
+   * plateforme Anthropic. Une passerelle tierce qui ne les connaît pas répond
+   * 400 — et un 400 ne déclenche aucune bascule, puisqu'il signale d'ordinaire
+   * une requête mal formée. L'agent échouait donc silencieusement au lieu de
+   * basculer. On ne les envoie qu'à qui sait les lire.
+   */
+  parametresAvances: boolean;
   /** Construit le client prêt à l'emploi. */
   client: () => Anthropic;
 }
@@ -70,12 +80,28 @@ const URL_OPENROUTER = 'https://openrouter.ai/api/v1';
 export function passerellesDisponibles(): Passerelle[] {
   const liste: Passerelle[] = [];
 
+  // ── ANTHROPIC EN DIRECT EST DÉSACTIVÉ ────────────────────────────────────
+  //
+  // Décision du 20 août 2026 : tout passe par OpenRouter, y compris Claude.
+  //
+  // Le compte Anthropic exigeait sa propre carte et son propre rechargement.
+  // La nuit où son solde est tombé à zéro, l'Agent VIP s'est arrêté pour tous
+  // les abonnés alors qu'un crédit OpenRouter dormait à côté et donnait accès
+  // au MÊME modèle. Deux fournisseurs à surveiller, c'est deux fois plus
+  // d'occasions de tomber en panne pour une raison qui n'a rien de technique.
+  //
+  // Un seul crédit à recharger, un seul solde à surveiller, les mêmes modèles.
+  //
+  // POUR REVENIR EN ARRIÈRE : régler ANTHROPIC_DIRECT=1 dans Vercel. Le code
+  // reste là, entier — il n'y a rien à réécrire, seulement une variable à
+  // poser.
   const cleAnthropic = process.env.ANTHROPIC_API_KEY;
-  if (cleAnthropic) {
+  if (cleAnthropic && process.env.ANTHROPIC_DIRECT === '1') {
     liste.push({
-      nom: 'Anthropic',
+      nom: 'Anthropic (direct)',
       modele: MODELE_ANTHROPIC,
       rechercheWeb: true,
+      parametresAvances: true,
       client: () => new Anthropic({ apiKey: cleAnthropic }),
     });
   }
@@ -89,6 +115,7 @@ export function passerellesDisponibles(): Passerelle[] {
       nom,
       modele,
       rechercheWeb: false,
+      parametresAvances: false,
       client: () =>
         new Anthropic({
           apiKey: cleOpenRouter,
@@ -121,22 +148,56 @@ export function passerellesDisponibles(): Passerelle[] {
  */
 export function meriteUneAutrePasserelle(e: any): boolean {
   const code = Number(e?.status ?? e?.statusCode ?? 0);
-  if (code === 401 || code === 402 || code === 403 || code === 429) return true;
-  if (code >= 500) return true;
-  if (code === 400 || code === 404 || code === 422) return false;
+  const message = String(e?.message ?? e?.error?.message ?? '').toLowerCase();
 
-  // Sans code HTTP, c'est une panne de transport : la passerelle n'a pas
-  // répondu du tout.
-  const message = String(e?.message ?? '').toLowerCase();
-  return (
-    !code ||
+  // ── LE CRÉDIT ÉPUISÉ SE PRÉSENTE COMME UNE ERREUR DE REQUÊTE ─────────────
+  //
+  // Anthropic ne répond pas 402 quand le solde est vide : il répond 400
+  // `invalid_request_error`, avec « Your credit balance is too low to access
+  // the Anthropic API » dans le message. Le code seul est donc trompeur — il
+  // dit « votre requête est fautive » là où le vrai sens est « payez ».
+  //
+  // C'est ce qui a fait échouer la première version de cette cascade dans la
+  // nuit du 20 août : le 400 était classé non rattrapable, l'agent renonçait
+  // sans jamais essayer OpenRouter, et l'abonné lisait « réseau instable ».
+  //
+  // On regarde donc le TEXTE avant le code, toujours.
+  const parleDArgent =
     message.includes('credit') ||
     message.includes('crédit') ||
     message.includes('balance') ||
     message.includes('quota') ||
+    message.includes('billing') ||
     message.includes('insufficient') ||
+    message.includes('payment') ||
+    message.includes('afford');
+  if (parleDArgent) return true;
+
+  if (code === 401 || code === 402 || code === 403 || code === 429) return true;
+  if (code >= 500) return true;
+
+  // Un modèle inconnu ou un paramètre refusé par CETTE passerelle : la
+  // suivante peut très bien l'accepter.
+  if (
+    message.includes('model') ||
+    message.includes('not supported') ||
+    message.includes('unsupported') ||
+    message.includes('unknown parameter') ||
+    message.includes('unexpected')
+  )
+    return true;
+
+  if (code === 404 || code === 422) return true;
+  if (code === 400) return false;
+
+  // Sans code HTTP, c'est une panne de transport : la passerelle n'a pas
+  // répondu du tout.
+  return (
+    !code ||
     message.includes('fetch failed') ||
-    message.includes('timeout')
+    message.includes('timeout') ||
+    message.includes('aborted') ||
+    message.includes('network')
   );
 }
 
