@@ -7,6 +7,7 @@ import { EnTete, Rapport } from "../_components/EnTete";
 import { Indicateur } from "../_components/Indicateur";
 import { Panneau } from "../_components/Panneaux";
 import { LienCompte, Vide, dateHeure } from "../_components/Ui";
+import SoldeFournisseurs from "../_components/SoldeFournisseurs";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,10 @@ export default async function AgentVipPage() {
           { libelle: "Coût total", valeur: `${b.coutTotalXof.toLocaleString("fr-FR")} FCFA` },
         ]}
       />
+
+      {/* Le crédit restant, et par où l'agent passe. En haut, parce qu'un solde
+          à zéro rend tout le reste de cette page sans objet. */}
+      <SoldeFournisseurs />
 
       {b.total === 0 ? (
         <div className="rounded-[22px] border border-amber-500/25 bg-amber-500/10 p-6">
