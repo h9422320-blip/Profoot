@@ -72,6 +72,26 @@ export async function GET(request: Request) {
       console.warn('[AUDIT] Construction des preuves impossible :', e?.message);
     }
 
+    // ── LE MOTEUR RELIT SES PROPRES PRONOSTICS ────────────────────────────
+    //
+    // C'est ce qui rend la boucle CONTINUE plutôt que ponctuelle : sans ce
+    // passage quotidien, les facteurs resteraient figés au jour où ils ont été
+    // calculés à la main, et le moteur n'apprendrait plus rien de ce qui s'est
+    // joué depuis.
+    //
+    // Placé après la vérification des pronostics, qui vient d'écrire les
+    // résultats réels dont ce calcul se nourrit. L'ordre n'est pas indifférent :
+    // l'inverse ferait apprendre sur les données de la veille.
+    try {
+      const { recalculerCalibrages } = await import('@/lib/calibrage');
+      const c = await recalculerCalibrages();
+      console.log(`[AUDIT] Calibrage : ${c.ligues} championnat(s), ${c.matchs} rencontre(s).`);
+    } catch (e: any) {
+      // Tables absentes ou base muette : l'audit continue. Un apprentissage
+      // manqué se rattrape le lendemain ; un audit manqué, non.
+      console.warn('[AUDIT] Calibrage impossible :', e?.message);
+    }
+
     const resultat = await executerAudit();
 
     // L'enregistrement ne doit pas faire échouer l'audit : mieux vaut un verdict
