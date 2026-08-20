@@ -33,15 +33,41 @@ const OPENROUTER = 'https://openrouter.ai/api/v1/chat/completions';
  * réglé pour ProFoot ; on préfère l'utiliser rarement plutôt que d'échouer.
  */
 export const MODELES_OPENROUTER = [
-  'qwen/qwen3.7-flash',
-  'deepseek/deepseek-v4-flash',
   'openai/gpt-oss-120b',
+  'deepseek/deepseek-v4-flash',
+  'qwen/qwen3.7-flash',
   'google/gemini-3.5-flash-lite',
   'google/gemini-3.5-flash',
 ];
 
 /** Modèle le moins cher capable de produire l'aperçu gratuit. */
-export const MODELE_ECONOMIQUE = 'qwen/qwen3.7-flash';
+export const MODELE_ECONOMIQUE = 'openai/gpt-oss-120b';
+
+/**
+ * ── L'ORDRE VIENT D'UNE MESURE, PAS DU SEUL TARIF ─────────────────────────
+ *
+ * Chaque candidat a reçu trois vraies demandes d'analyse — Barcelone-Real,
+ * Deportivo-Elche, Newcastle-Bournemouth — et sa réponse a été contrôlée
+ * comme l'application le fait : JSON lisible, champs présents, probabilités
+ * totalisant cent, et score cohérent avec l'issue la plus probable.
+ * (Route `/api/diagnostic/modeles`, rejouable à tout moment.)
+ *
+ *     gpt-oss-120b            3/3   0,17 $   7 700 ms   <- retenu, premier
+ *     gemini-3.5-flash-lite   3/3   2,50 $     619 ms   <- le plus rapide
+ *     deepseek-v4-flash       2/3   0,17 $   8 300 ms   un dépassement de délai
+ *     qwen3.7-flash           1/3   0,13 $   3 200 ms   deux refus du fournisseur
+ *     gemini-3.5-flash        2/3   9,00 $   5 800 ms   s'est contredit
+ *
+ * QWEN ÉTAIT PREMIER, ET C'ÉTAIT UNE ERREUR. Le moins cher sur le papier
+ * renvoyait « 429 Provider returned error » deux fois sur trois : un échec ne
+ * coûte rien en jetons, mais il coûte l'attente de l'abonné avant de basculer.
+ * Il reste dans la liste, en troisième, comme filet bon marché.
+ *
+ * GEMINI-3.5-FLASH, LUI, S'EST CONTREDIT : sur Deportivo-Elche il a annoncé
+ * 1-1 en donnant la victoire au domicile comme issue la plus probable. C'est
+ * exactement la faute qui discrédite une carte aux yeux d'un visiteur. Neuf
+ * dollars le million de jetons pour ça — il ferme la marche.
+ */
 
 /**
  * PRIX RELEVÉS LE 20 AOÛT 2026, PAR MILLION DE JETONS SORTANTS.
