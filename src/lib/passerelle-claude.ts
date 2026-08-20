@@ -69,7 +69,17 @@ export const MODELE_OPENROUTER = 'anthropic/claude-sonnet-5';
  */
 export const MODELE_SECOURS = 'google/gemini-3.5-flash';
 
-const URL_OPENROUTER = 'https://openrouter.ai/api/v1';
+/**
+ * L'adresse de base, SANS le `/v1`.
+ *
+ * Le SDK Anthropic ajoute lui-même `/v1/messages` à ce qu'on lui donne. Écrire
+ * `https://openrouter.ai/api/v1` produisait donc `…/api/v1/v1/messages` — une
+ * adresse qui n'existe pas, et un 404 renvoyé en HTML que rien ne distinguait
+ * d'une panne réseau.
+ *
+ * L'adresse réellement appelée doit être `https://openrouter.ai/api/v1/messages`.
+ */
+const URL_OPENROUTER = 'https://openrouter.ai/api';
 
 /**
  * Les passerelles utilisables, dans l'ordre où il faut les essayer.
