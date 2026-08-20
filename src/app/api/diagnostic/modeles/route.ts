@@ -103,13 +103,26 @@ function verifier(j: any): { ok: boolean; defauts: string[] } {
   return { ok: defauts.length === 0, defauts };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!process.env.OPENROUTER_API_KEY)
     return NextResponse.json({ erreur: 'OPENROUTER_API_KEY absente' }, { status: 500 });
 
+  // ── UN MODÈLE À LA FOIS, PAR DÉFAUT ──────────────────────────────────────
+  //
+  // Cinq modèles fois trois matchs dépassent les soixante secondes accordées
+  // par la plateforme : la route rendait 504 sans jamais livrer un résultat.
+  // On teste donc un seul candidat par appel — `?i=0` pour le moins cher,
+  // `?i=1` pour le suivant — et l'appelant enchaîne.
+  const url = new URL(req.url);
+  const indice = url.searchParams.get('i');
+  const aTester =
+    indice !== null && MODELES_OPENROUTER[Number(indice)]
+      ? [MODELES_OPENROUTER[Number(indice)]]
+      : [MODELES_OPENROUTER[0]];
+
   const resultats: any[] = [];
 
-  for (const modele of MODELES_OPENROUTER) {
+  for (const modele of aTester) {
     const essais: any[] = [];
 
     for (const m of MATCHS) {
@@ -152,9 +165,11 @@ export async function GET() {
   return NextResponse.json(
     {
       ordreActuel: MODELES_OPENROUTER,
-      // L'ordre que les mesures recommandent : ceux qui passent tous les
-      // contrôles d'abord, dans l'ordre de prix déjà retenu.
-      recommande: resultats.filter((r) => r.verdict === 'RETENU').map((r) => r.modele),
+      testeIci: aTester,
+      suivant:
+        indice !== null && MODELES_OPENROUTER[Number(indice) + 1]
+          ? `?i=${Number(indice) + 1}`
+          : null,
       resultats,
       quand: new Date().toISOString(),
     },
