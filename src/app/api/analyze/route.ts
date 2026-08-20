@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
 import { toTeaser } from "@/lib/analysis-teaser";
 import { lireReserve, ecrireReserve } from "@/lib/api-football";
+import { createAdminClient } from "@/lib/supabase-admin";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
@@ -425,6 +426,75 @@ export async function POST(req: Request) {
         },
         { status: 429 }
       );
+    }
+  } else {
+    // ── TROIS ESSAIS GRATUITS, PAS UN DE PLUS ─────────────────────────────
+    //
+    // Un compte sans abonnement pouvait lancer autant d'analyses qu'il
+    // voulait : le décompte ne concernait que les abonnés. Chaque essai
+    // appelle pourtant un modèle payant, et rien n'obligeait jamais à
+    // s'abonner — l'aperçu gratuit, renouvelé sans fin, suffisait à beaucoup.
+    //
+    // Trois rencontres suffisent à juger l'outil. Au-delà, le mur de paiement
+    // s'affiche AVANT le moindre appel au modèle : c'est là que se fait
+    // l'économie, et c'est là que se fait la vente.
+    //
+    // ON COMPTE LES RENCONTRES, PAS LES CLICS.
+    //
+    // Quelqu'un qui rouvre une analyse déjà faite ne consomme pas un
+    // nouvel essai : il relit la sienne. Compter les requêtes punirait un
+    // rafraîchissement de page, ce qui serait incompréhensible pour lui et
+    // ne rapporterait rien.
+    const ESSAIS_GRATUITS = 3;
+
+    try {
+      const sb = createAdminClient();
+      const { data: passees } = await sb
+        .from('analysis_history')
+        .select('fixture_id, team1_name, team2_name')
+        .eq('user_id', guard.user.id)
+        .limit(200);
+
+      const cleRencontre = (a: any) =>
+        a?.fixture_id
+          ? `f${a.fixture_id}`
+          : [a?.team1_name, a?.team2_name]
+              .map((n) => String(n ?? '').toLowerCase())
+              .sort()
+              .join('|');
+
+      const dejaVues = new Set((passees ?? []).map(cleRencontre));
+      const celleCi = cleRencontre({
+        fixture_id: null,
+        team1_name: team1.name,
+        team2_name: team2.name,
+      });
+
+      // Une rencontre déjà analysée reste consultable : elle ne coûte rien de
+      // plus et la lui retirer serait vécu comme un vol.
+      if (dejaVues.size >= ESSAIS_GRATUITS && !dejaVues.has(celleCi)) {
+        console.log(
+          `[BACKEND_ANALYZE] Essais gratuits épuisés (${dejaVues.size}/${ESSAIS_GRATUITS}) — paywall avant appel au modèle.`
+        );
+        // 403 et non 402 : c'est le code que le navigateur reconnaît déjà pour
+        // afficher le mur de paiement. Un 402 tomberait dans la branche
+        // « erreur serveur » et le visiteur croirait le site en panne au moment
+        // précis où on lui demande de payer.
+        return NextResponse.json(
+          {
+            error:
+              "Vos 3 analyses gratuites sont utilisées. Choisissez une offre pour continuer à analyser.",
+            code: 'FREE_TRIAL_EXHAUSTED',
+            essaisUtilises: dejaVues.size,
+            essaisMax: ESSAIS_GRATUITS,
+          },
+          { status: 403 }
+        );
+      }
+    } catch (e: any) {
+      // Base illisible : on laisse passer. Refuser une analyse à cause d'une
+      // panne de comptage ferait fuir quelqu'un qui allait peut-être payer.
+      console.warn('[BACKEND_ANALYZE] Comptage des essais impossible :', e?.message);
     }
   }
 

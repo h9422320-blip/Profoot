@@ -57,8 +57,27 @@ export interface Passerelle {
 /** Le modèle de référence de l'Agent VIP, chez Anthropic. */
 export const MODELE_ANTHROPIC = 'claude-sonnet-5';
 
-/** Le même modèle, tel qu'OpenRouter le nomme. */
-export const MODELE_OPENROUTER = 'anthropic/claude-sonnet-5';
+/**
+ * Le modèle de l'Agent VIP chez OpenRouter.
+ *
+ * PLUS CLAUDE SONNET 5, ET POURQUOI
+ *
+ * Sonnet 5 coûte 10 $ par million de jetons écrits. DeepSeek v4 Flash en coûte
+ * 0,17 — cinquante-huit fois moins — et sait faire ce que l'Agent VIP exige
+ * réellement : appeler des outils en chaîne, lire leurs résultats, et rédiger.
+ *
+ * L'agent ne compose pas de littérature : il va chercher des compositions, des
+ * blessés, une forme, un classement, puis raconte ce qu'il a trouvé. La
+ * différence de plume entre les deux modèles ne vaut pas un facteur cinquante
+ * sur la facture d'un projet qui démarre.
+ */
+export const MODELE_OPENROUTER = 'deepseek/deepseek-v4-flash';
+
+/** Le repli, si le premier ne répond pas. Même ordre de prix. */
+export const MODELE_OPENROUTER_BIS = 'qwen/qwen3.7-flash';
+
+/** Claude Sonnet 5, gardé en dernier recours — cher, mais sûr. */
+export const MODELE_CLAUDE_OPENROUTER = 'anthropic/claude-sonnet-5';
 
 /**
  * Le secours quand plus aucun Claude n'est joignable.
@@ -154,8 +173,13 @@ export function passerellesDisponibles(): Passerelle[] {
         }),
     });
 
-    liste.push(construire(MODELE_OPENROUTER, 'OpenRouter (Claude Sonnet 5)'));
+    // Du moins cher au plus cher. Chacun sait appeler des outils et rendre du
+    // JSON : c'est tout ce que l'Agent VIP demande. Claude ferme la marche,
+    // il n'est plus appelé qu'en cas de panne des trois premiers.
+    liste.push(construire(MODELE_OPENROUTER, 'OpenRouter (DeepSeek v4 Flash)'));
+    liste.push(construire(MODELE_OPENROUTER_BIS, 'OpenRouter (Qwen 3.7 Flash)'));
     liste.push(construire(MODELE_SECOURS, 'OpenRouter (Gemini, secours)'));
+    liste.push(construire(MODELE_CLAUDE_OPENROUTER, 'OpenRouter (Claude Sonnet 5, dernier recours)'));
   }
 
   return liste;

@@ -33,15 +33,43 @@ const OPENROUTER = 'https://openrouter.ai/api/v1/chat/completions';
  * réglé pour ProFoot ; on préfère l'utiliser rarement plutôt que d'échouer.
  */
 export const MODELES_OPENROUTER = [
-  'google/gemini-3.5-flash',
-  'google/gemini-3.6-flash',
+  'qwen/qwen3.7-flash',
+  'deepseek/deepseek-v4-flash',
+  'openai/gpt-oss-120b',
   'google/gemini-3.5-flash-lite',
-  'deepseek/deepseek-v3.2',
-  'deepseek/deepseek-v4-flash-0731',
+  'google/gemini-3.5-flash',
 ];
 
 /** Modèle le moins cher capable de produire l'aperçu gratuit. */
-export const MODELE_ECONOMIQUE = 'google/gemini-3.5-flash-lite';
+export const MODELE_ECONOMIQUE = 'qwen/qwen3.7-flash';
+
+/**
+ * PRIX RELEVÉS LE 20 AOÛT 2026, PAR MILLION DE JETONS SORTANTS.
+ *
+ * C'est la SORTIE qui coûte : une analyse lit peu et écrit beaucoup.
+ *
+ *     qwen3.7-flash            0,13 $     <- premier appelé
+ *     deepseek-v4-flash        0,17 $
+ *     gpt-oss-120b             0,17 $
+ *     gemini-3.5-flash-lite    2,50 $
+ *     gemini-3.5-flash         9,00 $     <- ce qui était appelé en premier
+ *
+ * Sur sept jours, 13,07 $ des 15,02 $ facturés sont partis dans le seul
+ * gemini-3.5-flash — 87 % de la facture pour le modèle le plus cher de la
+ * liste, appelé systématiquement en premier alors que quatre modèles capables
+ * attendaient derrière lui.
+ *
+ * CE QUE CE CHANGEMENT COÛTE VRAIMENT
+ *
+ * Rien sur la fiabilité : la cascade est inchangée, si le premier échoue le
+ * suivant prend le relais, et Gemini reste au bout de la chaîne.
+ *
+ * En revanche le STYLE change. Le prompt a été écrit et affiné pour les
+ * Gemini ; un autre modèle rendra un texte correct mais tourné autrement. La
+ * structure JSON, elle, est imposée par le prompt et vérifiée à la lecture —
+ * une réponse mal formée fait passer au modèle suivant, elle n'atteint jamais
+ * l'abonné.
+ */
 
 /**
  * Longueur maximale d'une réponse, en jetons.
