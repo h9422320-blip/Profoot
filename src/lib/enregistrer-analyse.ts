@@ -22,6 +22,26 @@ import { createAdminClient } from './supabase-admin';
 
 export interface AnalyseAEnregistrer {
   userId: string;
+  /**
+   * L'identifiant de la rencontre chez le fournisseur.
+   *
+   * SANS LUI, L'ANALYSE NE PEUT PLUS JAMAIS ÊTRE VÉRIFIÉE.
+   *
+   * C'est par ce numéro qu'on va chercher le résultat réel, puis qu'on juge le
+   * pronostic, puis qu'on publie la preuve. Une ligne qui en est dépourvue est
+   * ignorée par la vérification comme par la construction du mur : elle existe
+   * en base, mais elle ne prouvera jamais rien.
+   *
+   * Cette colonne a été oubliée lorsque l'enregistrement est passé du
+   * navigateur au serveur, le 16 août 2026. Trois jours durant, mille sept cent
+   * vingt-deux analyses ont été écrites sans elle, et le mur de preuves est
+   * resté figé sans qu'aucune erreur n'apparaisse : rien ne plantait, la preuve
+   * ne naissait simplement pas.
+   *
+   * Null quand la rencontre n'a pas pu être identifiée — cela arrive, et c'est
+   * honnête de l'écrire plutôt que d'inventer un numéro.
+   */
+  fixtureId?: number | null;
   equipe1: { id?: string; name?: string; logo?: string; league?: string };
   equipe2: { id?: string; name?: string; logo?: string; league?: string };
   /** L'analyse complète, avant tout découpage pour les comptes gratuits. */
@@ -79,6 +99,8 @@ export async function enregistrerAnalyse(a: AnalyseAEnregistrer): Promise<void> 
       predicted_winner: issuePredite,
       predicted_at: issuePredite ? new Date().toISOString() : null,
       user_id: a.userId,
+      // La clé qui rend l'analyse vérifiable. Voir le commentaire du type.
+      fixture_id: entier(a.fixtureId),
       team1_id: a.equipe1.id ?? '',
       team1_name: a.equipe1.name ?? '',
       team1_logo: a.equipe1.logo ?? '',

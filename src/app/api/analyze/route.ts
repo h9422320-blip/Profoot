@@ -440,10 +440,34 @@ export async function POST(req: Request) {
    * `dejaEnregistre` évite de recréer une ligne à chaque consultation d'une
    * analyse déjà servie depuis le cache.
    */
+  /**
+   * L'IDENTIFIANT DE LA RENCONTRE CHEZ LE FOURNISSEUR.
+   *
+   * SANS LUI, UNE ANALYSE NE PROUVE JAMAIS RIEN.
+   *
+   * C'est la seule clé qui permette, plus tard, d'aller chercher le résultat
+   * réel et de confronter le pronostic. Une ligne d'historique sans identifiant
+   * n'est jamais vérifiée, ne devient jamais une preuve, et disparaît du mur
+   * public — quelle que soit la justesse du pronostic.
+   *
+   * Il manquait depuis le 16 août 2026, 19 h 49, quand l'enregistrement est
+   * passé du navigateur au serveur : la nouvelle fonction n'a pas repris cette
+   * colonne. Mille sept cent vingt-deux analyses ont été écrites en trois jours
+   * sans identifiant — dont Barcelone, le Real, Liverpool, Arsenal et l'Inter.
+   * Le mur de preuves est resté figé au 16 août sans qu'aucune erreur ne soit
+   * signalée nulle part : rien ne plantait, la preuve ne naissait simplement
+   * jamais.
+   *
+   * Renseigné dès que la rencontre est identifiée, plus bas. `respond` le lit
+   * au moment de l'appel, donc après.
+   */
+  let fixtureIdResolu: number | null = null;
+
   const respond = (data: Record<string, any>, dejaEnregistre = false) => {
     if (!dejaEnregistre) {
       enregistrerAnalyse({
         userId: guard.user.id,
+        fixtureId: fixtureIdResolu,
         equipe1: { id: team1.id, name: team1.name, logo: team1.logo, league: team1.league },
         equipe2: { id: team2.id, name: team2.name, logo: team2.logo, league: team2.league },
         donnees: data,
@@ -585,6 +609,17 @@ export async function POST(req: Request) {
   const targetFutureMatch = futureMatches.length > 0 ? futureMatches[futureMatches.length - 1] : null;
   const targetPastMatch = pastMatches.length > 0 ? pastMatches[0] : null;
 
+  // ── LA RENCONTRE EST IDENTIFIÉE : ON RETIENT SON NUMÉRO ────────────────────
+  //
+  // Dans l'ordre où l'analyse s'y intéresse : la rencontre à venir est celle
+  // qu'on pronostique, le direct vient ensuite, le passé en dernier. C'est ce
+  // numéro qui permettra d'aller chercher le résultat et de juger le pronostic.
+  fixtureIdResolu =
+    targetFutureMatch?.fixture?.id ??
+    matchDirect?.fixtureId ??
+    targetPastMatch?.fixture?.id ??
+    null;
+
   // ── SECONDE CHANCE POUR LE DIRECT ──────────────────────────────────────────
   //
   // La rencontre en cours finit par apparaître dans l'historique des
@@ -614,6 +649,10 @@ export async function POST(req: Request) {
       console.log(
         `[BACKEND_ANALYZE] Direct récupéré par l'historique (${matchDirect.buts1}-${matchDirect.buts2}, ${matchDirect.statut}).`
       );
+      // Le direct a été retrouvé par la seconde source, après le premier
+      // relevé : sans cette ligne, l'analyse d'un match en cours repartirait
+      // sans identifiant et ne serait jamais vérifiable.
+      fixtureIdResolu ??= matchDirect.fixtureId;
     }
   }
 
