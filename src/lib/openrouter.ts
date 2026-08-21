@@ -137,11 +137,30 @@ export const MODELE_ECONOMIQUE = 'openai/gpt-oss-120b';
  * couvre plus. C'est ce qui a produit les « can only afford N » du 19 août,
  * cent cinquante analyses perdues en trois heures.
  *
- * 2 500 laisse près du double de la plus longue analyse jamais observée. Une
- * réponse ne peut donc pas être tronquée par ce plafond ; elle a simplement
- * cessé de bloquer quinze fois trop de crédit.
+ * ── CETTE MESURE ÉTAIT FAUSSE, ET ELLE A COÛTÉ CHER ──────────────────────
+ *
+ * Le 21 août à 12 h 30, cette valeur a été ramenée à 2 500 sur la foi des
+ * chiffres ci-dessus. Trois heures plus tard, un abonné PRO ELITE recevait un
+ * « Scénario #1 » réduit à un mot : « Beti ». Le modèle était coupé en pleine
+ * phrase, et tous ceux qui avaient payé ce jour-là ont reçu cela.
+ *
+ * L'erreur de méthode : les tailles mesurées venaient d'`analysis_data`, la
+ * version CONSERVÉE de l'analyse — réduite, allégée, débarrassée de ce qui ne
+ * sert plus après coup. La réponse BRUTE du modèle est bien plus volumineuse :
+ * elle contient sept sections détaillées, trois scénarios complets, les
+ * comparaisons et les métriques, dont l'essentiel est consommé puis jeté.
+ *
+ * Mesurer la sortie d'un tuyau pour en déduire ce qui entre dedans ne pouvait
+ * pas marcher.
+ *
+ * On revient donc à 8 000, la valeur qui n'a jamais tronqué personne. Le
+ * gaspillage de crédit qu'elle représente est réel, mais il est mille fois
+ * préférable à une analyse coupée servie à quelqu'un qui vient de payer.
+ *
+ * Toute réduction future devra être mesurée sur la réponse BRUTE du modèle —
+ * `result.texte` avant décodage — et sur plusieurs centaines de cas.
  */
-export const JETONS_REPONSE = 2500;
+export const JETONS_REPONSE = 8000;
 
 /**
  * Lit le nombre de jetons réellement finançables dans un refus de paiement.

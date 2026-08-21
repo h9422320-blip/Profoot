@@ -853,18 +853,26 @@ test('la réponse du modèle est validée DANS la cascade', () => {
 test('la réservation de jetons reste proportionnée aux analyses réelles', async () => {
   const { JETONS_REPONSE } = await import('../src/lib/openrouter');
 
-  // Mesure sur 119 analyses conservées en base : médiane 524 jetons,
-  // maximum 1 322. En dessous de 1 500, une réponse longue serait tronquée.
+  // ── LE SEUIL A ETE RELEVE APRES UNE TRONCATURE EN PRODUCTION ──────────
+  //
+  // Il valait 1500, sur la foi d une mesure faite sur analysis_data -- la
+  // version CONSERVEE de l analyse, reduite. La reponse BRUTE du modele est
+  // bien plus grosse : sept sections, trois scenarios, comparaisons et
+  // metriques, dont l essentiel est consomme puis jete.
+  //
+  // Consequence le 21 aout : un abonne PRO ELITE a recu un Scenario #1 reduit
+  // a un mot, « Beti ». Mesurer la sortie d un tuyau ne dit rien de ce qui y
+  // entre.
   assert.ok(
-    JETONS_REPONSE >= 1500,
-    `Réservation de ${JETONS_REPONSE} jetons : la plus longue analyse observée en fait 1 322, ` +
-      `elle serait coupée.`
+    JETONS_REPONSE >= 6000,
+    `Reservation de ${JETONS_REPONSE} jetons : la reponse brute du modele contient sept ` +
+      `sections et trois scenarios. En dessous de 6000, elle est coupee en pleine phrase.`
   );
 
   // Au-delà, on bloque du crédit pour rien — c'est ce qui a produit les
   // « can only afford N » du 19 août, 150 analyses perdues en trois heures.
   assert.ok(
-    JETONS_REPONSE <= 4000,
+    JETONS_REPONSE <= 12000,
     `Réservation de ${JETONS_REPONSE} jetons pour une analyse qui en fait 524 en médiane : ` +
       `OpenRouter bloque ce crédit avant d'envoyer, et refuse quand le solde ne le couvre plus.`
   );
