@@ -1610,16 +1610,38 @@ export default function AnalyzePage({
                   pour ces deux équipes à partir de leurs vraies données.
                   L'affichage de l'abonné, lui, ne change pas d'un caractère. */}
               {result.locked ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">🔍</span>
-                    <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Ce que dit l&apos;analyse</h4>
+                /* ── L'AVANT-GOÛT : DU RÉCIT, JAMAIS DE CHIFFRE EXPLOITABLE ──
+                   Mêmes blocs que pour un abonné — Résumé rapide puis
+                   Scénario #1 — mais leur contenu est écrit pour donner envie,
+                   pas pour répondre. Le lecteur repart avec le contexte et les
+                   intentions des deux camps ; ni score, ni probabilité, ni
+                   buts attendus ne quittent le serveur. */
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">🔍</span>
+                      <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Résumé rapide</h4>
+                    </div>
+                    <p className="text-[13px] text-white/80 leading-relaxed font-medium">
+                      {result.apercuResume}
+                      <br/><br/>
+                      <span className="text-[10px] text-[#10B981] italic font-semibold">Généré à partir de millions de données et de l&apos;actualité foot.</span>
+                    </p>
                   </div>
-                  <p className="text-[13px] text-white/80 leading-relaxed font-medium">
-                    {result.apercu}
-                    <br/><br/>
-                    <span className="text-[10px] text-[#10B981] italic font-semibold">Généré à partir de millions de données et de l&apos;actualité foot.</span>
-                  </p>
+
+                  {result.apercuScenario && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📌</span>
+                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Scénario #1</h4>
+                      </div>
+                      <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[14px]">
+                        <p className="text-[13px] text-white/80 leading-relaxed font-medium">
+                          {result.apercuScenario}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-6">

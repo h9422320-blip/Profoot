@@ -41,24 +41,46 @@ const JETONS_MAX = 220;
 /** Au-delà, on n'attend plus : le gabarit part et le visiteur ne voit rien. */
 const DELAI_MS = 12_000;
 
-const CONSIGNE = `Tu rédiges la bande-annonce d'une analyse de match de football, destinée à un visiteur qui n'a pas encore payé.
+/**
+ * ── CE QUE L'AVANT-GOÛT DONNE, ET CE QU'IL RETIENT ─────────────────────────
+ *
+ * La règle a été établie en observant ce que fait un concurrent qui vend, lui :
+ * il donne du RÉCIT, jamais des CHIFFRES EXPLOITABLES.
+ *
+ * Un lecteur repart avec le contexte du match et la manière dont les deux
+ * équipes vont l'aborder. Il ne repart avec AUCUNE donnée sur laquelle il
+ * pourrait parier : ni score, ni probabilité, ni buts attendus. Pour ça, il
+ * paie.
+ *
+ * Notre erreur était l'inverse : on servait « 2-1 », « 1.9 contre 1.36 »,
+ * « 40/26/34 ». Des chiffres directement utilisables — et donc plus aucune
+ * raison de payer.
+ *
+ * S'y ajoute une exigence qui nous est propre : le récit reste ÉQUILIBRÉ. On
+ * décrit les intentions des deux équipes sans dire laquelle prendra le dessus.
+ */
+const CONSIGNE = `Tu rédiges l'avant-goût gratuit d'une analyse de match de football, pour un visiteur qui n'a pas encore payé.
 
-TON RÔLE : donner envie de débloquer l'analyse complète, SANS jamais en révéler le contenu.
+Tu produis EXACTEMENT deux paragraphes, séparés par une ligne contenant seulement ---
+
+PARAGRAPHE 1 — LE CONTEXTE (2 à 3 phrases)
+Qui reçoit qui, dans quelle compétition, et l'état de forme réel des deux équipes d'après les chiffres fournis. Ton de journaliste sportif qui plante le décor.
+
+PARAGRAPHE 2 — LE SCÉNARIO TACTIQUE (3 à 4 phrases)
+Comment chaque équipe va aborder la rencontre : ses intentions, ses points d'appui, ce sur quoi elle va s'appuyer et ce qu'elle devra surveiller. Décris les DEUX camps avec le même soin.
 
 RÈGLES ABSOLUES — leur violation rend le texte inutilisable :
-- N'annonce JAMAIS de vainqueur, ni qui est favori, ni qui va perdre.
 - N'écris JAMAIS de score, même approximatif.
 - N'écris JAMAIS de pourcentage, de probabilité, de cote ni de "buts attendus".
 - N'écris JAMAIS de niveau de confiance.
 - N'invente aucun nom de joueur, aucune minute, aucun but.
-- N'emploie pas les mots : favori, vainqueur, gagnera, l'emportera, dominera, devrait s'imposer.
+- Ne dis JAMAIS laquelle des deux équipes prendra le dessus, ni qui est favori. Pas de "devrait l'emporter", "la pression finira par payer", "logiquement", "sur le papier supérieur".
+- Les deux équipes reçoivent un traitement ÉQUILIBRÉ : le lecteur ne doit pas pouvoir deviner l'issue.
 
 CE QUE TU DOIS FAIRE :
-- Décris un atout RÉEL de CHAQUE équipe, tiré uniquement des chiffres fournis.
-- Reste ÉQUILIBRÉ : le lecteur ne doit pas pouvoir deviner qui va gagner. Même une équipe en difficulté reçoit un argument crédible.
-- Termine en disant qu'une analyse complète existe, avec son verdict, sans le donner.
-- 3 à 4 phrases. Français naturel, ton de journaliste sportif. Aucune liste, aucun titre.
-- Ne répète pas les chiffres bruts tels quels : raconte-les.`;
+- Appuie-toi UNIQUEMENT sur les chiffres fournis. N'invente rien.
+- Raconte les chiffres, ne les recopie pas bruts.
+- Français naturel, aucune liste, aucun titre, aucune puce.`;
 
 /**
  * Ce texte trahit-il le verdict ?
@@ -70,6 +92,18 @@ export function trahitLeVerdict(texte: string): string | null {
   const t = String(texte ?? '');
 
   const CONTROLES: [string, RegExp][] = [
+    // ── CE QUI BASCULE LE RÉCIT EN PRONOSTIC ────────────────────────────
+    //
+    // Le récit a le droit de décrire les intentions des deux camps. Il n'a
+    // pas le droit de dire lequel prendra le dessus : c'est la décision du
+    // propriétaire, et c'est ce qui distingue un avant-goût d'une réponse.
+    //
+    // Les tournures listées ici sont celles qu'un modèle emploie
+    // spontanément quand il croit devoir conclure.
+    [
+      'une issue annoncée',
+      /\b(?:devrait\s+(?:finir\s+par|logiquement)|finir[a]?\s+par\s+(?:payer|porter\s+ses\s+fruits)|prendre\s+le\s+dessus|faire\s+la\s+différence\s+au\s+final|sur\s+le\s+papier\s+supérieur|a\s+les\s+faveurs)\b/i,
+    ],
     // ── UN SCORE, PAS UN BILAN ────────────────────────────────────────────
     //
     // Le motif simple attrapait « 1-1-3 », qui est un bilan V-N-D parfaitement
@@ -152,10 +186,50 @@ function resumerForme(nom: string, f?: FormeEquipe): string {
 }
 
 export interface ResultatApercu {
-  texte: string;
+  /** Le bloc « Résumé rapide » : le décor et l'état des deux équipes. */
+  resume: string;
+  /** Le bloc « Scénario #1 » : les intentions des deux camps, sans verdict. */
+  scenario: string;
   source: 'ia' | 'reserve' | 'gabarit';
   /** Renseigné quand une sortie du modèle a été rejetée. */
   rejet?: string;
+}
+
+/**
+ * Le scénario de secours, composé mécaniquement.
+ *
+ * Il décrit ce que chaque équipe va chercher à faire, déduit de ses chiffres —
+ * jamais qui va gagner. Volontairement neutre : c'est un filet, pas une
+ * prédiction.
+ */
+function scenarioGabarit(
+  nom1: string,
+  nom2: string,
+  f1?: FormeEquipe,
+  f2?: FormeEquipe
+): string {
+  const intention = (nom: string, f?: FormeEquipe): string => {
+    const joues = Math.max(1, Number(f?.played ?? 0) || 1);
+    const pour = Number(f?.goalsScored ?? 0) / joues;
+    const contre = Number(f?.goalsConceded ?? 0) / joues;
+    const poss = Number(f?.avgPossession ?? 0);
+
+    if (poss >= 58)
+      return `${nom} cherchera à garder le ballon, à étirer le bloc adverse et à installer son jeu dans le camp d'en face`;
+    if (poss > 0 && poss <= 43)
+      return `${nom} devrait laisser le ballon, se regrouper bas et frapper sur les transitions rapides`;
+    if (pour >= 1.8 && pour < 4)
+      return `${nom} misera sur son volume offensif et cherchera à peser haut sur la défense adverse`;
+    if (contre >= 1.6 && contre < 4)
+      return `${nom} devra d'abord resserrer ses lignes avant de songer à se projeter`;
+    return `${nom} tentera d'imposer son rythme et de s'appuyer sur ses points forts du moment`;
+  };
+
+  return [
+    `${intention(nom1, f1)}.`,
+    `De l'autre côté, ${intention(nom2, f2).replace(new RegExp(`^${nom2}\\s`), `${nom2} `)}.`,
+    `La rencontre se jouera sur la capacité de chacun à imposer son plan et à contrarier celui d'en face.`,
+  ].join(' ');
 }
 
 /**
@@ -172,7 +246,14 @@ export async function obtenirApercu(
   forme2?: FormeEquipe,
   contexte?: { competition?: string | null; stade?: string | null }
 ): Promise<ResultatApercu> {
-  const gabarit = () => composerApercu(nom1, nom2, forme1, forme2, contexte);
+  // Le filet : les deux mêmes blocs, composés mécaniquement. Sûrs par
+  // construction — aucune de ces phrases ne peut contenir un chiffre du
+  // verdict, puisque le verdict n'entre pas dans leur composition.
+  const gabarit = (): ResultatApercu => ({
+    resume: composerApercu(nom1, nom2, forme1, forme2, contexte),
+    scenario: scenarioGabarit(nom1, nom2, forme1, forme2),
+    source: 'gabarit',
+  });
   const cle = cleDe(nom1, nom2);
   const affiche = `${nom1} — ${nom2}`;
 
@@ -190,16 +271,16 @@ export async function obtenirApercu(
       `[APERÇU] ${affiche} | source=${r.source}` +
         (r.rejet ? ` | rejet=${r.rejet}` : '') +
         (detail ? ` | ${detail}` : '') +
-        ` | ${r.texte.length} caractères`
+        ` | ${r.resume.length}+${r.scenario.length} caractères`
     );
     return r;
   };
 
   // ── UNE SEULE GÉNÉRATION PAR MATCH ───────────────────────────────────────
   try {
-    const enBase = await lireReserve<string>(cle);
-    if (enBase && !enBase.expiree && typeof enBase.contenu === 'string' && enBase.contenu.length > 80)
-      return tracer({ texte: enBase.contenu, source: 'reserve' }, 'aucun appel payé');
+    const enBase = await lireReserve<{ resume: string; scenario: string }>(cle);
+    if (enBase && !enBase.expiree && enBase.contenu?.resume && enBase.contenu?.scenario)
+      return tracer({ ...enBase.contenu, source: 'reserve' }, 'aucun appel payé');
   } catch (e: any) {
     console.warn(`[APERÇU] ${affiche} | réserve illisible (${e?.message}) — on régénère.`);
   }
@@ -207,10 +288,7 @@ export async function obtenirApercu(
   // La cause n°1 observée en production : la clé n'est pas lue côté serveur.
   // On le DIT, au lieu de retomber silencieusement sur le gabarit.
   if (!openRouterDisponible())
-    return tracer(
-      { texte: gabarit(), source: 'gabarit' },
-      'CAUSE=OPENROUTER_API_KEY absente de l’environnement serveur'
-    );
+    return tracer(gabarit(), 'CAUSE=OPENROUTER_API_KEY absente de l’environnement serveur');
 
   const decor = [contexte?.competition, contexte?.stade].filter(Boolean).join(", ");
   const invite = [
@@ -233,28 +311,39 @@ export async function obtenirApercu(
     const brut = await appelerOpenRouter(MODELE_ECONOMIQUE, invite, horloge.signal, CONSIGNE);
     clearTimeout(minuteur);
 
-    const texte = String(brut ?? '')
-      .replace(/^["'«\s]+|["'»\s]+$/g, '')
-      .replace(/\s*\n+\s*/g, ' ')
-      .trim();
+    // Le modèle rend deux paragraphes séparés par une ligne de tirets.
+    const morceaux = String(brut ?? '').split(/^\s*-{3,}\s*$/m);
+    const propre = (s: string) =>
+      String(s ?? '')
+        .replace(/^["'«\s]+|["'»\s]+$/g, '')
+        .replace(/\s*\n+\s*/g, ' ')
+        .trim();
 
-    const faute = trahitLeVerdict(texte);
+    const resume = propre(morceaux[0]);
+    const scenario = propre(morceaux[1] ?? '');
+
+    // Deux paragraphes attendus. Un seul veut dire que le format n'a pas été
+    // suivi — et un bloc « Scénario » vide serait pire que pas de bloc du tout,
+    // c'est exactement ce qu'on vient de corriger côté affichage.
+    const faute = !scenario
+      ? 'format à deux paragraphes non respecté'
+      : trahitLeVerdict(`${resume} ${scenario}`);
+
     if (faute) {
       // On ne réessaie pas : un second appel coûterait autant et rien ne dit
       // qu'il ferait mieux. Le gabarit, lui, est sûr.
       //
       // Le texte rejeté est journalisé en entier : c'est la seule façon de
       // resserrer la consigne plutôt que de deviner ce que le modèle écrit.
-      console.warn(`[APERÇU] ${affiche} | REJETÉ (${faute}) | texte reçu : « ${texte.slice(0, 300)} »`);
-      return tracer({ texte: gabarit(), source: 'gabarit', rejet: faute }, `${Date.now() - debut} ms`);
+      console.warn(
+        `[APERÇU] ${affiche} | REJETÉ (${faute}) | texte reçu : « ${`${resume} ${scenario}`.slice(0, 300)} »`
+      );
+      return tracer({ ...gabarit(), rejet: faute }, `${Date.now() - debut} ms`);
     }
 
-    const final = /Débloquez/i.test(texte)
-      ? texte
-      : `${texte} Débloquez l'analyse complète pour tout voir.`;
-
-    void ecrireReserve(cle, final, TTL);
-    return tracer({ texte: final, source: 'ia' }, `${Date.now() - debut} ms | mis en réserve ${TTL / 3600000} h`);
+    const contenu = { resume, scenario };
+    void ecrireReserve(cle, contenu, TTL);
+    return tracer({ ...contenu, source: 'ia' }, `${Date.now() - debut} ms | mis en réserve ${TTL / 3600000} h`);
   } catch (e: any) {
     clearTimeout(minuteur);
     const cause =
@@ -262,6 +351,6 @@ export async function obtenirApercu(
         ? `délai de ${DELAI_MS} ms dépassé`
         : `${e?.status ? `HTTP ${e.status} — ` : ''}${e?.message ?? 'erreur inconnue'}`;
     console.error(`[APERÇU] ${affiche} | ÉCHEC DE L'APPEL | CAUSE=${cause} | ${Date.now() - debut} ms`);
-    return tracer({ texte: gabarit(), source: 'gabarit' }, `cause : ${cause}`);
+    return tracer(gabarit(), `cause : ${cause}`);
   }
 }

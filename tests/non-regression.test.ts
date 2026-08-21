@@ -298,10 +298,16 @@ test('le code ne publie jamais une preuve dont l\'issue est fausse', () => {
 //  Ces trois tests couvrent les DEUX portes par lesquelles l'analyse sortait :
 //  la route d'analyse (`toTeaser`) et la route d'historique.
 
+// La CONFIANCE n'est plus dans cette liste, et c'est une décision assumée du
+// 21 août : elle indique la solidité des données du match, pas l'issue. La
+// montrer fait sentir qu'un verdict net existe derrière le mur sans livrer la
+// moindre donnée sur laquelle parier.
+//
+// La règle qui gouverne le découpage : on donne du RÉCIT et des INDICATEURS,
+// jamais des CHIFFRES EXPLOITABLES.
 const CHAMPS_VERROUILLES = [
   'predictedScore', 'winner', 'winProb', 'drawProb', 'loseProb',
-  'confidence', 'confidenceLabel', 'expectedGoals', 'scenarios',
-  'scenario', 'sections', 'quickSummary',
+  'expectedGoals', 'scenarios', 'scenario', 'sections', 'quickSummary',
 ];
 
 const analyseComplete = (t1: string, t2: string, f1: any, f2: any) => ({
@@ -349,7 +355,6 @@ test("aucune valeur payante ne subsiste dans le JSON servi au gratuit", async ()
     ['le score prédit', /\b2\s*-\s*1\b/],
     ['les buts attendus', /\b1\.9\b|\b1\.36\b/],
     ['une probabilité', /\b52\b|\b26\b.*%|\b22\b.*%/],
-    ['le libellé de confiance', /très élevée/i],
     ['un nom de buteur', /mendy/i],
     ["l'expression « buts attendus »", /buts attendus/i],
   ] as [string, RegExp][])
@@ -368,7 +373,7 @@ test("l'aperçu gratuit est spécifique à chaque affiche", async () => {
 
   const textes: string[] = [];
   for (const [t1, t2, f1, f2] of AFFICHES)
-    textes.push(String((await toTeaser(analyseComplete(t1, t2, f1, f2)) as any).apercu));
+    textes.push(String((await toTeaser(analyseComplete(t1, t2, f1, f2)) as any).apercuResume));
 
   assert.equal(
     new Set(textes).size,
@@ -405,11 +410,22 @@ test("la liste des champs autorisés n'accueille plus le verdict", () => {
   const source = lire('src/lib/analysis-teaser.ts');
   const bloc = source.slice(source.indexOf('TEASER_FIELDS'), source.indexOf('] as const'));
 
-  for (const interdit of ['quickSummary', 'confidence', 'scenario'])
+  // Ces trois-là donnaient la réponse : le résumé nomme le favori et cite les
+  // buts attendus, le scénario finit par le score, et la liste des scénarios
+  // contient buteurs et minutes.
+  for (const interdit of ['quickSummary', 'scenario', 'scenarios', 'predictedScore', 'winProb', 'expectedGoals'])
     assert.ok(
-      !new RegExp(`^\s*'${interdit}',`, 'm').test(bloc),
+      !new RegExp(`^\\s*'${interdit}',`, 'm').test(bloc),
       `« ${interdit} » est revenu dans les champs servis aux comptes gratuits.`
     );
+
+  // La confiance, elle, est autorisée depuis le 21 août : elle dit la solidité
+  // des données, pas l'issue. Si elle disparaît, l'avant-goût perd le signal
+  // qui fait sentir qu'un verdict net attend derrière le mur.
+  assert.ok(
+    /^\s*'confidence',/m.test(bloc),
+    "La confiance a été retirée des champs gratuits : l'avant-goût perd ce qui donne envie de payer."
+  );
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

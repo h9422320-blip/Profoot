@@ -49,11 +49,24 @@ const TEASER_FIELDS = [
   // Un visiteur avait donc l'analyse entière sans payer. Les ventes se sont
   // arrêtées net.
   //
-  // Ils sont remplacés par `apercu` : une bande-annonce composée à partir des
-  // mêmes données de forme, spécifique à chaque affiche, équilibrée entre les
-  // deux équipes, et qui ne peut structurellement pas révéler le verdict —
-  // aucune de ces valeurs n'entre dans sa composition.
+  // `quickSummary` et `scenarios` sont remplacés par `apercuResume` et
+  // `apercuScenario` : deux blocs écrits pour donner envie, équilibrés entre
+  // les deux équipes, et qui ne peuvent structurellement pas révéler le
+  // verdict — aucune valeur du verdict n'entre dans leur composition.
   'globalForm',
+
+  // ── LA CONFIANCE REVIENT, ET C'EST DÉLIBÉRÉ ─────────────────────────────
+  //
+  // Elle avait été retirée avec le reste. Mais elle ne dit pas QUI gagne : elle
+  // dit à quel point les données du match sont solides. Un lecteur qui voit
+  // « Très élevée » sait qu'un verdict net existe derrière le mur — c'est
+  // précisément ce qui donne envie de payer, sans rien livrer d'exploitable.
+  //
+  // La règle qui gouverne tout ce fichier : on donne du RÉCIT et des
+  // INDICATEURS, jamais des CHIFFRES SUR LESQUELS ON PEUT PARIER. Le score,
+  // les probabilités et les buts attendus restent dehors.
+  'confidence',
+  'confidenceLabel',
 ] as const;
 
 export interface TeaserResult {
@@ -132,7 +145,8 @@ export async function toTeaser(
     data?.globalForm?.team2,
     { competition: data?.competition ?? null, stade: data?.venue ?? null }
   );
-  teaser.apercu = apercu.texte;
+  teaser.apercuResume = apercu.resume;
+  teaser.apercuScenario = apercu.scenario;
 
   return {
     ...teaser,
