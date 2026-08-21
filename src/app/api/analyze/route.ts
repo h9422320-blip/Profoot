@@ -522,7 +522,7 @@ export async function POST(req: Request) {
             debloqueParAchat: !guard.entitlements.premium,
           }
         : {
-            ...(await toTeaser(data)),
+            ...(await toTeaser(data, team1.name, team2.name)),
             quota,
             // L offre a l unite est decrite ICI et nulle part ailleurs : le
             // prix et l identifiant du produit vivent cote serveur, et le
@@ -1552,8 +1552,8 @@ ${estApercu ? `{
     // Merge API basic data to keep the interface working
     parsedData.isFinished = false;
     parsedData.globalForm = {
-      team1: { recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1, cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1, winStreak: winStreak1 },
-      team2: { recentMatches: recent2, goalsScored: baseGoalsFor2, goalsConceded: baseGoalsAgainst2, cleanSheets: s2r.clean_sheet?.total || 0, avgPossession: baseAvgPossession2, winStreak: winStreak2 }
+      team1: { recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1, cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1, winStreak: winStreak1, played: played1, name: team1.name },
+      team2: { recentMatches: recent2, goalsScored: baseGoalsFor2, goalsConceded: baseGoalsAgainst2, cleanSheets: s2r.clean_sheet?.total || 0, avgPossession: baseAvgPossession2, winStreak: winStreak2, played: played2, name: team2.name }
     };
 
     console.log(`[BACKEND_ANALYZE] Gemini analysis & prediction completed successfully.`);
@@ -1622,8 +1622,8 @@ ${estApercu ? `{
         { title: "Contexte & Enjeux du Match", icon: "Trophy", content: "Chaque équipe cherchera à imposer son rythme dès le début du match pour asseoir sa domination et prendre une option sur la victoire." }
       ],
       globalForm: {
-        team1: { recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1, cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1, winStreak: winStreak1 },
-        team2: { recentMatches: recent2, goalsScored: baseGoalsFor2, goalsConceded: baseGoalsAgainst2, cleanSheets: s2r.clean_sheet?.total || 0, avgPossession: baseAvgPossession2, winStreak: winStreak2 }
+        team1: { recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1, cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1, winStreak: winStreak1, played: played1, name: team1.name },
+        team2: { recentMatches: recent2, goalsScored: baseGoalsFor2, goalsConceded: baseGoalsAgainst2, cleanSheets: s2r.clean_sheet?.total || 0, avgPossession: baseAvgPossession2, winStreak: winStreak2, played: played2, name: team2.name }
       }
     });
 

@@ -520,3 +520,92 @@ test('le gabarit de secours passe son propre garde-fou', async () => {
     );
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  21 AOÛT 2026 — L'APERÇU AFFICHAIT DES ABSURDITÉS EN PRODUCTION
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Texte réellement affiché à un compte gratuit sur Rennes — PSG :
+//
+//    « La première équipe reste sur 17 victoires de rang, et son attaque
+//      tourne à 11.8 buts par match. Face à lui, La seconde reste sur 24
+//      victoires de rang… »
+//
+//  Trois défauts distincts, tous visibles par n'importe quel amateur :
+//
+//    1. Les noms manquaient — l'analyse ne porte pas de champ `team1` au
+//       premier niveau, seulement `globalForm.team1`.
+//    2. « 17 victoires de rang » sous un bilan de 1-1-3 : `winStreak` donne le
+//       TOTAL de victoires de la saison, pas une série en cours.
+//    3. « 11.8 buts par match » : `goalsScored` compte toute la saison et
+//       était divisé par cinq matchs.
+
+test("l'aperçu nomme toujours les deux équipes", async () => {
+  const { composerApercu } = await import('../src/lib/apercu-vendeur');
+
+  // Données telles que l'API les rend : totaux de saison.
+  const RENNES = { recentMatches: ['W','D','L','L','L'], goalsScored: 59, goalsConceded: 48, cleanSheets: 8, avgPossession: 52, winStreak: 17, played: 38 };
+  const CITY = { recentMatches: ['L','D','W','W','L'], goalsScored: 96, goalsConceded: 34, cleanSheets: 15, avgPossession: 65, winStreak: 28, played: 38 };
+
+  for (const [a, b, f1, f2] of [
+    ['Rennes', 'Paris Saint Germain', RENNES, CITY],
+    ['Manchester City', 'Rennes', CITY, RENNES],
+  ] as [string, string, any, any][]) {
+    const t = composerApercu(a, b, f1, f2, { competition: 'Ligue 1', stade: 'Roazhon Park' });
+    assert.ok(t.includes(a), `« ${a} » n'est pas nommé dans son propre aperçu.`);
+    assert.ok(t.includes(b), `« ${b} » n'est pas nommé dans son propre aperçu.`);
+    assert.ok(
+      !/La première équipe|La seconde/.test(t),
+      `Le repli générique s'affiche alors que les noms sont connus : « ${t.slice(0, 90)}… »`
+    );
+  }
+});
+
+test("l'aperçu n'annonce jamais de chiffre absurde", async () => {
+  const { composerApercu } = await import('../src/lib/apercu-vendeur');
+
+  const EQUIPES = [
+    { recentMatches: ['W','D','L','L','L'], goalsScored: 59, goalsConceded: 48, cleanSheets: 8, avgPossession: 52, winStreak: 17, played: 38 },
+    { recentMatches: ['W','W','W','W','W'], goalsScored: 96, goalsConceded: 20, cleanSheets: 20, avgPossession: 68, winStreak: 30, played: 38 },
+    { recentMatches: ['L','L','L','L','L'], goalsScored: 12, goalsConceded: 70, cleanSheets: 0, avgPossession: 35, winStreak: 2, played: 38 },
+    // Début de saison : deux matchs joués, totaux minuscules.
+    { recentMatches: ['W','D'], goalsScored: 4, goalsConceded: 2, cleanSheets: 1, avgPossession: 50, winStreak: 1, played: 2 },
+  ];
+
+  for (const f1 of EQUIPES)
+    for (const f2 of EQUIPES) {
+      const t = composerApercu('Alpha', 'Beta', f1 as any, f2 as any);
+
+      // Une série ne peut pas dépasser le nombre de matchs de forme observés.
+      const serie = t.match(/reste sur (\d+) victoires consécutives/);
+      if (serie)
+        assert.ok(
+          Number(serie[1]) <= 5,
+          `Série de ${serie[1]} victoires annoncée alors que la forme n'en montre que 5 au plus.`
+        );
+
+      // Aucune équipe ne marque 4 buts par match sur une saison.
+      const moyenne = t.match(/tourne à ([\d.]+) buts par match/);
+      if (moyenne)
+        assert.ok(
+          Number(moyenne[1]) < 4,
+          `Moyenne de ${moyenne[1]} buts par match : le diviseur est faux.`
+        );
+    }
+});
+
+test('le garde-fou ne confond pas un bilan V-N-D avec un score', async () => {
+  const { trahitLeVerdict } = await import('../src/lib/apercu-ia');
+
+  // Un bilan à trois nombres est légitime dans une bande-annonce ; le rejeter
+  // faisait retomber sur le gabarit sans raison, et l'on croyait le modèle
+  // défaillant alors qu'il écrivait correctement.
+  const AVEC_BILAN =
+    "Rennes traverse une passe difficile (1-1-3 sur ses 5 derniers matchs) mais garde une attaque capable de faire la différence. Paris Saint Germain accroche régulièrement le nul (1-2-2) tout en trouvant la faille presque à chaque sortie de son côté.";
+  assert.equal(trahitLeVerdict(AVEC_BILAN), null, 'Un bilan V-N-D est pris pour un score.');
+
+  // Un vrai score, lui, doit toujours être rejeté.
+  const AVEC_SCORE =
+    "Rennes traverse une passe difficile mais garde une attaque capable de faire la différence face au Paris Saint Germain. Le match devrait se terminer sur un 2-1 au vu des dernières sorties des deux formations engagées.";
+  assert.equal(trahitLeVerdict(AVEC_SCORE), 'un score', 'Un vrai score passe le garde-fou.');
+});

@@ -38,11 +38,23 @@
 
 export interface FormeEquipe {
   recentMatches?: string[];
+  /** Buts marqués sur TOUTE la saison, pas sur les cinq derniers matchs. */
   goalsScored?: number;
   goalsConceded?: number;
   cleanSheets?: number;
   avgPossession?: number;
+  /**
+   * Nombre TOTAL de victoires de la saison — pas une série en cours.
+   *
+   * Le nom trompe, et il a trompé : lu comme une série, il a produit
+   * « Rennes reste sur 17 victoires de rang » sous une forme V-N-D de 1-1-3.
+   * Un lecteur qui suit ce club voit l'absurdité immédiatement, et cesse de
+   * croire tout le reste de la page.
+   */
   winStreak?: number;
+  /** Matchs joués sur la saison. C'est LUI qui sert de diviseur. */
+  played?: number;
+  name?: string;
 }
 
 /** Bilan lu sur les cinq dernières rencontres. */
@@ -50,12 +62,16 @@ interface Bilan {
   v: number;
   n: number;
   d: number;
+  /** Matchs joués sur la saison — le diviseur des moyennes. */
   joues: number;
+  /** Nombre de matchs visibles dans la forme récente (cinq en général). */
+  formeVus: number;
   butsPour: number;
   butsContre: number;
   clean: number;
   possession: number;
-  serie: number;
+  /** Victoires sur toute la saison. */
+  victoiresSaison: number;
 }
 
 const nombre = (v: unknown, defaut = 0): number => {
@@ -65,20 +81,50 @@ const nombre = (v: unknown, defaut = 0): number => {
 
 function lireBilan(f: FormeEquipe | undefined): Bilan {
   const matchs = Array.isArray(f?.recentMatches) ? f!.recentMatches! : [];
+
+  // ── LES LETTRES DE LA FORME ─────────────────────────────────────────────
+  //
+  // Le fournisseur écrit W (win), D (draw), L (loss). La première version
+  // comptait « D » comme une défaite ET comme un nul selon la branche : un
+  // match nul disparaissait ou devenait une défaite. On sépare proprement.
   const compter = (lettre: string) =>
-    matchs.filter((m) => String(m ?? '').toUpperCase().startsWith(lettre)).length;
+    matchs.filter((m) => String(m ?? '').toUpperCase().trim().startsWith(lettre)).length;
+
+  // Les matchs joués de la SAISON servent de diviseur, jamais les cinq derniers.
+  // Diviser un total de saison par cinq donnait « 11.8 buts par match ».
+  const joues = Math.max(1, nombre(f?.played, matchs.length || 1));
 
   return {
-    v: compter('W') + compter('V'),
-    n: compter('D') === matchs.length ? 0 : compter('N'),
-    d: compter('L') + compter('P'),
-    joues: matchs.length,
+    v: compter('W'),
+    n: compter('D'),
+    d: compter('L'),
+    joues,
+    formeVus: matchs.length,
     butsPour: nombre(f?.goalsScored),
     butsContre: nombre(f?.goalsConceded),
     clean: nombre(f?.cleanSheets),
     possession: nombre(f?.avgPossession),
-    serie: nombre(f?.winStreak),
+    victoiresSaison: nombre(f?.winStreak),
   };
+}
+
+/**
+ * La série de victoires RÉELLEMENT en cours, lue sur la forme récente.
+ *
+ * C'est la seule source honnête : le champ du fournisseur donne le total de la
+ * saison, pas une série. On compte donc les V consécutives depuis le match le
+ * plus récent.
+ *
+ * L'ordre du tableau est du PLUS RÉCENT au plus ancien.
+ */
+function serieEnCours(f: FormeEquipe | undefined): number {
+  const matchs = Array.isArray(f?.recentMatches) ? f!.recentMatches! : [];
+  let n = 0;
+  for (const m of matchs) {
+    if (String(m ?? '').toUpperCase().trim().startsWith('W')) n++;
+    else break;
+  }
+  return n;
 }
 
 /**
@@ -90,9 +136,9 @@ function lireBilan(f: FormeEquipe | undefined): Bilan {
  * L'ordre compte. Une série de victoires en cours frappe plus qu'une moyenne de
  * possession, et c'est ce qui doit sortir en premier quand il existe.
  */
-function atouts(b: Bilan, nom: string): string[] {
-  const moyennePour = b.joues > 0 ? b.butsPour / b.joues : 0;
-  const moyenneContre = b.joues > 0 ? b.butsContre / b.joues : 0;
+function atouts(b: Bilan, nom: string, serie: number): string[] {
+  const moyennePour = b.butsPour / b.joues;
+  const moyenneContre = b.butsContre / b.joues;
 
   // ── UN SEUL ATOUT PAR FAMILLE ───────────────────────────────────────────
   //
@@ -102,30 +148,51 @@ function atouts(b: Bilan, nom: string): string[] {
   //
   // Chaque famille ne propose donc qu'une seule formule, la plus forte qui
   // s'applique, et l'on prend les deux meilleures familles disponibles.
+  // La série vient de la forme récente, jamais du champ du fournisseur : celui-ci
+  // donne le total de victoires de la saison, et le lire comme une série a
+  // produit « reste sur 17 victoires de rang » sous un bilan de 1-1-3.
   const dynamique = (): string | null => {
-    if (b.serie >= 3) return `${nom} reste sur ${b.serie} victoires de rang`;
-    if (b.v >= 4 && b.joues >= 5) return `${nom} a gagné ${b.v} de ses ${b.joues} derniers matchs`;
-    if (b.serie === 2) return `${nom} enchaîne deux succès`;
-    if (b.v === 3 && b.joues >= 5)
-      return `${nom} arrive lancé avec 3 succès sur ses ${b.joues} dernières sorties`;
+    if (serie >= 3) return `${nom} reste sur ${serie} victoires consécutives`;
+    if (serie === 2) return `${nom} vient d'enchaîner deux succès`;
+    if (b.v >= 4 && b.formeVus >= 5)
+      return `${nom} a gagné ${b.v} de ses ${b.formeVus} dernières sorties`;
+    if (b.v === 3 && b.formeVus >= 5)
+      return `${nom} arrive lancé avec 3 victoires sur ses ${b.formeVus} derniers matchs`;
+    if (b.d >= 3 && b.formeVus >= 5)
+      return `${nom} traverse une passe difficile (${b.v}-${b.n}-${b.d} sur ses ${b.formeVus} derniers)`;
+    if (b.n >= 2) return `${nom} accroche régulièrement le nul (${b.v}-${b.n}-${b.d})`;
     return null;
   };
 
+  // Une moyenne au-dessus de 4 buts par match n'existe pas en football : c'est
+  // le signe que le diviseur est faux. On préfère alors ne rien dire plutôt
+  // qu'écrire une absurdité — « 11.8 buts par match » a été affiché en ligne.
+  const chiffreCredible = moyennePour > 0 && moyennePour < 4;
+
   const attaque = (): string | null => {
-    if (moyennePour >= 2) return `son attaque tourne à ${moyennePour.toFixed(1)} buts par match`;
-    if (moyennePour >= 1.5) return `son attaque marque régulièrement`;
+    if (!chiffreCredible) return null;
+    if (moyennePour >= 2.2) return `son attaque tourne à ${moyennePour.toFixed(1)} buts par match`;
+    if (moyennePour >= 1.6) return `son attaque trouve la faille presque à chaque sortie`;
+    if (moyennePour >= 1.1) return `son attaque reste capable de faire la différence`;
     return null;
   };
 
   const defense = (): string | null => {
-    if (b.clean >= 3) return `sa défense a tenu le zéro ${b.clean} fois`;
-    if (b.clean === 2) return `sa défense a déjà signé deux matchs sans encaisser`;
-    if (moyenneContre > 0 && moyenneContre <= 0.8) return `sa défense concède très peu`;
+    if (b.clean >= 4) return `sa défense a tenu le zéro à ${b.clean} reprises`;
+    if (b.clean >= 2) return `sa défense a déjà signé ${b.clean} matchs sans encaisser`;
+    if (moyenneContre > 0 && moyenneContre <= 0.9)
+      return `sa défense ne concède que ${moyenneContre.toFixed(1)} but par match`;
+    if (moyenneContre >= 1.8 && moyenneContre < 4)
+      return `sa défense reste perméable et devra hausser le ton`;
     return null;
   };
 
-  const ballon = (): string | null =>
-    b.possession >= 55 ? `il garde le ballon (${Math.round(b.possession)} % de possession)` : null;
+  const ballon = (): string | null => {
+    if (b.possession >= 58) return `il impose son jeu avec ${Math.round(b.possession)} % de possession`;
+    if (b.possession > 0 && b.possession <= 43)
+      return `il assume un rôle de contre-attaquant, ballon laissé à l'adversaire`;
+    return null;
+  };
 
   const retenus = [dynamique(), attaque(), defense(), ballon()].filter(
     (x): x is string => !!x
@@ -143,6 +210,28 @@ function atouts(b: Bilan, nom: string): string[] {
     else if (b.n >= 2) retenus.push(`${nom} sait accrocher le match nul`);
     else retenus.push(`${nom} joue sans pression et n'a plus rien à perdre`);
     retenus.push(moyenneContre >= 1.8 ? `il devra resserrer les lignes` : `il reste dangereux sur transition`);
+  }
+
+  // ── L'ÉQUIPE DOIT ÊTRE NOMMÉE ───────────────────────────────────────────
+  //
+  // Seule la famille « dynamique » porte le nom du club. Quand elle ne
+  // s'applique pas — équipe sans série ni bilan marquant —, la phrase
+  // commençait par « son attaque tourne à 2.5 buts par match » et l'on ne
+  // savait plus de qui l'on parlait. Vu en production : « De son côté, son
+  // attaque tourne… » sans que Manchester City ne soit jamais nommé.
+  //
+  // Le nom est donc greffé sur le premier atout s'il n'y figure pas déjà — en
+  // transformant le possessif plutôt qu'en collant un deux-points, qui donnait
+  // « Manchester City : son attaque tourne… », correct mais sec.
+  if (retenus.length && !retenus[0].includes(nom)) {
+    retenus[0] = retenus[0]
+      .replace(/^son attaque/, `l'attaque de ${nom}`)
+      .replace(/^sa défense/, `la défense de ${nom}`)
+      .replace(/^il impose son jeu/, `${nom} impose son jeu`)
+      .replace(/^il assume/, `${nom} assume`);
+    // Aucune tournure reconnue : on nomme quand même, plutôt que de laisser
+    // une phrase orpheline.
+    if (!retenus[0].includes(nom)) retenus[0] = `${nom} — ${retenus[0]}`;
   }
 
   // Tous les atouts trouvés sont rendus, pas seulement les deux premiers :
@@ -225,16 +314,25 @@ export function composerApercu(
   nom1: string,
   nom2: string,
   forme1?: FormeEquipe,
-  forme2?: FormeEquipe
+  forme2?: FormeEquipe,
+  /** Compétition et stade, quand ils sont connus : ils plantent le décor. */
+  contexte?: { competition?: string | null; stade?: string | null }
 ): string {
-  const e1 = String(nom1 ?? '').trim() || 'La première équipe';
-  const e2 = String(nom2 ?? '').trim() || 'La seconde';
+  // ── LE NOM VIENT D'OÙ IL EXISTE ─────────────────────────────────────────
+  //
+  // En production, l'aperçu a affiché « La première équipe reste sur… ». La
+  // cause : les noms n'étaient transmis nulle part — l'analyse ne porte pas de
+  // champ `team1` au premier niveau, seulement `globalForm.team1`. On accepte
+  // donc les deux sources, et le repli générique n'est plus qu'un dernier
+  // recours qui ne devrait jamais servir.
+  const e1 = String(nom1 || forme1?.name || '').trim() || 'La première équipe';
+  const e2 = String(nom2 || forme2?.name || '').trim() || 'La seconde';
 
   const b1 = lireBilan(forme1);
   const b2 = lireBilan(forme2);
 
-  const a1 = atouts(b1, e1);
-  const tous2 = atouts(b2, e2);
+  const a1 = atouts(b1, e1, serieEnCours(forme1));
+  const tous2 = atouts(b2, e2, serieEnCours(forme2));
 
   // ── JAMAIS LA MÊME FORMULE POUR LES DEUX ÉQUIPES ────────────────────────
   //
@@ -256,7 +354,18 @@ export function composerApercu(
 
   const tension = TENSIONS[empreinte(e2, e1) % TENSIONS.length];
 
-  return `${majuscule(phrase1)} ${majuscule(phrase2)} ${tension} Débloquez l'analyse complète pour tout voir.`;
+  // Le décor, quand il est connu : la compétition et le stade situent la
+  // rencontre en une ligne et donnent au texte l'allure d'un vrai chapeau
+  // d'article plutôt que d'une fiche statistique.
+  const comp = String(contexte?.competition ?? '').trim();
+  const stade = String(contexte?.stade ?? '').trim();
+  const ouverture = comp
+    ? `${e1} reçoit ${e2}${stade ? ` au ${stade}` : ''} pour un match de ${comp}.`
+    : '';
+
+  return [ouverture, majuscule(phrase1), majuscule(phrase2), tension, "Débloquez l'analyse complète pour tout voir."]
+    .filter(Boolean)
+    .join(' ');
 }
 
 const majuscule = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);

@@ -70,7 +70,16 @@ export function trahitLeVerdict(texte: string): string | null {
   const t = String(texte ?? '');
 
   const CONTROLES: [string, RegExp][] = [
-    ['un score', /\b\d\s*[-–—]\s*\d\b/],
+    // ── UN SCORE, PAS UN BILAN ────────────────────────────────────────────
+    //
+    // Le motif simple attrapait « 1-1-3 », qui est un bilan V-N-D parfaitement
+    // légitime dans une bande-annonce. Un garde-fou qui rejette du texte
+    // honnête est aussi nuisible qu'un garde-fou qui laisse passer : il fait
+    // retomber sur le gabarit sans raison, et l'on croit le modèle défaillant.
+    //
+    // Les deux vérifications encadrantes écartent tout groupe de trois nombres
+    // ou plus — un score n'a que deux termes.
+    ['un score', /(?<![\d]\s*[-–—]\s*)\b\d{1,2}\s*[-–—]\s*\d{1,2}\b(?!\s*[-–—]\s*\d)/],
     ['un pourcentage', /\d+\s*%/],
     ['une probabilité chiffrée', /\b\d[.,]\d{1,2}\b\s*(?:contre|vs|à)\s*\d[.,]\d{1,2}\b/],
     ['les buts attendus', /buts?\s+attendus?/i],
@@ -94,21 +103,49 @@ const cleDe = (nom1: string, nom2: string) => {
   return `apercu:${[n(nom1), n(nom2)].sort().join('-')}`;
 };
 
-/** Les chiffres transmis au modèle — et rien d'autre. */
+/**
+ * Les chiffres transmis au modèle — et rien d'autre.
+ *
+ * ── DEUX PIÈGES, LES MÊMES QUE POUR LE GABARIT ───────────────────────────
+ *
+ * `goalsScored` compte les buts de TOUTE LA SAISON, pas des cinq derniers
+ * matchs. Le diviser par cinq donnait « 11.8 buts par match », affiché tel quel
+ * en production. Le bon diviseur est `played`.
+ *
+ * `winStreak` donne le TOTAL de victoires de la saison, pas une série en cours.
+ * Le présenter comme une série a produit « 17 victoires de rang » sous un bilan
+ * de 1-1-3. La série réelle se compte sur la forme récente.
+ *
+ * Transmettre un chiffre faux au modèle, c'est lui demander d'écrire une
+ * absurdité avec application.
+ */
 function resumerForme(nom: string, f?: FormeEquipe): string {
   const m = Array.isArray(f?.recentMatches) ? f!.recentMatches! : [];
-  const compte = (l: string) => m.filter((x) => String(x ?? '').toUpperCase().startsWith(l)).length;
-  const joues = m.length || 1;
-  const pour = Number(f?.goalsScored ?? 0);
-  const contre = Number(f?.goalsConceded ?? 0);
+  const compte = (l: string) => m.filter((x) => String(x ?? '').toUpperCase().trim().startsWith(l)).length;
+
+  const joues = Math.max(1, Number(f?.played ?? 0) || m.length || 1);
+  const pour = Number(f?.goalsScored ?? 0) / joues;
+  const contre = Number(f?.goalsConceded ?? 0) / joues;
+
+  // La série RÉELLE : les victoires consécutives depuis le match le plus récent.
+  let serie = 0;
+  for (const x of m) {
+    if (String(x ?? '').toUpperCase().trim().startsWith('W')) serie++;
+    else break;
+  }
+
+  // Une moyenne au-dessus de 4 buts par match n'existe pas : plutôt que de la
+  // transmettre, on la tait. Le modèle écrira sur ce qu'il a.
+  const credible = (v: number) => v > 0 && v < 4;
 
   return [
     `${nom} :`,
     `${compte('W')} victoire(s), ${compte('D')} nul(s), ${compte('L')} défaite(s) sur ses ${m.length || 0} derniers matchs`,
-    `${(pour / joues).toFixed(1)} but(s) marqué(s) et ${(contre / joues).toFixed(1)} encaissé(s) par match`,
-    `${Number(f?.cleanSheets ?? 0)} match(s) sans encaisser`,
+    credible(pour) ? `${pour.toFixed(1)} but(s) marqué(s) par match cette saison` : '',
+    credible(contre) ? `${contre.toFixed(1)} encaissé(s) par match` : '',
+    Number(f?.cleanSheets ?? 0) > 0 ? `${Number(f!.cleanSheets)} match(s) sans encaisser` : '',
     Number(f?.avgPossession ?? 0) > 0 ? `${Math.round(Number(f!.avgPossession))} % de possession moyenne` : '',
-    Number(f?.winStreak ?? 0) >= 2 ? `série de ${Number(f!.winStreak)} victoires en cours` : '',
+    serie >= 2 ? `série de ${serie} victoires consécutives en cours` : '',
   ]
     .filter(Boolean)
     .join(', ');
@@ -132,9 +169,10 @@ export async function obtenirApercu(
   nom1: string,
   nom2: string,
   forme1?: FormeEquipe,
-  forme2?: FormeEquipe
+  forme2?: FormeEquipe,
+  contexte?: { competition?: string | null; stade?: string | null }
 ): Promise<ResultatApercu> {
-  const gabarit = () => composerApercu(nom1, nom2, forme1, forme2);
+  const gabarit = () => composerApercu(nom1, nom2, forme1, forme2, contexte);
   const cle = cleDe(nom1, nom2);
   const affiche = `${nom1} — ${nom2}`;
 
@@ -174,8 +212,9 @@ export async function obtenirApercu(
       'CAUSE=OPENROUTER_API_KEY absente de l’environnement serveur'
     );
 
+  const decor = [contexte?.competition, contexte?.stade].filter(Boolean).join(", ");
   const invite = [
-    `Match : ${nom1} contre ${nom2}.`,
+    `Match : ${nom1} recoit ${nom2}${decor ? ` (${decor})` : ""}.`,
     '',
     'Données réelles des deux équipes :',
     `- ${resumerForme(nom1, forme1)}`,

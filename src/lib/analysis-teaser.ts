@@ -91,7 +91,19 @@ const SECTIONS_ANALYSE_COMPLETE = 7;
  * Le gabarit reste le filet — il sert si le modèle est absent, trop lent, ou
  * si son texte trahit le verdict.
  */
-export async function toTeaser(data: Record<string, any>): Promise<TeaserResult> {
+export async function toTeaser(
+  data: Record<string, any>,
+  /**
+   * Les noms des deux équipes, transmis explicitement.
+   *
+   * L'analyse ne porte pas de champ `team1` au premier niveau — seulement
+   * `globalForm.team1`. Les chercher dans `data` a produit, en production,
+   * « La première équipe reste sur… » à la place de « Rennes ». On ne devine
+   * plus : l'appelant les connaît, il les donne.
+   */
+  nomEquipe1?: string,
+  nomEquipe2?: string
+): Promise<TeaserResult> {
   const teaser: Record<string, unknown> = {};
 
   for (const field of TEASER_FIELDS) {
@@ -114,10 +126,11 @@ export async function toTeaser(data: Record<string, any>): Promise<TeaserResult>
   // principale, le prompt n'étant que la seconde.
   const { obtenirApercu } = await import('./apercu-ia');
   const apercu = await obtenirApercu(
-    data?.team1?.name ?? data?.team1 ?? '',
-    data?.team2?.name ?? data?.team2 ?? '',
+    nomEquipe1 || data?.globalForm?.team1?.name || data?.team1?.name || '',
+    nomEquipe2 || data?.globalForm?.team2?.name || data?.team2?.name || '',
     data?.globalForm?.team1,
-    data?.globalForm?.team2
+    data?.globalForm?.team2,
+    { competition: data?.competition ?? null, stade: data?.venue ?? null }
   );
   teaser.apercu = apercu.texte;
 
