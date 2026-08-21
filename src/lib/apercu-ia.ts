@@ -208,11 +208,12 @@ function scenarioGabarit(
   f1?: FormeEquipe,
   f2?: FormeEquipe
 ): string {
-  const intention = (nom: string, f?: FormeEquipe): string => {
+  const intention = (nom: string, f?: FormeEquipe): string | null => {
     const joues = Math.max(1, Number(f?.played ?? 0) || 1);
     const pour = Number(f?.goalsScored ?? 0) / joues;
     const contre = Number(f?.goalsConceded ?? 0) / joues;
     const poss = Number(f?.avgPossession ?? 0);
+    const clean = Number(f?.cleanSheets ?? 0);
 
     if (poss >= 58)
       return `${nom} cherchera à garder le ballon, à étirer le bloc adverse et à installer son jeu dans le camp d'en face`;
@@ -222,12 +223,32 @@ function scenarioGabarit(
       return `${nom} misera sur son volume offensif et cherchera à peser haut sur la défense adverse`;
     if (contre >= 1.6 && contre < 4)
       return `${nom} devra d'abord resserrer ses lignes avant de songer à se projeter`;
-    return `${nom} tentera d'imposer son rythme et de s'appuyer sur ses points forts du moment`;
+    if (clean >= 3)
+      return `${nom} s'appuiera sur la solidité de son bloc pour garder la rencontre fermée`;
+    return null;
   };
 
+  // ── JAMAIS LA MÊME PHRASE POUR LES DEUX ─────────────────────────────────
+  //
+  // Vu en production : « Atalanta BC tentera d'imposer son rythme… De l'autre
+  // côté, Sassuolo tentera d'imposer son rythme… ». La formule de repli
+  // sortait deux fois dans le même paragraphe, ce qui donne un texte de
+  // machine et détruit la crédibilité du reste.
+  //
+  // Chaque camp a donc son propre repli, et ils sont différents.
+  const REPLIS = [
+    (n: string) => `${n} tentera d'imposer son rythme dès l'entame`,
+    (n: string) => `${n} s'appuiera sur ses points forts du moment pour exister dans le jeu`,
+  ];
+
+  const i1 = intention(nom1, f1) ?? REPLIS[0](nom1);
+  let i2 = intention(nom2, f2) ?? REPLIS[1](nom2);
+  // Deux équipes au profil identique produiraient la même phrase : on décale.
+  if (i2 === i1.replace(nom1, nom2)) i2 = REPLIS[1](nom2);
+
   return [
-    `${intention(nom1, f1)}.`,
-    `De l'autre côté, ${intention(nom2, f2).replace(new RegExp(`^${nom2}\\s`), `${nom2} `)}.`,
+    `${i1}.`,
+    `De l'autre côté, ${i2.charAt(0).toLowerCase()}${i2.slice(1)}.`,
     `La rencontre se jouera sur la capacité de chacun à imposer son plan et à contrarier celui d'en face.`,
   ].join(' ');
 }

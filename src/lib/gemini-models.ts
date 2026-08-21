@@ -82,7 +82,29 @@ export async function avecBasculeDeModele<T>(
   action: (modele: string, signal: AbortSignal) => Promise<T>,
   {
     budgetMs = 40000,
-    plafondMs = 26000,
+    /**
+     * Temps accordé à UNE tentative.
+     *
+     * ── POURQUOI 26 SECONDES ÉTAIT TROP COURT ─────────────────────────────
+     *
+     * Relevé sur les échecs du 20 et 21 août : douze analyses de suite
+     * interrompues, dix d'entre elles à 48 000 ms précisément. Ce nombre n'a
+     * rien d'un hasard — c'est 26 secondes pour le premier modèle, puis les
+     * 22 qui restaient pour le second. Les deux étaient coupés en pleine
+     * rédaction.
+     *
+     * L'analyse complète demande sept sections, trois scénarios et les
+     * comparaisons : aucun modèle ne rédige tout cela en vingt-six secondes.
+     * Résultat, l'ABONNÉ recevait le texte de secours — une phrase sèche et un
+     * scénario générique — pendant qu'un visiteur gratuit, lui, lisait une
+     * vraie bande-annonce. Celui qui payait recevait moins que celui qui ne
+     * payait pas.
+     *
+     * Trente-six secondes laissent au premier modèle le temps de finir, et
+     * gardent de quoi tenter un repli court. Mieux vaut une tentative qui
+     * aboutit que deux qui échouent.
+     */
+    plafondMs = 36000,
     minimumMs = 8000,
     modeles = MODELES_GEMINI,
   }: {

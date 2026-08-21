@@ -302,7 +302,10 @@ export const maxDuration = 60;
  * quand même un échec.
  */
 const LIMITE_PLATEFORME_MS = 55000;
-const RESERVE_MISE_EN_FORME_MS = 6000;
+// Ramenée de six à quatre secondes : la mise en forme mesurée prend moins
+// d'une seconde, et chaque seconde rendue au modèle est une seconde de plus
+// pour qu'il termine sa rédaction plutôt que d'être coupé.
+const RESERVE_MISE_EN_FORME_MS = 4000;
 
 /**
  * Contrôle final de cohérence, juste avant l'envoi.
@@ -1385,6 +1388,10 @@ export async function POST(req: Request) {
   }
 
   const debutAnalyse = Date.now();
+  // Retenu hors du bloc pour rester lisible depuis la reprise sur echec :
+  // sans cela, le journal ne sait pas QUEL modele a echoue.
+  let modeleReellementAppele = '';
+
   try {
     console.log(`[BACKEND_ANALYZE] Génération de la prédiction et de l'analyse experte...`);
     // Le modèle, la passerelle et le délai sont choisis plus bas, tentative par
@@ -1504,7 +1511,7 @@ ${estApercu ? `{
     // compteur unique partagé condamnait la deuxième tentative avant même
     // qu'elle commence. Le budget est calculé sur le temps réellement restant
     // avant la limite de la plateforme, moins une réserve pour la mise en forme
-    // de la réponse.
+
     const budgetModele = Math.max(
       12000,
       LIMITE_PLATEFORME_MS - (Date.now() - debutRequete) - RESERVE_MISE_EN_FORME_MS
@@ -1519,8 +1526,9 @@ ${estApercu ? `{
       economique: estApercu,
     });
 
+    modeleReellementAppele = result.modele;
     console.log(
-      `[BACKEND_ANALYZE] Réponse obtenue via ${result.passerelle} — modèle ${result.modele}.`
+      `[BACKEND_ANALYZE] Réponse obtenue via ${result.passerelle} — modèle ${result.modele} en ${Date.now() - debutAnalyse} ms.`
     );
 
     let responseText = result.texte;
@@ -1580,7 +1588,13 @@ ${estApercu ? `{
       equipe2: team2.name,
       competition: (targetFutureMatch || nextH2H)?.league?.name ?? null,
       message: String(e?.message ?? e),
-      modele: MODELES_GEMINI[0],
+      // ── LE MODÈLE RÉELLEMENT APPELÉ, PAS UNE CONSTANTE ──────────────────
+      //
+      // Cette ligne écrivait `MODELES_GEMINI[0]` en dur. Tous les échecs
+      // étaient donc attribués à « gemini-3.5-flash », y compris ceux d'un
+      // modèle OpenRouter — et l'on cherchait la panne du mauvais côté. Un
+      // journal qui ment coûte plus cher qu'un journal absent.
+      modele: modeleReellementAppele || 'inconnu',
       dureeMs: Date.now() - debutAnalyse,
       serviQuandMeme: true,
     });
