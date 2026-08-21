@@ -121,7 +121,27 @@ export const MODELE_ECONOMIQUE = 'openai/gpt-oss-120b';
  * huit. Une réponse tronquée serait pire qu'une réponse absente : elle
  * produirait un JSON illisible.
  */
-export const JETONS_REPONSE = 8000;
+/**
+ * ── MESURÉ, PAS SUPPOSÉ ───────────────────────────────────────────────────
+ *
+ * Sur 119 analyses complètes réellement produites et conservées en base :
+ *
+ *     la plus courte ....  1 460 caractères  ~  365 jetons
+ *     la médiane .......   2 094 caractères  ~  524 jetons
+ *     la plus longue ...   5 288 caractères  ~ 1 322 jetons
+ *
+ * On réservait 8 000 jetons — quinze fois ce qui est réellement écrit.
+ *
+ * Cette réservation n'est pas gratuite : OpenRouter bloque le crédit
+ * correspondant AVANT d'envoyer la requête, et refuse dès que le solde ne le
+ * couvre plus. C'est ce qui a produit les « can only afford N » du 19 août,
+ * cent cinquante analyses perdues en trois heures.
+ *
+ * 2 500 laisse près du double de la plus longue analyse jamais observée. Une
+ * réponse ne peut donc pas être tronquée par ce plafond ; elle a simplement
+ * cessé de bloquer quinze fois trop de crédit.
+ */
+export const JETONS_REPONSE = 2500;
 
 /**
  * Lit le nombre de jetons réellement finançables dans un refus de paiement.

@@ -41,7 +41,25 @@ const CACHE_TTL = {
  * secondes ferait tuer la requete et l abonne verrait « Analyse interrompue »
  * pour un detail dont il se serait passe.
  */
-async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DATA, delaiMs = 15000) {
+/**
+ * ── POURQUOI HUIT SECONDES ET NON QUINZE ──────────────────────────────────
+ *
+ * Une analyse fait VINGT-QUATRE appels à ce fournisseur avant même de
+ * s'adresser au modèle, dont plusieurs en série. À quinze secondes chacun, la
+ * collecte peut à elle seule consommer la moitié du budget de la requête.
+ *
+ * Or le budget accordé au modèle est ce qui RESTE : `55 000 ms moins le temps
+ * déjà écoulé`. Mesuré sur trente-quatre échecs, toutes les coupures tombent
+ * entre 47,7 et 50,4 secondes — c'est le budget total qui s'épuise, jamais un
+ * modèle isolé. Chaque seconde rendue ici est une seconde de plus pour que
+ * l'analyse aboutisse.
+ *
+ * Huit secondes suffisent : un appel de statistiques qui n'a pas répondu en
+ * huit secondes ne répondra pas utilement — et la réserve en base couvre déjà
+ * le cas où il ne répond pas du tout. Les appels de rattrapage, eux, gardent
+ * leur propre délai plus court, passé explicitement.
+ */
+async function fetchApiFootball(endpoint: string, ttl: number = CACHE_TTL.API_DATA, delaiMs = 8000) {
   const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
   if (!API_FOOTBALL_KEY || API_FOOTBALL_KEY === "MA_CLE_API" || API_FOOTBALL_KEY === "") {
     console.error("[BACKEND_ANALYZE] API Key missing!");

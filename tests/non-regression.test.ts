@@ -834,3 +834,50 @@ test('la réponse du modèle est validée DANS la cascade', () => {
       "échouer l'analyse entière au lieu de passer au modèle suivant."
   );
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  21 AOÛT 2026 — LE BUDGET DE TEMPS PARTAIT DANS LA COLLECTE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Sur trente-quatre échecs par délai dépassé, TOUTES les coupures tombent
+//  entre 47,7 et 50,4 secondes : c'est le budget total de la requête qui
+//  s'épuise, jamais un modèle isolé.
+//
+//  Une analyse fait vingt-quatre appels au fournisseur de données AVANT de
+//  s'adresser au modèle. À quinze secondes chacun, la collecte consommait à
+//  elle seule la moitié du budget — et le modèle héritait de ce qui restait.
+//
+//  Second gaspillage mesuré le même jour : on réservait 8 000 jetons de
+//  réponse alors que la plus longue analyse jamais produite en fait 1 322.
+
+test('la réservation de jetons reste proportionnée aux analyses réelles', async () => {
+  const { JETONS_REPONSE } = await import('../src/lib/openrouter');
+
+  // Mesure sur 119 analyses conservées en base : médiane 524 jetons,
+  // maximum 1 322. En dessous de 1 500, une réponse longue serait tronquée.
+  assert.ok(
+    JETONS_REPONSE >= 1500,
+    `Réservation de ${JETONS_REPONSE} jetons : la plus longue analyse observée en fait 1 322, ` +
+      `elle serait coupée.`
+  );
+
+  // Au-delà, on bloque du crédit pour rien — c'est ce qui a produit les
+  // « can only afford N » du 19 août, 150 analyses perdues en trois heures.
+  assert.ok(
+    JETONS_REPONSE <= 4000,
+    `Réservation de ${JETONS_REPONSE} jetons pour une analyse qui en fait 524 en médiane : ` +
+      `OpenRouter bloque ce crédit avant d'envoyer, et refuse quand le solde ne le couvre plus.`
+  );
+});
+
+test('la collecte de données ne peut plus manger le budget du modèle', () => {
+  const source = lire('src/app/api/analyze/route.ts');
+  const defaut = source.match(/async function fetchApiFootball\([^)]*delaiMs = (\d+)\)/)?.[1];
+
+  assert.ok(defaut, 'Le délai par défaut de la collecte est introuvable.');
+  assert.ok(
+    Number(defaut) <= 10000,
+    `Délai de collecte à ${defaut} ms : avec vingt-quatre appels dont plusieurs en série, ` +
+      `la collecte peut consommer tout le budget et le modèle n'a plus le temps de répondre.`
+  );
+});
