@@ -246,9 +246,22 @@ export function scenarioGabarit(
   // Deux équipes au profil identique produiraient la même phrase : on décale.
   if (i2 === i1.replace(nom1, nom2)) i2 = REPLIS[1](nom2);
 
+  // ── NE JAMAIS DÉCAPITALISER UN NOM PROPRE ───────────────────────────────
+  //
+  // La mise en minuscule après « De l'autre côté, » servait à enchaîner
+  // proprement. Elle écrivait « De l'autre côté, sassuolo devra… » — un club
+  // avec une minuscule, ce qu'aucun lecteur ne pardonne à une application qui
+  // se dit sérieuse.
+  //
+  // La phrase commence par le nom de l'équipe dans la plupart des cas : on ne
+  // touche donc à la casse QUE lorsqu'elle commence autrement.
+  const enchaine = i2.startsWith(nom2)
+    ? i2
+    : `${i2.charAt(0).toLowerCase()}${i2.slice(1)}`;
+
   return [
     `${i1}.`,
-    `De l'autre côté, ${i2.charAt(0).toLowerCase()}${i2.slice(1)}.`,
+    `De l'autre côté, ${enchaine}.`,
     `La rencontre se jouera sur la capacité de chacun à imposer son plan et à contrarier celui d'en face.`,
   ].join(' ');
 }

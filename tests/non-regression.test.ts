@@ -687,3 +687,87 @@ test("l'abonné ne reçoit jamais moins de texte que le visiteur gratuit", () =>
     "Le scénario de repli n'utilise plus le rédacteur commun : l'adversaire redeviendra anonyme."
   );
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ★ L'ACQUIS SCELLÉ — VALIDÉ PAR LE PROPRIÉTAIRE LE 21 AOÛT 2026 ★
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Le propriétaire a lu ces deux textes sur Atalanta — Sassuolo et les a
+//  validés à cent pour cent, après une nuit entière de corrections. C'est la
+//  référence : le ton, la structure, l'équilibre entre les deux équipes.
+//
+//  CE TEST EST DIFFÉRENT DES AUTRES.
+//
+//  Les autres vérifient qu'un défaut connu n'est pas revenu. Celui-ci vérifie
+//  qu'un ACQUIS n'a pas bougé. Il compare le texte mot pour mot.
+//
+//  S'IL ÉCHOUE, LISEZ LA DIFFÉRENCE AVANT DE TOUCHER À QUOI QUE CE SOIT.
+//  Deux cas seulement :
+//
+//    • Le changement est une amélioration voulue et mesurée — alors mettez la
+//      référence à jour ci-dessous, en connaissance de cause.
+//    • Le changement est un effet de bord — alors c'est le code qu'il faut
+//      corriger, pas la référence.
+//
+//  Ne mettez JAMAIS la référence à jour simplement pour faire passer le test.
+//  Ce serait retirer le cadenas au lieu d'ouvrir la porte.
+
+const ATALANTA = { recentMatches: ['D','W','L','W','W'], goalsScored: 74, goalsConceded: 42, cleanSheets: 13, avgPossession: 56, winStreak: 22, played: 38, name: 'Atalanta BC' };
+const SASSUOLO = { recentMatches: ['L','D','L','L','W'], goalsScored: 44, goalsConceded: 73, cleanSheets: 8, avgPossession: 47, winStreak: 9, played: 38, name: 'Sassuolo' };
+
+const RESUME_VALIDE =
+  "Atalanta BC reçoit Sassuolo pour un match de Serie A. Atalanta BC arrive lancé avec 3 victoires sur ses 5 derniers matchs, et son attaque trouve la faille presque à chaque sortie. De son côté, Sassuolo traverse une passe difficile (1-1-3 sur ses 5 derniers), et son attaque reste capable de faire la différence. Difficile de départager ces deux-là à l'œil nu — notre IA a passé la rencontre au crible, minute par minute. Débloquez l'analyse complète pour tout voir.";
+
+const SCENARIO_VALIDE =
+  "Atalanta BC misera sur son volume offensif et cherchera à peser haut sur la défense adverse. De l'autre côté, Sassuolo devra d'abord resserrer ses lignes avant de songer à se projeter. La rencontre se jouera sur la capacité de chacun à imposer son plan et à contrarier celui d'en face.";
+
+test('★ ACQUIS SCELLÉ — le Résumé rapide validé n\'a pas bougé', async () => {
+  const { composerApercu } = await import('../src/lib/apercu-vendeur');
+  const obtenu = composerApercu('Atalanta BC', 'Sassuolo', ATALANTA as any, SASSUOLO as any, {
+    competition: 'Serie A',
+    stade: null,
+  });
+
+  assert.equal(
+    obtenu,
+    RESUME_VALIDE,
+    "\n\n  Le Résumé rapide a changé depuis sa validation.\n" +
+      `  ATTENDU : ${RESUME_VALIDE}\n` +
+      `  OBTENU  : ${obtenu}\n`
+  );
+});
+
+test('★ ACQUIS SCELLÉ — le Scénario validé n\'a pas bougé', async () => {
+  const { scenarioGabarit } = await import('../src/lib/apercu-ia');
+  const obtenu = scenarioGabarit('Atalanta BC', 'Sassuolo', ATALANTA as any, SASSUOLO as any);
+
+  assert.equal(
+    obtenu,
+    SCENARIO_VALIDE,
+    "\n\n  Le Scénario a changé depuis sa validation.\n" +
+      `  ATTENDU : ${SCENARIO_VALIDE}\n` +
+      `  OBTENU  : ${obtenu}\n`
+  );
+});
+
+test('★ ACQUIS SCELLÉ — aucun nom de club ne perd sa majuscule', async () => {
+  // « De l'autre côté, sassuolo devra… » a été affiché en production. Un club
+  // en minuscule, c'est ce qu'aucun lecteur ne pardonne à une application qui
+  // se dit sérieuse.
+  const { scenarioGabarit } = await import('../src/lib/apercu-ia');
+
+  for (const [a, b] of [
+    ['Atalanta BC', 'Sassuolo'],
+    ['Real Madrid', 'Espanyol'],
+    ['Paris Saint Germain', 'Rennes'],
+  ] as [string, string][]) {
+    const t = scenarioGabarit(a, b, ATALANTA as any, SASSUOLO as any);
+    for (const nom of [a, b]) {
+      const enMinuscule = nom.charAt(0).toLowerCase() + nom.slice(1);
+      assert.ok(
+        !t.includes(enMinuscule) || t.includes(nom),
+        `« ${enMinuscule} » apparaît sans sa majuscule : « ${t.slice(0, 120)}… »`
+      );
+    }
+  }
+});
