@@ -388,3 +388,135 @@ test("CONTRAT — les échecs d'analyse sont visibles dans l'administration", ()
       "distingueraient plus de dix échecs répartis."
   );
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  UN MODÈLE EN PANNE NE DOIT PAS ÊTRE RÉAPPELÉ EN PREMIER
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Le 21 août, le journal de cascade a montré le même couple d'échecs quinze
+ * fois de suite, à la milliseconde près. Quinze abonnés ont attendu trente-six
+ * secondes chacun, l'un après l'autre, devant la même panne : la cascade
+ * savait basculer, mais chaque nouvelle requête repartait de la liste
+ * d'origine, comme si rien ne s'était passé.
+ */
+test("CASCADE — un modèle qui échoue la moitié du temps passe en fin de liste", async () => {
+  const { classer } = await import('../src/lib/sante-modeles');
+  const maintenant = new Date().toISOString();
+  const base = ['A', 'B', 'C'];
+
+  const ordre = classer(base, {
+    A: { ok: 0, ko: 4, depuis: maintenant },
+    B: { ok: 5, ko: 0, depuis: maintenant },
+  });
+
+  assert.equal(
+    ordre[0],
+    'B',
+    "Le modèle qui répond n'est pas passé en tête : les abonnés continueraient " +
+      "d'attendre le modèle en panne, chacun leur tour."
+  );
+  assert.equal(ordre[ordre.length - 1], 'A', "Le modèle fautif doit fermer la marche.");
+});
+
+test("CASCADE — rien n'est jamais supprimé de la liste", async () => {
+  const { classer } = await import('../src/lib/sante-modeles');
+  const maintenant = new Date().toISOString();
+  const base = ['A', 'B', 'C'];
+
+  // Même tous fautifs, les cinq modèles restent appelables : mieux vaut tenter
+  // un modèle douteux que ne rien rendre à quelqu'un qui attend.
+  const tous = classer(base, {
+    A: { ok: 0, ko: 9, depuis: maintenant },
+    B: { ok: 0, ko: 9, depuis: maintenant },
+    C: { ok: 0, ko: 9, depuis: maintenant },
+  });
+  assert.deepEqual(
+    [...tous].sort(),
+    [...base].sort(),
+    "Un modèle a disparu de la cascade. Le déclassement DÉPLACE, il ne retire jamais."
+  );
+});
+
+test("CASCADE — on ne déclasse pas sur un incident isolé", async () => {
+  const { classer } = await import('../src/lib/sante-modeles');
+  const maintenant = new Date().toISOString();
+
+  // Un seul échec arrive à tout le monde : un délai réseau, une seconde de
+  // saturation. Réorganiser la cascade là-dessus serait la réorganiser au
+  // hasard.
+  const ordre = classer(['A', 'B'], { A: { ok: 0, ko: 1, depuis: maintenant } });
+  assert.equal(ordre[0], 'A', "Un échec unique ne doit pas suffire à déclasser un modèle.");
+});
+
+test("CASCADE — un modèle rétabli retrouve sa place tout seul", async () => {
+  const { classer } = await import('../src/lib/sante-modeles');
+  const vieux = new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString();
+
+  // Sans cet oubli, la liste finirait par se vider par le bas et le classement
+  // refléterait un incident vieux de trois semaines.
+  const ordre = classer(['A', 'B'], { A: { ok: 0, ko: 20, depuis: vieux } });
+  assert.equal(
+    ordre[0],
+    'A',
+    "Les compteurs ne s'oublient plus après six heures : une panne d'une nuit " +
+      "condamnerait le modèle pour toujours."
+  );
+});
+
+test("CASCADE — la santé des modèles survit à l'instance", async () => {
+  const source = lire('src/lib/analyse-modele.ts');
+
+  // Un souvenir qui ne vit qu'en mémoire ne protège personne : chaque requête
+  // peut démarrer sur une machine neuve.
+  assert.ok(
+    /enregistrerSante\(true\)/.test(source),
+    "L'écriture forcée a disparu du chemin d'échec total. C'est pourtant le cas " +
+      "où le relevé a le plus de valeur — et celui où il serait perdu."
+  );
+  assert.ok(
+    /ordonnerModeles/.test(source),
+    "La cascade ne consulte plus la santé des modèles : elle repartirait de la " +
+      "liste d'origine à chaque requête, panne comprise."
+  );
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  PERSONNE NE PAIE UNE ANALYSE QU'IL N'A PAS REÇUE
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * La réservation du quota précède le travail — c'est elle qui empêche deux
+ * clics de compter double. Mais quand la requête s'arrêtait avant d'avoir rien
+ * rendu, la ligne de décompte restait écrite pour une analyse qui n'avait
+ * jamais existé. Sur une offre à quinze analyses par mois, c'est en vendre
+ * quatorze.
+ */
+test("QUOTA — une analyse jamais servie est rendue au compteur", () => {
+  const quota = lire('src/lib/analysis-quota.ts');
+  const route = lire('src/app/api/analyze/route.ts');
+
+  assert.ok(
+    /export async function rembourserAnalyse/.test(quota),
+    "Le remboursement a disparu : un abonné perdrait une analyse à chaque panne " +
+      "de collecte, sans que rien ne le signale."
+  );
+  assert.ok(
+    /rembourserAnalyse\(billet\.userId, billet\.matchKey\)/.test(route),
+    "La route ne rembourse plus. Le compteur affiché resterait juste — il " +
+      "compterait simplement une analyse qui n'a jamais eu lieu."
+  );
+  assert.ok(
+    /billet\.honore = true/.test(route),
+    "Le billet n'est plus honoré à la réponse : une analyse RÉELLEMENT servie " +
+      "serait remboursée, et l'offre deviendrait illimitée par accident."
+  );
+  assert.ok(
+    /!consumption\.alreadyCounted/.test(route),
+    "Le garde-fou a sauté : une analyse déjà comptée auparavant pourrait être " +
+      "effacée, alors qu'elle avait bien été servie."
+  );
+  assert.ok(
+    /serviQuandMeme: false/.test(route),
+    "Les pannes survenues AVANT l'appel au modèle ne sont plus enregistrées : " +
+      "elles n'apparaîtraient nulle part dans l'administration."
+  );
+});

@@ -157,3 +157,59 @@ export async function consumeAnalysis(
     state: { ...state, used, remaining: Math.max(0, state.limit - used) },
   };
 }
+
+/**
+ * REND L'ANALYSE AU COMPTEUR QUAND RIEN N'A ÉTÉ SERVI.
+ *
+ * ── POURQUOI C'EST NÉCESSAIRE ────────────────────────────────────────────
+ *
+ * La réservation précède volontairement le travail : c'est elle qui empêche
+ * deux clics de compter double. Mais elle a un revers. Quand la collecte des
+ * données tombe — API-Football hors service, réseau coupé — la requête
+ * s'arrête AVANT le repli, l'abonné voit « ANALYSE INTERROMPUE »… et la ligne
+ * de décompte, elle, reste écrite.
+ *
+ * Sur une offre à quinze analyses par mois, cela revient à en vendre
+ * quatorze. Personne ne le voit passer : le compteur affiché est juste, il
+ * compte simplement une analyse qui n'a jamais existé. C'est le genre de
+ * détail qui finit en réclamation, et sur lequel on n'a aucune réponse.
+ *
+ * ── CE QUI EST RENDU, ET CE QUI NE L'EST PAS ─────────────────────────────
+ *
+ * Uniquement la ligne écrite par CETTE requête. Une analyse déjà comptée
+ * auparavant — même match, même période — n'est pas touchée : elle a bel et
+ * bien été servie une première fois. C'est pour cela que l'appelant ne
+ * rembourse que lorsque `alreadyCounted` valait faux.
+ *
+ * Une analyse SERVIE, même en repli, n'est jamais remboursée non plus : la
+ * personne a reçu son score, ses probabilités et ses textes. Le remboursement
+ * ne concerne que les mains vides.
+ */
+export async function rembourserAnalyse(
+  userId: string,
+  matchKey: string
+): Promise<boolean> {
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('analysis_usage')
+      .delete()
+      .eq('user_id', userId)
+      .eq('match_key', matchKey);
+
+    if (error) {
+      console.error('[QUOTA] Remboursement impossible:', error);
+      return false;
+    }
+
+    console.warn(
+      `[QUOTA] Analyse rendue au compteur (${matchKey}) : rien n'a été servi à l'abonné.`
+    );
+    return true;
+  } catch (e) {
+    // Un remboursement raté ne doit pas masquer la panne d'origine, qui est
+    // autrement plus grave et qui, elle, est déjà enregistrée.
+    console.error('[QUOTA] Erreur de remboursement:', e);
+    return false;
+  }
+}

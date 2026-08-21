@@ -4,7 +4,7 @@ import { genererAnalyseJSON } from "@/lib/analyse-modele";
 import { PRIX_MATCH_UNIQUE, matchDebloque, matchUniqueDisponible } from "@/lib/match-unique";
 import { openRouterDisponible } from "@/lib/openrouter";
 import { requireUser } from "@/lib/subscription";
-import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-quota";
+import { consumeAnalysis, buildMatchKey, rembourserAnalyse, type QuotaState } from "@/lib/analysis-quota";
 import { toTeaser } from "@/lib/analysis-teaser";
 import { lireReserve, ecrireReserve } from "@/lib/api-football";
 import { lireCalibrages, facteursPour } from "@/lib/calibrage";
@@ -359,7 +359,91 @@ function verifierCoherence(d: Record<string, any>, contexte: string) {
     );
 }
 
+/**
+ * CE QUI A ÉTÉ PRÉLEVÉ SUR LE COMPTEUR DE L'ABONNÉ, ET QUI N'EST PAS ENCORE
+ * PAYÉ DE RETOUR.
+ *
+ * La réservation du quota précède volontairement le travail : c'est elle qui
+ * empêche deux clics de compter double. Mais si la requête s'arrête AVANT
+ * d'avoir rien rendu — collecte de données en panne, plateforme qui coupe —
+ * la ligne de décompte reste écrite pour une analyse qui n'a jamais existé.
+ *
+ * Ce billet suit la requête. Tant qu'il n'est pas « honoré », l'enveloppe
+ * extérieure sait qu'elle doit rendre l'analyse au compteur.
+ */
+type BilletQuota = {
+  userId: string;
+  matchKey: string;
+  equipe1: string;
+  equipe2: string;
+  /** Passé à vrai dès qu'une réponse — même de repli — part vers l'abonné. */
+  honore: boolean;
+};
+
+/**
+ * ── L'ENVELOPPE : PERSONNE NE PAIE POUR DU VIDE ───────────────────────────
+ *
+ * Le corps de l'analyse est protégé sur toute sa longueur, et plus seulement
+ * autour de l'appel au modèle. Entre la réservation du quota et cet appel, il
+ * y a une minute de collecte de données extérieures ; tout ce qui casse là
+ * remontait jusqu'ici sans que personne n'en sache rien :
+ *
+ *   • l'abonné voyait « ANALYSE INTERROMPUE » ;
+ *   • son compteur avait quand même reculé d'une unité ;
+ *   • l'administration n'enregistrait aucun échec, puisque le journal se
+ *     trouvait à l'intérieur du bloc qui venait d'être court-circuité.
+ *
+ * Sur une offre à quinze analyses par mois, c'est en vendre quatorze. Le
+ * compteur affiché est juste — il compte simplement une analyse qui n'a jamais
+ * eu lieu.
+ */
 export async function POST(req: Request) {
+  const billet: BilletQuota = {
+    userId: '',
+    matchKey: '',
+    equipe1: '',
+    equipe2: '',
+    honore: false,
+  };
+
+  try {
+    return await analyser(req, billet);
+  } catch (e: any) {
+    console.error('[BACKEND_ANALYZE] Analyse interrompue avant toute réponse :', e?.message ?? e);
+
+    if (billet.userId && !billet.honore) {
+      // L'échec est enregistré ICI, et pas plus haut : c'est le seul endroit
+      // qui voit les pannes survenues AVANT l'appel au modèle. Marqué « rien
+      // servi » — c'est le chiffre de l'administration qui doit rester à zéro.
+      enregistrerEchecAnalyse({
+        userId: billet.userId,
+        equipe1: billet.equipe1 || '?',
+        equipe2: billet.equipe2 || '?',
+        competition: null,
+        message: `Interrompue avant toute réponse — ${String(e?.message ?? e).slice(0, 200)}`,
+        modele: 'aucun',
+        dureeMs: 0,
+        serviQuandMeme: false,
+        pays: req.headers.get('x-vercel-ip-country') ?? null,
+      });
+
+      await rembourserAnalyse(billet.userId, billet.matchKey);
+    }
+
+    // Un message lisible plutôt qu'une erreur de plateforme : le navigateur
+    // relance tout seul, et la personne ne voit passer que l'attente.
+    return NextResponse.json(
+      {
+        error: "L'analyse n'a pas pu aboutir. Votre quota n'a pas été décompté.",
+        code: 'ANALYSIS_FAILED',
+        rembourse: true,
+      },
+      { status: 503 }
+    );
+  }
+}
+
+async function analyser(req: Request, billet: BilletQuota) {
   const debutRequete = Date.now();
   // --- PERMISSIONS ---
   // L'analyse est ouverte à tout utilisateur connecté : le modèle produit est
@@ -459,6 +543,18 @@ export async function POST(req: Request) {
     );
     quota = consumption.state;
 
+    // ── LE BILLET N'EST OUVERT QUE POUR UN VRAI PRÉLÈVEMENT ───────────────
+    //
+    // `alreadyCounted` signifie que cette analyse était déjà décomptée — même
+    // match, même période. Elle a donc déjà été servie une première fois, et
+    // la rembourser reviendrait à effacer un décompte légitime.
+    if (consumption.allowed && !consumption.alreadyCounted && !consumption.state.unlimited) {
+      billet.userId = guard.user.id;
+      billet.matchKey = quotaMatchKey;
+      billet.equipe1 = team1.name;
+      billet.equipe2 = team2.name;
+    }
+
     if (!consumption.allowed) {
       return NextResponse.json(
         {
@@ -544,6 +640,11 @@ export async function POST(req: Request) {
   let fixtureIdResolu: number | null = null;
 
   const respond = async (data: Record<string, any>, dejaEnregistre = false) => {
+    // Le billet est honoré : quelque chose part vers l'abonné — une analyse
+    // complète, un match déjà joué ou un repli, peu importe. Le décompte est
+    // alors mérité, et l'enveloppe extérieure ne le remboursera pas.
+    billet.honore = true;
+
     if (!dejaEnregistre) {
       enregistrerAnalyse({
         userId: guard.user.id,
@@ -612,7 +713,10 @@ export async function POST(req: Request) {
 
   const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
   if (!API_FOOTBALL_KEY || API_FOOTBALL_KEY === "MA_CLE_API" || API_FOOTBALL_KEY === "") {
-    return NextResponse.json({ error: "API Football non configurée." }, { status: 503 });
+    // Levé plutôt que renvoyé tel quel : l'enveloppe rend alors l'analyse au
+    // compteur et inscrit la panne dans l'administration. Une clé absente est
+    // un défaut de configuration, pas quelque chose que l'abonné doit payer.
+    throw new Error("API Football non configurée (API_FOOTBALL_KEY absente).");
   }
 
   let id1 = null; let id2 = null;
@@ -1420,9 +1524,10 @@ export async function POST(req: Request) {
   const cleGemini = process.env.GEMINI_API_KEY;
   const geminiUtilisable = !!cleGemini && cleGemini !== 'fallback_key_for_safety';
   if (!openRouterDisponible() && !geminiUtilisable) {
-    return NextResponse.json(
-      { error: "Aucune passerelle IA configurée. Renseignez OPENROUTER_API_KEY ou GEMINI_API_KEY." },
-      { status: 500 }
+    // Même raison qu'au-dessus : l'abonné ne doit pas perdre une analyse
+    // parce qu'une clé manque sur le serveur.
+    throw new Error(
+      "Aucune passerelle IA configurée : ni OPENROUTER_API_KEY ni GEMINI_API_KEY."
     );
   }
 

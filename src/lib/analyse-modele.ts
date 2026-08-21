@@ -24,6 +24,12 @@ import {
   appelerOpenRouter,
   openRouterDisponible,
 } from './openrouter';
+import {
+  ordonnerModeles,
+  noterEchec,
+  noterSucces,
+  enregistrerSante,
+} from './sante-modeles';
 
 export interface ResultatModele {
   /** Le JSON brut renvoyé par le modèle. */
@@ -109,9 +115,23 @@ export async function genererAnalyseJSON(
   }
 ): Promise<ResultatModele> {
   if (openRouterDisponible()) {
-    const base = economique
+    const choisi = economique
       ? [MODELE_ECONOMIQUE, ...MODELES_OPENROUTER.filter((m) => m !== MODELE_ECONOMIQUE)]
       : MODELES_OPENROUTER;
+
+    // ── LE CLASSEMENT TIENT COMPTE DES ÉCHECS PRÉCÉDENTS ──────────────────
+    //
+    // La cascade savait déjà changer de modèle en cours de route. Ce qu'elle
+    // ne savait pas faire, c'est s'en souvenir : la requête suivante repartait
+    // de la liste d'origine, et le modèle en panne redevenait le premier
+    // appelé. Le 21 août, quinze abonnés ont ainsi attendu trente-six secondes
+    // chacun, l'un après l'autre, devant la même panne.
+    //
+    // Un modèle qui échoue au moins une fois sur deux, sur les six dernières
+    // heures, passe maintenant EN FIN de liste. Il n'est pas supprimé — s'il
+    // faut aller jusqu'à lui, on ira. Et il retrouve sa place tout seul dès
+    // que la fenêtre se referme. Voir `sante-modeles.ts`.
+    const base = await ordonnerModeles(choisi);
 
     // Les modeles ecartes passent EN FIN de liste, jamais a la poubelle : si
     // tous les suivants echouent aussi, mieux vaut retenter le premier que ne
@@ -120,7 +140,9 @@ export async function genererAnalyseJSON(
     const modeles = n > 0 ? [...base.slice(n), ...base.slice(0, n)] : base;
 
     let retenu = modeles[0];
-    const texte = await avecBasculeDeModele(
+    let texte: string;
+    try {
+      texte = await avecBasculeDeModele(
       async (modele, signal) => {
         retenu = modele;
         const brut = await appelerOpenRouter(modele, prompt, signal, systeme);
@@ -143,8 +165,39 @@ export async function genererAnalyseJSON(
         verifierJson(brut, modele);
         return brut;
       },
-      { budgetMs, modeles, surEchec }
-    );
+      {
+        budgetMs,
+        modeles,
+        // Chaque faute est notée AVANT d'être transmise à l'appelant : c'est
+        // ce relevé qui décidera de l'ordre de la prochaine cascade. On passe
+        // par ici plutôt que par l'appelant pour que tous les appelants en
+        // profitent, y compris ceux écrits plus tard.
+        surEchec: (modele, erreur, dureeMs, expire) => {
+          noterEchec(
+            modele,
+            expire ? `délai dépassé (${dureeMs} ms)` : String(erreur?.message ?? erreur)
+          );
+          surEchec?.(modele, erreur, dureeMs, expire);
+        },
+        }
+      );
+    } catch (e) {
+      // ── LE CAS QUI COMPTE LE PLUS ─────────────────────────────────────
+      //
+      // Quand TOUS les modèles tombent, c'est là que le relevé a le plus de
+      // valeur — et c'est précisément là qu'il serait perdu si l'écriture ne
+      // se faisait qu'en cas de réussite. On force donc l'enregistrement
+      // avant de laisser l'erreur remonter.
+      await enregistrerSante(true);
+      throw e;
+    }
+
+    noterSucces(retenu);
+    // Le relevé doit survivre à l'instance : chaque requête peut démarrer sur
+    // une machine neuve, et un souvenir qui ne vit qu'en mémoire ne protège
+    // personne. L'écriture est sautée quand rien n'a changé.
+    await enregistrerSante();
+
     return { texte, modele: retenu, passerelle: 'openrouter' };
   }
 

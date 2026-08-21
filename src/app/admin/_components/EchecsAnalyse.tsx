@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, Globe, Clock, Cpu } from 'lucide-react';
 import { getBilanEchecs } from '@/lib/echecs-analyse';
+import { bilanSante } from '@/lib/sante-modeles';
 
 /**
  * LES ANALYSES QUI ONT ÉCHOUÉ, ET POURQUOI.
@@ -28,7 +29,7 @@ import { getBilanEchecs } from '@/lib/echecs-analyse';
  * est un client qui a payé et qui est reparti les mains vides.
  */
 export default async function EchecsAnalyse() {
-  const b = await getBilanEchecs(200);
+  const [b, sante] = await Promise.all([getBilanEchecs(200), bilanSante()]);
 
   // Rien à montrer tant qu'il n'y a rien : un panneau vide dans une page
   // d'administration finit par être ignoré, et le jour où il se remplit,
@@ -95,6 +96,40 @@ export default async function EchecsAnalyse() {
           </span>
         </div>
       </div>
+
+      {/* ── L'ÉTAT DES MODÈLES, ET CE QUE L'APPLICATION EN A DÉDUIT ────────
+          Un modèle qui échoue au moins une fois sur deux sur les six dernières
+          heures est renvoyé en fin de cascade, tout seul. Il n'est pas
+          supprimé, et il reprend sa place dès que la fenêtre se referme.
+          Ce classement doit être visible : une décision automatique que
+          personne ne peut relire est une décision qu'on finit par subir. */}
+      {sante.length > 0 && (
+        <div className="mb-5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-foreground/40 mb-2">
+            Modèles · 6 dernières heures
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {sante.map((s) => (
+              <span
+                key={s.modele}
+                title={s.derniereCause ?? undefined}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-bold ${
+                  s.declasse
+                    ? 'bg-warning/15 text-warning border border-warning/30'
+                    : 'bg-sidebar/50 text-foreground/60'
+                }`}
+              >
+                <Cpu className="w-3 h-3 shrink-0" />
+                {s.modele}
+                <span className="tabular-nums opacity-70">
+                  {s.ok}✓ {s.ko}✕
+                </span>
+                {s.declasse && <span className="uppercase tracking-wider">déclassé</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {b.total === 0 ? (
         <div className="flex items-center gap-2 text-[12px] text-foreground/60">
