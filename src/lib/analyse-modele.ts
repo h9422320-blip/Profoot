@@ -48,11 +48,20 @@ export async function genererAnalyseJSON(
     budgetMs,
     economique = false,
     systeme,
+    surEchec,
   }: {
     budgetMs: number;
     economique?: boolean;
     /** Consigne système, pour les appelants qui en utilisent une. */
     systeme?: string;
+    /**
+     * Appelé pour CHAQUE modèle qui échoue, avant de passer au suivant.
+     *
+     * Sans lui, seule l'erreur du dernier modèle remontait, et l'on
+     * diagnostiquait la cascade par son maillon final — celui qui a le moins
+     * de chances d'expliquer quoi que ce soit.
+     */
+    surEchec?: (modele: string, erreur: any, dureeMs: number, expire: boolean) => void;
   }
 ): Promise<ResultatModele> {
   if (openRouterDisponible()) {
@@ -66,7 +75,7 @@ export async function genererAnalyseJSON(
         retenu = modele;
         return appelerOpenRouter(modele, prompt, signal, systeme);
       },
-      { budgetMs, modeles }
+      { budgetMs, modeles, surEchec }
     );
     return { texte, modele: retenu, passerelle: 'openrouter' };
   }
@@ -85,7 +94,7 @@ export async function genererAnalyseJSON(
         })
         .generateContent(prompt, { signal } as any);
     },
-    { budgetMs }
+    { budgetMs, surEchec }
   );
 
   return { texte: resultat.response.text(), modele: retenu, passerelle: 'google' };

@@ -107,12 +107,32 @@ export async function avecBasculeDeModele<T>(
     plafondMs = 36000,
     minimumMs = 8000,
     modeles = MODELES_GEMINI,
+    surEchec,
   }: {
     budgetMs?: number;
     plafondMs?: number;
     minimumMs?: number;
     /** Liste à parcourir. Diffère selon la passerelle employée. */
     modeles?: string[];
+    /**
+     * Appelé à CHAQUE modèle qui échoue, avec sa cause et sa durée.
+     *
+     * ── POURQUOI CE RAPPEL EXISTE ─────────────────────────────────────────
+     *
+     * Seule la DERNIÈRE erreur remontait à l'appelant. Sur une cascade de cinq
+     * modèles, les quatre premiers échouaient donc en silence, et le journal
+     * n'accusait que le cinquième.
+     *
+     * Conséquence mesurée le 21 août : 91 % des échecs enregistrés portaient
+     * « [OpenRouter 403] google/gemini-3.5-flash » — le dernier de la liste.
+     * On a cru à un problème Google, alors que ce message signifiait seulement
+     * que les quatre modèles précédents avaient déjà renoncé, pour des raisons
+     * qu'on ne voyait pas.
+     *
+     * Diagnostiquer une cascade en ne regardant que son dernier maillon, c'est
+     * chercher la panne à l'endroit où elle finit, jamais où elle commence.
+     */
+    surEchec?: (modele: string, erreur: any, dureeMs: number, expire: boolean) => void;
   } = {}
 ): Promise<T> {
   const echeance = Date.now() + budgetMs;
@@ -124,6 +144,7 @@ export async function avecBasculeDeModele<T>(
 
     const controleur = new AbortController();
     const delai = setTimeout(() => controleur.abort(), Math.min(restant, plafondMs));
+    const debutTentative = Date.now();
 
     try {
       return await action(modele, controleur.signal);
@@ -133,10 +154,20 @@ export async function avecBasculeDeModele<T>(
       // Une tentative interrompue par NOTRE délai est un modèle trop lent :
       // c'est un motif de bascule, pas une erreur de fond.
       const expiree = controleur.signal.aborted;
+      const duree = Date.now() - debutTentative;
+
+      // Signalé AVANT le `throw` éventuel : une erreur de fond mérite d'être
+      // tracée autant qu'une bascule, et c'est même la plus intéressante.
+      try {
+        surEchec?.(modele, erreur, duree, expiree);
+      } catch {
+        /* un rapport défaillant ne doit jamais interrompre la cascade */
+      }
+
       if (!expiree && !modeleIndisponible(erreur)) throw erreur;
 
       console.warn(
-        `[GEMINI] ${modele} ${expiree ? 'trop lent' : 'indisponible'} — bascule sur le modèle suivant.`
+        `[CASCADE] ${modele} ${expiree ? `trop lent (${duree} ms)` : `indisponible : ${String(erreur?.message ?? erreur).slice(0, 120)}`} — bascule.`
       );
     } finally {
       clearTimeout(delai);

@@ -1394,6 +1394,22 @@ export async function POST(req: Request) {
   // sans cela, le journal ne sait pas QUEL modele a echoue.
   let modeleReellementAppele = '';
 
+  /**
+   * L'échec de CHAQUE modèle de la cascade, dans l'ordre où ils ont été
+   * essayés.
+   *
+   * Seule la dernière erreur remontait auparavant. Sur cinq modèles, les quatre
+   * premiers échouaient donc en silence — et le journal accusait toujours le
+   * cinquième. Le 21 août, 91 % des échecs enregistrés portaient
+   * « [OpenRouter 403] google/gemini-3.5-flash » : on a cherché une panne chez
+   * Google, alors que ce message signifiait seulement que quatre modèles
+   * avaient déjà renoncé avant lui, pour des raisons invisibles.
+   *
+   * Diagnostiquer une cascade par son dernier maillon, c'est chercher la panne
+   * là où elle finit, jamais là où elle commence.
+   */
+  const echecsParModele: string[] = [];
+
   try {
     console.log(`[BACKEND_ANALYZE] Génération de la prédiction et de l'analyse experte...`);
     // Le modèle, la passerelle et le délai sont choisis plus bas, tentative par
@@ -1526,6 +1542,15 @@ ${estApercu ? `{
     const result = await genererAnalyseJSON(prompt, {
       budgetMs: budgetModele,
       economique: estApercu,
+      // Chaque maillon de la cascade rend compte de lui-même. Voir
+      // `echecsParModele` plus haut : sans cela, on ne voit que le dernier.
+      surEchec: (modele, erreur, dureeMs, expire) => {
+        const cause = expire
+          ? `délai dépassé (${dureeMs} ms)`
+          : `${erreur?.status ? `HTTP ${erreur.status} — ` : ''}${String(erreur?.message ?? erreur).slice(0, 120)}`;
+        echecsParModele.push(`${modele} : ${cause}`);
+        console.warn(`[BACKEND_ANALYZE] ${team1.name} — ${team2.name} | ${modele} a échoué | ${cause}`);
+      },
     });
 
     modeleReellementAppele = result.modele;
@@ -1589,7 +1614,10 @@ ${estApercu ? `{
       equipe1: team1.name,
       equipe2: team2.name,
       competition: (targetFutureMatch || nextH2H)?.league?.name ?? null,
-      message: String(e?.message ?? e),
+      // La chaîne COMPLÈTE, pas seulement son dernier maillon.
+      message: echecsParModele.length
+        ? `${String(e?.message ?? e)} | cascade : ${echecsParModele.join(' || ')}`
+        : String(e?.message ?? e),
       // ── LE MODÈLE RÉELLEMENT APPELÉ, PAS UNE CONSTANTE ──────────────────
       //
       // Cette ligne écrivait `MODELES_GEMINI[0]` en dur. Tous les échecs
