@@ -32,12 +32,33 @@ const OPENROUTER = 'https://openrouter.ai/api/v1/chat/completions';
  * de filet — dix fois moins cher, mais un texte dont le style n'a pas été
  * réglé pour ProFoot ; on préfère l'utiliser rarement plutôt que d'échouer.
  */
+/**
+ * ── L'ORDRE SUIT LA VITESSE, PAS SEULEMENT LE PRIX ───────────────────────
+ *
+ * `openai/gpt-oss-120b` était en tête, choisi sur son tarif. Le journal de
+ * cascade, mis en place le 21 août, a montré ce qu'il faisait réellement :
+ *
+ *     openai/gpt-oss-120b  : délai dépassé (36 001 ms)
+ *     deepseek-v4-flash    : délai dépassé (14 614 ms)
+ *
+ * Ce motif, à la milliseconde près, sur QUINZE échecs consécutifs. Il
+ * consommait les trente-six secondes entières sans jamais aboutir, puis le
+ * suivant héritait des quatorze qui restaient et tombait à son tour.
+ *
+ * Cent vingt milliards de paramètres : bon marché à l'unité, mais lent à
+ * produire. Sur une requête bornée à soixante secondes par la plateforme, la
+ * vitesse compte autant que le prix — un modèle qui n'a pas le temps de finir
+ * coûte zéro et ne sert à rien.
+ *
+ * Les « flash » passent devant : ils sont conçus pour la latence. gpt-oss-120b
+ * reste en fin de liste, où il ne sera appelé que si tous les autres tombent.
+ */
 export const MODELES_OPENROUTER = [
-  'openai/gpt-oss-120b',
   'deepseek/deepseek-v4-flash',
   'qwen/qwen3.7-flash',
   'google/gemini-3.5-flash-lite',
   'google/gemini-3.5-flash',
+  'openai/gpt-oss-120b',
 ];
 
 /** Modèle le moins cher capable de produire l'aperçu gratuit. */

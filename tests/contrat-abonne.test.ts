@@ -179,3 +179,50 @@ test("CONTRAT — un compte gratuit ne reçoit toujours aucun champ du verdict",
     `L'aperçu gratuit fait ${String(gratuit.apercuResume ?? '').length} caractères.`
   );
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  21 AOÛT, 18 h — UN SEUL MODÈLE LENT BLOQUAIT TOUTE LA CASCADE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Le journal de cascade a montré le même motif, à la milliseconde près, sur
+//  quinze échecs consécutifs :
+//
+//      openai/gpt-oss-120b : délai dépassé (36 001 ms)
+//      deepseek-v4-flash   : délai dépassé (14 614 ms)
+//
+//  Le premier consommait le budget entier sans jamais aboutir ; le suivant
+//  héritait des miettes. L'abonné voyait « ANALYSE INTERROMPUE ».
+
+test('CONTRAT — la cascade laisse sa chance à au moins trois modèles', async () => {
+  const { MODELES_OPENROUTER } = await import('../src/lib/openrouter');
+
+  assert.ok(
+    MODELES_OPENROUTER.length >= 3,
+    'Moins de trois modèles : une seule panne suffit à interrompre une analyse.'
+  );
+
+  // Le budget réel tourne autour de cinquante secondes. Au-delà de vingt-cinq
+  // secondes par tentative, deux modèles épuisent tout et le troisième n'est
+  // jamais appelé.
+  const source = fs.readFileSync(path.join(racine, 'src/lib/gemini-models.ts'), 'utf8');
+  const plafond = source.match(/plafondMs = (\d+)/)?.[1];
+
+  assert.ok(plafond, 'Le plafond par tentative est introuvable.');
+  assert.ok(
+    Number(plafond) <= 25000,
+    `Plafond de ${plafond} ms : avec un budget de cinquante secondes, deux tentatives le ` +
+      `consomment entièrement. Mesuré le 21 août — le premier modèle prenait 36 001 ms sans aboutir.`
+  );
+});
+
+test("CONTRAT — un modèle lent n'occupe pas la première place", async () => {
+  const { MODELES_OPENROUTER } = await import('../src/lib/openrouter');
+
+  // gpt-oss-120b : 120 milliards de paramètres, bon marché mais lent. Mesuré à
+  // 36 001 ms sans jamais aboutir, quinze fois de suite.
+  assert.notEqual(
+    MODELES_OPENROUTER[0],
+    'openai/gpt-oss-120b',
+    "Le modèle mesuré à 36 s sans aboutir est de nouveau en tête : il consommera tout le budget."
+  );
+});

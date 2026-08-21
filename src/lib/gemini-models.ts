@@ -126,7 +126,22 @@ export async function avecBasculeDeModele<T>(
      * gardent de quoi tenter un repli court. Mieux vaut une tentative qui
      * aboutit que deux qui échouent.
      */
-    plafondMs = 36000,
+    /**
+     * ── TRENTE-SIX SECONDES DONNAIENT UNE SEULE VRAIE TENTATIVE ───────────
+     *
+     * Relevé le 21 août au soir : le premier modèle prenait ses trente-six
+     * secondes entières sans aboutir, le second héritait des quatorze restantes
+     * et tombait à son tour. Deux tentatives, dont une seule avait le temps de
+     * réussir — et c'était toujours la même qui échouait.
+     *
+     * Vingt-deux secondes en autorisent DEUX complètes, plus une troisième sur
+     * le reliquat. Un modèle « flash » rend une analyse en dix à quinze
+     * secondes ; celui qui n'a pas fini en vingt-deux ne finira pas en
+     * trente-six non plus — il est lent, pas en retard.
+     *
+     * Mieux vaut trois modèles qui ont leur chance qu'un seul qu'on attend.
+     */
+    plafondMs = 22000,
     minimumMs = 8000,
     modeles = MODELES_GEMINI,
     surEchec,
