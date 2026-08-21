@@ -329,3 +329,34 @@ test("CONTRAT — un modèle écarté reste disponible en dernier recours", asyn
     `Seulement ${MODELES_OPENROUTER.length} modèle(s) : une reprise n'aurait presque rien à essayer.`
   );
 });
+
+test("CONTRAT — les preuves du jour passent en tête du mur public", () => {
+  const source = lire('src/lib/preuves.ts');
+
+  // Un visiteur doit voir en premier ce que l'IA avait annoncé pour les matchs
+  // DE CE JOUR — ceux dont il connaît déjà le résultat. C'est la preuve la plus
+  // convaincante : « ce match d'hier soir, il l'avait dit ». Une réussite d'il
+  // y a trois semaines ne prouve pas que l'outil marche aujourd'hui.
+  assert.ok(
+    /const estDuJour = /.test(source),
+    "Le critère « match du jour » a disparu du tri : les preuves fraîches retomberaient " +
+      "derrière des affiches anciennes."
+  );
+
+  // Il doit passer AVANT la notoriété : une affiche du jour entre équipes
+  // modestes vaut mieux qu'un grand club d'il y a dix jours.
+  const posJour = source.indexOf('if (jourA !== jourB)');
+  const posNotoriete = source.indexOf('const poidsA = poidsAffiche(a, grandsClubs)');
+  assert.ok(posJour > 0 && posNotoriete > 0, 'Le tri du mur a été réécrit.');
+  assert.ok(
+    posJour < posNotoriete,
+    "La notoriété repasse devant la fraîcheur : un match du jour serait relégué derrière " +
+      "une vieille affiche de grand club."
+  );
+
+  // Et un raté ne doit jamais être publié, quelle que soit sa date.
+  assert.ok(
+    /valeurs\.publiee = issueCorrecte &&/.test(source),
+    "La publication n'est plus conditionnée à la justesse du pronostic."
+  );
+});

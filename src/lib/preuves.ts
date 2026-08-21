@@ -621,8 +621,28 @@ export async function getPreuvesPubliques(limite = 10): Promise<{
   // Le classement combine donc deux choses mesurables : la notoriété des clubs
   // en présence, et le niveau de la compétition. Rien n'est masqué — les preuves
   // moins connues restent, simplement plus bas.
+  // ── CE QUI S'EST JOUÉ AUJOURD'HUI PASSE DEVANT TOUT ──────────────────────
+  //
+  // Un visiteur qui arrive sur le mur doit voir en premier ce que l'IA avait
+  // annoncé pour les matchs DE CE JOUR — ceux dont il connaît déjà le résultat,
+  // qu'il a peut-être regardés la veille au soir.
+  //
+  // C'est la preuve la plus convaincante qui existe : « ce match d'hier soir,
+  // il l'avait dit ». Une réussite d'il y a trois semaines, si belle soit-elle,
+  // ne prouve pas que l'outil marche AUJOURD'HUI.
+  //
+  // Ce critère passe donc avant la notoriété des clubs. Une affiche du jour
+  // entre équipes modestes vaut mieux, ici, qu'un Barcelone d'il y a dix jours.
+  const jourActuel = new Date().toISOString().slice(0, 10);
+  const estDuJour = (p: Preuve) => String(p.dateMatch ?? '').slice(0, 10) === jourActuel;
+
   const ordonnees = [...toutes].sort((a, b) => {
     if (a.miseEnAvant !== b.miseEnAvant) return a.miseEnAvant ? -1 : 1;
+
+    const jourA = estDuJour(a);
+    const jourB = estDuJour(b);
+    if (jourA !== jourB) return jourA ? -1 : 1;
+
     const poidsA = poidsAffiche(a, grandsClubs);
     const poidsB = poidsAffiche(b, grandsClubs);
     if (poidsA !== poidsB) return poidsB - poidsA;
