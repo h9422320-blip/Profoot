@@ -101,19 +101,54 @@ export async function lireCalibrages(): Promise<Map<string, CalibrageLigue>> {
   }
 }
 
+/**
+ * UN FACTEUR COLLÉ À SA BORNE N'EST PAS UNE MESURE.
+ *
+ * Quand le rapport calculé dépasse la borne, on n'apprend pas « le moteur se
+ * trompe de 25 % » : on apprend « le moteur se trompe d'au moins 25 %, et le
+ * calcul a cessé de mesurer ». Appliquer cette valeur revient à prendre un
+ * débordement pour un résultat.
+ *
+ * Ce n'est pas théorique. Mesuré le 21 août 2026 sur 3 099 rencontres de la
+ * saison 2025, championnat par championnat : NEUF championnats sur dix
+ * ressortaient exactement à 1,250, la borne haute. Pas parce que le moteur se
+ * trompe partout de la même façon — parce que le rapport était calculé entre
+ * deux choses qui ne se comparent pas.
+ *
+ * Le score annoncé est le score le PLUS PROBABLE. Dans une loi de Poisson, il
+ * est toujours inférieur à la moyenne : on annonce 1-1 là où l'espérance vaut
+ * 1,4 contre 1,2. Le rapport buts réels / score annoncé dépasse donc 1 par
+ * construction, dans tous les championnats, pour toujours.
+ *
+ * La comparaison honnête se fait sur les BUTS ATTENDUS, et elle a été faite :
+ * les facteurs tombent alors entre 0,90 et 1,16, autour de 1,00. Autrement
+ * dit, le moteur n'a pas de biais de buts à corriger. C'est une bonne
+ * nouvelle, et c'est le contraire de ce que le calcul saturé racontait.
+ */
+const AUX_BORNES = (v: number) => v <= FACTEUR_MIN + 1e-9 || v >= FACTEUR_MAX - 1e-9;
+
 function versCalibrage(l: any): CalibrageLigue {
   const matchs = Number(l.matchs_observes ?? 0);
+  const fButs = borner(Number(l.facteur_buts ?? 1), FACTEUR_MIN, FACTEUR_MAX);
+  const fDom = borner(Number(l.facteur_domicile ?? 1), FACTEUR_MIN, FACTEUR_MAX);
+  const fExt = borner(Number(l.facteur_exterieur ?? 1), FACTEUR_MIN, FACTEUR_MAX);
+
+  // Trois conditions pour qu'un calibrage agisse sur les pronostics servis :
+  // assez de matière, une mesure comparable, et une mesure qui n'a pas
+  // débordé. Il en manque une, le moteur travaille exactement comme avant.
+  const mesurable = !AUX_BORNES(fButs) && !AUX_BORNES(fDom) && !AUX_BORNES(fExt);
+
   return {
     ligue: String(l.ligue ?? ''),
-    facteurButs: borner(Number(l.facteur_buts ?? 1), FACTEUR_MIN, FACTEUR_MAX),
-    facteurDomicile: borner(Number(l.facteur_domicile ?? 1), FACTEUR_MIN, FACTEUR_MAX),
-    facteurExterieur: borner(Number(l.facteur_exterieur ?? 1), FACTEUR_MIN, FACTEUR_MAX),
+    facteurButs: fButs,
+    facteurDomicile: fDom,
+    facteurExterieur: fExt,
     matchsObserves: matchs,
     justesse: l.justesse == null ? null : Number(l.justesse),
     brier: l.brier == null ? null : Number(l.brier),
     justesseAvant: l.justesse_avant == null ? null : Number(l.justesse_avant),
     brierAvant: l.brier_avant == null ? null : Number(l.brier_avant),
-    actif: matchs >= MATCHS_MINIMUM,
+    actif: matchs >= MATCHS_MINIMUM && mesurable,
   };
 }
 
@@ -156,6 +191,48 @@ export function facteursPour(
 }
 
 /** Issue d'une rencontre à partir de deux buts. */
+/**
+ * LIT UNE TABLE ENTIÈRE, PAR TRANCHES.
+ *
+ * ── LE PLAFOND QUI NE SE VOIT PAS ────────────────────────────────────────
+ *
+ * Supabase refuse de rendre plus de mille lignes d'un coup, quoi qu'on lui
+ * demande. `.limit(5000)` ne lève pas d'erreur : il rend mille lignes, et le
+ * code continue comme si c'était tout.
+ *
+ * Tant que la base contenait quatre-vingt-cinq jugements, personne ne pouvait
+ * s'en apercevoir. Le 21 août, l'amorçage en a écrit 2 769 d'un coup : le
+ * recalcul n'en a vu que mille — les plus récents — et a produit des facteurs
+ * établis sur un tiers de la matière disponible.
+ *
+ * Pire, la liste des rencontres DÉJÀ JUGÉES subissait le même plafond. Au-delà
+ * de mille, la tâche de nuit redemandait au fournisseur des fiches qu'elle
+ * possédait déjà. Le quota du fournisseur est la ressource la plus rare du
+ * projet — il a frôlé les 100 % un 16 août, et au-delà plus aucune analyse ne
+ * fonctionne pour personne.
+ */
+async function lireTout<T = any>(
+  requete: (de: number, a: number) => any,
+  plafond = 20000
+): Promise<T[]> {
+  const TRANCHE = 1000;
+  const tout: T[] = [];
+
+  for (let de = 0; de < plafond; de += TRANCHE) {
+    const { data, error } = await requete(de, de + TRANCHE - 1);
+    if (error) {
+      console.warn('[CALIBRAGE] Lecture partielle :', error.message);
+      break;
+    }
+    if (!data?.length) break;
+    tout.push(...data);
+    // Une tranche incomplète signifie qu'on a atteint le bout de la table.
+    if (data.length < TRANCHE) break;
+  }
+
+  return tout;
+}
+
 export const issueDe = (a: number, b: number): 'domicile' | 'nul' | 'exterieur' =>
   a > b ? 'domicile' : a === b ? 'nul' : 'exterieur';
 
@@ -283,19 +360,24 @@ export async function jugerRencontresTerminees(
 
   const sb = createAdminClient();
 
-  const { data: predictions, error } = await sb
-    .from('predictions_match')
-    .select('*')
-    .order('calculee_le', { ascending: false })
-    .limit(3000);
+  // Par tranches, comme partout ailleurs ici : `.limit(3000)` rendait mille
+  // lignes sans le dire. Les pronostics les plus anciens n'étaient donc jamais
+  // confrontés à leur résultat, et la boucle apprenait d'une fenêtre glissante
+  // qu'elle croyait complète.
+  const predictions = await lireTout((de, a) =>
+    sb.from('predictions_match').select('*').order('calculee_le', { ascending: false }).range(de, a),
+    6000
+  );
 
-  if (error || !predictions?.length) {
-    if (error) console.warn('[CALIBRAGE] Prédictions illisibles :', error.message);
-    return { examinees: 0, jugees: 0, deja: 0 };
-  }
+  if (!predictions.length) return { examinees: 0, jugees: 0, deja: 0 };
 
-  const { data: connus } = await sb.from('jugements_moteur').select('fixture_id').limit(10000);
-  const dejaJuges = new Set((connus ?? []).map((j: any) => Number(j.fixture_id)));
+  // TOUTES les rencontres déjà jugées, pas les mille premières. Au-delà de ce
+  // plafond invisible, la tâche de nuit redemandait au fournisseur des fiches
+  // qu'elle possédait déjà — sur son quota, le bien le plus rare du projet.
+  const connus = await lireTout<{ fixture_id: number }>((de, a) =>
+    sb.from('jugements_moteur').select('fixture_id').range(de, a)
+  );
+  const dejaJuges = new Set(connus.map((j) => Number(j.fixture_id)));
 
   const aExaminer = predictions
     .filter((p: any) => p.fixture_id && !dejaJuges.has(Number(p.fixture_id)))
@@ -342,6 +424,10 @@ export async function jugerRencontresTerminees(
           equipe_exterieur: p.exterieur_nom,
           buts_prevus_domicile: prevusDom,
           buts_prevus_exterieur: prevusExt,
+          // Les buts attendus, gardés à côté du score arrondi : c'est sur eux
+          // que le facteur de correction se mesure honnêtement.
+          buts_attendus_domicile: p.xg_domicile ?? null,
+          buts_attendus_exterieur: p.xg_exterieur ?? null,
           proba_domicile: Number(p.proba_domicile),
           proba_nul: Number(p.proba_nul),
           proba_exterieur: Number(p.proba_exterieur),
@@ -365,10 +451,29 @@ export async function jugerRencontresTerminees(
   }
 
   for (let i = 0; i < lignes.length; i += 100) {
+    const lot = lignes.slice(i, i + 100);
     const { error: err } = await sb
       .from('jugements_moteur')
-      .upsert(lignes.slice(i, i + 100), { onConflict: 'fixture_id' });
-    if (err) console.warn('[CALIBRAGE] Lot refusé :', err.message);
+      .upsert(lot, { onConflict: 'fixture_id' });
+
+    if (!err) continue;
+
+    // ── LES DEUX COLONNES PEUVENT NE PAS ENCORE EXISTER ─────────────────
+    //
+    // `buts_attendus_*` s'ajoute par une commande SQL que le propriétaire
+    // exécute lui-même. Tant qu'elle n'a pas été passée, la colonne est
+    // absente et la base refuse TOUT le lot. Une amélioration de mesure ne
+    // doit pas faire perdre les jugements eux-mêmes : on réessaie sans elles.
+    if (/buts_attendus/.test(err.message)) {
+      const sansAttendus = lot.map(({ buts_attendus_domicile, buts_attendus_exterieur, ...reste }) => reste);
+      const { error: err2 } = await sb
+        .from('jugements_moteur')
+        .upsert(sansAttendus, { onConflict: 'fixture_id' });
+      if (err2) console.warn('[CALIBRAGE] Lot refusé :', err2.message);
+      continue;
+    }
+
+    console.warn('[CALIBRAGE] Lot refusé :', err.message);
   }
 
   console.log(
@@ -398,14 +503,13 @@ export async function recalculerCalibrages(): Promise<{
 }> {
   const sb = createAdminClient();
 
-  const { data, error } = await sb
-    .from('jugements_moteur')
-    .select('*')
-    .order('date_match', { ascending: false })
-    .limit(5000);
+  // Toutes les tranches, pas seulement la première : voir `lireTout`.
+  const data = await lireTout((de, a) =>
+    sb.from('jugements_moteur').select('*').order('date_match', { ascending: false }).range(de, a)
+  );
 
-  if (error) {
-    console.warn('[CALIBRAGE] Jugements illisibles :', error.message);
+  if (!data.length) {
+    console.warn('[CALIBRAGE] Aucun jugement lisible.');
     return { ligues: 0, matchs: 0, detail: [] };
   }
 
@@ -433,8 +537,21 @@ export async function recalculerCalibrages(): Promise<{
     a.n++;
     if (j.issue_juste) a.justes++;
     a.brier += Number(j.brier ?? 0);
-    a.prevusDom += Number(j.buts_prevus_domicile ?? 0);
-    a.prevusExt += Number(j.buts_prevus_exterieur ?? 0);
+
+    // ── ON COMPARE CE QUI SE COMPARE ──────────────────────────────────────
+    //
+    // Les buts ATTENDUS quand ils sont connus, le score arrondi sinon. Le
+    // score arrondi est le score le plus probable : dans une loi de Poisson il
+    // est toujours inférieur à la moyenne, donc le rapport buts réels / score
+    // annoncé dépasse 1 par construction et sature la borne haute. Neuf
+    // championnats sur dix ressortaient ainsi à 1,250 exactement — un
+    // débordement, pas une mesure. Voir `AUX_BORNES` plus haut.
+    const attDom = Number(j.buts_attendus_domicile);
+    const attExt = Number(j.buts_attendus_exterieur);
+    const comparable = Number.isFinite(attDom) && Number.isFinite(attExt) && attDom + attExt > 0;
+
+    a.prevusDom += comparable ? attDom : Number(j.buts_prevus_domicile ?? 0);
+    a.prevusExt += comparable ? attExt : Number(j.buts_prevus_exterieur ?? 0);
     a.reelsDom += Number(j.buts_reels_domicile ?? 0);
     a.reelsExt += Number(j.buts_reels_exterieur ?? 0);
     parLigue.set(cle, a);
@@ -491,7 +608,7 @@ export async function recalculerCalibrages(): Promise<{
 
   detail.sort((x, y) => y.matchs - x.matchs);
   console.log(
-    `[CALIBRAGE] ${parLigue.size} championnat(s), ${data?.length ?? 0} rencontre(s) jugée(s).`
+    `[CALIBRAGE] ${parLigue.size} championnat(s), ${data.length} rencontre(s) jugée(s).`
   );
-  return { ligues: parLigue.size, matchs: data?.length ?? 0, detail };
+  return { ligues: parLigue.size, matchs: data.length, detail };
 }

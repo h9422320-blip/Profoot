@@ -520,3 +520,70 @@ test("QUOTA — une analyse jamais servie est rendue au compteur", () => {
       "elles n'apparaîtraient nulle part dans l'administration."
   );
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  UN APPRENTISSAGE QUI A DÉBORDÉ NE S'APPLIQUE PAS
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Le calibrage comparait les buts réels au SCORE ARRONDI. Or le score annoncé
+ * est le score le plus probable, et dans une loi de Poisson il est toujours
+ * inférieur à la moyenne : le rapport dépassait 1 par construction, partout,
+ * pour toujours. Mesuré sur 3 099 rencontres de la saison 2025, neuf
+ * championnats sur dix ressortaient à 1,250 exactement — la borne haute.
+ *
+ * Ce n'était pas « le moteur se trompe de 25 % partout », c'était « le calcul
+ * a cessé de mesurer ». Appliquer cela au moteur validé aurait été appliquer
+ * un débordement.
+ */
+test("MOTEUR — un facteur collé à sa borne n'est jamais appliqué", async () => {
+  const { facteursPour } = await import('../src/lib/calibrage');
+
+  const carte = new Map<string, any>([
+    ['ligueSaturee', {
+      ligue: 'ligueSaturee', facteurButs: 1.25, facteurDomicile: 1, facteurExterieur: 1,
+      matchsObserves: 500, justesse: 50, brier: 0.6, justesseAvant: 50, brierAvant: 0.6,
+      actif: false,
+    }],
+  ]);
+
+  const f = facteursPour(carte, 'ligueSaturee');
+  assert.equal(f.domicile, 1, "Un facteur saturé est appliqué au moteur : c'est un débordement, pas une mesure.");
+  assert.equal(f.exterieur, 1, "Idem pour l'extérieur.");
+});
+
+test("MOTEUR — la matière ne suffit pas si la mesure a débordé", () => {
+  const source = lire('src/lib/calibrage.ts');
+
+  assert.ok(
+    /AUX_BORNES/.test(source) && /matchs >= MATCHS_MINIMUM && mesurable/.test(source),
+    "La condition de déclenchement a changé : un calibrage pourrait redevenir " +
+      "actif sur un facteur qui n'a rien mesuré."
+  );
+  assert.ok(
+    /buts_attendus_domicile/.test(source),
+    "Le calibrage ne lit plus les buts attendus : il repartirait de la " +
+      "comparaison contre un arrondi, celle qui sature toujours."
+  );
+});
+
+test("BASE — on lit toute la table, pas les mille premières lignes", () => {
+  const source = lire('src/lib/calibrage.ts');
+
+  // Supabase refuse de rendre plus de mille lignes, sans le dire. Le 21 août,
+  // l'amorçage en a écrit 2 769 : le recalcul n'en voyait que mille, et la
+  // liste des rencontres déjà jugées était tronquée au même endroit — la tâche
+  // de nuit redemandait alors au fournisseur des fiches déjà en base, sur le
+  // quota le plus rare du projet.
+  assert.ok(
+    /async function lireTout/.test(source),
+    "La lecture par tranches a disparu : au-delà de mille jugements, le moteur " +
+      "apprendrait sur un tiers de sa matière sans qu'aucune erreur ne le signale."
+  );
+  assert.ok(
+    // Uniquement le code : les mêmes chiffres cités dans les commentaires
+    // expliquent justement pourquoi ce plafond est trompeur.
+    !/^\s*\.limit\([1-9]\d{3,}\)/m.test(source),
+    "Un `.limit()` au-delà de mille est réapparu. Il ne lève aucune erreur et " +
+      "ne rend jamais plus de mille lignes : c'est un plafond qui ment."
+  );
+});

@@ -67,9 +67,27 @@ const LIGUES = [
   { id: 94, nom: 'Primeira Liga' },
   { id: 88, nom: 'Eredivisie' },
   { id: 144, nom: 'Jupiler Pro League' },
-  { id: 71, nom: 'Serie A' },          // Brésil — même libellé, voir plus bas
   { id: 253, nom: 'Major League Soccer' },
 ];
+
+/**
+ * ── LE BRÉSIL EST ÉCARTÉ, ET CE N'EST PAS UN OUBLI ───────────────────────
+ *
+ * Le championnat brésilien (identifiant 71) s'appelle « Serie A » chez le
+ * fournisseur, exactement comme l'italien. Or le calibrage est rangé PAR NOM :
+ * `calibrage_ligue.ligue` est la clé, et `facteursPour()` la retrouve avec le
+ * seul `league.name`.
+ *
+ * Les deux se seraient donc mélangés dans une même ligne — 660 rencontres de
+ * deux continents, deux calendriers et deux avantages du terrain confondus —
+ * et le facteur obtenu aurait été appliqué aux matchs italiens comme aux
+ * brésiliens. Un apprentissage qui mélange deux championnats n'apprend rien
+ * sur aucun des deux.
+ *
+ * Le Brésil n'est pas perdu : il reprendra sa place le jour où le calibrage
+ * sera rangé par pays ET par nom. En attendant, mieux vaut ne pas l'amorcer
+ * que salir la Serie A italienne.
+ */
 
 const SAISON = 2025;
 const TERMINE = ['FT', 'AET', 'PEN'];
@@ -90,8 +108,31 @@ const brierDe = (p, reelle) => {
 
 console.log(`\n  ══ AMORÇAGE DU CALIBRAGE — saison ${SAISON} ══\n`);
 
+/**
+ * ── CE QUI A DÉJÀ ÉTÉ JUGÉ POUR DE VRAI NE SE REJOUE PAS ──────────────────
+ *
+ * `upsert` sur l'identifiant de rencontre écrasait tout ce qui portait le même
+ * numéro — y compris les quatre-vingt-cinq jugements issus de VRAIES analyses,
+ * celles réellement servies à des abonnés.
+ *
+ * Ce ne sont pas les mêmes chiffres. Une analyse réelle a vu la composition du
+ * jour, les absents, le contexte ; le rejeu ne voit que les résultats passés.
+ * Remplacer l'un par l'autre effacerait le seul relevé honnête de ce que le
+ * moteur a vraiment servi — celui sur lequel s'appuie le mur de preuves.
+ *
+ * Les rencontres déjà jugées sont donc écartées. L'amorçage n'AJOUTE que ce
+ * qui manquait.
+ */
+const { data: dejaJuges } = await sb
+  .from('jugements_moteur')
+  .select('fixture_id')
+  .limit(20000);
+const connus = new Set((dejaJuges ?? []).map((j) => Number(j.fixture_id)));
+console.log(`  ${connus.size} rencontre(s) déjà jugée(s) : elles ne seront pas touchées.\n`);
+
 const lignes = [];
 let ignores = 0;
+let preserves = 0;
 
 for (const ligue of LIGUES) {
   let brut;
@@ -134,7 +175,10 @@ for (const ligue of LIGUES) {
     const vusDom = comptes.get(m.domicile) ?? 0;
     const vusExt = comptes.get(m.exterieur) ?? 0;
 
-    if (vusDom >= HISTORIQUE_MINIMUM && vusExt >= HISTORIQUE_MINIMUM) {
+    if (connus.has(Number(m.fixtureId))) {
+      // Déjà jugée par une vraie analyse : on la laisse intacte.
+      preserves++;
+    } else if (vusDom >= HISTORIQUE_MINIMUM && vusExt >= HISTORIQUE_MINIMUM) {
       // `joues` ne contient QUE ce qui précède cette rencontre.
       const forces = calculerForces([], joues);
       const fDom = forces.equipes.get(m.domicile);
@@ -175,6 +219,10 @@ for (const ligue of LIGUES) {
           equipe_exterieur: m.nomExt,
           buts_prevus_domicile: r.buts1,
           buts_prevus_exterieur: r.buts2,
+          // Les buts ATTENDUS, sans lesquels le facteur se mesure contre un
+          // arrondi et sature sa borne haute dans tous les championnats.
+          buts_attendus_domicile: r.butsAttendus1 ?? null,
+          buts_attendus_exterieur: r.butsAttendus2 ?? null,
           proba_domicile: r.probaVictoire1,
           proba_nul: r.probaNul,
           proba_exterieur: r.probaVictoire2,
@@ -228,6 +276,7 @@ const justes = lignes.filter((l) => l.issue_juste).length;
 const exacts = lignes.filter((l) => l.score_exact).length;
 console.log(`\n  TOTAL : ${lignes.length} rencontres — ${((100 * justes) / lignes.length).toFixed(1)} % d'issues justes, ${((100 * exacts) / lignes.length).toFixed(1)} % de scores exacts`);
 if (ignores) console.log(`  (${ignores} écartées : forces indisponibles)`);
+if (preserves) console.log(`  (${preserves} laissées intactes : déjà jugées par une vraie analyse)`);
 
 if (!ECRIRE) {
   console.log('\n  SIMULATION. Relancez avec --ecrire pour amorcer la boucle.\n');
@@ -239,13 +288,40 @@ if (!ECRIRE) {
 // `upsert` sur l'identifiant de rencontre : une rencontre déjà jugée par la
 // boucle normale n'est pas dupliquée, elle est mise à jour.
 let ecrites = 0;
+let sansColonnes = false;
+
 for (let i = 0; i < lignes.length; i += 200) {
-  const { error } = await sb
+  const lot = lignes.slice(i, i + 200);
+  const alleger = (l) => {
+    const { buts_attendus_domicile, buts_attendus_exterieur, ...reste } = l;
+    return reste;
+  };
+
+  let { error } = await sb
     .from('jugements_moteur')
-    .upsert(lignes.slice(i, i + 200), { onConflict: 'fixture_id' });
+    .upsert(sansColonnes ? lot.map(alleger) : lot, { onConflict: 'fixture_id' });
+
+  // Les colonnes `buts_attendus_*` s'ajoutent par une commande SQL que le
+  // propriétaire passe lui-même. Absentes, la base refuse tout le lot. Les
+  // jugements valent d'être écrits même sans elles : le relevé historique est
+  // l'essentiel, la finesse de mesure vient après.
+  if (error && /buts_attendus/.test(error.message)) {
+    sansColonnes = true;
+    ({ error } = await sb
+      .from('jugements_moteur')
+      .upsert(lot.map(alleger), { onConflict: 'fixture_id' }));
+  }
+
   if (error) console.log(`  lot refusé : ${error.message}`);
-  else ecrites += Math.min(200, lignes.length - i);
+  else ecrites += lot.length;
 }
+
+if (sansColonnes)
+  console.log(
+    `\n  ⚠ Colonnes buts_attendus_* absentes : les jugements sont écrits sans elles.\n` +
+      `    Passez supabase/jugements-buts-attendus.sql, puis relancez ce script\n` +
+      `    pour que le calibrage se mesure sur les buts attendus et non sur un arrondi.`
+  );
 console.log(`\n  ${ecrites} jugement(s) enregistré(s).`);
 
 const { recalculerCalibrages } = await jiti.import('../src/lib/calibrage.ts');
