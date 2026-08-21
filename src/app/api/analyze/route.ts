@@ -1723,6 +1723,11 @@ ${estApercu ? `{
       modele: modeleReellementAppele || 'inconnu',
       dureeMs: Date.now() - debutAnalyse,
       serviQuandMeme: true,
+      // Le pays vient de l en-tete pose par la plateforme, jamais du client :
+      // une valeur envoyee par le navigateur se falsifie en trois secondes.
+      // Une panne ne frappe pas partout pareil -- un fournisseur peut etre lent
+      // depuis l Afrique de l Ouest et parfait depuis l Europe.
+      pays: req.headers.get("x-vercel-ip-country") ?? null,
     });
 
     const t1Goals = scoreCalcule.buts1;

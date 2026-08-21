@@ -56,19 +56,50 @@ export async function enregistrerEchecAnalyse(donnees: {
   modele: string | null;
   dureeMs: number;
   serviQuandMeme: boolean;
+  /**
+   * Pays d'où venait la requête, sur deux lettres.
+   *
+   * Une panne ne frappe pas partout de la même façon : un fournisseur peut
+   * être lent depuis l'Afrique de l'Ouest et parfait depuis l'Europe. Sans
+   * cette colonne, dix échecs se ressemblent tous — avec elle, on voit
+   * immédiatement s'ils viennent tous du même endroit.
+   */
+  pays?: string | null;
 }): Promise<void> {
+  const ligne: Record<string, any> = {
+    user_id: donnees.userId,
+    equipe1: donnees.equipe1,
+    equipe2: donnees.equipe2,
+    competition: donnees.competition,
+    cause: classerEchec(donnees.message),
+    message: donnees.message.slice(0, 2000),
+    modele: donnees.modele,
+    duree_ms: donnees.dureeMs,
+    servi_quand_meme: donnees.serviQuandMeme,
+  };
+  if (donnees.pays) ligne.pays = donnees.pays;
+
   try {
-    const { error } = await createAdminClient().from('analysis_failures').insert({
-      user_id: donnees.userId,
-      equipe1: donnees.equipe1,
-      equipe2: donnees.equipe2,
-      competition: donnees.competition,
-      cause: classerEchec(donnees.message),
-      message: donnees.message.slice(0, 2000),
-      modele: donnees.modele,
-      duree_ms: donnees.dureeMs,
-      servi_quand_meme: donnees.serviQuandMeme,
-    });
+    let { error } = await createAdminClient().from('analysis_failures').insert(ligne);
+
+    // ── LA COLONNE PEUT NE PAS EXISTER ENCORE ─────────────────────────────
+    //
+    // Elle arrive après la table. Tant que le script SQL n'a pas été exécuté,
+    // l'insertion entière serait REFUSÉE à cause d'elle — et l'on perdrait la
+    // trace de tous les échecs, c'est-à-dire précisément ce qu'on cherche à
+    // voir. Une colonne de confort ne doit jamais faire disparaître l'essentiel.
+    //
+    // On réessaie donc sans elle, une seule fois.
+    if (error && donnees.pays && /pays/i.test(error.message)) {
+      delete ligne.pays;
+      ({ error } = await createAdminClient().from('analysis_failures').insert(ligne));
+      if (!error)
+        console.warn(
+          "[ANALYSE] Colonne « pays » absente de analysis_failures. Échec journalisé sans elle. " +
+            'Exécutez le script SQL pour la voir apparaître dans l’administration.'
+        );
+    }
+
     if (error) console.warn('[ANALYSE] Échec non journalisé :', error.message);
   } catch (erreur: any) {
     console.warn('[ANALYSE] Journalisation impossible :', erreur?.message);
@@ -88,6 +119,8 @@ export interface EchecAnalyse {
   modele: string | null;
   dureeMs: number | null;
   serviQuandMeme: boolean;
+  /** Pays d ou venait la requete, sur deux lettres. Null si inconnu. */
+  pays: string | null;
   creeLe: string;
 }
 
@@ -172,6 +205,7 @@ export async function getBilanEchecs(limite = 200): Promise<BilanEchecs> {
       modele: l.modele,
       dureeMs: l.duree_ms,
       serviQuandMeme: l.servi_quand_meme,
+      pays: l.pays ?? null,
       creeLe: l.created_at,
     })),
   };
