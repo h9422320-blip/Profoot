@@ -501,7 +501,7 @@ export async function POST(req: Request) {
    */
   let fixtureIdResolu: number | null = null;
 
-  const respond = (data: Record<string, any>, dejaEnregistre = false) => {
+  const respond = async (data: Record<string, any>, dejaEnregistre = false) => {
     if (!dejaEnregistre) {
       enregistrerAnalyse({
         userId: guard.user.id,
@@ -522,7 +522,7 @@ export async function POST(req: Request) {
             debloqueParAchat: !guard.entitlements.premium,
           }
         : {
-            ...toTeaser(data),
+            ...(await toTeaser(data)),
             quota,
             // L offre a l unite est decrite ICI et nulle part ailleurs : le
             // prix et l identifiant du produit vivent cote serveur, et le
@@ -563,7 +563,7 @@ export async function POST(req: Request) {
 
   if (cachedAnalysis && Date.now() - cachedAnalysis.timestamp < CACHE_TTL.ANALYSIS) {
     console.log(`[BACKEND_ANALYZE] Returning CACHED analysis for ${team1.name} vs ${team2.name}`);
-    return respond(cachedAnalysis.data, true);
+    return await respond(cachedAnalysis.data, true);
   }
 
   console.log(`[BACKEND_ANALYZE] Starting analysis for ${team1.name} vs ${team2.name}`);
@@ -759,7 +759,7 @@ export async function POST(req: Request) {
       summary: `Score final certifié via API-Football. ${targetPastMatch.teams.home.name} ${hScore} - ${aScore} ${targetPastMatch.teams.away.name}.`
     };
     setBounded(analysisCache, cacheKey, { data: realMatchResult, timestamp: Date.now() });
-    return respond(realMatchResult);
+    return await respond(realMatchResult);
   }
 
   // ============================================================================
@@ -1559,7 +1559,7 @@ ${estApercu ? `{
     console.log(`[BACKEND_ANALYZE] Gemini analysis & prediction completed successfully.`);
     setBounded(analysisCache, cacheKey, { data: parsedData, timestamp: Date.now() });
     
-    return respond(parsedData);
+    return await respond(parsedData);
 
   } catch (e: any) {
     console.error("[BACKEND_ANALYZE] Gemini failed:", e.message);
@@ -1628,6 +1628,6 @@ ${estApercu ? `{
     });
 
     setBounded(analysisCache, cacheKey, { data: fallbackData, timestamp: Date.now() });
-    return respond(fallbackData);
+    return await respond(fallbackData);
   }
 }

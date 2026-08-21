@@ -31,7 +31,49 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
     }
 
-    return NextResponse.json({ history: data || [] });
+    // ── LA PORTE DÉROBÉE DE L'HISTORIQUE ──────────────────────────────────
+    //
+    // Cette route rendait `select('*')` sans regarder les droits. Un compte
+    // sans abonnement obtenait donc, pour chacune de ses analyses passées :
+    // le score prédit, les trois probabilités, la confiance, le résumé, et
+    // `analysis_data` — c'est-à-dire l'analyse ENTIÈRE, scénarios compris.
+    //
+    // Tout le travail de découpage fait à l'analyse était contourné par un
+    // simple passage sur la page Historique. Pire : rien ne le signalait,
+    // puisque l'interface, elle, n'affichait qu'une partie.
+    //
+    // Le même découpage s'applique donc ici. Les colonnes payantes ne sont pas
+    // masquées : elles ne sont pas envoyées.
+    const lignes = data ?? [];
+
+    if (guard.entitlements.premium) return NextResponse.json({ history: lignes });
+
+    const CHAMPS_PAYANTS = [
+      'score',
+      'confidence',
+      'summary',
+      'win_prob',
+      'draw_prob',
+      'lose_prob',
+      'analysis_data',
+      'predicted_winner',
+    ] as const;
+
+    const filtrees = lignes.map((ligne: any) => {
+      const propre: Record<string, any> = {};
+      for (const [cle, valeur] of Object.entries(ligne)) {
+        if ((CHAMPS_PAYANTS as readonly string[]).includes(cle)) continue;
+        propre[cle] = valeur;
+      }
+      // Une rencontre DÉJÀ JOUÉE n'a plus rien de confidentiel : son score est
+      // public, Google l'affiche. Le retenir ne ferait vendre personne et
+      // donnerait un historique incompréhensible, plein de cases vides.
+      if (ligne.is_finished) propre.score = ligne.score;
+      propre.verrouille = true;
+      return propre;
+    });
+
+    return NextResponse.json({ history: filtrees });
   } catch (e) {
     console.error('[HISTORY] GET error:', e);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });

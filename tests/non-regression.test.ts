@@ -283,3 +283,240 @@ test('le code ne publie jamais une preuve dont l\'issue est fausse', () => {
     'Le garde-fou de publication manuelle a disparu.'
   );
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  21 AOÛT 2026 — L'APERÇU GRATUIT DONNAIT TOUTE LA RÉPONSE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Les ventes se sont arrêtées net. Un visiteur sans abonnement recevait :
+//  le « Résumé rapide » qui nomme le favori et cite les buts attendus chiffrés
+//  (« penchent vers Marseille : 1.9 contre 1.36 »), le premier scénario
+//  complet avec buteur, minute et score final (« scelle la victoire 2-1 »), et
+//  la jauge de confiance avec son libellé. Il n'avait plus aucune raison de
+//  payer.
+//
+//  Ces trois tests couvrent les DEUX portes par lesquelles l'analyse sortait :
+//  la route d'analyse (`toTeaser`) et la route d'historique.
+
+const CHAMPS_VERROUILLES = [
+  'predictedScore', 'winner', 'winProb', 'drawProb', 'loseProb',
+  'confidence', 'confidenceLabel', 'expectedGoals', 'scenarios',
+  'scenario', 'sections', 'quickSummary',
+];
+
+const analyseComplete = (t1: string, t2: string, f1: any, f2: any) => ({
+  team1: { name: t1 }, team2: { name: t2 },
+  competition: 'Ligue 1', globalForm: { team1: f1, team2: f2 },
+  quickSummary: `Les buts attendus penchent vers ${t1} : 1.9 contre 1.36.`,
+  predictedScore: '2-1', winner: t1,
+  winProb: 52, drawProb: 26, loseProb: 22,
+  confidence: 88, confidenceLabel: 'Très élevée',
+  expectedGoals: { team1: 1.9, team2: 1.36 },
+  scenarios: [`${t1} ouvre par Mendy (8/10) et scelle la victoire 2-1.`, 'B', 'C'],
+  sections: [1, 2, 3, 4, 5, 6, 7].map((n) => ({ titre: `S${n}` })),
+});
+
+const FORME_FORTE = { recentMatches: ['W','W','W','W','D'], goalsScored: 12, goalsConceded: 3, cleanSheets: 3, avgPossession: 62, winStreak: 4 };
+const FORME_FAIBLE = { recentMatches: ['L','L','L','L','D'], goalsScored: 2, goalsConceded: 11, cleanSheets: 0, avgPossession: 38, winStreak: 0 };
+const FORME_MOYENNE = { recentMatches: ['W','D','W','L','W'], goalsScored: 8, goalsConceded: 6, cleanSheets: 2, avgPossession: 47, winStreak: 1 };
+
+test("un compte gratuit ne reçoit AUCUN champ verrouillé", async () => {
+  const { toTeaser } = await import('../src/lib/analysis-teaser');
+
+  for (const [t1, t2, f1, f2] of [
+    ['Real Madrid', 'Espanyol', FORME_FORTE, FORME_FAIBLE],
+    ['Arsenal', 'Coventry', FORME_FORTE, FORME_MOYENNE],
+    ['Marseille', 'Strasbourg', FORME_MOYENNE, FORME_FAIBLE],
+  ] as [string, string, any, any][]) {
+    const gratuit = await toTeaser(analyseComplete(t1, t2, f1, f2)) as Record<string, unknown>;
+
+    for (const champ of CHAMPS_VERROUILLES)
+      assert.ok(
+        !(champ in gratuit),
+        `${t1} — ${t2} : le champ « ${champ} » part vers un compte gratuit. ` +
+          `Le visiteur a la réponse sans payer.`
+      );
+  }
+});
+
+test("aucune valeur payante ne subsiste dans le JSON servi au gratuit", async () => {
+  const { toTeaser } = await import('../src/lib/analysis-teaser');
+  const json = JSON.stringify(await toTeaser(analyseComplete('Marseille', 'Strasbourg', FORME_MOYENNE, FORME_FAIBLE)));
+
+  // On cherche les VALEURS, pas les noms de champs : un score peut ressortir
+  // dans un texte libre sans qu'aucun champ interdit ne soit présent.
+  for (const [quoi, motif] of [
+    ['le score prédit', /\b2\s*-\s*1\b/],
+    ['les buts attendus', /\b1\.9\b|\b1\.36\b/],
+    ['une probabilité', /\b52\b|\b26\b.*%|\b22\b.*%/],
+    ['le libellé de confiance', /très élevée/i],
+    ['un nom de buteur', /mendy/i],
+    ["l'expression « buts attendus »", /buts attendus/i],
+  ] as [string, RegExp][])
+    assert.ok(!motif.test(json), `${quoi} apparaît dans la réponse servie à un compte gratuit.`);
+});
+
+test("l'aperçu gratuit est spécifique à chaque affiche", async () => {
+  const { toTeaser } = await import('../src/lib/analysis-teaser');
+
+  const AFFICHES = ([
+    ['Real Madrid', 'Espanyol', FORME_FORTE, FORME_FAIBLE],
+    ['Arsenal', 'Coventry', FORME_FORTE, FORME_MOYENNE],
+    ['Marseille', 'Strasbourg', FORME_MOYENNE, FORME_FAIBLE],
+    ['Lens', 'Monaco', FORME_MOYENNE, FORME_FORTE],
+  ] as [string, string, any, any][]);
+
+  const textes: string[] = [];
+  for (const [t1, t2, f1, f2] of AFFICHES)
+    textes.push(String((await toTeaser(analyseComplete(t1, t2, f1, f2)) as any).apercu));
+
+  assert.equal(
+    new Set(textes).size,
+    textes.length,
+    'Deux affiches produisent le même aperçu : un texte générique ne vend rien.'
+  );
+
+  for (const t of textes) {
+    assert.ok(t.length > 120, `Aperçu trop court pour donner envie : « ${t} »`);
+    assert.ok(
+      /Débloquez l'analyse complète/.test(t),
+      "L'aperçu ne se termine plus par l'appel à l'action."
+    );
+  }
+});
+
+test("la route d'historique retire les colonnes payantes", () => {
+  const source = lire('src/app/api/history/route.ts');
+
+  assert.ok(
+    /guard\.entitlements\.premium/.test(source),
+    "La route d'historique ne regarde plus les droits : elle rendait select('*') " +
+      'et servait score, probabilités, confiance et analysis_data à tout le monde.'
+  );
+
+  for (const colonne of ['win_prob', 'draw_prob', 'lose_prob', 'analysis_data', 'confidence'])
+    assert.ok(
+      new RegExp(`'${colonne}'`).test(source),
+      `La colonne payante « ${colonne} » n'est plus dans la liste retirée aux comptes gratuits.`
+    );
+});
+
+test("la liste des champs autorisés n'accueille plus le verdict", () => {
+  const source = lire('src/lib/analysis-teaser.ts');
+  const bloc = source.slice(source.indexOf('TEASER_FIELDS'), source.indexOf('] as const'));
+
+  for (const interdit of ['quickSummary', 'confidence', 'scenario'])
+    assert.ok(
+      !new RegExp(`^\s*'${interdit}',`, 'm').test(bloc),
+      `« ${interdit} » est revenu dans les champs servis aux comptes gratuits.`
+    );
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LE GARDE-FOU CONTRE UN MODÈLE QUI DÉRAPE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  L'aperçu est maintenant rédigé par le modèle le moins cher de la chaîne.
+//  Un modèle bon marché à qui l'on interdit d'annoncer un vainqueur finit par
+//  écrire « logiquement remporté par le favori ». Toute sortie passe donc un
+//  contrôle avant d'atteindre le visiteur : au moindre score, pourcentage ou
+//  verdict, le texte est rejeté et le gabarit prend le relais.
+//
+//  Ces cas sont de vraies formulations que produit ce genre de modèle.
+
+test('le garde-fou rejette tout texte qui trahit le verdict', async () => {
+  const { trahitLeVerdict } = await import('../src/lib/apercu-ia');
+
+  const DOIVENT_ETRE_REJETES = [
+    "Le Real part avec les faveurs des pronostics et devrait s'imposer sans trembler face à un Espanyol en difficulté cette saison encore.",
+    "Marseille reste sur une bonne série. Notre analyse donne un score probable de 2-1 pour les Phocéens à domicile ce dimanche soir.",
+    "Arsenal domine les débats avec 62 % de possession et une attaque en feu, Coventry tentera de résister comme il le pourra ce soir.",
+    "Les buts attendus penchent nettement vers les Merengues au vu des attaques et des défenses en présence dans cette rencontre.",
+    "La confiance de l'IA est très élevée sur cette rencontre au vu de la forme des deux équipes engagées ce week-end en championnat.",
+    "Le favori de cette affiche est clairement identifié par nos modèles statistiques après examen des dernières journées disputées.",
+    "Trop court.",
+  ];
+
+  for (const texte of DOIVENT_ETRE_REJETES)
+    assert.ok(
+      trahitLeVerdict(texte) !== null,
+      `Ce texte passe le garde-fou alors qu'il trahit le verdict : « ${texte.slice(0, 70)}… »`
+    );
+});
+
+test('le garde-fou laisse passer une bande-annonce honnête', async () => {
+  const { trahitLeVerdict } = await import('../src/lib/apercu-ia');
+
+  const DOIVENT_PASSER = [
+    "Marseille arrive avec le plein de confiance après une série encourageante et une attaque qui trouve régulièrement le chemin des filets. En face, Strasbourg traverse une passe délicate mais reste redoutable quand il peut se projeter vite vers l'avant. Deux visages opposés du championnat se croisent, et notre analyse complète détaille ce qui devrait se jouer.",
+    "Le Real s'appuie sur une défense difficile à manœuvrer et sur des attaquants en réussite depuis plusieurs journées. L'Espanyol, lui, mise sur la solidarité collective et sur sa capacité à frapper en transition quand l'espace s'ouvre. Deux approches du jeu radicalement différentes se répondent dans cette affiche.",
+  ];
+
+  for (const texte of DOIVENT_PASSER) {
+    const faute = trahitLeVerdict(texte);
+    assert.equal(
+      faute,
+      null,
+      `Ce texte honnête est rejeté à tort (« ${faute} ») : « ${texte.slice(0, 70)}… »`
+    );
+  }
+});
+
+test("l'aperçu est mis en réserve pour n'être écrit qu'une fois par match", () => {
+  const source = lire('src/lib/apercu-ia.ts');
+
+  assert.ok(/lireReserve/.test(source), "L'aperçu ne relit plus la réserve : il serait régénéré à chaque visite.");
+  assert.ok(/ecrireReserve/.test(source), "L'aperçu n'est plus mis en réserve : chaque visiteur ferait payer une génération.");
+  assert.ok(
+    /\.sort\(\)/.test(source),
+    "La clé de réserve n'est plus triée : « Lens — PSG » et « PSG — Lens » seraient générés deux fois."
+  );
+  assert.ok(
+    /MODELE_ECONOMIQUE/.test(source),
+    "L'aperçu n'utilise plus le modèle le moins cher de la chaîne."
+  );
+});
+
+test("le prompt de l'aperçu ne reçoit jamais le verdict", () => {
+  const source = lire('src/lib/apercu-ia.ts');
+  const debut = source.indexOf('function resumerForme');
+  const fin = source.indexOf('export interface ResultatApercu');
+  const bloc = source.slice(debut, fin);
+
+  // La protection principale n'est pas le prompt, c'est ce qu'on ne transmet
+  // pas. On vérifie donc que les champs du verdict n'entrent pas dans le
+  // résumé envoyé au modèle.
+  for (const interdit of ['predictedScore', 'winProb', 'drawProb', 'loseProb', 'scenarios', 'confidence'])
+    assert.ok(
+      !new RegExp(interdit).test(bloc),
+      `Le champ « ${interdit} » est transmis au modèle : il pourrait le recracher.`
+    );
+});
+
+test('le gabarit de secours passe son propre garde-fou', async () => {
+  // Découvert en produisant la preuve : le gabarit écrivait « notre analyse
+  // complète donne le favori, le score attendu… ». Le contrôle anti-fuite le
+  // rejetait — à raison. Un filet de secours qui échoue à son propre contrôle
+  // laisse passer, le jour où il sert, ce qu'il devait retenir.
+  const { composerApercu } = await import('../src/lib/apercu-vendeur');
+  const { trahitLeVerdict } = await import('../src/lib/apercu-ia');
+
+  const AFFICHES: [string, string, any, any][] = [
+    ['Real Madrid', 'Espanyol', FORME_FORTE, FORME_FAIBLE],
+    ['Arsenal', 'Coventry', FORME_FORTE, FORME_MOYENNE],
+    ['Marseille', 'Strasbourg', FORME_MOYENNE, FORME_FAIBLE],
+    ['Lens', 'Monaco', FORME_MOYENNE, FORME_FORTE],
+    ['Lille', 'Nice', FORME_FAIBLE, FORME_FAIBLE],
+    ['Brest', 'Reims', FORME_MOYENNE, FORME_MOYENNE],
+  ];
+
+  for (const [t1, t2, f1, f2] of AFFICHES) {
+    const texte = composerApercu(t1, t2, f1, f2);
+    const faute = trahitLeVerdict(texte);
+    assert.equal(
+      faute,
+      null,
+      `Le gabarit de ${t1} — ${t2} trahit « ${faute} » : « ${texte.slice(0, 90)}… »`
+    );
+  }
+});
