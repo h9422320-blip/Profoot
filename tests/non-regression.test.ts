@@ -889,3 +889,78 @@ test('la collecte de données ne peut plus manger le budget du modèle', () => {
       `la collecte peut consommer tout le budget et le modèle n'a plus le temps de répondre.`
   );
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ★ 21 AOÛT 2026 — UN ACQUIS VALIDÉ A ÉTÉ CASSÉ TROIS HEURES APRÈS ★
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Le propriétaire avait validé à 100 % l'affichage payant : Résumé rapide,
+//  Scénario #1, Confiance de l'IA. Trois heures plus tard, un abonné PRO ELITE
+//  recevait un Scénario #1 réduit à un mot : « Beti ».
+//
+//  LA CAUSE N'ÉTAIT PAS DANS L'AFFICHAGE. Une constante partagée — la
+//  réservation de jetons — avait été réduite ailleurs, et coupait la réponse du
+//  modèle en pleine phrase.
+//
+//  ET LE CADENAS POSÉ LE MATIN MÊME N'A RIEN VU, parce que le test écrit en
+//  même temps que la modification autorisait exactement cette valeur. Un seuil
+//  choisi pour laisser passer ce qu'on veut livrer ne protège rien.
+//
+//  D'où ces tests-ci : ils ne vérifient plus une constante, ils vérifient CE
+//  QUE REÇOIT CELUI QUI PAIE. Une régression peut venir de n'importe quelle
+//  couche ; le contrôle doit porter sur le résultat, pas sur la cause connue.
+
+test('★ ACQUIS — un abonné reçoit toujours un scénario complet, jamais un mot', async () => {
+  const { scenarioGabarit } = await import('../src/lib/apercu-ia');
+
+  const PROFILS = [
+    { recentMatches: ['W','W','W','D','L'], goalsScored: 74, goalsConceded: 42, cleanSheets: 13, avgPossession: 56, played: 38 },
+    { recentMatches: ['L','L','D','L','W'], goalsScored: 30, goalsConceded: 70, cleanSheets: 2, avgPossession: 38, played: 38 },
+    { recentMatches: ['W','D','W','L','D'], goalsScored: 50, goalsConceded: 50, cleanSheets: 8, avgPossession: 50, played: 38 },
+    // Début de saison : presque aucune donnée.
+    { recentMatches: ['W'], goalsScored: 2, goalsConceded: 1, cleanSheets: 0, avgPossession: 0, played: 1 },
+    {},
+  ];
+
+  for (const a of PROFILS)
+    for (const b of PROFILS) {
+      const t = scenarioGabarit('Real Betis', 'Real Sociedad', a as any, b as any);
+
+      assert.ok(
+        t.length >= 120,
+        `Scénario de ${t.length} caractères : « ${t} ». C'est ce qu'a reçu un abonné le 21 août.`
+      );
+      assert.ok(
+        t.split(/\s+/).length >= 20,
+        `Scénario de ${t.split(/\s+/).length} mots — un abonné qui paie ne peut pas recevoir ça.`
+      );
+      // Les deux équipes doivent être nommées : « l'adversaire » anonyme était
+      // l'ancien texte de secours, et il ne doit pas revenir.
+      assert.ok(
+        t.includes('Real Betis') && t.includes('Real Sociedad'),
+        `Une des deux équipes n'est pas nommée : « ${t.slice(0, 120)} »`
+      );
+      assert.ok(
+        !/l'adversaire\b/i.test(t),
+        `Le texte parle de « l'adversaire » au lieu de nommer le club : « ${t.slice(0, 120)} »`
+      );
+    }
+});
+
+test("★ ACQUIS — rien ne peut tronquer la réponse du modèle sans faire échouer ce test", async () => {
+  const { JETONS_REPONSE } = await import('../src/lib/openrouter');
+
+  // Ce seuil est fixé sur CE QUI A ÉTÉ VALIDÉ — une analyse complète avec sept
+  // sections et trois scénarios — et non sur ce qu'on souhaiterait économiser.
+  //
+  // La valeur 8 000 n'a jamais tronqué personne. 2 500 a produit « Beti ».
+  // Toute réduction doit d'abord être mesurée sur la réponse BRUTE du modèle,
+  // avant décodage, sur plusieurs centaines de cas — jamais sur `analysis_data`,
+  // qui est la version conservée et réduite.
+  assert.ok(
+    JETONS_REPONSE >= 6000,
+    `JETONS_REPONSE vaut ${JETONS_REPONSE}. En dessous de 6 000, la réponse du modèle est ` +
+      `coupée en pleine phrase et l'abonné reçoit une analyse mutilée. Mesuré le 21 août : ` +
+      `2 500 a produit un scénario d'un seul mot.`
+  );
+});
