@@ -964,3 +964,23 @@ test("★ ACQUIS — rien ne peut tronquer la réponse du modèle sans faire éc
       `2 500 a produit un scénario d'un seul mot.`
   );
 });
+
+test("★ ACQUIS — le résumé d'un abonné fait au moins quatre phrases", () => {
+  const source = lire('src/app/api/analyze/route.ts');
+
+  // 21 août, compte PRO ELITE : « Napoli s'appuie sur un pressing haut et une
+  // attaque efficace pour arracher la victoire 1-0 contre un Genoa fragile en
+  // défense. » Une phrase — moins que ce que lit un visiteur gratuit.
+  //
+  // Le modèle n'y était pour rien : on lui demandait « un résumé captivant »
+  // sans exigence de longueur. Il répondait à la question posée.
+  assert.ok(
+    /QUATRE À CINQ PHRASES/.test(source),
+    "La consigne de longueur a disparu du prompt : le modèle rendra de nouveau une seule phrase."
+  );
+
+  assert.ok(
+    /RESUME_MINIMUM/.test(source) && /parsedData\.quickSummary = composerApercuVendeur\(/.test(source),
+    "Le filet a disparu : un résumé trop court partira tel quel vers un abonné qui a payé."
+  );
+});

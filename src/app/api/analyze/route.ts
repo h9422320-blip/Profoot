@@ -1506,11 +1506,11 @@ ${estApercu ? '' : `   - ÉVALUATION DES EFFECTIFS : Décortique les joueurs tit
 RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun markdown) :
 ${estApercu ? `{
   "predictedScore": { "reasoning": "Phrase courte justifiant le score." },
-  "quickSummary": "Un résumé captivant du match et de la tactique attendue.",
+  "quickSummary": "QUATRE À CINQ PHRASES, jamais moins. (1) Qui reçoit qui, dans quelle compétition. (2) L'état de forme réel de la première équipe, avec ses chiffres. (3) Celui de la seconde, avec les siens. (4) Le point sur lequel la rencontre va se jouer — le duel tactique, la faiblesse à exploiter, ce que chacun devra surveiller. Ton de journaliste sportif, français naturel, aucune liste. Une seule phrase est un travail bâclé : l'abonné a payé pour lire une analyse, pas une accroche.",
   "scenarios": [ { "title": "Scénario principal", "content": "Le déroulé le plus probable, en trois phrases." } ]
 }` : `{
   "predictedScore": { "reasoning": "Phrase courte justifiant le score." },
-  "quickSummary": "Un résumé captivant du match et de la tactique attendue.",
+  "quickSummary": "QUATRE À CINQ PHRASES, jamais moins. (1) Qui reçoit qui, dans quelle compétition. (2) L'état de forme réel de la première équipe, avec ses chiffres. (3) Celui de la seconde, avec les siens. (4) Le point sur lequel la rencontre va se jouer — le duel tactique, la faiblesse à exploiter, ce que chacun devra surveiller. Ton de journaliste sportif, français naturel, aucune liste. Une seule phrase est un travail bâclé : l'abonné a payé pour lire une analyse, pas une accroche.",
   "comparison": {
     "attack": { "team1": 0, "team2": 0 },
     "defense": { "team1": 0, "team2": 0 },
@@ -1582,6 +1582,44 @@ ${estApercu ? `{
       responseText = jsonMatch[0];
     }
     const parsedData = JSON.parse(responseText);
+
+    // ── UN RÉSUMÉ D'UNE LIGNE N'EST PAS UN RÉSUMÉ ─────────────────────────
+    //
+    // Constaté sur un compte PRO ELITE le 21 août : « Napoli s'appuie sur un
+    // pressing haut et une attaque efficace pour arracher la victoire 1-0
+    // contre un Genoa fragile en défense. » Une phrase. C'est tout ce que
+    // recevait quelqu'un qui venait de payer — moins que le visiteur gratuit,
+    // qui en lisait quatre.
+    //
+    // Le modèle n'y était pour rien : on lui demandait « un résumé captivant »,
+    // sans aucune exigence de longueur. Il a répondu exactement à la question
+    // posée.
+    //
+    // La consigne est maintenant explicite, et ce filet garantit le résultat :
+    // si la réponse reste trop courte, on sert le texte composé à partir des
+    // chiffres réels — celui que le propriétaire a validé. Mieux vaut un texte
+    // mécanique complet qu'une ligne bâclée à quelqu'un qui a payé.
+    const RESUME_MINIMUM = 200;
+    if (String(parsedData?.quickSummary ?? '').trim().length < RESUME_MINIMUM) {
+      console.warn(
+        `[BACKEND_ANALYZE] Résumé trop court (${String(parsedData?.quickSummary ?? '').length} caractères) ` +
+          `pour ${team1.name} — ${team2.name}. Texte composé servi à la place.`
+      );
+      parsedData.quickSummary = composerApercuVendeur(
+        team1.name,
+        team2.name,
+        { recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1,
+          cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1,
+          winStreak: winStreak1, played: played1, name: team1.name },
+        { recentMatches: recent2, goalsScored: baseGoalsFor2, goalsConceded: baseGoalsAgainst2,
+          cleanSheets: s2r.clean_sheet?.total || 0, avgPossession: baseAvgPossession2,
+          winStreak: winStreak2, played: played2, name: team2.name },
+        {
+          competition: (targetFutureMatch || nextH2H)?.league?.name ?? null,
+          stade: (targetFutureMatch || nextH2H)?.fixture?.venue?.name ?? null,
+        }
+      );
+    }
 
     // Les chiffres affichés sont ceux du calcul, jamais ceux que le modèle a pu
     // réécrire au passage. C'est ce qui garantit qu'on ne reverra pas 82 % de
