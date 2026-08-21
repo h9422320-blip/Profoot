@@ -392,6 +392,25 @@ export async function POST(req: Request) {
   // stocker la réponse détournée dans le cache partagé par tous les abonnés.
   const rawTeam1 = reqPayload.team1;
   const rawTeam2 = reqPayload.team2;
+
+  /**
+   * ── S'AGIT-IL D'UNE REPRISE APRÈS ÉCHEC ? ───────────────────────────────
+   *
+   * Le navigateur relance une fois, tout seul, quand la première tentative a
+   * échoué — la personne ne voit pas passer l'incident. Cette reprise n'est pas
+   * une requête ordinaire, et elle ne doit pas être traitée comme telle :
+   *
+   *   • Les données du match viennent d'être mises en réserve. La collecte, qui
+   *     prend vingt secondes à froid, en prend deux. Inutile de garder un
+   *     budget calculé pour le cas lent.
+   *
+   *   • Le modèle qui vient de fauter n'a aucune raison de mieux se comporter
+   *     trente secondes plus tard. On repart de plus loin dans la cascade.
+   *
+   * Borné à trois : au-delà, une valeur venue du navigateur ne doit pas pouvoir
+   * décaler la liste des modèles à sa guise.
+   */
+  const reprise = Math.min(3, Math.max(0, Number(reqPayload.reprise) || 0));
   if (!rawTeam1?.id || !rawTeam2?.id) {
     return NextResponse.json({ error: "Équipes manquantes" }, { status: 400 });
   }
@@ -1548,10 +1567,28 @@ ${estApercu ? `{
     // qu'elle commence. Le budget est calculé sur le temps réellement restant
     // avant la limite de la plateforme, moins une réserve pour la mise en forme
 
-    const budgetModele = Math.max(
-      12000,
-      LIMITE_PLATEFORME_MS - (Date.now() - debutRequete) - RESERVE_MISE_EN_FORME_MS
-    );
+    const budgetModele = reprise
+      ? // Reprise : les données sont en réserve, la collecte a été quasi
+        // instantanée. Vingt-cinq secondes suffisent largement au modèle, et
+        // c'est ce qui ramène l'attente totale de deux minutes trente à une
+        // minute quinze dans le pire cas.
+        Math.max(
+          12000,
+          Math.min(
+            25000,
+            LIMITE_PLATEFORME_MS - (Date.now() - debutRequete) - RESERVE_MISE_EN_FORME_MS
+          )
+        )
+      : Math.max(
+          12000,
+          LIMITE_PLATEFORME_MS - (Date.now() - debutRequete) - RESERVE_MISE_EN_FORME_MS
+        );
+
+    if (reprise)
+      console.log(
+        `[BACKEND_ANALYZE] Reprise ${reprise} pour ${team1.name} — ${team2.name} : ` +
+          `budget ${budgetModele} ms, cascade décalée de ${reprise} modèle(s).`
+      );
 
     // Un compte non abonné ne voit que 15 % du résultat, le reste étant flouté.
     // Lui servir le modèle le plus cher revient à payer le prix fort pour du
@@ -1560,6 +1597,9 @@ ${estApercu ? `{
     const result = await genererAnalyseJSON(prompt, {
       budgetMs: budgetModele,
       economique: estApercu,
+      // Le modele qui vient de fauter est ecarte : rien ne dit qu il ferait
+      // mieux trente secondes plus tard.
+      decalage: reprise,
       // Chaque maillon de la cascade rend compte de lui-même. Voir
       // `echecsParModele` plus haut : sans cela, on ne voit que le dernier.
       surEchec: (modele, erreur, dureeMs, expire) => {

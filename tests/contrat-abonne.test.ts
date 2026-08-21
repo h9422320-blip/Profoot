@@ -256,3 +256,76 @@ test("CONTRAT — le taux d'échec est surveillé et remonte tout seul", () => {
     "L'alerte ne détaille plus les causes : elle signalerait un problème sans dire lequel."
   );
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LA REPRISE AUTOMATIQUE — CE QUE LE CLIENT NE DOIT PLUS VOIR
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Une analyse en échec affichait « ANALYSE INTERROMPUE » et laissait la
+//  personne devant un bouton « Réessayer ». Beaucoup ne cliquent pas : ils
+//  concluent que l'application ne marche pas, et s'en vont.
+
+test('CONTRAT — une analyse en échec est reprise automatiquement', () => {
+  const source = lire('src/app/(dashboard)/analyze/AnalyzeClient.tsx');
+
+  assert.ok(
+    /const RELANCES_MAX = (\d+)/.test(source),
+    "La reprise automatique a disparu : un échec redeviendrait visible pour le client."
+  );
+
+  const max = Number(source.match(/const RELANCES_MAX = (\d+)/)?.[1]);
+  assert.ok(max >= 1, 'Aucune reprise : le client verra de nouveau « ANALYSE INTERROMPUE ».');
+  assert.ok(
+    max <= 2,
+    `${max} reprises : au-delà de deux, l'attente dépasse deux minutes et répète la même erreur.`
+  );
+
+  assert.ok(
+    /return handleAnalyze\(activeT1, activeT2, tentative \+ 1\)/.test(source),
+    "La reprise ne rappelle plus l'analyse : elle ne sert à rien."
+  );
+
+  // La reprise doit signaler au serveur qu'elle en est une, sinon celui-ci
+  // repart avec le budget long et le même modèle défaillant.
+  assert.ok(
+    /reprise: tentative > 0/.test(source),
+    "La reprise ne se signale plus au serveur : budget long et modèle fautif conservés."
+  );
+});
+
+test("CONTRAT — une reprise repart plus vite et sur un autre modèle", () => {
+  const source = lire('src/app/api/analyze/route.ts');
+
+  assert.ok(
+    /const reprise = Math\.min\(3, Math\.max\(0, Number\(reqPayload\.reprise\)/.test(source),
+    "Le serveur ne lit plus le signal de reprise, ou ne le borne plus."
+  );
+
+  assert.ok(
+    /Math\.min\(\s*25000,/.test(source),
+    "Le budget raccourci de la reprise a disparu : l'attente repasserait à deux minutes trente."
+  );
+
+  assert.ok(
+    /decalage: reprise/.test(source),
+    "La reprise n'écarte plus le modèle qui vient d'échouer : elle répétera la même erreur."
+  );
+});
+
+test("CONTRAT — un modèle écarté reste disponible en dernier recours", async () => {
+  const source = lire('src/lib/analyse-modele.ts');
+
+  // Les modèles écartés passent EN FIN de liste, jamais à la poubelle : si
+  // tous les suivants échouent aussi, mieux vaut retenter le premier que ne
+  // rien rendre du tout.
+  assert.ok(
+    /\[\.\.\.base\.slice\(n\), \.\.\.base\.slice\(0, n\)\]/.test(source),
+    "Les modèles écartés sont supprimés au lieu d'être déplacés : la cascade perd des filets."
+  );
+
+  const { MODELES_OPENROUTER } = await import('../src/lib/openrouter');
+  assert.ok(
+    MODELES_OPENROUTER.length >= 3,
+    `Seulement ${MODELES_OPENROUTER.length} modèle(s) : une reprise n'aurait presque rien à essayer.`
+  );
+});

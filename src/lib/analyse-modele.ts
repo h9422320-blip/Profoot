@@ -80,6 +80,7 @@ export async function genererAnalyseJSON(
     economique = false,
     systeme,
     surEchec,
+    decalage = 0,
   }: {
     budgetMs: number;
     economique?: boolean;
@@ -93,12 +94,30 @@ export async function genererAnalyseJSON(
      * de chances d'expliquer quoi que ce soit.
      */
     surEchec?: (modele: string, erreur: any, dureeMs: number, expire: boolean) => void;
+    /**
+     * Nombre de modèles à écarter en tête de liste.
+     *
+     * Utilisé par la reprise automatique : le modèle qui vient de fauter n'a
+     * aucune raison de mieux se comporter trente secondes plus tard. On repart
+     * de plus loin dans la cascade plutôt que de répéter la même erreur.
+     *
+     * Les modèles écartés restent disponibles en fin de liste : si tous les
+     * suivants échouent aussi, mieux vaut retenter le premier que ne rien
+     * rendre du tout.
+     */
+    decalage?: number;
   }
 ): Promise<ResultatModele> {
   if (openRouterDisponible()) {
-    const modeles = economique
+    const base = economique
       ? [MODELE_ECONOMIQUE, ...MODELES_OPENROUTER.filter((m) => m !== MODELE_ECONOMIQUE)]
       : MODELES_OPENROUTER;
+
+    // Les modeles ecartes passent EN FIN de liste, jamais a la poubelle : si
+    // tous les suivants echouent aussi, mieux vaut retenter le premier que ne
+    // rien rendre du tout a quelqu un qui attend.
+    const n = Math.min(decalage, Math.max(0, base.length - 1));
+    const modeles = n > 0 ? [...base.slice(n), ...base.slice(0, n)] : base;
 
     let retenu = modeles[0];
     const texte = await avecBasculeDeModele(

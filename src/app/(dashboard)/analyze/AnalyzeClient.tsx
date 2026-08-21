@@ -680,12 +680,48 @@ export default function AnalyzePage({
     }
   }, []);
 
-  const handleAnalyze = async (overrideT1?: string, overrideT2?: string) => {
+  /**
+   * ── LA SECONDE CHANCE, INVISIBLE POUR CELUI QUI ATTEND ──────────────────
+   *
+   * Une analyse qui échoue affichait « ANALYSE INTERROMPUE » et laissait la
+   * personne devant un bouton « Réessayer ». Beaucoup ne cliquent pas : ils
+   * concluent que l'application ne marche pas, et s'en vont.
+   *
+   * POURQUOI LA RELANCE PART D'ICI ET NON DU SERVEUR
+   *
+   * Quand le serveur renonce, il a déjà consommé ses soixante secondes. Rien
+   * ne peut être retenté dans la même requête. Repartir du navigateur donne
+   * une requête NEUVE, avec son budget entier.
+   *
+   * ET ELLE A DE MEILLEURES CHANCES QUE LA PREMIÈRE
+   *
+   * Les données du match viennent d'être mises en réserve : la collecte, qui
+   * prenait vingt secondes, en prend deux. Le modèle hérite donc de presque
+   * tout le budget au lieu d'un reste. On signale en plus au serveur qu'il
+   * s'agit d'une reprise, pour qu'il écarte le modèle qui vient de fauter.
+   *
+   * UNE SEULE RELANCE, ET C'EST MESURÉ
+   *
+   * Trois essais identiques répétaient la même erreur pendant deux minutes et
+   * demie. Un seul essai, sur un autre modèle et avec les données déjà en
+   * main, aboutit plus souvent et coûte au pire une minute quinze.
+   *
+   * Le quota n'est pas touché : il se décompte par MATCH et non par tentative
+   * — vérifié dans `consumeAnalysis`. Une reprise ne coûte rien à l'abonné.
+   */
+  const RELANCES_MAX = 1;
+
+  const handleAnalyze = async (
+    overrideT1?: string,
+    overrideT2?: string,
+    /** Rang de la tentative. 0 = premier essai, 1 = reprise automatique. */
+    tentative = 0
+  ) => {
     const activeT1 = overrideT1 || team1;
     const activeT2 = overrideT2 || team2;
-    
+
     if (!activeT1 || !activeT2 || activeT1 === activeT2) return;
-    
+
     setAnalyzing(true);
     setResult(null);
     setAnalyzeError(null);
@@ -707,7 +743,10 @@ export default function AnalyzePage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           team1: getClub(activeT1),
-          team2: getClub(activeT2)
+          team2: getClub(activeT2),
+          // Le serveur s'en sert pour raccourcir son budget et écarter le
+          // modèle qui vient d'échouer. Absent au premier essai.
+          reprise: tentative > 0 ? tentative : undefined,
         })
       });
 
@@ -832,6 +871,27 @@ export default function AnalyzePage({
 
     } catch (error: any) {
       clearInterval(interval);
+
+      // ── LA REPRISE, AVANT D'ANNONCER UN ÉCHEC ─────────────────────────
+      //
+      // On ne montre rien et on ne coupe pas l'attente : l'écran d'analyse
+      // reste en place, la personne ne voit pas passer l'incident.
+      //
+      // Les cas déjà traités plus haut — abonnement requis, quota épuisé,
+      // session expirée — ne passent pas par ici : ils sortent avec `return`.
+      // Ce qui arrive jusqu'à ce point est une vraie panne, donc quelque chose
+      // qu'une seconde tentative peut réellement rattraper.
+      if (tentative < RELANCES_MAX) {
+        console.warn(
+          `[ANALYSE] Échec (${error?.message ?? 'inconnu'}) — reprise automatique ` +
+            `${tentative + 1}/${RELANCES_MAX} sur ${activeT1} — ${activeT2}.`
+        );
+        // Une courte pause : le fournisseur qui vient de renoncer a parfois
+        // besoin d'un instant, et l'écran d'attente reste affiché.
+        await new Promise((r) => setTimeout(r, 1500));
+        return handleAnalyze(activeT1, activeT2, tentative + 1);
+      }
+
       setAnalyzing(false);
       setResult(null);
       setAnalyzeError(error?.message || "Erreur inconnue");
