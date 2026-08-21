@@ -625,3 +625,65 @@ test('le garde-fou ne confond pas un bilan V-N-D avec un score', async () => {
     "Rennes traverse une passe difficile mais garde une attaque capable de faire la différence face au Paris Saint Germain. Le match devrait se terminer sur un 2-1 au vu des dernières sorties des deux formations engagées.";
   assert.equal(trahitLeVerdict(AVEC_SCORE), 'un score', 'Un vrai score passe le garde-fou.');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  21 AOÛT 2026 — LA FORME RÉCENTE ÉTAIT LUE À VIDE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  `recentMatches` existe sous DEUX formats selon le chemin de code : des
+//  lettres brutes (« W ») ou des objets { opponent, score, result }. La lecture
+//  ne gérait que les lettres. Sur le format objet, chaque entrée devenait
+//  « [object Object] », aucune ne commençait par W, et toute équipe ressortait
+//  avec un bilan de 0-0-0.
+//
+//  Rien ne plantait : la forme devenait simplement muette, et le texte se
+//  rabattait sur des formules vagues sans que personne ne sache pourquoi.
+
+test('la forme récente se lit dans les deux formats', async () => {
+  const { composerApercu } = await import('../src/lib/apercu-vendeur');
+
+  const EN_LETTRES = { recentMatches: ['W','W','W','D','L'], goalsScored: 40, goalsConceded: 20, cleanSheets: 6, avgPossession: 55, played: 20 };
+  const EN_OBJETS = {
+    recentMatches: [
+      { opponent: 'A', score: '2-0', result: 'W' },
+      { opponent: 'B', score: '1-0', result: 'W' },
+      { opponent: 'C', score: '3-1', result: 'W' },
+      { opponent: 'D', score: '1-1', result: 'D' },
+      { opponent: 'E', score: '0-2', result: 'L' },
+    ],
+    goalsScored: 40, goalsConceded: 20, cleanSheets: 6, avgPossession: 55, played: 20,
+  };
+
+  const adversaire = { recentMatches: ['L','L','D','L','W'], goalsScored: 15, goalsConceded: 35, cleanSheets: 1, avgPossession: 42, played: 20 };
+
+  const avecLettres = composerApercu('Alpha', 'Beta', EN_LETTRES as any, adversaire as any);
+  const avecObjets = composerApercu('Alpha', 'Beta', EN_OBJETS as any, adversaire as any);
+
+  assert.equal(
+    avecObjets,
+    avecLettres,
+    'Les deux formats de forme doivent produire exactement le même texte.'
+  );
+
+  // Trois victoires de suite : la série doit être vue dans les deux cas.
+  assert.ok(
+    /3 victoires consécutives/.test(avecObjets),
+    `La série n'est pas détectée sur le format objet : « ${avecObjets.slice(0, 100)}… »`
+  );
+});
+
+test("l'abonné ne reçoit jamais moins de texte que le visiteur gratuit", () => {
+  const source = lire('src/app/api/analyze/route.ts');
+
+  // Le repli servi à l'abonné doit employer le MÊME rédacteur que l'avant-goût.
+  // Sinon on retombe sur « Les buts attendus penchent vers X » et un scénario
+  // où l'adversaire n'est même pas nommé — vu en production sur un PRO ELITE.
+  assert.ok(
+    /quickSummary:\s*composerApercuVendeur\(/.test(source),
+    "Le repli de l'abonné n'utilise plus le rédacteur de l'avant-goût : il servira une phrase sèche."
+  );
+  assert.ok(
+    /content:\s*scenarioGabarit\(/.test(source),
+    "Le scénario de repli n'utilise plus le rédacteur commun : l'adversaire redeviendra anonyme."
+  );
+});

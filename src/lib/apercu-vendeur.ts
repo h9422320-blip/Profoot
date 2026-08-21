@@ -36,8 +36,25 @@
  * composition mécanique, elle, ne peut dire que ce qu'on l'autorise à dire.
  */
 
+/**
+ * Une entrée de forme récente, telle que l'application la produit.
+ *
+ * ── DEUX FORMATS, ET C'EST LE PIÈGE ─────────────────────────────────────
+ *
+ * Selon le chemin de code, `recentMatches` contient soit des lettres brutes
+ * (« W », « D », « L »), soit des objets `{ opponent, score, result }`. La
+ * première version ne lisait que les lettres : sur le format objet, chaque
+ * entrée devenait « [object Object] », aucune ne commençait par W, et toute
+ * équipe ressortait avec un bilan de 0-0-0.
+ *
+ * Le défaut ne plantait rien — il rendait simplement la forme muette, et le
+ * texte se rabattait sur des formules vagues sans que personne ne sache
+ * pourquoi.
+ */
+export type EntreeForme = string | { result?: string; opponent?: unknown; score?: unknown };
+
 export interface FormeEquipe {
-  recentMatches?: string[];
+  recentMatches?: EntreeForme[];
   /** Buts marqués sur TOUTE la saison, pas sur les cinq derniers matchs. */
   goalsScored?: number;
   goalsConceded?: number;
@@ -74,6 +91,18 @@ interface Bilan {
   victoiresSaison: number;
 }
 
+
+/**
+ * La lettre de resultat d une entree de forme, quel que soit son format.
+ *
+ * Accepte « W » aussi bien que { result: "W" }. Voir EntreeForme.
+ */
+export const lettreDe = (m: unknown): string => {
+  if (typeof m === "string") return m.toUpperCase().trim();
+  const r = (m as any)?.result;
+  return typeof r === "string" ? r.toUpperCase().trim() : "";
+};
+
 const nombre = (v: unknown, defaut = 0): number => {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? n : defaut;
@@ -87,8 +116,7 @@ function lireBilan(f: FormeEquipe | undefined): Bilan {
   // Le fournisseur écrit W (win), D (draw), L (loss). La première version
   // comptait « D » comme une défaite ET comme un nul selon la branche : un
   // match nul disparaissait ou devenait une défaite. On sépare proprement.
-  const compter = (lettre: string) =>
-    matchs.filter((m) => String(m ?? '').toUpperCase().trim().startsWith(lettre)).length;
+  const compter = (lettre: string) => matchs.filter((m) => lettreDe(m).startsWith(lettre)).length;
 
   // Les matchs joués de la SAISON servent de diviseur, jamais les cinq derniers.
   // Diviser un total de saison par cinq donnait « 11.8 buts par match ».
@@ -121,7 +149,7 @@ function serieEnCours(f: FormeEquipe | undefined): number {
   const matchs = Array.isArray(f?.recentMatches) ? f!.recentMatches! : [];
   let n = 0;
   for (const m of matchs) {
-    if (String(m ?? '').toUpperCase().trim().startsWith('W')) n++;
+    if (lettreDe(m).startsWith('W')) n++;
     else break;
   }
   return n;

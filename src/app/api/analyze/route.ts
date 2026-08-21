@@ -8,6 +8,8 @@ import { consumeAnalysis, buildMatchKey, type QuotaState } from "@/lib/analysis-
 import { toTeaser } from "@/lib/analysis-teaser";
 import { lireReserve, ecrireReserve } from "@/lib/api-football";
 import { lireCalibrages, facteursPour } from "@/lib/calibrage";
+import { composerApercu as composerApercuVendeur } from "@/lib/apercu-vendeur";
+import { scenarioGabarit } from "@/lib/apercu-ia";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
@@ -1604,11 +1606,42 @@ ${estApercu ? `{
     const vainqueur =
       t1Goals > t2Goals ? team1.name : t2Goals > t1Goals ? team2.name : null;
 
+    // ── L'ABONNÉ NE REÇOIT JAMAIS MOINS QUE LE VISITEUR GRATUIT ────────────
+    //
+    // Constaté en ligne le 21 août sur un compte PRO ELITE : le « Résumé
+    // rapide » était une phrase sèche — « Les buts attendus penchent vers Real
+    // Betis : 1.92 contre 1.11 » — et le scénario une formule où l'adversaire
+    // n'était même pas nommé. Sur une autre affiche, les deux blocs étaient
+    // carrément absents. Pendant ce temps, un visiteur gratuit lisait un vrai
+    // texte sur les deux équipes.
+    //
+    // Celui qui paie voyait donc moins bien que celui qui ne paie pas. Le repli
+    // emploie désormais EXACTEMENT le même rédacteur que l'avant-goût gratuit :
+    // il est composé mécaniquement, donc instantané et sans coût — on n'ajoute
+    // pas un appel au modèle à une requête qui vient déjà d'échouer sur le
+    // temps.
+    //
+    // L'abonné garde évidemment tout le reste : score, probabilités, buts
+    // attendus, métriques. Ce repli ne touche qu'aux DEUX TEXTES qui manquaient.
+    // Les mêmes chiffres que ceux servis plus bas dans `globalForm` : forme
+    // récente, buts de la saison, matchs joués. Rien de plus n'est nécessaire.
+    const formeRepli1 = {
+      recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1,
+      cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1,
+      winStreak: winStreak1, played: played1, name: team1.name,
+    };
+    const formeRepli2 = {
+      recentMatches: recent2, goalsScored: baseGoalsFor2, goalsConceded: baseGoalsAgainst2,
+      cleanSheets: s2r.clean_sheet?.total || 0, avgPossession: baseAvgPossession2,
+      winStreak: winStreak2, played: played2, name: team2.name,
+    };
+
     const fallbackData = imposerChiffresCalcules({
       isFinished: false,
-      quickSummary: vainqueur
-        ? `Les buts attendus penchent vers ${vainqueur} : ${scoreCalcule.butsAttendus1} contre ${scoreCalcule.butsAttendus2} au vu des attaques et des défenses en présence.`
-        : `Les deux équipes affichent des projections très proches — ${scoreCalcule.butsAttendus1} contre ${scoreCalcule.butsAttendus2} buts attendus — ce qui rend le partage des points le scénario le plus probable.`,
+      quickSummary: composerApercuVendeur(team1.name, team2.name, formeRepli1, formeRepli2, {
+        competition: (targetFutureMatch || nextH2H)?.league?.name ?? null,
+        stade: (targetFutureMatch || nextH2H)?.fixture?.venue?.name ?? null,
+      }),
       comparison: {
         attack: { team1: 60, team2: 50 }, defense: { team1: 60, team2: 50 },
         form: { team1: 60, team2: 50 }, h2h: { team1: 50, team2: 50 },
@@ -1628,7 +1661,15 @@ ${estApercu ? `{
         ppda: { team1: 10, team2: 10 }
       },
       keyStrengths: { team1: ["Performance offensive régulière"], team2: ["Solidité défensive"] },
-      scenarios: [ { title: "Scénario Tactique", content: `Selon l'historique récent, ${t1Goals > t2Goals ? team1.name : team2.name} s'appuiera sur sa dynamique offensive pour tenter de prendre l'avantage, tandis que l'adversaire cherchera à resserrer les lignes et exploiter les contres.` } ],
+      // Le même scénario que l'avant-goût gratuit : les intentions des DEUX
+      // équipes, chacune nommée. L'ancienne formule laissait « l'adversaire »
+      // anonyme et servait la même phrase à tous les matchs.
+      scenarios: [
+        {
+          title: 'Scénario Tactique',
+          content: scenarioGabarit(team1.name, team2.name, formeRepli1, formeRepli2),
+        },
+      ],
       sections: [
         { title: "Dynamique & Forme Récente", icon: "Activity", content: `Les statistiques récentes indiquent que ${team1.name} a enregistré ${baseGoalsFor1} buts marqués, tandis que ${team2.name} totalise ${baseGoalsFor2} buts. Une dynamique qui reflète l'état de forme des deux équipes.` },
         { title: "Bataille Offensive & Défensive", icon: "Target", content: `L'équilibre des forces montre une légère domination attendue de ${t1Goals > t2Goals ? team1.name : team2.name}, avec une projection de possession de ${t1Goals > t2Goals ? baseAvgPossession1 || 55 : baseAvgPossession2 || 55}%. La défense adverse devra se montrer particulièrement vigilante.` },

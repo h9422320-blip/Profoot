@@ -30,7 +30,7 @@
 
 import { appelerOpenRouter, MODELE_ECONOMIQUE, openRouterDisponible } from './openrouter';
 import { lireReserve, ecrireReserve } from './api-football';
-import { composerApercu, type FormeEquipe } from './apercu-vendeur';
+import { composerApercu, lettreDe, type FormeEquipe } from './apercu-vendeur';
 
 /** Sept jours : la forme d'une équipe ne bouge qu'entre deux journées. */
 const TTL = 7 * 24 * 60 * 60 * 1000;
@@ -155,7 +155,7 @@ const cleDe = (nom1: string, nom2: string) => {
  */
 function resumerForme(nom: string, f?: FormeEquipe): string {
   const m = Array.isArray(f?.recentMatches) ? f!.recentMatches! : [];
-  const compte = (l: string) => m.filter((x) => String(x ?? '').toUpperCase().trim().startsWith(l)).length;
+  const compte = (l: string) => m.filter((x) => lettreDe(x).startsWith(l)).length;
 
   const joues = Math.max(1, Number(f?.played ?? 0) || m.length || 1);
   const pour = Number(f?.goalsScored ?? 0) / joues;
@@ -164,7 +164,7 @@ function resumerForme(nom: string, f?: FormeEquipe): string {
   // La série RÉELLE : les victoires consécutives depuis le match le plus récent.
   let serie = 0;
   for (const x of m) {
-    if (String(x ?? '').toUpperCase().trim().startsWith('W')) serie++;
+    if (lettreDe(x).startsWith('W')) serie++;
     else break;
   }
 
@@ -202,7 +202,7 @@ export interface ResultatApercu {
  * jamais qui va gagner. Volontairement neutre : c'est un filet, pas une
  * prédiction.
  */
-function scenarioGabarit(
+export function scenarioGabarit(
   nom1: string,
   nom2: string,
   f1?: FormeEquipe,
