@@ -167,6 +167,84 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
     etapes
   );
 
+  // ── LA SURVEILLANCE QUI PRÉVIENT AVANT LE CLIENT ─────────────────────────
+  //
+  // Le 21 août, trois pannes distinctes ont été découvertes de la même façon :
+  // le propriétaire lançait une analyse et voyait « ANALYSE INTERROMPUE ». Les
+  // journaux disaient tout, mais personne ne les regardait — il n'y avait
+  // aucune raison de le faire tant que rien ne semblait cassé.
+  //
+  // Le cadenas empêche les régressions du code. Il ne peut rien contre une
+  // panne extérieure : un modèle saturé chez le fournisseur, une règle de
+  // routage modifiée sans préavis, un quota atteint. Le seul remède est de
+  // MESURER, et de le dire.
+  //
+  // Le seuil : un échec sur vingt. En dessous, c'est le bruit normal d'un
+  // service qui dépend de fournisseurs. Au-dessus, quelque chose de nouveau est
+  // en train de casser, et cela doit se voir dans l'administration avant de se
+  // voir sur l'écran d'un abonné.
+  await etape(
+    'Surveiller le taux d’échec',
+    async () => {
+      const sb = createAdminClient();
+      const depuis = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+
+      const [{ count: analyses }, { count: echecs }] = await Promise.all([
+        sb.from('analysis_history').select('*', { count: 'exact', head: true }).gte('created_at', depuis),
+        sb.from('analysis_failures').select('*', { count: 'exact', head: true }).gte('created_at', depuis),
+      ]);
+
+      const total = analyses ?? 0;
+      const rates = echecs ?? 0;
+      if (total < 10) return `trop peu d'analyses (${total}) pour conclure`;
+
+      const taux = Math.round((100 * rates) / total);
+      const SEUIL = 5;
+
+      if (taux >= SEUIL) {
+        // Les causes sont jointes au message : sans elles, l'alerte dit qu'il
+        // y a un problème sans dire lequel, et il faut tout reprendre à zéro.
+        const { data } = await sb
+          .from('analysis_failures')
+          .select('message')
+          .gte('created_at', depuis)
+          .limit(200);
+
+        const causes = new Map<string, number>();
+        for (const e of data ?? []) {
+          const m = String((e as any).message ?? '');
+          const cause = /aborted/i.test(m)
+            ? 'délai dépassé'
+            : /403/.test(m)
+              ? 'modèle refusé (403)'
+              : /JSON/i.test(m)
+                ? 'JSON illisible'
+                : /402|credit/i.test(m)
+                  ? 'crédit épuisé'
+                  : /429/.test(m)
+                    ? 'limite de débit'
+                    : 'autre';
+          causes.set(cause, (causes.get(cause) ?? 0) + 1);
+        }
+
+        const detail = [...causes]
+          .sort((a, b) => b[1] - a[1])
+          .map(([c, n]) => `${n} × ${c}`)
+          .join(', ');
+
+        // Volontairement une ERREUR, pas un avertissement : cette ligne doit
+        // ressortir dans les journaux de la plateforme et compter comme une
+        // anomalie dans l'audit.
+        throw new Error(
+          `${taux} % d'analyses en échec sur 6 h (${rates} sur ${total}) — ${detail}`
+        );
+      }
+
+      return `${taux} % d'échec sur 6 h (${rates} sur ${total}) — sous le seuil de ${SEUIL} %`;
+    },
+    etapes
+  );
+
   // ── LA TRACE, ÉCRITE MÊME EN CAS D'ÉCHEC PARTIEL ──────────────────────────
   //
   // Sans elle, une chaîne qui ne part pas est indiscernable d'une chaîne qui

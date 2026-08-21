@@ -226,3 +226,33 @@ test("CONTRAT — un modèle lent n'occupe pas la première place", async () => 
     "Le modèle mesuré à 36 s sans aboutir est de nouveau en tête : il consommera tout le budget."
   );
 });
+
+test("CONTRAT — le taux d'échec est surveillé et remonte tout seul", () => {
+  const source = lire('src/lib/entretien-quotidien.ts');
+
+  // Le 21 août, trois pannes distinctes ont été découvertes de la même façon :
+  // le propriétaire lançait une analyse et voyait « ANALYSE INTERROMPUE ». Les
+  // journaux disaient tout, mais personne n'avait de raison de les regarder.
+  //
+  // Le cadenas empêche les régressions du code. Il ne peut rien contre une
+  // panne extérieure — modèle saturé, règle de routage changée, quota atteint.
+  // Le seul remède est de mesurer, et de le dire.
+  assert.ok(
+    /Surveiller le taux d[’']échec/.test(source),
+    "La surveillance du taux d'échec a disparu de l'entretien : une panne extérieure " +
+      "redeviendrait invisible jusqu'à ce qu'un client la découvre."
+  );
+
+  const seuil = source.match(/const SEUIL = (\d+)/)?.[1];
+  assert.ok(seuil, 'Le seuil d’alerte est introuvable.');
+  assert.ok(
+    Number(seuil) <= 10,
+    `Seuil d'alerte à ${seuil} % : une analyse sur dix en échec passerait inaperçue.`
+  );
+
+  // L'alerte doit dire POURQUOI, sinon elle oblige à tout reprendre à zéro.
+  assert.ok(
+    /délai dépassé/.test(source) && /JSON illisible/.test(source),
+    "L'alerte ne détaille plus les causes : elle signalerait un problème sans dire lequel."
+  );
+});
