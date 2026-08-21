@@ -91,7 +91,27 @@ const FORCE_MAX = 2.6;
  * buts par match : c'est une équipe dont on ne sait pas grand-chose. Son propre
  * bilan ne pèse qu'à hauteur de ce qu'il démontre.
  */
-const AMORTISSEMENT = 6;
+/**
+ * ── LA SEULE CONSTANTE DU MOTEUR QUI N'A JAMAIS ÉTÉ MESURÉE ──────────────
+ *
+ * `LENTEUR_BASCULE` et `PART_XG` portent chacun leurs chiffres, obtenus sur des
+ * milliers de rencontres. Celui-ci a été posé à la main et n'a jamais été
+ * confronté à quoi que ce soit.
+ *
+ * Or c'est lui qui décide de la DIFFÉRENCE entre deux équipes en début de
+ * saison. Avec cinq matchs joués, le poids vaut 5/(5+6) = 0,45 : une équipe
+ * n'est elle-même qu'à 45 %, le reste étant la moyenne du championnat. Un grand
+ * club et un promu sont donc à moitié ramenés au même point — exactement au
+ * moment de l'année où ils s'affrontent le plus.
+ *
+ * Mesuré le 21 août 2026 : 47 % des rencontres analysées séparent les deux
+ * équipes de moins d'un demi-but attendu. C'est cette compression qui produit
+ * des scores identiques d'un match à l'autre.
+ *
+ * La surcharge par variable d'environnement n'existe QUE pour le banc d'essai.
+ * En production la variable n'est pas posée, et la valeur reste celle-ci.
+ */
+const AMORTISSEMENT = Number(process.env.BANC_AMORTISSEMENT) || 6;
 
 /**
  * Lenteur avec laquelle la saison en cours remplace le socle.

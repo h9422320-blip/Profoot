@@ -124,11 +124,29 @@ class Etat {
         // AMORTISSEMENT : une équipe vue cinq fois ne mérite pas qu'on la croie
         // autant qu'une équipe vue trente fois. Le poids de ses propres chiffres
         // grandit avec son nombre de matchs.
-        const K = 6;
+        //
+        // ── ATTENTION : CE CALCUL EST UNE COPIE ────────────────────────────
+        //
+        // Ce banc réimplémente le calcul des forces au lieu d'importer
+        // `forces-equipes.ts`. Les deux peuvent donc diverger sans que rien ne
+        // le signale — et un banc qui mesure autre chose que la production
+        // donne des résultats rassurants sur un moteur qui, lui, a changé.
+        //
+        // Constaté le 21 août 2026 : une surcharge posée sur la constante de
+        // production n'avait aucun effet ici, et cinq mesures successives ont
+        // rendu exactement le même chiffre sans que ce soit suspect au premier
+        // regard.
+        //
+        // Tant que la copie subsiste, toute valeur retenue ici doit être
+        // reportée à la main dans `forces-equipes.ts`, et vérifiée là-bas.
+        const K = Number(process.env.BANC_AMORTISSEMENT) || 6;
+        // Bornes des forces, elles aussi jamais mesurees jusqu ici.
+        const BMIN = Number(process.env.BANC_FORCE_MIN) || 0.35;
+        const BMAX = Number(process.env.BANC_FORCE_MAX) || 2.6;
         const p = e.j / (e.j + K);
         suivant.set(id, {
-          att: borner(p * (attDen > 0 ? attNum / attDen : 1) + (1 - p) * 1, 0.35, 2.6),
-          def: borner(p * (defDen > 0 ? defNum / defDen : 1) + (1 - p) * 1, 0.35, 2.6),
+          att: borner(p * (attDen > 0 ? attNum / attDen : 1) + (1 - p) * 1, BMIN, BMAX),
+          def: borner(p * (defDen > 0 ? defNum / defDen : 1) + (1 - p) * 1, BMIN, BMAX),
         });
       }
       for (const [id, v] of suivant) f.set(id, v);
