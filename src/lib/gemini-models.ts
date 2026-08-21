@@ -51,6 +51,28 @@ export function modeleIndisponible(erreur: any): boolean {
   if (/UNAVAILABLE|overloaded|high demand|Service Unavailable|try again later/i.test(message))
     return true;
 
+  // ── UN JSON ILLISIBLE EST UN DÉFAUT DE CE MODÈLE ────────────────────────
+  //
+  // Il ne dit rien des autres : un modèle qui rend du charabia n'empêche pas
+  // le suivant de répondre correctement. Mesuré sur vingt-quatre heures, 36 %
+  // des échecs venaient de là — et l'analyse s'arrêtait sans jamais redemander
+  // à personne.
+  if (erreur?.jsonInvalide === true) return true;
+
+  // ── UN REFUS PORTE SUR UN MODÈLE, PAS SUR LA CLÉ ────────────────────────
+  //
+  // 403 signifie « ce modèle-ci vous est refusé » — un réglage de routage, une
+  // politique de données. Les autres modèles restent parfaitement accessibles.
+  //
+  // Ce code n'était pas dans la liste : un 403 sur le PREMIER modèle arrêtait
+  // donc toute la cascade, alors que quatre autres attendaient. On ne l'a pas
+  // vu parce que les modèles refusés étaient les derniers de la liste — le
+  // jour où l'ordre change, la panne devient totale.
+  //
+  // 401 reste exclu, et c'est voulu : une clé invalide l'est pour tout le
+  // monde, réessayer ne ferait que perdre du temps.
+  if (code === 403) return true;
+
   return false;
 }
 

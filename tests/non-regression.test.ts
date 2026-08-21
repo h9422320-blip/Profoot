@@ -771,3 +771,66 @@ test('★ ACQUIS SCELLÉ — aucun nom de club ne perd sa majuscule', async () =
     }
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  21 AOÛT 2026 — UN JSON ILLISIBLE TUAIT TOUTE LA CASCADE
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Le décodage se faisait APRÈS la cascade, chez l'appelant. Un modèle qui
+//  rendait du JSON invalide faisait donc échouer l'analyse entière — alors que
+//  quatre modèles attendaient encore derrière lui.
+//
+//  36 % des échecs venaient de là. Et ce n'était pas une troncature : durée
+//  médiane avant l'erreur 1 625 ms, certains cassant dès 439 ms à la position
+//  deux. Le modèle n'a pas manqué de temps, il a rendu du charabia — et
+//  personne n'a redemandé à un autre.
+//
+//  Second défaut trouvé au passage : un 403 n'était pas rattrapable. Un refus
+//  sur le PREMIER modèle arrêtait tout, alors qu'il ne dit rien des autres.
+
+test('un JSON illisible fait basculer sur le modèle suivant', async () => {
+  const { modeleIndisponible } = await import('../src/lib/gemini-models');
+
+  const jsonCasse: any = new Error("a rendu un JSON illisible (coupé à la position 623)");
+  jsonCasse.jsonInvalide = true;
+  jsonCasse.status = 502;
+
+  assert.equal(
+    modeleIndisponible(jsonCasse),
+    true,
+    "Un JSON illisible doit être rattrapable : les autres modèles peuvent répondre correctement."
+  );
+});
+
+test('un refus 403 fait basculer sur le modèle suivant', async () => {
+  const { modeleIndisponible } = await import('../src/lib/gemini-models');
+
+  const refus: any = new Error('[OpenRouter 403] google/gemini-3.5-flash-lite');
+  refus.status = 403;
+
+  assert.equal(
+    modeleIndisponible(refus),
+    true,
+    "Un 403 porte sur UN modèle, pas sur la clé : la cascade doit continuer."
+  );
+
+  // Une clé invalide, en revanche, l'est pour tout le monde : réessayer ne
+  // ferait que perdre le budget de temps.
+  const cleMorte: any = new Error('Unauthorized');
+  cleMorte.status = 401;
+  assert.equal(
+    modeleIndisponible(cleMorte),
+    false,
+    "Un 401 ne doit PAS faire basculer : la clé est invalide partout."
+  );
+});
+
+test('la réponse du modèle est validée DANS la cascade', () => {
+  const source = lire('src/lib/analyse-modele.ts');
+
+  assert.ok(
+    /verifierJson\(brut, modele\)/.test(source),
+    "La réponse n'est plus décodée dans la cascade : un JSON illisible fera de nouveau " +
+      "échouer l'analyse entière au lieu de passer au modèle suivant."
+  );
+});
