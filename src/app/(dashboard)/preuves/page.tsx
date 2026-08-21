@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, Sparkles } from "lucide-react";
@@ -77,9 +78,30 @@ export default async function PagePreuves() {
   // Ce déclencheur ne dépend d'aucun planificateur, d'aucun jeton, d'aucun
   // réglage dans une interface tierce. Il suffit qu'une personne ouvre le site
   // une fois par jour, et il y en a des centaines.
-  void import('@/lib/entretien-quotidien')
-    .then((m) => m.entretenirSiNecessaire())
-    .catch((e) => console.warn('[PREUVES] Entretien non déclenché :', e?.message));
+  //
+  // `after` ET NON UNE PROMESSE LAISSÉE DE CÔTÉ.
+  //
+  // Première tentative : `void import(...).then(...)`. Elle n'a jamais rien
+  // déclenché, et le piège mérite d'être écrit. Sur une plateforme sans
+  // serveur, la fonction est arrêtée dès la réponse envoyée : tout travail
+  // encore en vol est tué sans un mot. Mesuré — trois visites de cette page,
+  // aucune trace en base, aucune erreur nulle part.
+  //
+  // `after` est l'outil prévu pour ça : la plateforme garde la fonction en vie
+  // jusqu'à la fin de la tâche, APRÈS avoir servi la page. Le visiteur n'attend
+  // rien, et le travail va au bout.
+  after(async () => {
+    try {
+      const { entretenirSiNecessaire } = await import('@/lib/entretien-quotidien');
+      const r = await entretenirSiNecessaire();
+      if (r.lance)
+        console.log(
+          `[PREUVES] Entretien déclenché par une visite : ${r.etapes.filter((e) => e.ok).length}/${r.etapes.length} étape(s) réussie(s) en ${r.dureeMs} ms.`
+        );
+    } catch (e: any) {
+      console.error('[PREUVES] Entretien impossible :', e?.message);
+    }
+  });
 
   const { preuves, bilan, total } = await getPreuvesPubliques(60);
 
