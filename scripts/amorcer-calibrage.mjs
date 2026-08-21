@@ -123,12 +123,40 @@ console.log(`\n  ══ AMORÇAGE DU CALIBRAGE — saison ${SAISON} ══\n`);
  * Les rencontres déjà jugées sont donc écartées. L'amorçage n'AJOUTE que ce
  * qui manquait.
  */
-const { data: dejaJuges } = await sb
-  .from('jugements_moteur')
-  .select('fixture_id')
-  .limit(20000);
-const connus = new Set((dejaJuges ?? []).map((j) => Number(j.fixture_id)));
-console.log(`  ${connus.size} rencontre(s) déjà jugée(s) : elles ne seront pas touchées.\n`);
+/**
+ * ── CE QU'ON PRÉSERVE : LES VRAIES ANALYSES, ET ELLES SEULES ─────────────
+ *
+ * Le critère n'est PAS « déjà présent dans les jugements ». Ce filtre-là
+ * écartait aussi les lignes écrites par un amorçage précédent — et le rejeu
+ * ne pouvait donc plus jamais les compléter.
+ *
+ * Une rencontre analysée pour de vrai laisse une trace dans
+ * `predictions_match` : c'est le pronostic figé qui a été servi à quelqu'un.
+ * Une rencontre rejouée n'en laisse aucune. C'est la seule différence fiable
+ * entre les deux, et c'est donc elle qui décide.
+ *
+ * Et la lecture se fait PAR TRANCHES : Supabase ne rend jamais plus de mille
+ * lignes, sans lever la moindre erreur. Une liste tronquée ici aurait fait
+ * passer des rejeux pour de vraies analyses.
+ */
+async function lireTout(requete, plafond = 20000) {
+  const TRANCHE = 1000;
+  const tout = [];
+  for (let de = 0; de < plafond; de += TRANCHE) {
+    const { data, error } = await requete(de, de + TRANCHE - 1);
+    if (error) { console.log(`  lecture partielle : ${error.message}`); break; }
+    if (!data?.length) break;
+    tout.push(...data);
+    if (data.length < TRANCHE) break;
+  }
+  return tout;
+}
+
+const vraies = await lireTout((de, a) =>
+  sb.from('predictions_match').select('fixture_id').range(de, a)
+);
+const connus = new Set(vraies.map((p) => Number(p.fixture_id)).filter(Number.isFinite));
+console.log(`  ${connus.size} rencontre(s) réellement analysée(s) : elles ne seront pas touchées.\n`);
 
 const lignes = [];
 let ignores = 0;
