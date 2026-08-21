@@ -1596,32 +1596,64 @@ export default function AnalyzePage({
                 })}
               </div>
 
-              {/* Résumé & Scénarios - EXACT VISIFOOT STYLE */}
-              <div className="space-y-6">
+              {/* ── CE QUE CHACUN LIT ICI ────────────────────────────────
+                  Un compte SANS abonnement ne reçoit plus `quickSummary` ni
+                  `scenarios` : ces champs révélaient le favori, les buts
+                  attendus et le score final. Les afficher quand même donnait
+                  un « Résumé rapide » VIDE surmonté de son titre, puis un
+                  « Scénario #1 » rempli d'une phrase de secours identique pour
+                  tous les matchs — « un schéma tactique équilibré mais tendu ».
+                  Deux blocs qui, ensemble, donnaient l'impression que rien
+                  n'avait été calculé.
+
+                  Il reçoit désormais UN SEUL bloc : la bande-annonce, écrite
+                  pour ces deux équipes à partir de leurs vraies données.
+                  L'affichage de l'abonné, lui, ne change pas d'un caractère. */}
+              {result.locked ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-lg">🔍</span>
-                    <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Résumé rapide</h4>
+                    <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Ce que dit l&apos;analyse</h4>
                   </div>
                   <p className="text-[13px] text-white/80 leading-relaxed font-medium">
-                    {result.quickSummary || result.scenario}
+                    {result.apercu}
                     <br/><br/>
-                    <span className="text-[10px] text-[#10B981] italic font-semibold">Généré à partir de millions de données et de l'actualité foot.</span>
+                    <span className="text-[10px] text-[#10B981] italic font-semibold">Généré à partir de millions de données et de l&apos;actualité foot.</span>
                   </p>
                 </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Un bloc vide ne s'affiche jamais : mieux vaut une section
+                      absente qu'un titre suivi de rien. */}
+                  {(result.quickSummary || result.scenario) && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">🔍</span>
+                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Résumé rapide</h4>
+                      </div>
+                      <p className="text-[13px] text-white/80 leading-relaxed font-medium">
+                        {result.quickSummary || result.scenario}
+                        <br/><br/>
+                        <span className="text-[10px] text-[#10B981] italic font-semibold">Généré à partir de millions de données et de l&apos;actualité foot.</span>
+                      </p>
+                    </div>
+                  )}
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">📌</span>
-                    <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Scénario #1</h4>
-                  </div>
-                  <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[14px]">
-                    <p className="text-[13px] text-white/80 leading-relaxed font-medium">
-                      {result.scenarios?.[0]?.content || "Le match devrait se dérouler selon un schéma tactique équilibré mais tendu."}
-                    </p>
-                  </div>
+                  {result.scenarios?.[0]?.content && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📌</span>
+                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Scénario #1</h4>
+                      </div>
+                      <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[14px]">
+                        <p className="text-[13px] text-white/80 leading-relaxed font-medium">
+                          {result.scenarios[0].content}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
 
               {/* Confiance - EXACT VISIFOOT STYLE */}
               {result.confidence && (

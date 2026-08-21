@@ -136,17 +136,43 @@ export async function obtenirApercu(
 ): Promise<ResultatApercu> {
   const gabarit = () => composerApercu(nom1, nom2, forme1, forme2);
   const cle = cleDe(nom1, nom2);
+  const affiche = `${nom1} — ${nom2}`;
+
+  /**
+   * Une ligne par aperçu, toujours, quel que soit le résultat.
+   *
+   * Sans elle, un repli sur le gabarit est indiscernable d'un succès : le
+   * visiteur voit un texte, l'application n'écrit rien, et l'on découvre le
+   * problème en regardant l'écran par hasard. C'est exactement ce qui s'est
+   * produit en production, où le gabarit sortait sans que rien ne dise
+   * pourquoi.
+   */
+  const tracer = (r: ResultatApercu, detail = '') => {
+    console.log(
+      `[APERÇU] ${affiche} | source=${r.source}` +
+        (r.rejet ? ` | rejet=${r.rejet}` : '') +
+        (detail ? ` | ${detail}` : '') +
+        ` | ${r.texte.length} caractères`
+    );
+    return r;
+  };
 
   // ── UNE SEULE GÉNÉRATION PAR MATCH ───────────────────────────────────────
   try {
     const enBase = await lireReserve<string>(cle);
     if (enBase && !enBase.expiree && typeof enBase.contenu === 'string' && enBase.contenu.length > 80)
-      return { texte: enBase.contenu, source: 'reserve' };
-  } catch {
-    /* réserve illisible : on continue, quitte à régénérer une fois */
+      return tracer({ texte: enBase.contenu, source: 'reserve' }, 'aucun appel payé');
+  } catch (e: any) {
+    console.warn(`[APERÇU] ${affiche} | réserve illisible (${e?.message}) — on régénère.`);
   }
 
-  if (!openRouterDisponible()) return { texte: gabarit(), source: 'gabarit' };
+  // La cause n°1 observée en production : la clé n'est pas lue côté serveur.
+  // On le DIT, au lieu de retomber silencieusement sur le gabarit.
+  if (!openRouterDisponible())
+    return tracer(
+      { texte: gabarit(), source: 'gabarit' },
+      'CAUSE=OPENROUTER_API_KEY absente de l’environnement serveur'
+    );
 
   const invite = [
     `Match : ${nom1} contre ${nom2}.`,
@@ -161,6 +187,9 @@ export async function obtenirApercu(
   const horloge = new AbortController();
   const minuteur = setTimeout(() => horloge.abort(), DELAI_MS);
 
+  const debut = Date.now();
+  console.log(`[APERÇU] ${affiche} | appel du modèle ${MODELE_ECONOMIQUE}…`);
+
   try {
     const brut = await appelerOpenRouter(MODELE_ECONOMIQUE, invite, horloge.signal, CONSIGNE);
     clearTimeout(minuteur);
@@ -174,8 +203,11 @@ export async function obtenirApercu(
     if (faute) {
       // On ne réessaie pas : un second appel coûterait autant et rien ne dit
       // qu'il ferait mieux. Le gabarit, lui, est sûr.
-      console.warn(`[APERÇU] Rejeté (${faute}) pour ${nom1} — ${nom2}. Gabarit servi.`);
-      return { texte: gabarit(), source: 'gabarit', rejet: faute };
+      //
+      // Le texte rejeté est journalisé en entier : c'est la seule façon de
+      // resserrer la consigne plutôt que de deviner ce que le modèle écrit.
+      console.warn(`[APERÇU] ${affiche} | REJETÉ (${faute}) | texte reçu : « ${texte.slice(0, 300)} »`);
+      return tracer({ texte: gabarit(), source: 'gabarit', rejet: faute }, `${Date.now() - debut} ms`);
     }
 
     const final = /Débloquez/i.test(texte)
@@ -183,10 +215,14 @@ export async function obtenirApercu(
       : `${texte} Débloquez l'analyse complète pour tout voir.`;
 
     void ecrireReserve(cle, final, TTL);
-    return { texte: final, source: 'ia' };
+    return tracer({ texte: final, source: 'ia' }, `${Date.now() - debut} ms | mis en réserve ${TTL / 3600000} h`);
   } catch (e: any) {
     clearTimeout(minuteur);
-    console.warn(`[APERÇU] Génération impossible (${e?.message}) — gabarit servi.`);
-    return { texte: gabarit(), source: 'gabarit' };
+    const cause =
+      e?.name === 'AbortError'
+        ? `délai de ${DELAI_MS} ms dépassé`
+        : `${e?.status ? `HTTP ${e.status} — ` : ''}${e?.message ?? 'erreur inconnue'}`;
+    console.error(`[APERÇU] ${affiche} | ÉCHEC DE L'APPEL | CAUSE=${cause} | ${Date.now() - debut} ms`);
+    return tracer({ texte: gabarit(), source: 'gabarit' }, `cause : ${cause}`);
   }
 }
