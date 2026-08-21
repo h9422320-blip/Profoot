@@ -1,6 +1,7 @@
 import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import SelecteurPeriode from "./_components/SelecteurPeriode";
 import Audience from "./_components/Audience";
+import EchecsAnalyse from "./_components/EchecsAnalyse";
 import { Courbe, Barres, Camembert } from "./_components/Graphique";
 import { Etiquette, LienCompte, Vide, montant, dateCourte, ilYA } from "./_components/Ui";
 import { Panneau, Classement } from "./_components/Panneaux";
@@ -319,6 +320,13 @@ export default async function AdminOverview({
       <p className="text-[11px] text-white/25 text-center pt-2">
         Dernière lecture : {dateCourte(new Date().toISOString())} — les chiffres sont recalculés à chaque ouverture de la page.
       </p>
+
+      {/* Les analyses en échec, juste avant l'audience.
+          Elles étaient calculées depuis longtemps et affichées nulle part :
+          chaque panne se découvrait en lançant une analyse et en voyant
+          « ANALYSE INTERROMPUE ». Trois fois dans la seule journée du 21 août.
+          Un chiffre que personne ne regarde ne sert à rien. */}
+      <EchecsAnalyse />
 
       {/* En bas : le chiffre d'affaires et les comptes passent devant.
           C'est ce qu'on vient voir en ouvrant l'administration. */}

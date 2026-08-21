@@ -360,3 +360,31 @@ test("CONTRAT — les preuves du jour passent en tête du mur public", () => {
     "La publication n'est plus conditionnée à la justesse du pronostic."
   );
 });
+
+test("CONTRAT — les échecs d'analyse sont visibles dans l'administration", () => {
+  const page = lire('src/app/admin/page.tsx');
+  const panneau = lire('src/app/admin/_components/EchecsAnalyse.tsx');
+
+  // Le bilan des échecs était calculé depuis longtemps et affiché nulle part.
+  // Chaque panne se découvrait de la même façon : le propriétaire lançait une
+  // analyse et voyait « ANALYSE INTERROMPUE ». Trois fois le 21 août.
+  assert.ok(
+    /<EchecsAnalyse \/>/.test(page),
+    "Le panneau des échecs a disparu de la page d'administration : les pannes " +
+      "redeviendraient invisibles jusqu'à ce qu'un client les découvre."
+  );
+
+  // Le chiffre qui compte : les cas où l'abonné n'a RIEN reçu.
+  assert.ok(
+    /sansReponse/.test(panneau),
+    "Le compteur « sans réponse » a disparu — c'est le seul qui signale un client " +
+      "qui a payé et n'a rien reçu."
+  );
+
+  // Le pays : une panne ne frappe pas partout de la même façon.
+  assert.ok(
+    /e\.pays/.test(panneau),
+    "Le pays n'est plus affiché : dix échecs venant tous du même endroit ne se " +
+      "distingueraient plus de dix échecs répartis."
+  );
+});
