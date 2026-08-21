@@ -45,7 +45,7 @@ console.log('\n[VERROU] Vérification des acquis avant compilation…\n');
 //
 // Les arguments sont fixes et ne viennent d'aucune saisie : aucun risque
 // d'injection ici.
-const r = spawnSync('npx tsx --test tests/non-regression.test.ts', {
+const r = spawnSync('npx tsx --test tests/*.test.ts', {
   stdio: 'inherit',
   env: process.env,
   shell: true,
