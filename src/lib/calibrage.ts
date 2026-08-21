@@ -253,6 +253,131 @@ export async function enregistrerJugement(j: Jugement): Promise<boolean> {
 }
 
 /**
+ * Juge les rencontres terminées qui ne l'ont pas encore été.
+ *
+ * C'est le premier temps de la boucle, celui qui alimente tout le reste.
+ *
+ * ON NE REJUGE JAMAIS CE QUI L'EST DÉJÀ
+ *
+ * Les rencontres déjà présentes dans `jugements_moteur` sont écartées avant
+ * le moindre appel au fournisseur. Sans ce filtre, la tâche quotidienne
+ * redemanderait chaque nuit les mêmes centaines de fiches : le quota du
+ * fournisseur est la ressource la plus rare du projet, et il a déjà frôlé les
+ * 100 % un 16 août — au-delà, plus aucune analyse ne fonctionne pour personne.
+ *
+ * LA BORNE EXISTE POUR LA PLATEFORME, PAS POUR LE CALCUL
+ *
+ * Vercel coupe une fonction à soixante secondes. Vingt identifiants par appel,
+ * quarante appels au plus : de quoi rattraper huit cents rencontres par nuit
+ * sans jamais risquer la coupure. L'arriéré se résorbe en quelques nuits
+ * plutôt qu'en une seule, et rien n'est perdu.
+ */
+export async function jugerRencontresTerminees(
+  appelsMax = 40
+): Promise<{ examinees: number; jugees: number; deja: number }> {
+  const cle = process.env.API_FOOTBALL_KEY;
+  if (!cle) {
+    console.warn('[CALIBRAGE] Clé du fournisseur absente : aucun jugement possible.');
+    return { examinees: 0, jugees: 0, deja: 0 };
+  }
+
+  const sb = createAdminClient();
+
+  const { data: predictions, error } = await sb
+    .from('predictions_match')
+    .select('*')
+    .order('calculee_le', { ascending: false })
+    .limit(3000);
+
+  if (error || !predictions?.length) {
+    if (error) console.warn('[CALIBRAGE] Prédictions illisibles :', error.message);
+    return { examinees: 0, jugees: 0, deja: 0 };
+  }
+
+  const { data: connus } = await sb.from('jugements_moteur').select('fixture_id').limit(10000);
+  const dejaJuges = new Set((connus ?? []).map((j: any) => Number(j.fixture_id)));
+
+  const aExaminer = predictions
+    .filter((p: any) => p.fixture_id && !dejaJuges.has(Number(p.fixture_id)))
+    .slice(0, appelsMax * 20);
+
+  if (!aExaminer.length) return { examinees: 0, jugees: 0, deja: dejaJuges.size };
+
+  // Seules ces trois issues signifient qu'un résultat est acquis. Un match
+  // reporté ou interrompu n'apprend rien et ne doit pas entrer au bilan.
+  const TERMINE = ['FT', 'AET', 'PEN'];
+  const lignes: any[] = [];
+
+  for (let i = 0; i < aExaminer.length; i += 20) {
+    const lot = aExaminer.slice(i, i + 20);
+    try {
+      const r = await fetch(
+        `https://v3.football.api-sports.io/fixtures?ids=${lot.map((p: any) => p.fixture_id).join('-')}`,
+        { headers: { 'x-apisports-key': cle }, cache: 'no-store' }
+      );
+      const j = await r.json();
+      const fiches = new Map<number, any>();
+      for (const f of j?.response ?? []) fiches.set(f.fixture.id, f);
+
+      for (const p of lot as any[]) {
+        const f = fiches.get(Number(p.fixture_id));
+        if (!f || !TERMINE.includes(f.fixture?.status?.short)) continue;
+
+        const reelsDom = Number(f.goals?.home);
+        const reelsExt = Number(f.goals?.away);
+        if (!Number.isFinite(reelsDom) || !Number.isFinite(reelsExt)) continue;
+
+        // La prédiction est stockée avec l'équipe qui REÇOIT en premier : elle
+        // est donc déjà dans le sens du fournisseur, aucune réorientation.
+        const prevusDom = Number(p.buts_domicile);
+        const prevusExt = Number(p.buts_exterieur);
+        const ip = issueDe(prevusDom, prevusExt);
+        const ir = issueDe(reelsDom, reelsExt);
+
+        lignes.push({
+          fixture_id: p.fixture_id,
+          ligue: f.league?.name ?? null,
+          date_match: f.fixture?.date ?? null,
+          equipe_domicile: p.domicile_nom,
+          equipe_exterieur: p.exterieur_nom,
+          buts_prevus_domicile: prevusDom,
+          buts_prevus_exterieur: prevusExt,
+          proba_domicile: Number(p.proba_domicile),
+          proba_nul: Number(p.proba_nul),
+          proba_exterieur: Number(p.proba_exterieur),
+          confiance: Number(p.confiance),
+          buts_reels_domicile: reelsDom,
+          buts_reels_exterieur: reelsExt,
+          issue_prevue: ip,
+          issue_reelle: ir,
+          issue_juste: ip === ir,
+          score_exact: prevusDom === reelsDom && prevusExt === reelsExt,
+          brier: brierDe(
+            { domicile: p.proba_domicile, nul: p.proba_nul, exterieur: p.proba_exterieur },
+            ir
+          ),
+          juge_le: new Date().toISOString(),
+        });
+      }
+    } catch (e: any) {
+      console.warn('[CALIBRAGE] Lot ignoré :', e?.message);
+    }
+  }
+
+  for (let i = 0; i < lignes.length; i += 100) {
+    const { error: err } = await sb
+      .from('jugements_moteur')
+      .upsert(lignes.slice(i, i + 100), { onConflict: 'fixture_id' });
+    if (err) console.warn('[CALIBRAGE] Lot refusé :', err.message);
+  }
+
+  console.log(
+    `[CALIBRAGE] ${aExaminer.length} rencontre(s) examinée(s), ${lignes.length} jugée(s).`
+  );
+  return { examinees: aExaminer.length, jugees: lignes.length, deja: dejaJuges.size };
+}
+
+/**
  * Recalcule les facteurs de correction à partir de tous les jugements.
  *
  * COMMENT LE FACTEUR EST OBTENU

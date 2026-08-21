@@ -83,7 +83,17 @@ export async function GET(request: Request) {
     // résultats réels dont ce calcul se nourrit. L'ordre n'est pas indifférent :
     // l'inverse ferait apprendre sur les données de la veille.
     try {
-      const { recalculerCalibrages } = await import('@/lib/calibrage');
+      const { jugerRencontresTerminees, recalculerCalibrages } = await import('@/lib/calibrage');
+
+      // ── JUGER D'ABORD, APPRENDRE ENSUITE ────────────────────────────────
+      //
+      // Le recalcul ne fait qu'agréger ce qui a déjà été jugé. Sans ce premier
+      // temps, la tâche relisait chaque nuit les mêmes rencontres et
+      // n'apprenait plus rien de ce qui s'était joué depuis — une boucle qui
+      // tourne à vide a toutes les apparences d'une boucle qui fonctionne.
+      const j = await jugerRencontresTerminees();
+      if (j.jugees) console.log(`[AUDIT] ${j.jugees} nouvelle(s) rencontre(s) jugée(s).`);
+
       const c = await recalculerCalibrages();
       console.log(`[AUDIT] Calibrage : ${c.ligues} championnat(s), ${c.matchs} rencontre(s).`);
     } catch (e: any) {
