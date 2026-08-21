@@ -575,6 +575,24 @@ export async function getPreuvesPubliques(limite = 10): Promise<{
   bilan: BilanPreuves;
   total: number;
 }> {
+  // ── LE RÉVEIL PARESSEUX ───────────────────────────────────────────────────
+  //
+  // La planification quotidienne n'est pas fiable : une seule exécution a été
+  // enregistrée en base, le 20 août à 00 h 22, alors qu'elle annonce 5 h 37.
+  // Le mur restait donc figé jusqu'à ce qu'on le reconstruise à la main, chaque
+  // jour, en cliquant un bouton.
+  //
+  // Servir ce mur est le moment idéal pour vérifier qu'il est à jour : c'est
+  // exactement là qu'un contenu périmé se verrait. Si l'entretien date de plus
+  // de vingt heures, il repart — EN ARRIÈRE-PLAN, sans que le visiteur attende.
+  //
+  // Ce déclencheur ne dépend d'aucun planificateur, d'aucun jeton, d'aucun
+  // réglage dans une interface tierce. Il suffit qu'une personne ouvre le site
+  // une fois par jour, et il y en a des centaines.
+  void import('./entretien-quotidien')
+    .then((m) => m.entretenirSiNecessaire())
+    .catch((e) => console.warn('[PREUVES] Entretien non déclenché :', e?.message));
+
   const sb = createAdminClient();
   const vide = {
     preuves: [],

@@ -27,12 +27,27 @@ export async function GET(request: Request) {
   const auth = request.headers.get('authorization');
   const estVercelCron = request.headers.get('user-agent')?.includes('vercel-cron');
 
+  // ── UN REFUS NE DOIT PLUS ÊTRE SILENCIEUX ─────────────────────────────────
+  //
+  // Cette route rendait 401 sans rien écrire nulle part. Résultat : une seule
+  // exécution enregistrée en base depuis la mise en place, et un mur de preuves
+  // figé qu'il fallait reconstruire à la main chaque jour. Rien ne plantait,
+  // rien n'alertait — la tâche refusait simplement de partir.
+  //
+  // Le refus est désormais tracé, avec ce qui l'a causé. La prochaine fois, la
+  // réponse est dans les journaux au lieu d'être à deviner.
+  const refuser = (motif: string) => {
+    console.error(
+      `[AUDIT] APPEL REFUSÉ (${motif}) — user-agent="${request.headers.get('user-agent') ?? 'absent'}" ` +
+        `authorization=${auth ? 'présent' : 'absent'} secret=${secret ? 'configuré' : 'absent'}`
+    );
+    return NextResponse.json({ error: 'Non autorisé', motif }, { status: 401 });
+  };
+
   if (secret) {
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
+    if (auth !== `Bearer ${secret}`) return refuser('secret attendu, reçu différent');
   } else if (!estVercelCron) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    return refuser("aucun secret configuré et l'appel ne vient pas de la planification");
   }
 
   try {

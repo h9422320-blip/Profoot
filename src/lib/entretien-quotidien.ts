@@ -1,0 +1,203 @@
+/**
+ * L'ENTRETIEN QUOTIDIEN, ET SA GARANTIE DE S'EXÉCUTER.
+ *
+ * CE QUI NE MARCHAIT PAS
+ *
+ * La chaîne était correcte — vérifier les pronostics, reconstruire le mur,
+ * juger les rencontres, apprendre — mais elle ne partait jamais. Une seule
+ * exécution enregistrée en base, le 20 août à 00 h 22, alors que la
+ * planification annonce 5 h 37. Le mur de preuves restait donc figé jusqu'à ce
+ * qu'on le reconstruise à la main, chaque jour.
+ *
+ * Le défaut est le pire de tous : la tâche refusait l'appel et rendait 401,
+ * sans rien écrire nulle part. Aucune erreur, aucune alerte, aucune trace —
+ * juste un mur qui ne bougeait plus.
+ *
+ * DEUX DÉCLENCHEURS PLUTÔT QU'UN
+ *
+ *   1. La planification quotidienne, quand elle veut bien partir.
+ *   2. LE RÉVEIL PARESSEUX : la page publique du mur vérifie, en la servant,
+ *      que l'entretien date de moins de vingt heures. Sinon elle le relance en
+ *      arrière-plan, sans faire attendre le visiteur.
+ *
+ * Le second ne dépend d'aucun planificateur, d'aucun jeton, d'aucun réglage
+ * dans une interface tierce. Tant qu'une personne ouvre le site une fois par
+ * jour — et c'est le cas, il y a des centaines de visites quotidiennes —,
+ * l'entretien a lieu.
+ *
+ * IL NE PEUT PAS TOURNER DEUX FOIS EN MÊME TEMPS
+ *
+ * Un verrou en base, posé avant de commencer. Deux visiteurs simultanés ne
+ * lancent pas deux reconstructions concurrentes.
+ */
+
+import { createAdminClient } from './supabase-admin';
+import { lireReserve, ecrireReserve } from './api-football';
+
+/** Au-delà, l'entretien est considéré comme dû. */
+const FRAICHEUR_MAX_MS = 20 * 60 * 60 * 1000;
+
+/** Durée du verrou : au-delà, on considère que l'exécution précédente est morte. */
+const VERROU_MS = 10 * 60 * 1000;
+
+const CLE_DERNIER = 'entretien:dernier';
+const CLE_VERROU = 'entretien:verrou';
+
+export interface ResultatEntretien {
+  lance: boolean;
+  raison: string;
+  etapes: { nom: string; ok: boolean; detail: string }[];
+  dureeMs: number;
+}
+
+/**
+ * Exécute une étape sans jamais laisser son échec arrêter les suivantes.
+ *
+ * C'est le point qui change tout : la chaîne était écrite en `try` unique, et
+ * une seule étape en défaut emportait toutes celles d'après. Le mur ne se
+ * reconstruisait pas parce que la vérification des paiements avait échoué —
+ * deux choses qui n'ont rien à voir.
+ */
+async function etape(
+  nom: string,
+  travail: () => Promise<string>,
+  journal: { nom: string; ok: boolean; detail: string }[]
+): Promise<void> {
+  const debut = Date.now();
+  try {
+    const detail = await travail();
+    journal.push({ nom, ok: true, detail });
+    console.log(`[ENTRETIEN] ${nom} : ${detail} (${Date.now() - debut} ms)`);
+  } catch (e: any) {
+    const detail = String(e?.message ?? e ?? 'erreur inconnue').slice(0, 200);
+    journal.push({ nom, ok: false, detail });
+    console.error(`[ENTRETIEN] ${nom} A ÉCHOUÉ : ${detail}`);
+  }
+}
+
+/** Quand l'entretien a-t-il réellement tourné pour la dernière fois ? */
+export async function dernierEntretien(): Promise<Date | null> {
+  try {
+    const r = await lireReserve<string>(CLE_DERNIER);
+    const t = r?.contenu ? new Date(r.contenu) : null;
+    return t && !isNaN(t.getTime()) ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Lance l'entretien complet s'il est dû.
+ *
+ * `forcer` court-circuite le contrôle de fraîcheur — utilisé par la
+ * planification, qui sait pourquoi elle appelle.
+ */
+export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEntretien> {
+  const debut = Date.now();
+  const etapes: { nom: string; ok: boolean; detail: string }[] = [];
+
+  if (!forcer) {
+    const dernier = await dernierEntretien();
+    if (dernier && Date.now() - dernier.getTime() < FRAICHEUR_MAX_MS)
+      return {
+        lance: false,
+        raison: `déjà fait il y a ${Math.round((Date.now() - dernier.getTime()) / 60000)} min`,
+        etapes,
+        dureeMs: Date.now() - debut,
+      };
+  }
+
+  // ── LE VERROU ─────────────────────────────────────────────────────────────
+  const verrou = await lireReserve<string>(CLE_VERROU).catch(() => null);
+  if (verrou?.contenu && !verrou.expiree)
+    return { lance: false, raison: 'déjà en cours', etapes, dureeMs: Date.now() - debut };
+
+  await ecrireReserve(CLE_VERROU, new Date().toISOString(), VERROU_MS);
+
+  // ── LA CHAÎNE, ÉTAPE PAR ÉTAPE, CHACUNE ISOLÉE ────────────────────────────
+
+  await etape(
+    'Vérifier les pronostics',
+    async () => {
+      const { verifierPronostics } = await import('./precision-reelle');
+      const r: any = await verifierPronostics(300);
+      return `${r?.verifiees ?? 0} analyse(s) vérifiée(s)`;
+    },
+    etapes
+  );
+
+  await etape(
+    'Juger les rencontres terminées',
+    async () => {
+      const { jugerRencontresTerminees } = await import('./calibrage');
+      const r = await jugerRencontresTerminees();
+      return `${r.jugees} nouvelle(s) sur ${r.examinees} examinée(s)`;
+    },
+    etapes
+  );
+
+  await etape(
+    'Reconstruire le mur de preuves',
+    async () => {
+      const { construirePreuves } = await import('./preuves');
+      const r = await construirePreuves();
+      if (r.erreur) throw new Error(r.erreur);
+      return `${r.matchs} match(s), ${r.reussites} réussite(s), ${r.creees} nouvelle(s)`;
+    },
+    etapes
+  );
+
+  await etape(
+    'Apprendre des résultats',
+    async () => {
+      const { recalculerCalibrages } = await import('./calibrage');
+      const r = await recalculerCalibrages();
+      return `${r.ligues} championnat(s), ${r.matchs} rencontre(s)`;
+    },
+    etapes
+  );
+
+  await etape(
+    'Réconcilier les ventes',
+    async () => {
+      const { reconcilierVentes } = await import('./reconciliation-ventes');
+      const r = await reconcilierVentes(7);
+      return `${r.reparees.length} accès réparé(s) sur ${r.ventesExaminees} vente(s)`;
+    },
+    etapes
+  );
+
+  // ── LA TRACE, ÉCRITE MÊME EN CAS D'ÉCHEC PARTIEL ──────────────────────────
+  //
+  // Sans elle, une chaîne qui ne part pas est indiscernable d'une chaîne qui
+  // part et ne trouve rien à faire. C'est exactement ce qui a permis au défaut
+  // de durer.
+  const echecs = etapes.filter((e) => !e.ok);
+  await ecrireReserve(CLE_DERNIER, new Date().toISOString(), 7 * 24 * 60 * 60 * 1000);
+  await ecrireReserve(CLE_VERROU, '', 1);
+
+  try {
+    await createAdminClient()
+      .from('audits')
+      .insert({
+        anomalies: echecs.length,
+        avertissements: 0,
+        points: etapes.map((e) => `${e.ok ? 'OK' : 'ÉCHEC'} — ${e.nom} : ${e.detail}`),
+        duree_ms: Date.now() - debut,
+      });
+  } catch (e: any) {
+    console.warn('[ENTRETIEN] Trace non enregistrée :', e?.message);
+  }
+
+  if (echecs.length)
+    console.error(
+      `[ENTRETIEN] ${echecs.length} étape(s) en échec : ${echecs.map((e) => e.nom).join(', ')}`
+    );
+
+  return {
+    lance: true,
+    raison: forcer ? 'demandé' : 'entretien dû',
+    etapes,
+    dureeMs: Date.now() - debut,
+  };
+}

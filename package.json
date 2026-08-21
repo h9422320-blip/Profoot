@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "verifier:compatibilite": "node scripts/verifier-compatibilite.mjs",
-    "postbuild": "node scripts/verifier-compatibilite.mjs"
+    "postbuild": "node scripts/verifier-compatibilite.mjs",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.83",
