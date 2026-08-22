@@ -16,7 +16,7 @@ export default function SystemClient() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Système & IA</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "var(--police-titre), sans-serif" }}>Système & IA</h1>
         <p className="text-sm text-white/50">Surveillez les performances des serveurs et l'utilisation de l'API OpenAI.</p>
       </div>
 

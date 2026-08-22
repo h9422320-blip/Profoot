@@ -158,7 +158,7 @@ export default function SettingsPage() {
           {/* TAB: PROFIL */}
           {activeTab === "profil" && (
             <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-[28px] p-8 shadow-2xl animate-fade-in">
-              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("settings.profileInfo")}</h2>
+              <h2 className="text-xl font-black text-foreground mb-8" style={{ fontFamily: "var(--police-titre), sans-serif" }}>{t("settings.profileInfo")}</h2>
               
               {loading ? (
                 <div className="animate-pulse flex space-x-4">

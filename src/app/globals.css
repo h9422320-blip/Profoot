@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@400;600;700;800&display=swap');
+/* Les polices sont chargées par `polices.ts` via next/font, depuis notre
+   propre domaine. L'@import qui vivait ici était le pire des deux chargements :
+   le navigateur ne le découvre qu'après avoir reçu et analysé cette feuille,
+   soit un aller-retour de plus, en série, avant le moindre pixel. */
 @import "tailwindcss";
 @import "./landing.css";
 
@@ -53,18 +56,18 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--police-texte), sans-serif;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.3s, color 0.3s;
 }
 
 h1, h2, h3, h4, .font-heading {
-  font-family: 'Sora', sans-serif;
+  font-family: var(--police-entete), sans-serif;
   letter-spacing: -0.02em;
 }
 
 /* Custom UI Hierarchy */
-.text-stat { font-family: 'Sora', sans-serif; font-weight: 800; }
+.text-stat { font-family: var(--police-entete), sans-serif; font-weight: 800; }
 .card-premium { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.25rem; }
 
 /* ── L'OUVERTURE DE LA NOTICE DE PAIEMENT ─────────────────────────────────

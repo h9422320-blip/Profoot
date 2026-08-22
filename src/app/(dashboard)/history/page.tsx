@@ -202,7 +202,7 @@ export default function HistoryPage() {
           📱 MOBILE APP EXPERIENCE (PROFILE VIEW)
           ========================================= */}
       <div className="block lg:hidden space-y-6 pt-6">
-        <h1 className="text-2xl font-black text-white tracking-tight" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Mon Profil</h1>
+        <h1 className="text-2xl font-black text-white tracking-tight" style={{fontFamily: "var(--police-titre), sans-serif"}}>Mon Profil</h1>
         <div className="bg-[#1d2f3a]/80 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-2xl">
            
            <div className="flex items-center gap-4 border-b border-white/5 pb-6 mb-6">
@@ -276,7 +276,7 @@ export default function HistoryPage() {
       {/* 1. HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
             <History className="w-8 h-8 text-[#10B981]" />
             Historique des analyses
           </h1>
@@ -311,7 +311,7 @@ export default function HistoryPage() {
           </div>
 
           <div className="space-y-3 max-w-md">
-            <h3 className="text-xl md:text-2xl font-black text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            <h3 className="text-xl md:text-2xl font-black text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
               Aucune analyse disponible pour le moment.
             </h3>
             <p className="text-xs md:text-sm text-white/50 font-medium leading-relaxed">
@@ -440,7 +440,7 @@ export default function HistoryPage() {
 
                       {/* Score / Center display */}
                       <div className={`flex flex-col items-center justify-center px-4 shrink-0 ${!isPro ? 'blur-md select-none' : ''}`}>
-                        <span className="text-lg md:text-xl font-black text-white tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                        <span className="text-lg md:text-xl font-black text-white tracking-wider" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
                           {item.score}
                         </span>
                         {item.confidence && (
@@ -507,7 +507,7 @@ export default function HistoryPage() {
               <div className="flex items-center gap-3">
                 <Brain className="w-6 h-6 text-[#10B981]" />
                 <div>
-                  <h3 className="text-base font-black text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <h3 className="text-base font-black text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
                     Rapport d'Analyse IA
                   </h3>
                   <span className="text-xs text-white/40 font-medium">{formatDate(selectedItem.date)}</span>
@@ -530,7 +530,7 @@ export default function HistoryPage() {
                   <div className="w-16 h-16 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
                     <Lock className="w-8 h-8 text-orange-400" />
                   </div>
-                  <h3 className="text-lg font-black text-white text-center" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Contenu réservé aux membres Premium</h3>
+                  <h3 className="text-lg font-black text-white text-center" style={{ fontFamily: "var(--police-titre), sans-serif" }}>Contenu réservé aux membres Premium</h3>
                   <p className="text-xs text-white/50 text-center max-w-sm">Passez à l'abonnement Premium pour accéder aux analyses détaillées, scores prédits, probabilités et résumés tactiques complets.</p>
                   <Link href="/pricing" className="bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-black font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_4px_20px_rgba(245,158,11,0.3)]">
                     <CreditCard className="w-4 h-4" /> Devenir Premium
@@ -549,7 +549,7 @@ export default function HistoryPage() {
                 </div>
 
                 <div className={`flex flex-col items-center px-6 shrink-0 ${!isPro ? 'blur-lg select-none' : ''}`}>
-                  <span className="text-2xl md:text-3xl font-black text-white tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <span className="text-2xl md:text-3xl font-black text-white tracking-wider" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
                     {selectedItem.score}
                   </span>
                   <span className="text-xs font-black text-[#10B981] mt-1">

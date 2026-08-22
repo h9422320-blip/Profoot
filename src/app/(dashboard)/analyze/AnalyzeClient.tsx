@@ -219,7 +219,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
                 <ChevronLeft className="w-4 h-4 text-white/70" />
               </button>
             )}
-            <h3 className="text-sm font-black text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            <h3 className="text-sm font-black text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
               {selectedLeague ? leagueLabels[selectedLeague] : "Choisir une équipe"}
             </h3>
           </div>
@@ -951,7 +951,7 @@ export default function AnalyzePage({
 
       {/* 1. HEADER — Visifoot style: large bold centered title */}
       <div className="text-center space-y-3 mt-2 mb-4">
-        <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+        <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
           Analyse de match
         </h1>
         <p className="text-xs md:text-sm text-white/60 font-medium">
@@ -1169,7 +1169,7 @@ export default function AnalyzePage({
                 className="transition-all duration-500 ease-out"
               />
             </svg>
-            <span className="absolute text-3xl font-black text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            <span className="absolute text-3xl font-black text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
               {progressPercent}%
             </span>
           </div>
@@ -1453,7 +1453,7 @@ export default function AnalyzePage({
                 <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
                   <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
                     <Timer className="w-5 h-5 text-[#10B981]" />
-                    <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                    <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
                       Chronologie du match
                     </h4>
                   </div>
@@ -1503,7 +1503,7 @@ export default function AnalyzePage({
                 <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
                   <div className="flex items-center gap-3 mb-6">
                     <BarChart3 className="w-5 h-5 text-[#10B981]" />
-                    <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                    <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
                       Statistiques réelles de la rencontre
                     </h4>
                   </div>
@@ -1522,7 +1522,7 @@ export default function AnalyzePage({
               {/* Match Detailed Summary */}
               {result.summary && (
                 <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[28px] p-6 shadow-md space-y-3">
-                  <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
                     Résumé de la rencontre
                   </h4>
                   <p className="text-xs text-white/80 leading-relaxed font-semibold">
@@ -1585,7 +1585,7 @@ export default function AnalyzePage({
                 <div className="flex justify-between items-center text-xs font-semibold text-white mb-6">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">📊</span>
-                    <h4 className="font-black text-sm" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Forme récente</h4>
+                    <h4 className="font-black text-sm" style={{fontFamily: "var(--police-titre), sans-serif"}}>Forme récente</h4>
                   </div>
                   <span className="text-[10px] text-white/40">Forme globale (toutes compétitions)</span>
                 </div>
@@ -1694,7 +1694,7 @@ export default function AnalyzePage({
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-lg">🔍</span>
-                      <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Résumé rapide</h4>
+                      <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Résumé rapide</h4>
                     </div>
                     <p className="text-[13px] text-white/80 leading-relaxed font-medium">
                       {result.apercuResume}
@@ -1707,7 +1707,7 @@ export default function AnalyzePage({
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">📌</span>
-                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Scénario #1</h4>
+                        <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Scénario #1</h4>
                       </div>
                       <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[14px]">
                         <p className="text-[13px] text-white/80 leading-relaxed font-medium">
@@ -1725,7 +1725,7 @@ export default function AnalyzePage({
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-lg">🔍</span>
-                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Résumé rapide</h4>
+                        <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Résumé rapide</h4>
                       </div>
                       <p className="text-[13px] text-white/80 leading-relaxed font-medium">
                         {result.quickSummary || result.scenario}
@@ -1739,7 +1739,7 @@ export default function AnalyzePage({
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">📌</span>
-                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Scénario #1</h4>
+                        <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Scénario #1</h4>
                       </div>
                       <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[14px]">
                         <p className="text-[13px] text-white/80 leading-relaxed font-medium">
@@ -1756,7 +1756,7 @@ export default function AnalyzePage({
                 <div className="bg-[#1d2f3a]/70 border border-white/10 rounded-[20px] p-4 space-y-2 mt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-lg">🎯</span>
-                    <h5 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Confiance de l'IA</h5>
+                    <h5 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Confiance de l'IA</h5>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="h-3 flex-1 bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5">
@@ -1851,7 +1851,7 @@ export default function AnalyzePage({
                           lui que l'application sera jugée. */}
                       <div className="flex items-center gap-3 mb-2">
                         <Trophy className="w-5 h-5 text-[#10B981]" />
-                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>
+                        <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>
                           {result.live ? "Pronostic d'avant-match" : "Score prédit par l'IA"}
                         </h4>
                       </div>
@@ -1889,7 +1889,7 @@ export default function AnalyzePage({
               <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-md">
                 <div className="flex items-center gap-3">
                   <span className="text-lg">📊</span>
-                  <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Probabilités exactes</h4>
+                  <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Probabilités exactes</h4>
                 </div>
                 <div className="space-y-4">
                   <ProbBar label={"Victoire " + getClub(team1!).name} value={result.winProb} />
@@ -1903,7 +1903,7 @@ export default function AnalyzePage({
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 px-2">
                     <span className="text-lg">💡</span>
-                    <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Scénarios #2 à #4</h4>
+                    <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Scénarios #2 à #4</h4>
                   </div>
                   <div className="space-y-3.5">
                     {result.scenarios.slice(1).map((sc: any, idx: number) => (
@@ -1921,7 +1921,7 @@ export default function AnalyzePage({
                 <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
                   <div className="flex items-center gap-3 mb-6">
                     <span className="text-lg">📊</span>
-                    <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Comparaison statistique</h4>
+                    <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Comparaison statistique</h4>
                   </div>
                   <div className="flex justify-between text-xs font-black mb-6 px-1 uppercase tracking-widest">
                     <span className="text-[#10B981]">{getClub(team1!).name}</span>
@@ -1943,7 +1943,7 @@ export default function AnalyzePage({
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 px-2">
                     <span className="text-lg">🎯</span>
-                    <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Nos prédictions</h4>
+                    <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Nos prédictions</h4>
                   </div>
                   
                   <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-sm">
@@ -1988,7 +1988,7 @@ export default function AnalyzePage({
                 <div className="space-y-4">
                    <div className="flex items-center gap-3 px-2">
                      <span className="text-lg">📋</span>
-                     <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Forces clés identifiées par l'IA</h4>
+                     <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Forces clés identifiées par l'IA</h4>
                    </div>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      {[team1!, team2!].map((tid, idx) => {
@@ -2020,7 +2020,7 @@ export default function AnalyzePage({
                   <div className="flex items-center gap-3 mb-6">
                     <Zap className="w-5 h-5 text-[#10B981]" />
                     <div>
-                      <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Modèles Tactiques Avancés</h4>
+                      <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Modèles Tactiques Avancés</h4>
                       <p className="text-[9px] text-white/40 uppercase tracking-widest font-black mt-0.5">Moteurs FBref & StatsBomb</p>
                     </div>
                   </div>
@@ -2045,7 +2045,7 @@ export default function AnalyzePage({
                         <div className="w-8 h-8 rounded-[16px] bg-black/40 border border-white/5 flex items-center justify-center text-[#10B981]">
                           <IconComp className="w-4 h-4" />
                         </div>
-                        <h4 className="text-sm font-black text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>{section.title}</h4>
+                        <h4 className="text-sm font-black text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>{section.title}</h4>
                       </div>
                       <p className="text-xs text-white/80 leading-relaxed font-semibold whitespace-pre-line">{section.content}</p>
                     </div>
@@ -2106,7 +2106,7 @@ function DualBar({ label, v1, v2, suffix="", customL1="", customL2="", hideTitle
       {!hideTitle && (
         <div className="flex justify-between items-center text-xs font-black text-white/50 tracking-wider">
           <span className={`${invertColors ? 'text-[#EF4444]' : 'text-[#10B981]'} font-black`}>{rv1}{suffix}</span>
-          <span className="text-white/80 font-extrabold uppercase tracking-widest" style={{fontFamily:"'Space Grotesk',sans-serif"}}>{label}</span>
+          <span className="text-white/80 font-extrabold uppercase tracking-widest" style={{fontFamily: "var(--police-titre), sans-serif"}}>{label}</span>
           <span className={`${invertColors ? 'text-[#10B981]' : 'text-[#EF4444]'} font-black`}>{rv2}{suffix}</span>
         </div>
       )}
@@ -2153,7 +2153,7 @@ function ModernMetricBar({ label, description, val1, val2, suffix = "", invertCo
   return (
     <div className="flex flex-col space-y-4 relative group">
       <div className="flex justify-between items-end px-1 relative">
-        <span className={`text-xl md:text-3xl font-black ${isV1Better ? 'text-[#10B981] drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-white/60'}`} style={{fontFamily:"'Space Grotesk',sans-serif"}}>{val1}{suffix}</span>
+        <span className={`text-xl md:text-3xl font-black ${isV1Better ? 'text-[#10B981] drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-white/60'}`} style={{fontFamily: "var(--police-titre), sans-serif"}}>{val1}{suffix}</span>
         
         <div className="absolute left-0 right-0 flex flex-col items-center justify-end bottom-0 z-10 pointer-events-none">
           <span className="text-[9px] md:text-xs font-black uppercase tracking-[0.2em] text-white/40 bg-[#1d2f3a] px-2">{label}</span>
@@ -2164,7 +2164,7 @@ function ModernMetricBar({ label, description, val1, val2, suffix = "", invertCo
           )}
         </div>
 
-        <span className={`text-xl md:text-3xl font-black ${!isV1Better ? 'text-[#EF4444] drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]' : 'text-white/60'}`} style={{fontFamily:"'Space Grotesk',sans-serif"}}>{val2}{suffix}</span>
+        <span className={`text-xl md:text-3xl font-black ${!isV1Better ? 'text-[#EF4444] drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]' : 'text-white/60'}`} style={{fontFamily: "var(--police-titre), sans-serif"}}>{val2}{suffix}</span>
       </div>
       <div className="relative h-3 bg-black/45 rounded-full flex overflow-hidden border border-white/5 shadow-inner">
         <div className="h-full bg-gradient-to-r from-[#10B981]/70 to-[#10B981] transition-all duration-1000 ease-out" style={{ width: `${w1}%` }} />
@@ -2195,7 +2195,7 @@ function LockedAnalysisPreview({ scenarios, sections }: { scenarios?: number; se
       <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg space-y-6">
         <div className="flex items-center gap-3">
           <Trophy className="w-5 h-5 text-[#10B981]" />
-          <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+          <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
             Score prédit par l'IA
           </h4>
         </div>
@@ -2210,7 +2210,7 @@ function LockedAnalysisPreview({ scenarios, sections }: { scenarios?: number; se
       <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md space-y-5">
         <div className="flex items-center gap-3">
           <BarChart3 className="w-5 h-5 text-[#10B981]" />
-          <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+          <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
             Probabilités du match
           </h4>
         </div>
@@ -2228,7 +2228,7 @@ function LockedAnalysisPreview({ scenarios, sections }: { scenarios?: number; se
       <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md space-y-5">
         <div className="flex items-center gap-3">
           <Activity className="w-5 h-5 text-[#10B981]" />
-          <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+          <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
             Métriques avancées
           </h4>
         </div>
@@ -2246,7 +2246,7 @@ function LockedAnalysisPreview({ scenarios, sections }: { scenarios?: number; se
       <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md space-y-4">
         <div className="flex items-center gap-3">
           <Target className="w-5 h-5 text-[#10B981]" />
-          <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+          <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
             Points forts et faiblesses
           </h4>
         </div>
@@ -2260,7 +2260,7 @@ function LockedAnalysisPreview({ scenarios, sections }: { scenarios?: number; se
         <div key={i} className="space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-lg">📌</span>
-            <h4 className="font-black text-base text-white" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>
+            <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
               Scénario #{i + 2}
             </h4>
           </div>

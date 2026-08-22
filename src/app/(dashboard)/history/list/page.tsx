@@ -92,7 +92,7 @@ export default function MobileHistoryListPage() {
           <ChevronLeft className="w-5 h-5 text-white" />
         </button>
         <div>
-          <h1 className="text-xl font-black text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          <h1 className="text-xl font-black text-white tracking-tight" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
             Mon Historique
           </h1>
           <p className="text-[10px] text-white/50 font-medium uppercase tracking-widest mt-0.5">
@@ -200,7 +200,7 @@ export default function MobileHistoryListPage() {
                       </div>
 
                       <div className={`flex flex-col items-center shrink-0 px-4 ${!isPro ? 'blur-md select-none' : ''}`}>
-                        <span className="text-xl font-black text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                        <span className="text-xl font-black text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
                           {item.score}
                         </span>
                         {item.confidence && (
@@ -245,7 +245,7 @@ export default function MobileHistoryListPage() {
               <button onClick={() => setSelectedItem(null)} className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center">
                 <ChevronLeft className="w-5 h-5 text-white" />
               </button>
-              <h3 className="text-sm font-black text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Détail de l'Analyse</h3>
+              <h3 className="text-sm font-black text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>Détail de l'Analyse</h3>
             </div>
             <Brain className="w-5 h-5 text-[#10B981]" />
           </div>
@@ -258,7 +258,7 @@ export default function MobileHistoryListPage() {
                 <div className="w-14 h-14 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
                   <Lock className="w-7 h-7 text-orange-400" />
                 </div>
-                <h3 className="text-base font-black text-white text-center" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Contenu Premium</h3>
+                <h3 className="text-base font-black text-white text-center" style={{ fontFamily: "var(--police-titre), sans-serif" }}>Contenu Premium</h3>
                 <p className="text-[11px] text-white/50 text-center">Passez à Premium pour voir les détails complets.</p>
                 <Link href="/pricing" className="bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-black font-black px-6 py-2.5 rounded-full text-[11px] uppercase tracking-widest flex items-center gap-2">
                   <CreditCard className="w-4 h-4" /> Devenir Premium

@@ -93,7 +93,7 @@ export default function PaywallDeuxChemins({
     >
       <h3
         className="text-[19px] leading-tight sm:text-2xl md:text-3xl font-black text-white mb-4 text-center"
-        style={{ fontFamily: "'Space Grotesk',sans-serif" }}
+        style={{ fontFamily: "var(--police-titre), sans-serif" }}
       >
         Tu n&apos;as accès qu&apos;à 15% de notre analyse
       </h3>

@@ -25,7 +25,7 @@ export default function OverviewDashboardClient({ data }: { data: any }) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+        <h1 className="text-3xl font-bold tracking-tight text-white mb-2" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
           Vue d'ensemble
         </h1>
         <p className="text-white/50">Bienvenue sur votre plateforme d'administration ProFoot.</p>

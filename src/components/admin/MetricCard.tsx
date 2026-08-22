@@ -58,7 +58,7 @@ export default function MetricCard({
           </div>
 
           <div className="flex items-baseline gap-3">
-            <h2 className="text-3xl font-bold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            <h2 className="text-3xl font-bold text-white tracking-tight" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
               {value}
             </h2>
             

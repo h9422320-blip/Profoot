@@ -58,7 +58,7 @@ export default async function MatchesPage() {
       <header className="space-y-2">
         <h1
           className="text-3xl sm:text-4xl font-black text-white tracking-tight"
-          style={{ fontFamily: "'Space Grotesk',sans-serif" }}
+          style={{ fontFamily: "var(--police-titre), sans-serif" }}
         >
           Matchs de football
         </h1>

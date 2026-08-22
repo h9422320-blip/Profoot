@@ -28,7 +28,7 @@ export default async function MaintenancePage() {
           <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_25px_rgba(16,185,129,0.5)]">
             <Image src="/logo.png" alt={reglages.appName} width={56} height={56} className="w-full h-full object-cover scale-[1.35]" priority />
           </div>
-          <span className="font-black text-3xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          <span className="font-black text-3xl text-white tracking-tight" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
             {reglages.appName}
           </span>
         </div>

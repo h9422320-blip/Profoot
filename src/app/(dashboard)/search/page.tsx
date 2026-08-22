@@ -189,7 +189,7 @@ export default function SearchPage() {
           <Sparkles className="w-4 h-4" />
           <span className="text-xs font-black uppercase tracking-wider">Connexion Web Temps Réel (Mai 2026)</span>
         </div>
-        <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-white mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+        <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-white mb-4" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
           Moteur de Recherche <span className="bg-gradient-to-r from-primary via-emerald-400 to-teal-400 bg-clip-text text-transparent">Web IA</span>
         </h1>
         <p className="text-base lg:text-lg text-foreground/60 max-w-2xl mx-auto leading-relaxed">

@@ -27,7 +27,7 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
   const lines = content.split("\n");
 
   return (
-    <div className={`text-[14.5px] leading-[1.75] font-medium ${colorClass}`} style={{fontFamily: "'Inter', sans-serif"}}>
+    <div className={`text-[14.5px] leading-[1.75] font-medium ${colorClass}`} style={{fontFamily: "var(--police-texte), sans-serif"}}>
       {lines.map((line, i) => {
         if (!line.trim()) return <div key={i} className="h-2" />;
 
@@ -243,7 +243,7 @@ export default function ExpertAgentPage() {
               <Lock className="w-10 h-10 text-[#10B981] drop-shadow-[0_0_15px_rgba(16,185,129,0.8)] relative z-10" strokeWidth={1.5} />
             </div>
             
-            <h1 className="text-3xl md:text-5xl font-black mb-5 tracking-tight relative z-10 bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent" style={{fontFamily:"'Outfit',sans-serif"}}>
+            <h1 className="text-3xl md:text-5xl font-black mb-5 tracking-tight relative z-10 bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent" style={{fontFamily: "var(--police-marque), sans-serif"}}>
               Accès Réservé VIP
             </h1>
             
@@ -304,7 +304,7 @@ export default function ExpertAgentPage() {
             <Image src="/logo.png" alt="ProFoot AI" width={44} height={44} className="w-full h-full object-cover scale-[1.35]" />
           </div>
           <div>
-            <h1 className="text-base font-black text-white flex items-center gap-1.5" style={{fontFamily:"'Outfit',sans-serif"}}>
+            <h1 className="text-base font-black text-white flex items-center gap-1.5" style={{fontFamily: "var(--police-marque), sans-serif"}}>
               ProFoot <span className="text-primary">Expert</span>
               <Sparkles className="w-3.5 h-3.5 text-yellow-400 ml-0.5" />
             </h1>
@@ -373,7 +373,7 @@ export default function ExpertAgentPage() {
             onChange={e => setInput(e.target.value)}
             placeholder="Posez votre question sur le football..."
             className="w-full bg-[#18272f] border border-white/[0.08] rounded-[20px] py-3.5 pl-5 pr-14 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all font-medium"
-            style={{fontFamily: "'Inter', sans-serif"}}
+            style={{fontFamily: "var(--police-texte), sans-serif"}}
           />
           <button
             type="submit"

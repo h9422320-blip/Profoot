@@ -90,12 +90,12 @@ export default function LoginPage() {
            <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]">
              <Image src="/logo.png" alt="ProFoot" width={40} height={40} className="w-full h-full object-cover scale-[1.35]" />
            </div>
-           <span className="font-black text-2xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ProFoot</span>
+           <span className="font-black text-2xl text-white tracking-tight" style={{ fontFamily: "var(--police-titre), sans-serif" }}>ProFoot</span>
         </div>
 
         {/* Content */}
         <div className="relative z-10 max-w-lg px-12">
-          <h1 className="text-5xl font-black text-white leading-[1.1] mb-6" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          <h1 className="text-5xl font-black text-white leading-[1.1] mb-6" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
             Analysez les matchs avec l'intelligence artificielle.
           </h1>
           <p className="text-lg text-zinc-400 font-medium mb-12 leading-relaxed">
@@ -130,7 +130,7 @@ export default function LoginPage() {
             <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_20px_rgba(16,185,129,0.5)]">
               <Image src="/logo.png" alt="ProFoot" width={48} height={48} className="w-full h-full object-cover scale-[1.35]" />
             </div>
-            <span className="font-black text-3xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ProFoot</span>
+            <span className="font-black text-3xl text-white tracking-tight" style={{ fontFamily: "var(--police-titre), sans-serif" }}>ProFoot</span>
           </div>
 
           {/* Form Header */}

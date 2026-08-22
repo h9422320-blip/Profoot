@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
           <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_0_20px_rgba(16,185,129,0.5)]">
             <Image src="/logo.png" alt="ProFoot" width={48} height={48} className="w-full h-full object-cover scale-[1.35]" />
           </div>
-          <span className="font-black text-3xl text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ProFoot</span>
+          <span className="font-black text-3xl text-white tracking-tight" style={{ fontFamily: "var(--police-titre), sans-serif" }}>ProFoot</span>
         </div>
 
         {sent ? (

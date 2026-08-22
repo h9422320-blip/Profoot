@@ -5,6 +5,7 @@ import { PLANS } from "@/lib/subscription";
 import { LanguageProvider } from "@/context/LanguageContext";
 
 import Script from "next/script";
+import { classesPolices } from "./polices";
 import SignalReact from "@/components/SignalReact";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -95,7 +96,9 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className="h-full antialiased scroll-smooth"
+      // Les quatre familles sont servies depuis notre domaine (voir
+      // `polices.ts`). Ces classes exposent leurs variables CSS partout.
+      className={`h-full antialiased scroll-smooth ${classesPolices}`}
     >
       <head>
         {/*
@@ -134,11 +137,6 @@ export default function RootLayout({
               // ne trouvait rien — les polices restaient en « print » pour
               // toujours, et le site s'affichait éternellement avec la police du
               // téléphone. On réessaie donc plus tard, à plusieurs reprises.
-              "var basculer=function(){" +
-              "var p=d.querySelector('link[data-police-distante]');" +
-              "if(p){p.media='all';return true;}return false;};" +
-              "if(d.addEventListener){d.addEventListener('DOMContentLoaded',basculer);}" +
-              "setTimeout(basculer,500);setTimeout(basculer,2000);setTimeout(basculer,5000);" +
               // SI REACT N'A PAS PRIS LA MAIN AU BOUT DE QUATRE SECONDES, ON
               // REND TOUT VISIBLE.
               //
@@ -189,54 +187,23 @@ export default function RootLayout({
         </noscript>
 
         <link rel="icon" href="/icon.png?v=5" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* La liaison au serveur de Clarity est ouverte pendant que la page se
             charge : la mesure ne coûte plus une négociation complète ensuite. */}
         <link rel="preconnect" href="https://www.clarity.ms" crossOrigin="anonymous" />
-        {/*
-          ── LES POLICES NE BLOQUENT PLUS L'AFFICHAGE ────────────────────────
+        {/* ── LES POLICES NE VIENNENT PLUS DE GOOGLE ──────────────────────
 
-          CE QUI SE PASSAIT
+            Deux feuilles de style distantes vivaient ici : une balise <link>
+            et un @import dans globals.css. 73 fichiers référencés, 741 Ko
+            réellement téléchargés par un visiteur francophone, depuis un
+            deuxième domaine — quinze secondes sur une 3G ouest-africaine.
 
-          Cette feuille de style vient de Google. Chargée normalement, elle est
-          BLOQUANTE : tant que Google n'a pas répondu, le navigateur n'affiche
-          rien. Pas une lettre, pas un fond de couleur. Un écran blanc.
+            Elles étaient déjà rendues non bloquantes par une astuce
+            (media="print" puis bascule en JavaScript), ce qui évitait l'écran
+            blanc mais ne réduisait pas d'un octet ce qu'il fallait charger.
 
-          Le 19 août 2026, un contact au Maroc a filmé son iPhone : page
-          blanche, puis « Safari n'a pas pu ouvrir la page car le serveur ne
-          répondait plus ». Le serveur, lui, répondait très bien — c'est Google
-          qui ne répondait pas, et le site attendait derrière.
-
-          Plusieurs opérateurs d'Afrique du Nord et du Moyen-Orient
-          ralentissent ou filtrent les domaines de Google. Faire dépendre le
-          premier affichage d'un serveur tiers, c'est confier sa porte d'entrée
-          à quelqu'un d'autre.
-
-          CE QU'ON FAIT
-
-          `media="print"` : le navigateur télécharge la feuille sans jamais
-          attendre après elle. La page s'affiche immédiatement avec les polices
-          du téléphone, puis bascule sur les nôtres dès qu'elles arrivent — le
-          petit script en tête de page s'en charge.
-
-          Si Google ne répond jamais, le site reste parfaitement lisible. Une
-          police système vaut infiniment mieux qu'un écran blanc.
-        */}
-        <link
-          data-police-distante=""
-          href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-          media="print"
-        />
-        <noscript>
-          {/* Sans JavaScript, personne ne peut basculer la feuille : on la
-              charge normalement. Le blocage éventuel est alors le moindre mal. */}
-          <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Space+Grotesk:wght@400;700&family=Outfit:wght@400;700;900&display=swap"
-            rel="stylesheet"
-          />
-        </noscript>
+            Les polices sont maintenant servies depuis notre propre domaine,
+            en latin seul, avec le CSS intégré à la page. Plus de domaine
+            tiers, plus de bascule, plus d'astuce : voir `polices.ts`. */}
 
         {/*
           MICROSOFT CLARITY.
@@ -317,7 +284,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex bg-background text-foreground w-full transition-colors duration-300" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <body className="min-h-full flex bg-background text-foreground w-full transition-colors duration-300" style={{ fontFamily: "var(--police-texte), sans-serif" }}>
         <ThemeProvider>
           <LanguageProvider>
             {children}
