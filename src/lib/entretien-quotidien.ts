@@ -132,6 +132,7 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
       const { rattraperAccesManquants } = await import('./acces-manquants');
       const r = await rattraperAccesManquants(true);
       const morceaux = [`${r.repares} accès rouvert(s) sur ${r.ventesEncaissees} vente(s)`];
+      if (r.repares) morceaux.push(`${r.prevenus} personne(s) prévenue(s)`);
       if (r.enAttenteInscription.length)
         morceaux.push(`${r.enAttenteInscription.length} en attente d'inscription`);
       if (r.echecs.length) morceaux.push(`${r.echecs.length} ÉCHEC(S)`);

@@ -246,3 +246,48 @@ test('CONTRAT — un match acheté à l unité ne passe pas pour un accès manqu
       "divergeraient au premier changement de tarif."
   );
 });
+
+/**
+ * QUELQU'UN DONT ON ROUVRE L'ACCÈS DOIT L'APPRENDRE — UNE SEULE FOIS.
+ *
+ * Un accès rendu que le client ignore ne vaut pas beaucoup mieux qu'un accès
+ * manquant : il continue d'attendre, ou demande un remboursement.
+ */
+test('CONTRAT — un accès rouvert prévient la personne concernée', () => {
+  const src = lire('src/lib/acces-manquants.ts');
+  assert.ok(
+    /if \(await prevenir\(/.test(src),
+    "L'envoi du courriel a disparu du rattrapage : l'accès serait rouvert en " +
+      "silence, et la personne continuerait d'attendre sans savoir."
+  );
+});
+
+test('CONTRAT — la même personne ne peut pas être prévenue deux fois', () => {
+  const src = lire('src/lib/acces-manquants.ts');
+  const fonction = src.slice(src.indexOf('async function prevenir'), src.indexOf('/** Lit une table'));
+
+  assert.ok(
+    /acces:prevenu:\$\{saleId\}/.test(fonction),
+    "La trace des personnes déjà prévenues a disparu. Le rattrapage tourne chaque " +
+      "jour : le même message partirait tous les matins à la même personne."
+  );
+
+  // La trace est posée AVANT l'envoi, jamais après. On cherche l'APPEL
+  // — `envoyerCourriel({` — et non la ligne d'import, qui figure forcément
+  // en tête de fonction et ferait passer le contrôle pour rien.
+  assert.ok(
+    fonction.indexOf('ecrireReserve(cle') < fonction.indexOf('envoyerCourriel({'),
+    "La trace est écrite après l'envoi. Si le service répond mal en ayant malgré " +
+      "tout expédié le message, il repartirait chaque jour. Un message manqué se " +
+      "rattrape à la main ; un message envoyé quatre fois, non."
+  );
+});
+
+test('CONTRAT — un envoi impossible se voit, il ne disparaît pas', () => {
+  const src = lire('src/lib/courriel.ts');
+  assert.ok(
+    /console\.error\([\s\S]{0,200}NON ENVOYÉ/.test(src),
+    "Sans clé, l'envoi échoue en silence. On croirait prévenir des clients qu'on " +
+      "ne prévient pas — pire que de ne rien avoir du tout."
+  );
+});
