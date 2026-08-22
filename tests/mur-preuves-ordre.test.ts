@@ -5,6 +5,12 @@ import fs from 'node:fs';
 const lire = (p: string) => fs.readFileSync(p, 'utf8');
 
 /**
+ * ★ VALIDÉ PAR LE PROPRIÉTAIRE LE 22 AOÛT 2026 — NE PLUS Y TOUCHER.
+ *
+ * Il a ouvert le mur, vérifié l ordre des cartes, et répondu « c est bien ».
+ * Ce qui suit décrit exactement ce qu il a vu ce jour-là. Toute modification
+ * du tri doit d abord faire échouer ces tests, jamais passer inaperçue.
+ *
  * LE MUR DE PREUVES SE LIT DU PLUS RÉCENT AU PLUS ANCIEN.
  *
  * Ce qui ne marchait pas : la notoriété des clubs passait avant la date. Un
@@ -17,7 +23,7 @@ const lire = (p: string) => fs.readFileSync(p, 'utf8');
  * la veille n'étaient visibles nulle part. Le mur prouvait que l'outil
  * marchait il y a sept ans.
  */
-test('CONTRAT — le jour est le premier critère de tri du mur', () => {
+test('★ ACQUIS — le jour est le premier critère de tri du mur', () => {
   const src = lire('src/lib/preuves.ts');
   const tri = src.slice(src.indexOf('const ordonnees = [...toutes].sort'));
   const corps = tri.slice(0, tri.indexOf('});'));
@@ -43,7 +49,7 @@ test('CONTRAT — le jour est le premier critère de tri du mur', () => {
   );
 });
 
-test('CONTRAT — les grands clubs et le score exact départagent encore', () => {
+test('★ ACQUIS — les grands clubs et le score exact départagent encore', () => {
   const src = lire('src/lib/preuves.ts');
   const tri = src.slice(src.indexOf('const ordonnees = [...toutes].sort'));
   const corps = tri.slice(0, tri.indexOf('});'));
@@ -66,7 +72,7 @@ test('CONTRAT — les grands clubs et le score exact départagent encore', () =>
  * terminés, puis reconstruit le mur. Sans cet enchaînement, il faudrait
  * demander la mise à jour à la main chaque jour — ce qui était le cas avant.
  */
-test('CONTRAT — le mur se reconstruit après chaque vérification quotidienne', () => {
+test('★ ACQUIS — le mur se reconstruit après chaque vérification quotidienne', () => {
   const entretien = lire('src/lib/entretien-quotidien.ts');
 
   const posVerif = entretien.indexOf('verifierPronostics');
