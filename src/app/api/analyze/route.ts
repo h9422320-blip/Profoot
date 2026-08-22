@@ -1366,10 +1366,30 @@ async function analyser(req: Request, billet: BilletQuota) {
   // Une prédiction bâtie sans savoir qui reçoit n'est jamais figée : elle ne
   // doit pas devenir la référence d'un match.
   const fixtureDeReference = targetFutureMatch ?? null;
-  const figeable = !lieuInconnu && !!fixtureDeReference?.fixture?.id && !matchDirect;
 
-  if (figeable) {
-    const deja = await lirePredictionFigee(fixtureDeReference.fixture.id, id1);
+  // ── LE PRONOSTIC SE RELIT AUSSI PENDANT LE MATCH ─────────────────────────
+  //
+  // `figeable` servait aux deux usages à la fois : lire ET écrire. Comme il
+  // excluait les matchs en direct, le pronostic d'avant-match n'était jamais
+  // RELU une fois le coup d'envoi donné — alors qu'il était bien en base.
+  //
+  // Constaté sur Espanyol — Real Madrid le 22 août 2026. Avant le match, le
+  // pronostic figé annonçait 1-2 pour le Real. À la 74ᵉ, sur un 1-1, une
+  // nouvelle analyse affichait « 1-1 » : le calcul du direct avait pris toute
+  // la place. Deux personnes regardant le même match voyaient deux pronostics
+  // contraires selon l'heure à laquelle elles avaient cliqué.
+  //
+  // Un pronostic n'est un pronostic que s'il ne bouge pas. Il est donc relu
+  // dès qu'on sait de quelle rencontre il s'agit — y compris en plein match.
+  //
+  // L'ÉCRITURE, elle, reste interdite en direct : un « pronostic » calculé
+  // après le coup d'envoi connaît déjà des buts, et n'en est plus un.
+  const idRencontre = fixtureDeReference?.fixture?.id ?? matchDirect?.fixtureId ?? null;
+  const lisible = !!idRencontre;
+  const enregistrable = !lieuInconnu && !!fixtureDeReference?.fixture?.id && !matchDirect;
+
+  if (lisible) {
+    const deja = await lirePredictionFigee(idRencontre, id1);
     if (deja) {
       scoreCalcule.buts1 = deja.buts1;
       scoreCalcule.buts2 = deja.buts2;
@@ -1379,7 +1399,7 @@ async function analyser(req: Request, billet: BilletQuota) {
       scoreCalcule.confiance = deja.confiance;
       if (deja.butsAttendus1 !== null) scoreCalcule.butsAttendus1 = Number(deja.butsAttendus1);
       if (deja.butsAttendus2 !== null) scoreCalcule.butsAttendus2 = Number(deja.butsAttendus2);
-    } else {
+    } else if (enregistrable) {
       // Enregistré dans le sens officiel : l'équipe qui reçoit en premier.
       const e1Domicile = equipe1AJoueADomicile === true;
       await figerPrediction({
@@ -1475,37 +1495,56 @@ async function analyser(req: Request, billet: BilletQuota) {
       );
       donnees.finalPrediction = projection;
 
-      // ── LE PRONOSTIC D'AVANT-MATCH EST REMPLACÉ, PAS COMPLÉTÉ ───────────────
+      // ── LE PRONOSTIC NE BOUGE PLUS UNE FOIS LE MATCH COMMENCÉ ─────────────
       //
-      // C'est le point qui a fait le plus de dégâts. Le 12 août 2026 à 20 h 59,
-      // pendant que le PSG menait 2-1 à la 90ᵉ minute, l'analyse affichait
-      // toujours son pronostic d'avant-match — « 0-1 pour Aston Villa » — parce
-      // que le bloc du direct s'ajoutait sans rien remplacer. Un influenceur l'a
-      // relayé à sa communauté alors que le match disait le contraire.
+      // Cette portion remplaçait le pronostic par la projection du direct. Le
+      // raisonnement de l'époque — 12 août 2026, le PSG menait 2-1 à la 90ᵉ et
+      // l'écran affichait encore « 0-1 Aston Villa » — visait un vrai problème :
+      // un pronostic seul, sans le score en cours, paraît absurde.
       //
-      // Un pronostic d'avant-match n'a plus aucune valeur une fois le coup
-      // d'envoi donné : il ignore les buts déjà marqués. Tous les chiffres
-      // affichés sont donc ceux de la projection, recalculée sur le score acquis
-      // et le temps restant. Une seule vérité à l'écran.
-      donnees.predictedScore = {
-        team1Goals: projection.scoreFinal1,
-        team2Goals: projection.scoreFinal2,
-        reasoning: projection.verdict,
+      // Mais la solution était trop large. Elle a rendu le pronostic MOUVANT :
+      // sur Espanyol — Real Madrid, 1-2 annoncé avant le coup d'envoi devenait
+      // 1-1 à la 74ᵉ. Deux personnes, deux réponses contraires, pour le même
+      // match. Un pronostic qui change n'est plus un pronostic.
+      //
+      // Le problème de départ est désormais réglé autrement, et mieux : le
+      // score en direct s'affiche EN HAUT, en grand, impossible à manquer. Il
+      // n'y a plus de risque qu'on prenne le pronostic pour l'état du match.
+      //
+      // Trois blocs distincts, qui ne se contredisent plus parce qu'ils ne
+      // répondent pas à la même question :
+      //
+      //   • le SCORE EN DIRECT      — ce qui se passe maintenant ;
+      //   • le PRONOSTIC            — ce qui avait été annoncé, immuable ;
+      //   • « OÙ VA CE MATCH »      — la projection, recalculée sur le temps
+      //                               restant, et étiquetée comme telle.
+      //
+      // `predictedScore`, `winProb`, `drawProb` et `loseProb` gardent donc les
+      // valeurs d'avant-match, relues plus haut dans `predictions_match`.
+      donnees.pronosticFige = {
+        team1Goals: scoreCalcule.buts1,
+        team2Goals: scoreCalcule.buts2,
+        probaVictoire1: scoreCalcule.probaVictoire1,
+        probaNul: scoreCalcule.probaNul,
+        probaVictoire2: scoreCalcule.probaVictoire2,
       };
-      donnees.winProb = projection.probaVictoire1;
-      donnees.drawProb = projection.probaNul;
-      donnees.loseProb = projection.probaVictoire2;
       // En cours de match, la confiance suit ce que dit le tableau d'affichage :
       // mener 2-1 a la 90e est un fait, pas une opinion. Elle reste toutefois
       // plafonnee a 95 % — un match n'est jamais joue avant le coup de sifflet
       // final, et afficher 100 % serait une promesse que personne ne peut tenir.
-      donnees.confidence = Math.min(
-        95,
-        Math.round(Math.max(projection.probaVictoire1, projection.probaNul, projection.probaVictoire2))
-      );
-      // Le résumé d'avant-match dirait encore le contraire du tableau
-      // d'affichage : la projection le remplace.
-      donnees.quickSummary = projection.verdict;
+      // ── LA CONFIANCE ET LE RÉSUMÉ APPARTIENNENT AU PRONOSTIC ──────────────
+      //
+      // Ces deux lignes prenaient les valeurs de la projection. Elles n'ont
+      // plus lieu d'être : la confiance qualifie le PRONOSTIC affiché juste
+      // au-dessus, et celui-ci est désormais celui d'avant-match. Afficher
+      // « 1-2 pour le Real » avec une confiance calculée sur un 1-1 en cours
+      // reviendrait à noter une phrase avec la note d'une autre.
+      //
+      // La certitude de la projection n'est pas perdue : elle est dans ses
+      // propres pourcentages, à l'intérieur du bloc « Où va ce match ».
+      //
+      // Le résumé garde de même le texte d'avant-match, qui va avec le
+      // pronostic qu'il commente.
     }
 
     // Dernier filet avant l'envoi : le score et les probabilités doivent

@@ -883,11 +883,28 @@ export function predireIssueFinale(
   const maxi = Math.max(pv1, pn, pv2);
   const quasiCertain = maxi >= 80;
   const serre = maxi < 45;
+  // ── LE NUL DOIT DIRE POURQUOI, SINON IL PASSE POUR UNE RECOPIE ───────────
+  //
+  // Sur Espanyol — Real Madrid, 1-1 à la 74ᵉ, le moteur annonçait « 1-1 ». Le
+  // calcul était juste : à seize minutes de la fin, le partage des points vaut
+  // 60 %, et à la 88ᵉ il en vaut 94. Annoncer autre chose serait mentir.
+  //
+  // Mais à l'écran, « 1-1 » sous un direct à 1-1 se lit comme un copier-coller.
+  // La même prévision, à la mi-temps, donnait 1-2 pour le Real — preuve qu'elle
+  // se calcule vraiment. Personne ne pouvait le deviner.
+  //
+  // Le verdict nomme donc ce qui rend le nul probable : le temps qui reste. Un
+  // chiffre sans sa raison n'est pas un pronostic, c'est une affirmation.
+  const scoreFige =
+    meilleur.s1 === butsActuels1 && meilleur.s2 === butsActuels2 && minutesRestantes > 0;
+
   let verdict: string;
   if (pn === maxi) {
     verdict = serre
       ? `Tout reste ouvert : le partage des points est le scénario le plus probable (${pn} %), mais de peu.`
-      : `Le match se dirige vers un partage des points (${pn} %).`;
+      : scoreFige
+        ? `Il reste ${minutesRestantes} minutes, trop peu pour que le score bouge : le partage des points devient le scénario le plus probable (${pn} %).`
+        : `Le match se dirige vers un partage des points (${pn} %).`;
   } else {
     const nom = pv1 === maxi ? nomEquipe1 : nomEquipe2;
     verdict = quasiCertain

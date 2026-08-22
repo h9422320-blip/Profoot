@@ -1360,8 +1360,22 @@ export default function AnalyzePage({
               {result.finalPrediction && (
                 <div className="mt-6 bg-black/25 border border-white/5 rounded-[20px] p-4 sm:p-5">
                   <p className="text-[9.5px] sm:text-[10px] font-black text-white/35 uppercase tracking-widest mb-2.5">
-                    Où va ce match
+                    Prévision du résultat final
                   </p>
+
+                  {/* ── LE SCORE FINAL PRÉVU, ÉCRIT EN TOUTES LETTRES ────────
+                      Ce bloc ne montrait que du texte et des pourcentages. Le
+                      score final projeté existait dans les données mais
+                      n'apparaissait nulle part : impossible de savoir sur quel
+                      score le moteur voyait le match se terminer. */}
+                  <div className="flex items-center justify-center gap-3 bg-black/40 px-5 py-2.5 rounded-full border border-white/5 w-fit mx-auto mb-3.5">
+                    <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">
+                      {result.finalPrediction.scoreFinal1}
+                      <span className="text-white/25 mx-1.5">-</span>
+                      {result.finalPrediction.scoreFinal2}
+                    </span>
+                  </div>
+
                   <p className="text-[13px] sm:text-sm text-white font-bold leading-relaxed mb-4">
                     {result.finalPrediction.verdict}
                   </p>
@@ -1827,11 +1841,27 @@ export default function AnalyzePage({
                   {/* Score pill */}
                   {result.predictedScore && (
                     <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
-                      <div className="flex items-center gap-3 mb-6">
+                      {/* ── L'ÉTIQUETTE CHANGE QUAND LE MATCH EST COMMENCÉ ──────
+                          « Score prédit par l'IA » au-dessus d'un 1-2, pendant
+                          qu'un direct affiche 1-1 plus haut, se lit comme une
+                          contradiction. C'en est une seulement si l'on ignore
+                          QUAND le pronostic a été fait.
+                          Le dire lève tout le malentendu : ce chiffre est celui
+                          d'avant le coup d'envoi, il ne bouge plus, et c'est sur
+                          lui que l'application sera jugée. */}
+                      <div className="flex items-center gap-3 mb-2">
                         <Trophy className="w-5 h-5 text-[#10B981]" />
-                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>Score prédit par l'IA</h4>
+                        <h4 className="font-black text-base text-white" style={{fontFamily:"'Space Grotesk',sans-serif"}}>
+                          {result.live ? "Pronostic d'avant-match" : "Score prédit par l'IA"}
+                        </h4>
                       </div>
-                      
+                      {result.live && (
+                        <p className="text-[11px] text-white/40 leading-relaxed mb-5">
+                          Annoncé avant le coup d&apos;envoi, et inchangé depuis. C&apos;est ce
+                          pronostic qui sera jugé à la fin du match.
+                        </p>
+                      )}
+
                       <div className="flex items-center justify-center gap-4 md:gap-12 my-6 w-full">
                         <div className="flex flex-col items-center gap-2 w-[30%]">
                           <img src={getClub(team1!).logo} className="w-10 h-10 object-contain" alt="" />
