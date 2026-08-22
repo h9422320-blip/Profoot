@@ -337,9 +337,15 @@ test("CONTRAT — les preuves du jour passent en tête du mur public", () => {
   // DE CE JOUR — ceux dont il connaît déjà le résultat. C'est la preuve la plus
   // convaincante : « ce match d'hier soir, il l'avait dit ». Une réussite d'il
   // y a trois semaines ne prouve pas que l'outil marche aujourd'hui.
+  //
+  // Le critère s'appelait `estDuJour` et ne distinguait qu'aujourd'hui du
+  // reste : au-delà, la notoriété reprenait la main et remontait des matchs de
+  // 2019 devant les réussites de la veille. Il a été remplacé par un tri sur
+  // le jour, du plus récent au plus ancien, qui couvre le cas du jour ET tous
+  // les suivants. Voir `tests/mur-preuves-ordre.test.ts`.
   assert.ok(
-    /const estDuJour = /.test(source),
-    "Le critère « match du jour » a disparu du tri : les preuves fraîches retomberaient " +
+    /const jour = \(p: Preuve\) =>/.test(source),
+    "Le tri par date a disparu du mur : les preuves fraîches retomberaient " +
       "derrière des affiches anciennes."
   );
 

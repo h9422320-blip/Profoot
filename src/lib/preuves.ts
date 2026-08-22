@@ -633,30 +633,50 @@ export async function getPreuvesPubliques(limite = 10): Promise<{
   //
   // Ce critère passe donc avant la notoriété des clubs. Une affiche du jour
   // entre équipes modestes vaut mieux, ici, qu'un Barcelone d'il y a dix jours.
-  const jourActuel = new Date().toISOString().slice(0, 10);
-  const estDuJour = (p: Preuve) => String(p.dateMatch ?? '').slice(0, 10) === jourActuel;
+  // ── LA DATE D'ABORD. LA NOTORIÉTÉ NE DÉPARTAGE QU'À L'INTÉRIEUR D'UN JOUR ──
+  //
+  // Ce qui ne marchait pas : la notoriété passait avant la date. Un critère
+  // qui vaut cent points face à un écart d'un jour qui n'en vaut aucun, cela
+  // revient à trier par célébrité et rien d'autre.
+  //
+  // Relevé du 22 août 2026 sur les douze premières cartes : Liverpool —
+  // Barcelone de MAI 2019, Barcelone — Manchester United de février 2023,
+  // Barcelone — Bayern d'octobre 2024. Pendant ce temps, les trente réussites
+  // de la veille — Arsenal, Marseille — Strasbourg, Galatasaray — n'étaient
+  // visibles nulle part. Le mur prouvait que l'outil marchait il y a sept ans.
+  //
+  // Or c'est l'inverse qu'un visiteur vient chercher : « le match d'hier soir,
+  // il l'avait dit ». Une réussite de 2019, si belle soit-elle, ne prouve rien
+  // sur ce que l'outil fait aujourd'hui.
+  //
+  // La date devient donc le premier critère, au jour près. À l'intérieur d'une
+  // même journée, tout le reste s'applique comme avant : les grandes affiches
+  // remontent, et le score exact départage. Les grands clubs restent donc mis
+  // en avant — dans la journée où ils ont joué, et non par-dessus le temps.
+  const jour = (p: Preuve) => String(p.dateMatch ?? '').slice(0, 10);
 
   const ordonnees = [...toutes].sort((a, b) => {
+    // 1. Le jour, du plus récent au plus ancien.
+    const jourA = jour(a);
+    const jourB = jour(b);
+    if (jourA !== jourB) return jourB.localeCompare(jourA);
+
+    // 2. Une carte épinglée depuis l'administration passe devant ses voisines
+    //    du même jour. Elle ne remonte plus par-dessus des journées entières :
+    //    une seule épingle suffisait à occuper la première place du mur
+    //    indéfiniment, quel que soit l'âge du match.
     if (a.miseEnAvant !== b.miseEnAvant) return a.miseEnAvant ? -1 : 1;
 
-    const jourA = estDuJour(a);
-    const jourB = estDuJour(b);
-    if (jourA !== jourB) return jourA ? -1 : 1;
-
+    // 3. La notoriété de l'affiche, entre matchs du même jour.
     const poidsA = poidsAffiche(a, grandsClubs);
     const poidsB = poidsAffiche(b, grandsClubs);
     if (poidsA !== poidsB) return poidsB - poidsA;
-    // À notoriété égale, LE PLUS RÉCENT D'ABORD.
-    //
-    // Le score exact passait avant la date : une belle réussite d'il y a trois
-    // jours reléguait la victoire du Barça du jour même plus bas que le premier
-    // écran. Or c'est le match d'aujourd'hui qui prouve que l'outil marche
-    // aujourd'hui.
-    const dateA = String(a.dateMatch ?? '');
-    const dateB = String(b.dateMatch ?? '');
-    if (dateA.slice(0, 10) !== dateB.slice(0, 10)) return dateB.localeCompare(dateA);
+
+    // 4. Un score exact est la preuve la plus forte : il passe devant.
     if (a.scoreExact !== b.scoreExact) return a.scoreExact ? -1 : 1;
-    return dateB.localeCompare(dateA);
+
+    // 5. À égalité complète, l'heure du coup d'envoi.
+    return String(b.dateMatch ?? '').localeCompare(String(a.dateMatch ?? ''));
   });
 
   const ilYAUneSemaine = Date.now() - 7 * 86400000;
