@@ -7,6 +7,7 @@ import { EnTete, Rapport } from "../_components/EnTete";
 import { Indicateur } from "../_components/Indicateur";
 import { Panneau } from "../_components/Panneaux";
 import { Vide } from "../_components/Ui";
+import TestCourriel from "./TestCourriel";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,13 @@ export default async function DiagnosticPage() {
           },
         ]}
       />
+
+      {/* Le canal qui prévient un client quand son accès est rouvert. Il ne
+          s'exécute que lorsqu'il y a quelqu'un à rattraper — donc, si tout va
+          bien, jamais. Sans ce bouton, on ne découvrirait la panne d'envoi que
+          le jour où elle compte : un client attend, l'accès est rouvert, et le
+          message qui devait le lui dire ne part pas. */}
+      <TestCourriel />
 
       {d.echantillonInsuffisant ? (
         <div className="rounded-[22px] border border-amber-500/25 bg-amber-500/10 p-6">
