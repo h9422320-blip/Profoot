@@ -27,6 +27,8 @@
 
 import { createAdminClient } from './supabase-admin';
 import { niveauOffert, PLANS, normalizePlan, type PlanKey } from './subscription';
+import { recettesBoutiqueParJour } from './chariow';
+import { lireReserve, ecrireReserve } from './api-football';
 
 export interface Partenaire {
   id: string;
@@ -168,6 +170,68 @@ function montantEncaisse(ligne: {
   return Math.round(versXof(brut, ligne.currency ?? 'XOF'));
 }
 
+/** Une heure : la recette d'un partenaire ne se lit pas à la seconde près. */
+const TTL_BOUTIQUE = 60 * 60 * 1000;
+const CLE_BOUTIQUE = 'chariow:recettes-jour';
+
+/**
+ * Les recettes de la boutique, regroupées par mois, depuis une date.
+ *
+ * ── POURQUOI UNE RÉSERVE ──────────────────────────────────────────────────
+ *
+ * Lire toute la boutique demande une douzaine d'appels à Chariow. Les refaire
+ * à chaque affichage de la page rendrait celle-ci lente et cognerait sur les
+ * limites de leur API pour un chiffre qui bouge de quelques ventes par heure.
+ *
+ * La réserve périmée est conservée et resservie si Chariow ne répond pas : un
+ * chiffre d'il y a deux heures vaut mieux qu'une page vide.
+ *
+ * Renvoie `null` quand rien n'est disponible — l'appelant retombe alors sur
+ * la base.
+ */
+async function recettesBoutique(
+  depuis: Date
+): Promise<Map<string, { xof: number; ventes: number }> | null> {
+  const debut = depuis.toISOString().slice(0, 10);
+
+  const grouper = (parJour: Record<string, { xof: number; ventes: number }>) => {
+    const parMois = new Map<string, { xof: number; ventes: number }>();
+    for (const [jour, poste] of Object.entries(parJour)) {
+      // Le partenariat a une date de départ : ce qui a été vendu avant ne lui
+      // revient pas. La comparaison se fait sur des chaînes AAAA-MM-JJ, donc
+      // sans piège de fuseau horaire.
+      if (jour < debut) continue;
+      const mois = jour.slice(0, 7);
+      const cumul = parMois.get(mois) ?? { xof: 0, ventes: 0 };
+      cumul.xof += poste.xof;
+      cumul.ventes += poste.ventes;
+      parMois.set(mois, cumul);
+    }
+    return parMois;
+  };
+
+  const enReserve = await lireReserve<Record<string, { xof: number; ventes: number }>>(
+    CLE_BOUTIQUE
+  );
+  if (enReserve && !enReserve.expiree) return grouper(enReserve.contenu);
+
+  try {
+    const parJour = await recettesBoutiqueParJour(versXof);
+    const brut = Object.fromEntries(parJour);
+    void ecrireReserve(CLE_BOUTIQUE, brut, TTL_BOUTIQUE);
+    return grouper(brut);
+  } catch (e: any) {
+    console.warn('[PARTENAIRES] Boutique injoignable :', e?.message);
+    // Une réserve périmée reste une réserve : elle vient de la boutique, ce
+    // que la base ne peut pas dire d'elle-même.
+    if (enReserve) {
+      console.warn('[PARTENAIRES] Chiffre de la boutique resservi depuis la réserve.');
+      return grouper(enReserve.contenu);
+    }
+    return null;
+  }
+}
+
 /**
  * Recettes encaissées, regroupées par mois.
  *
@@ -176,6 +240,19 @@ function montantEncaisse(ligne: {
  * qu'on paie quelqu'un.
  */
 async function recettesParMois(depuis: Date): Promise<Map<string, { xof: number; ventes: number }>> {
+  // ── LA BOUTIQUE D'ABORD : C'EST ELLE QUI TIENT LA CAISSE ────────────────
+  //
+  // La table des abonnements est un reflet de la boutique, pas la boutique.
+  // Une vente payée dont le compte ne s'est jamais créé n'y figure pas ; un
+  // abonnement écrit avec le mauvais plan y ment. Du 16 au 22 août 2026 :
+  // 99 ventes encaissées chez Chariow, 95 abonnements en base.
+  //
+  // On demande donc le chiffre à Chariow. La base ne sert plus que de secours
+  // le jour où la boutique ne répond pas — mieux vaut un chiffre approché
+  // qu'une page vide, et l'écart est alors signalé dans le journal.
+  const parBoutique = await recettesBoutique(depuis);
+  if (parBoutique) return parBoutique;
+
   const parMois = new Map<string, { xof: number; ventes: number }>();
   const { data, error } = await createAdminClient()
     .from('subscriptions')

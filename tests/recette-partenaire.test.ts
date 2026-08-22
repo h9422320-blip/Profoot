@@ -64,3 +64,40 @@ test('CONTRAT — une même vente ne peut pas être comptée deux fois', () => {
       "compterait la vente deux fois, et la part du partenaire avec."
   );
 });
+
+/**
+ * LE CHIFFRE VIENT DE LA CAISSE, PAS DE SON REFLET.
+ *
+ * La table des abonnements est un reflet de la boutique. Une vente payée dont
+ * le compte ne s'est jamais créé n'y figure pas. Du 16 au 22 août 2026 :
+ * 99 ventes encaissées chez Chariow, 95 abonnements en base.
+ */
+test('CONTRAT — la recette part de la boutique Chariow, la base n est qu un secours', () => {
+  const src = lire('src/lib/partenaires.ts');
+  const recettes = src.slice(src.indexOf('async function recettesParMois'));
+
+  assert.ok(
+    /recettesBoutique\(depuis\)/.test(recettes),
+    "La boutique n'est plus interrogée : la recette repartirait de la table des " +
+      "abonnements, qui ignore les ventes payées sans compte créé."
+  );
+
+  assert.ok(
+    recettes.indexOf('recettesBoutique(depuis)') < recettes.indexOf('from(\'subscriptions\')'),
+    "La base est consultée avant la boutique. L'ordre compte : le secours ne doit " +
+      "servir que si la caisse ne répond pas."
+  );
+});
+
+test('CONTRAT — la pagination Chariow ne perd pas per_page', () => {
+  const src = lire('src/lib/chariow.ts');
+  const fonction = src.slice(src.indexOf('export async function listRecentSales'));
+
+  assert.ok(
+    /searchParams\.set\('per_page', '100'\)/.test(fonction.slice(0, 2500)),
+    "Le lien de page suivante ne reporte pas `per_page` : les pages retombent à " +
+      "dix ventes. Avec cinq pages on lisait 140 ventes en croyant tenir toute la " +
+      "boutique — on ne voyait que les deux derniers jours, et la recette du 16 au " +
+      "19 août était simplement invisible."
+  );
+});

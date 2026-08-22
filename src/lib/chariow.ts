@@ -409,7 +409,7 @@ export interface ChariowSale {
  * fournie dans la réponse. S'être trompé là-dessus a fait conclure un jour
  * « aucun paiement aujourd'hui » alors que seize mille francs étaient entrés.
  */
-export async function listRecentSales(pagesMax = 5): Promise<ChariowSale[]> {
+export async function listRecentSales(pagesMax = 60): Promise<ChariowSale[]> {
   const ventes: ChariowSale[] = [];
   let url: string | null = `${CHARIOW_API_URL}/sales?per_page=100`;
 
@@ -423,9 +423,90 @@ export async function listRecentSales(pagesMax = 5): Promise<ChariowSale[]> {
       throw new Error(`Impossible de lire les ventes Chariow (${res.status}).`);
     }
     if (Array.isArray(data?.data)) ventes.push(...data.data);
-    url = data?.pagination?.next_page_url ?? null;
+
+    // ── `per_page` NE SURVIT PAS AU LIEN DE PAGE SUIVANTE ──────────────────
+    //
+    // Chariow honore `per_page=100` sur la PREMIÈRE requête, puis le laisse
+    // tomber : le lien qu'il fournit pour la suite ne le reporte pas, et les
+    // pages suivantes retombent à dix ventes.
+    //
+    // Mesuré le 22 août 2026 : avec cinq pages, on lisait 100 + 10 + 10 + 10 +
+    // 10 = 140 ventes et l'on croyait tenir toute la boutique. On ne voyait en
+    // réalité que les deux derniers jours. La recette du 16 au 19 août était
+    // simplement invisible.
+    //
+    // En reposant le paramètre à chaque tour : 1 141 ventes, du 7 au 22 août,
+    // en douze requêtes au lieu de cent quinze.
+    const suivante: string | null = data?.pagination?.next_page_url ?? null;
+    if (suivante) {
+      try {
+        const u = new URL(suivante);
+        u.searchParams.set('per_page', '100');
+        url = u.toString();
+      } catch {
+        url = suivante;
+      }
+    } else url = null;
   }
   return ventes;
+}
+
+/** Statuts sous lesquels Chariow considère l'argent comme reçu. */
+export const STATUTS_ENCAISSES = ['completed', 'settled'];
+
+/**
+ * Les recettes RÉELLEMENT encaissées par la boutique, jour par jour.
+ *
+ * ── POURQUOI ON VA CHERCHER LE CHIFFRE À LA SOURCE ────────────────────────
+ *
+ * La recette d'un partenaire se déduisait de la table des abonnements. C'est
+ * un reflet, pas la source : une vente payée dont le compte ne s'est jamais
+ * créé n'y figure pas, et un abonnement écrit avec le mauvais plan y ment.
+ *
+ * Relevé du 16 au 22 août 2026 : la boutique comptait 99 ventes encaissées,
+ * la base 95 abonnements. Quatre ventes payées manquaient — et personne ne
+ * pouvait le savoir en regardant la base, puisque c'est précisément ce
+ * qu'elle ne contient pas.
+ *
+ * La boutique est la seule autorité sur l'argent reçu. On lui demande.
+ *
+ * La date retenue est celle du PAIEMENT (`completed_at`) quand elle existe :
+ * une vente ouverte le 21 à 23 h 50 et payée le 22 appartient au 22.
+ */
+export async function recettesBoutiqueParJour(
+  /**
+   * La conversion en francs CFA, fournie par l'appelant.
+   *
+   * Elle n'est pas définie ici pour qu'il n'existe qu'UNE table de taux dans
+   * l'application — celle de `partenaires.ts`. La recopier ici créerait deux
+   * vérités qui finiraient par diverger, et c'est sur elles qu'on paie
+   * quelqu'un. L'argument évite aussi un import circulaire entre les deux
+   * modules.
+   */
+  versXof: (montant: number, devise: string) => number
+): Promise<Map<string, { xof: number; ventes: number }>> {
+  const parJour = new Map<string, { xof: number; ventes: number }>();
+
+  for (const v of await listRecentSales()) {
+    if (!STATUTS_ENCAISSES.includes(String(v.status))) continue;
+
+    const jour = String((v as any).completed_at ?? v.created_at ?? '').slice(0, 10);
+    if (!jour) continue;
+
+    // Toutes les ventes relevées sont en francs CFA. Une devise étrangère
+    // serait donc une nouveauté : on la signale plutôt que de la convertir
+    // à un taux qu'on n'aurait pas vérifié.
+    const devise = v.amount?.currency ?? 'XOF';
+    if (devise !== 'XOF')
+      console.warn(`[CHARIOW] Vente ${v.id} en ${devise} : convertie au taux affiché.`);
+
+    const poste = parJour.get(jour) ?? { xof: 0, ventes: 0 };
+    poste.xof += Math.round(versXof(Number(v.amount?.value ?? 0), devise));
+    poste.ventes += 1;
+    parJour.set(jour, poste);
+  }
+
+  return parJour;
 }
 
 /**
