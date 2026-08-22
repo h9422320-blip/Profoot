@@ -200,3 +200,49 @@ test('CONTRAT — seuls completed et settled comptent comme encaissés', () => {
       "Le total de l'administration ne correspondrait plus à celui de la boutique."
   );
 });
+
+/**
+ * PERSONNE NE DOIT PAYER SANS RECEVOIR SON ACCÈS.
+ *
+ * Le 22 août 2026 à 14 h 55, un client écrivait « je n'arrive pas à activer ».
+ * Il avait payé à 14 h 36. Deux autres attendaient depuis deux jours sans
+ * jamais s'être plaints. La seule détection en place était la patience d'un
+ * client.
+ */
+test('CONTRAT — le rattrapage des accès payés tourne chaque jour', () => {
+  const entretien = lire('src/lib/entretien-quotidien.ts');
+
+  assert.ok(
+    /rattraperAccesManquants/.test(entretien),
+    "Le rattrapage des accès a disparu de l'entretien quotidien : un paiement " +
+      "dont le webhook échoue ne serait plus jamais rattrapé, et le client " +
+      "n'aurait que le courrier électronique pour se signaler."
+  );
+
+  // L'ordre compte : c'est la seule étape où quelqu'un attend derrière.
+  assert.ok(
+    entretien.indexOf('rattraperAccesManquants') < entretien.indexOf('construirePreuves'),
+    "Le rattrapage des accès passe après la reconstruction du mur de preuves. " +
+      "Un mur reconstruit une heure plus tard ne coûte rien ; un client qui a " +
+      "payé et ne peut pas entrer demande un remboursement."
+  );
+});
+
+test('CONTRAT — un match acheté à l unité ne passe pas pour un accès manquant', () => {
+  const src = lire('src/lib/acces-manquants.ts');
+
+  assert.ok(
+    /matchs_debloques/.test(src),
+    "Seule la table des abonnements est consultée. Un match acheté à l'unité " +
+      "n'y laisse aucune ligne : tous ces achats passeraient pour des accès " +
+      "manquants et seraient « réparés » en abonnements. Deux faux positifs sur " +
+      "six lors du premier relevé."
+  );
+
+  assert.ok(
+    /activateSubscriptionFromSale/.test(src),
+    "La réparation n'utilise plus la fonction d'activation de production. Une " +
+      "copie appliquerait ses propres règles de plan et de durée, qui " +
+      "divergeraient au premier changement de tarif."
+  );
+});

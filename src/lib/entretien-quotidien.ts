@@ -116,6 +116,30 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
 
   // ── LA CHAÎNE, ÉTAPE PAR ÉTAPE, CHACUNE ISOLÉE ────────────────────────────
 
+  // ── EN PREMIER : CEUX QUI ONT PAYÉ SANS RECEVOIR LEUR ACCÈS ─────────────
+  //
+  // Placé avant tout le reste parce que c'est la seule étape où quelqu'un
+  // attend. Un mur de preuves reconstruit une heure plus tard ne coûte rien ;
+  // un client qui a payé et qui ne peut pas entrer demande un remboursement.
+  //
+  // Le 22 août 2026, trois personnes étaient dans ce cas — l'une depuis deux
+  // jours — et la seule alerte a été un client assez patient pour écrire un
+  // mail. Compter sur la plainte comme détection, c'est ne détecter que les
+  // clients qui se plaignent.
+  await etape(
+    'Rouvrir les accès payés mais non reçus',
+    async () => {
+      const { rattraperAccesManquants } = await import('./acces-manquants');
+      const r = await rattraperAccesManquants(true);
+      const morceaux = [`${r.repares} accès rouvert(s) sur ${r.ventesEncaissees} vente(s)`];
+      if (r.enAttenteInscription.length)
+        morceaux.push(`${r.enAttenteInscription.length} en attente d'inscription`);
+      if (r.echecs.length) morceaux.push(`${r.echecs.length} ÉCHEC(S)`);
+      return morceaux.join(' — ');
+    },
+    etapes
+  );
+
   await etape(
     'Vérifier les pronostics',
     async () => {
