@@ -291,3 +291,25 @@ test('CONTRAT — un envoi impossible se voit, il ne disparaît pas', () => {
       "ne prévient pas — pire que de ne rien avoir du tout."
   );
 });
+
+test('CONTRAT — les courriels partent du domaine vérifié, et les réponses arrivent quelque part', () => {
+  const src = lire('src/lib/courriel.ts');
+
+  // Resend n'accepte que les domaines dont on lui a prouvé la propriété.
+  // `noreply@profootai.com` est l'adresse qui envoie déjà les messages de mot
+  // de passe oublié, avec livraison vérifiée.
+  assert.ok(
+    /noreply@profootai\.com/.test(src),
+    "L'expéditeur n'est plus l'adresse vérifiée : Resend refuserait l'envoi, et " +
+      "aucun client ne serait prévenu."
+  );
+
+  // Ces messages disent « répondez simplement à ce message ». Sans en-tête de
+  // réponse, on inviterait un client à écrire là où personne ne lit — et il
+  // croirait avoir signalé son problème.
+  assert.ok(
+    /reply_to:/.test(src),
+    "L'en-tête de réponse a disparu. Les messages invitent pourtant à répondre, " +
+      "et ils partent d'un noreply@ : les réponses tomberaient dans le vide."
+  );
+});

@@ -28,7 +28,33 @@
  * pas de module du tout : on croit prévenir des clients qu'on ne prévient pas.
  */
 
-const EXPEDITEUR_PAR_DEFAUT = 'ProFoot AI <contact@profootai.com>';
+/**
+ * L'adresse d'expédition.
+ *
+ * ── POURQUOI CELLE-CI ET PAS UNE AUTRE ────────────────────────────────────
+ *
+ * C'est l'adresse qui envoie déjà les messages de mot de passe oublié, et dont
+ * la livraison est vérifiée. Resend n'accepte que les domaines qu'on lui a
+ * prouvé posséder : `contact@profootai.com`, qui figurait ici auparavant,
+ * n'avait jamais servi. Une adresse jamais essayée est une adresse dont on ne
+ * sait pas si elle passe.
+ */
+const EXPEDITEUR_PAR_DEFAUT = 'ProFoot AI <noreply@profootai.com>';
+
+/**
+ * L'adresse qui reçoit les réponses.
+ *
+ * ── POURQUOI ELLE EST INDISPENSABLE ICI ───────────────────────────────────
+ *
+ * Ces messages disent « répondez simplement à ce message ». Envoyés depuis un
+ * `noreply@`, les réponses tomberaient dans le vide — on inviterait un client
+ * à écrire là où personne ne lit. Pire qu'un message sans invitation : il
+ * croirait avoir signalé son problème.
+ *
+ * L'expéditeur reste `noreply@`, parce que c'est le domaine vérifié ; c'est
+ * l'en-tête de réponse qui ramène vers une vraie boîte.
+ */
+const REPONSE_PAR_DEFAUT = 'm09997818@gmail.com';
 
 export interface Courriel {
   a: string;
@@ -67,6 +93,7 @@ export async function envoyerCourriel({ a, sujet, texte }: Courriel): Promise<bo
       body: JSON.stringify({
         from: process.env.COURRIEL_EXPEDITEUR || EXPEDITEUR_PAR_DEFAUT,
         to: [a],
+        reply_to: process.env.COURRIEL_REPONSE || REPONSE_PAR_DEFAUT,
         subject: sujet,
         text: texte,
       }),
