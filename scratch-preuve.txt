@@ -1,0 +1,397 @@
+
+  ══ POINT 1 — COUVERTURE ══
+
+  Pays sondés ......................... 249
+  Pays avec au moins un moyen ......... 247
+  Pays avec une liste VIDE ............ 2  → KP, VE
+
+  ══ POINT 3 — PAYS AVEC « CARD » COMME SEUL MOYEN ══
+
+  132 pays :
+
+     AF  Afghanistan
+     AX  Aland Islands
+     DZ  Algeria
+     AS  American Samoa
+     AO  Angola
+     AI  Anguilla
+     AQ  Antarctica
+     AG  Antigua
+     AW  Aruba
+     AT  Austria
+     AZ  Azerbaijan
+     BD  Bangladesh
+     BB  Barbados
+     BY  Belarus
+     BZ  Belize
+     BM  Bermuda
+     BT  Bhutan
+     BO  Bolivia
+     BA  Bosnia and Herzegovina
+     BW  Botswana
+     IO  British Indian Ocean
+     BN  Brunei Darussalam
+     BI  Burundi
+     KH  Cambodia
+     CV  Cape Verde
+     KY  Cayman Islands
+     CF  Central African
+     TD  Chad
+     CX  Christmas Island
+     CC  Cocos (Keeling) Islands
+     KM  Comoros
+     CK  Cook Islands
+     CU  Cuba
+     CW  Curacao
+     DJ  Djibouti
+     DM  Dominica
+     GQ  Equatorial Guinea
+     ER  Eritrea
+     FK  Falkland Islands
+     FJ  Fiji
+     GF  French Guiana
+     PF  French Polynesia
+     TF  French Southern Territories
+     GM  Gambia
+     GH  Ghana
+     GI  Gibraltar
+     GD  Grenada
+     GP  Guadeloupe
+     GU  Guam
+     GW  Guinea-Bissau
+     GY  Guyana
+     HT  Haiti
+     ID  Indonesia
+     IR  Iran
+     IQ  Iraq
+     JM  Jamaica
+     KI  Kiribati
+     KG  Kyrgyzstan
+     LA  Laos
+     LV  Latvia
+     LB  Lebanon
+     LR  Liberia
+     LY  Libyan Arab Jamahiriya
+     LI  Liechtenstein
+     LT  Lithuania
+     LU  Luxembourg
+     MG  Madagascar
+     MV  Maldives
+     MT  Malta
+     MH  Marshall Islands
+     MQ  Martinique
+     MR  Mauritania
+     YT  Mayotte
+     FM  Micronesia
+     UM  Minor Outlying Islands (US)
+     MS  Montserrat
+     MZ  Mozambique
+     MM  Myanmar
+     NA  Namibia
+     NR  Nauru
+     NP  Nepal
+     NC  New Caledonia
+     NI  Nicaragua
+     NU  Niue
+     NF  Norfolk Island
+     MP  Northern Mariana Islands
+     PK  Pakistan
+     PW  Palau
+     PG  Papua New Guinea
+     PH  Philippines
+     PN  Pitcairn
+     RE  Reunion
+     RU  Russia
+     BL  Saint Barthelemy
+     SH  Saint Helena
+     KN  Saint Kitts
+     LC  Saint Lucia
+     MF  Saint Martin
+     PM  Saint Pierre
+     VC  Saint Vincent
+     WS  Samoa
+     ST  Sao Tome and Principe
+     SC  Seychelles
+     SX  Sint Maarten (Dutch part)
+     SB  Solomon Islands
+     SO  Somalia
+     GS  South Georgia
+     SS  South Sudan
+     LK  Sri Lanka
+     SD  Sudan
+     SR  Suriname
+     SJ  Svalbard and Jan Mayen
+     SZ  Swaziland
+     SY  Syrian Arab
+     TJ  Tajikistan
+     TH  Thailand
+     TL  Timor-Leste
+     TK  Tokelau
+     TO  Tonga
+     TT  Trinidad and Tobago
+     TN  Tunisia
+     TR  Turkey
+     TM  Turkmenistan
+     TC  Turks and CI
+     TV  Tuvalu
+     UZ  Uzbekistan
+     VU  Vanuatu
+     VG  Virgin Islands, British
+     VI  Virgin Islands, U.S.
+     WF  Wallis and Futuna
+     YE  Yemen
+     ZW  Zimbabwe
+
+
+  ══ POINT 2 — LES 247 PAYS, UN PAR UN ══
+
+  AF  Afghanistan                   Card
+  AX  Aland Islands                 Card
+  AL  Albania                       Apple Pay, Card, Google Pay
+  DZ  Algeria                       Card
+  AS  American Samoa                Card
+  AD  Andorra                       Apple Pay, Card, Google Pay
+  AO  Angola                        Card
+  AI  Anguilla                      Card
+  AQ  Antarctica                    Card
+  AG  Antigua                       Card
+  AR  Argentina                     Apple Pay, Card, Google Pay
+  AM  Armenia                       Apple Pay, Card, Google Pay
+  AW  Aruba                         Card
+  AU  Australia                     Alipay, Apple Pay, Card, Google Pay
+  AT  Austria                       Card
+  AZ  Azerbaijan                    Card
+  BS  Bahamas                       Apple Pay, Card, Google Pay
+  BH  Bahrain                       Apple Pay, Card, Google Pay
+  BD  Bangladesh                    Card
+  BB  Barbados                      Card
+  BY  Belarus                       Card
+  BE  Belgium                       Bancontact, Card
+  BZ  Belize                        Card
+  BJ  Benin                         MTN Mobile Money, Celtiis, Moov Money, Card
+  BM  Bermuda                       Card
+  BT  Bhutan                        Card
+  BO  Bolivia                       Card
+  BA  Bosnia and Herzegovina        Card
+  BW  Botswana                      Card
+  BR  Brazil                        Apple Pay, Card, Google Pay, Pix
+  IO  British Indian Ocean          Card
+  BN  Brunei Darussalam             Card
+  BG  Bulgaria                      Apple Pay, Card, Google Pay
+  BF  Burkina Faso                  Orange Money, Wave, Moov Money, Telecel Money, Coris Money, Sank Money, Card
+  BI  Burundi                       Card
+  KH  Cambodia                      Card
+  CM  Cameroon                      Orange Money, MTN Mobile Money, Card
+  CA  Canada                        Alipay, Apple Pay, Card, Google Pay, Link
+  CV  Cape Verde                    Card
+  KY  Cayman Islands                Card
+  CF  Central African               Card
+  TD  Chad                          Card
+  CL  Chile                         Apple Pay, Card, Google Pay
+  CN  China                         Alipay, Apple Pay, Card, Google Pay
+  CX  Christmas Island              Card
+  CC  Cocos (Keeling) Islands       Card
+  CO  Colombia                      Apple Pay, Card, Google Pay
+  KM  Comoros                       Card
+  CG  Congo                         MTN Mobile Money, Airtel Money, Card
+  CD  Congo, DR                     Vodacom, Airtel Money, Orange Money, Card
+  CK  Cook Islands                  Card
+  CR  Costa Rica                    Apple Pay, Card, Google Pay
+  CI  Cote d'Ivoire                 Wave, Orange Money, Djamo, MTN Mobile Money, Moov Money, Card
+  HR  Croatia                       Apple Pay, Card, Google Pay
+  CU  Cuba                          Card
+  CW  Curacao                       Card
+  CY  Cyprus                        Card, Apple Pay, Google Pay
+  CZ  Czech                         Apple Pay, Card, Google Pay
+  DK  Denmark                       Apple Pay, Card, Google Pay
+  DJ  Djibouti                      Card
+  DM  Dominica                      Card
+  DO  Dominican                     Apple Pay, Card, Google Pay
+  EC  Ecuador                       Apple Pay, Card, Google Pay
+  EG  Egypt                         Apple Pay, Google Pay, Card
+  SV  El Salvador                   Apple Pay, Card, Google Pay
+  GQ  Equatorial Guinea             Card
+  ER  Eritrea                       Card
+  EE  Estonia                       Apple Pay, Card, Google Pay
+  ET  Ethiopia                      M-Pesa, Card
+  FK  Falkland Islands              Card
+  FO  Faroe Islands                 Apple Pay, Card, Google Pay
+  FJ  Fiji                          Card
+  FI  Finland                       Card, Apple Pay, Google Pay
+  FR  France                        Cartes Bancaires, Apple Pay, Google Pay, Card, Alipay, Amazon Pay, Link
+  GF  French Guiana                 Card
+  PF  French Polynesia              Card
+  TF  French Southern Territories   Card
+  GA  Gabon                         Airtel Money, Card
+  GM  Gambia                        Card
+  GE  Georgia                       Apple Pay, Card, Google Pay
+  DE  Germany                       Card, Apple Pay, Google Pay, Alipay, Amazon Pay, Link
+  GH  Ghana                         Card
+  GI  Gibraltar                     Card
+  GR  Greece                        Card, Apple Pay, Google Pay
+  GL  Greenland                     Apple Pay, Card, Google Pay
+  GD  Grenada                       Card
+  GP  Guadeloupe                    Card
+  GU  Guam                          Card
+  GT  Guatemala                     Apple Pay, Card, Google Pay
+  GG  Guernsey                      Apple Pay, Card, Google Pay
+  BQ  Guinea                        Orange Money, MTN Mobile Money, Card
+  BV  Guinea                        Orange Money, MTN Mobile Money, Card
+  EH  Guinea                        Orange Money, MTN Mobile Money, Card
+  GN  Guinea                        Orange Money, MTN Mobile Money, Card
+  HM  Guinea                        Orange Money, MTN Mobile Money, Card
+  GW  Guinea-Bissau                 Card
+  GY  Guyana                        Card
+  HT  Haiti                         Card
+  VA  Holy See                      Apple Pay, Card, Google Pay
+  HN  Honduras                      Apple Pay, Card, Google Pay
+  HK  Hong Kong                     Alipay, Apple Pay, Card, Google Pay
+  HU  Hungary                       Apple Pay, Card, Google Pay
+  IS  Iceland                       Apple Pay, Card, Google Pay
+  IN  India                         Card, UPI
+  ID  Indonesia                     Card
+  IR  Iran                          Card
+  IQ  Iraq                          Card
+  IE  Ireland                       Google Pay, Apple Pay, Card
+  IM  Isle of Man                   Apple Pay, Card, Google Pay
+  IL  Israel                        Apple Pay, Card, Google Pay
+  IT  Italy                         Card, Google Pay, Apple Pay, Alipay, Amazon Pay, Link
+  JM  Jamaica                       Card
+  JP  Japan                         Alipay, Apple Pay, Card, Google Pay
+  JE  Jersey                        Apple Pay, Card, Google Pay
+  JO  Jordan                        Apple Pay, Card, Google Pay
+  KZ  Kazakhstan                    Apple Pay, Card, Google Pay
+  KE  Kenya                         Airtel Money, M-Pesa, Card
+  KI  Kiribati                      Card
+  KW  Kuwait                        Apple Pay, Card, Google Pay
+  KG  Kyrgyzstan                    Card
+  LA  Laos                          Card
+  LV  Latvia                        Card
+  LB  Lebanon                       Card
+  LS  Lesotho                       M-Pesa, Card
+  LR  Liberia                       Card
+  LY  Libyan Arab Jamahiriya        Card
+  LI  Liechtenstein                 Card
+  LT  Lithuania                     Card
+  LU  Luxembourg                    Card
+  MO  Macao                         Apple Pay, Card, Google Pay
+  MK  Macedonia                     Apple Pay, Card, Google Pay
+  MG  Madagascar                    Card
+  MW  Malawi                        Airtel Money, TNM, Card
+  MY  Malaysia                      Alipay, Apple Pay, Card, Google Pay
+  MV  Maldives                      Card
+  ML  Mali                          Card, Orange Money, Moov Money
+  MT  Malta                         Card
+  MH  Marshall Islands              Card
+  MQ  Martinique                    Card
+  MR  Mauritania                    Card
+  MU  Mauritius                     Apple Pay, Google Pay, Card
+  YT  Mayotte                       Card
+  MX  Mexico                        Apple Pay, Card, Google Pay
+  FM  Micronesia                    Card
+  UM  Minor Outlying Islands (US)   Card
+  MD  Moldova                       Apple Pay, Card, Google Pay
+  MC  Monaco                        Apple Pay, Card, Google Pay
+  MN  Mongolia                      Apple Pay, Card, Google Pay
+  ME  Montenegro                    Apple Pay, Card, Google Pay
+  MS  Montserrat                    Card
+  MA  Morocco                       Apple Pay, Google Pay, Card
+  MZ  Mozambique                    Card
+  MM  Myanmar                       Card
+  NA  Namibia                       Card
+  NR  Nauru                         Card
+  NP  Nepal                         Card
+  NL  Netherlands                   Card, Apple Pay, Google Pay, Alipay, Link
+  NC  New Caledonia                 Card
+  NZ  New Zealand                   Alipay, Apple Pay, Card, Google Pay
+  NI  Nicaragua                     Card
+  NE  Niger                         MyNita, Airtel Money, Amanata, Zamani Cash, Moov Money, Card
+  NG  Nigeria                       OPay, PalmPay, Bank Transfer, Airtel Money, MTN Mobile Money, Kuda, Bank Account, Card, USSD
+  NU  Niue                          Card
+  NF  Norfolk Island                Card
+  MP  Northern Mariana Islands      Card
+  NO  Norway                        Apple Pay, Card, Google Pay
+  OM  Oman                          Apple Pay, Card, Google Pay
+  PK  Pakistan                      Card
+  PW  Palau                         Card
+  PS  Palestinian                   Apple Pay, Card, Google Pay
+  PA  Panama                        Apple Pay, Card, Google Pay
+  PG  Papua New Guinea              Card
+  PY  Paraguay                      Apple Pay, Card, Google Pay
+  PE  Peru                          Apple Pay, Card, Google Pay
+  PH  Philippines                   Card
+  PN  Pitcairn                      Card
+  PL  Poland                        Apple Pay, Card, Google Pay
+  PT  Portugal                      Card, Apple Pay, Google Pay, MB WAY, Multibanco
+  PR  Puerto Rico                   Card, Apple Pay, Google Pay
+  QA  Qatar                         Apple Pay, Card, Google Pay
+  RE  Reunion                       Card
+  RO  Romania                       Apple Pay, Card, Google Pay
+  RU  Russia                        Card
+  RW  Rwanda                        MTN Mobile Money, Airtel Money, Card
+  BL  Saint Barthelemy              Card
+  SH  Saint Helena                  Card
+  KN  Saint Kitts                   Card
+  LC  Saint Lucia                   Card
+  MF  Saint Martin                  Card
+  PM  Saint Pierre                  Card
+  VC  Saint Vincent                 Card
+  WS  Samoa                         Card
+  SM  San Marino                    Apple Pay, Card, Google Pay
+  ST  Sao Tome and Principe         Card
+  SA  Saudi Arabia                  Apple Pay, Card, Google Pay
+  SN  Senegal                       Wave, Orange Money, Djamo, Free Money, E-Money, Card
+  RS  Serbia                        Apple Pay, Card, Google Pay
+  SC  Seychelles                    Card
+  SL  Sierra Leone                  Orange Money, Card
+  SG  Singapore                     Alipay, Apple Pay, Card, Google Pay
+  SX  Sint Maarten (Dutch part)     Card
+  SK  Slovakia                      Apple Pay, Card, Google Pay
+  SI  Slovenia                      Apple Pay, Card, Google Pay
+  SB  Solomon Islands               Card
+  SO  Somalia                       Card
+  ZA  South Africa                  Google Pay, Apple Pay, Card, Bank Transfer
+  GS  South Georgia                 Card
+  KR  South Korea                   Apple Pay, Card, Google Pay, Kakao Pay, Naver Pay, PAYCO, Samsung Pay
+  SS  South Sudan                   Card
+  ES  Spain                         Card, Google Pay, Apple Pay, Alipay, Amazon Pay, Link
+  LK  Sri Lanka                     Card
+  SD  Sudan                         Card
+  SR  Suriname                      Card
+  SJ  Svalbard and Jan Mayen        Card
+  SZ  Swaziland                     Card
+  SE  Sweden                        Apple Pay, Card, Google Pay
+  CH  Switzerland                   Apple Pay, Card, Google Pay
+  SY  Syrian Arab                   Card
+  TW  Taiwan                        Apple Pay, Card, Google Pay
+  TJ  Tajikistan                    Card
+  TZ  Tanzania                      Tigo, Airtel Money, Halopesa, M-Pesa, Card
+  TH  Thailand                      Card
+  TL  Timor-Leste                   Card
+  TG  Togo                          Mixx by Yas, Moov Money, Card
+  TK  Tokelau                       Card
+  TO  Tonga                         Card
+  TT  Trinidad and Tobago           Card
+  TN  Tunisia                       Card
+  TR  Turkey                        Card
+  TM  Turkmenistan                  Card
+  TC  Turks and CI                  Card
+  TV  Tuvalu                        Card
+  UG  Uganda                        Airtel Money, MTN Mobile Money, Card
+  UA  Ukraine                       Apple Pay, Card, Google Pay
+  AE  United Arab Emirates          Apple Pay, Card, Google Pay
+  GB  United Kingdom                Alipay, Amazon Pay, Apple Pay, Card, Google Pay, Link
+  US  United States                 Card, Apple Pay, Google Pay, Cash App Pay, Amazon Pay, Alipay, Link
+  UY  Uruguay                       Apple Pay, Card, Google Pay
+  UZ  Uzbekistan                    Card
+  VU  Vanuatu                       Card
+  VN  Vietnam                       Apple Pay, Card, Google Pay
+  VG  Virgin Islands, British       Card
+  VI  Virgin Islands, U.S.          Card
+  WF  Wallis and Futuna             Card
+  YE  Yemen                         Card
+  ZM  Zambia                        Airtel Money, MTN Mobile Money, Zamtel, Card
+  ZW  Zimbabwe                      Card
+
+  45 moyens de paiement distincts sur l'ensemble du monde.
+

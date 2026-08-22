@@ -75,7 +75,8 @@ export interface PaysDetecte {
   /** Code ISO à deux lettres, en majuscules. */
   code: string;
   /** D'où vient l'information — journalisé pour pouvoir vérifier la détection. */
-  source: 'ip' | 'fuseau' | 'defaut';
+  /** 'choix' quand l acheteur a corrige son pays lui-meme dans la notice. */
+  source: 'ip' | 'fuseau' | 'defaut' | 'choix';
 }
 
 /**

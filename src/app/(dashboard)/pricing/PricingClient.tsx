@@ -5,6 +5,20 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
 import { createClient } from "@/utils/supabase/client";
+import dynamic from "next/dynamic";
+import { usePaysAcheteur } from "@/components/usePaysAcheteur";
+
+/**
+ * La notice est chargee A LA DEMANDE, et c est deliberé.
+ *
+ * Elle embarque la table des moyens de paiement des 243 pays -- quarante-huit
+ * kilo-octets. Un import classique l aurait mise dans le lot de la page des
+ * tarifs, donc dans le telephone de CHAQUE visiteur, y compris l immense
+ * majorite qui ne clique sur aucune offre.
+ *
+ * Ici, rien n est telecharge tant que personne n a choisi une offre.
+ */
+const NoticePaiement = dynamic(() => import("@/components/NoticePaiement"), { ssr: false });
 
 type PlanTier = 'FREE' | 'ESSENTIAL' | 'PRO' | 'VIP';
 type PlanKey = 'essential_monthly' | 'pro_monthly' | 'vip_yearly';
@@ -154,6 +168,9 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [plan, setPlan] = useState<PlanTier>('FREE');
   const [checkingStatus, setCheckingStatus] = useState(true);
+  /** Offre pour laquelle la notice de paiement est ouverte. Null = fermée. */
+  const [noticePour, setNoticePour] = useState<PlanKey | null>(null);
+  const paysDetecte = usePaysAcheteur(noticePour !== null);
 
   // Le niveau affiché vient du serveur : le frontend ne décide jamais des
   // droits, il se contente de refléter ce que le backend applique réellement.
@@ -184,7 +201,24 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
       .catch(() => setCheckingStatus(false));
   }, []);
 
-  const handleSubscribe = async (selectedPlan: PlanKey) => {
+  /**
+   * ── LE CLIC OUVRE LA NOTICE, IL NE PART PLUS DIRECTEMENT ─────────────────
+   *
+   * La page de paiement appartient à Chariow : on ne peut rien y écrire. Un
+   * acheteur y arrivait donc sans savoir s'il pourrait payer avec Wave ou
+   * Orange Money, et beaucoup renonçaient là.
+   *
+   * La notice s'affiche à la seconde du clic, et repart d'elle-même au bout de
+   * cinq secondes : personne n'est retenu, et celui qui hésite a le temps de
+   * lire. Le paiement lui-même n'a pas changé d'une ligne — c'est
+   * `lancerPaiement` ci-dessous, exactement l'ancien code.
+   */
+  const handleSubscribe = (selectedPlan: PlanKey) => {
+    setNoticePour(selectedPlan);
+  };
+
+  const lancerPaiement = async (selectedPlan: PlanKey, paysChoisi: string | null) => {
+    setNoticePour(null);
     try {
       setLoadingPlan(selectedPlan);
       const res = await fetch('/api/payments/chariow/checkout', {
@@ -193,7 +227,14 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
         // Le fuseau ne sert qu'en secours, si l'hébergeur ne transmet pas le
         // pays de l'acheteur : sans lui, le paiement retomberait sur un pays
         // par défaut et les moyens de paiement locaux disparaîtraient.
-        body: JSON.stringify({ plan: selectedPlan, fuseau: fuseauDuNavigateur() })
+        //
+        // `pays` n'est renseigné que si l'acheteur a corrigé le sien dans la
+        // notice. Absent, le serveur détecte comme avant.
+        body: JSON.stringify({
+          plan: selectedPlan,
+          fuseau: fuseauDuNavigateur(),
+          ...(paysChoisi ? { pays: paysChoisi } : {}),
+        })
       });
 
       // Session expirée : reconnexion plutôt qu'un message d'erreur trompeur.
@@ -384,8 +425,27 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
         <ProBadge icon={Shield} title="Data Vérifiée" desc="Source directe des ligues officielles pour une précision totale." />
         <ProBadge icon={TrendingUp} title="Smart Insights" desc="Détection automatique des baisses de forme et opportunités." />
       </div>
+
+      {/* La notice n existe QUE pendant le clic sur une offre. Hors de ce
+          moment, elle n est pas montee : aucun encombrement ailleurs sur la
+          page, et rien a charger pour les visiteurs qui n achetent pas. */}
+      {noticePour && (
+        <NoticePaiement
+          paysDetecte={paysDetecte}
+          libelleOffre={libelleDe(noticePour, offres)}
+          onContinuer={(paysRetenu) => lancerPaiement(noticePour, paysRetenu)}
+          onFermer={() => setNoticePour(null)}
+        />
+      )}
     </div>
   );
+}
+
+/** Ce que l acheteur s apprete a payer, ecrit tel qu il l a lu sur la carte. */
+function libelleDe(cle: PlanKey, offres: OffresAffichees): string {
+  const offre = OFFRES.find((o) => o.cle === cle);
+  const prix = offres[cle]?.prix ?? offre?.prix ?? "";
+  return [offre?.nom, prix ? prix + " " + (offre?.periode ?? "") : null].filter(Boolean).join(" — ");
 }
 
 function ProBadge({ icon: Icon, title, desc }: any) {

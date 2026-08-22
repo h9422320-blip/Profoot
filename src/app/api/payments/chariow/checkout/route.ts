@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireUser, PLANS, PlanKey, normalizePlan } from '@/lib/subscription';
 import { lireOffre } from '@/lib/offres';
 import { initCheckout } from '@/lib/chariow';
-import { detecterPaysAcheteur, ipAcheteur } from '@/lib/pays-acheteur';
+import { ipAcheteur } from '@/lib/pays-acheteur';
+import { paysRetenu } from '@/lib/pays-paiement';
 import { createAdminClient } from '@/lib/supabase-admin';
 import {
   PRIX_MATCH_UNIQUE,
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
     // Le pays se relève ICI, et nulle part ailleurs : c'est le seul moment où
     // l'adresse IP en présence est celle de l'acheteur. Passé cette ligne, tout
     // se joue entre notre serveur et Chariow, qui ne voit plus que Vercel.
-    const pays = detecterPaysAcheteur(req.headers, body?.fuseau);
+    const pays = paysRetenu(req.headers, body?.fuseau, body?.pays);
     const ip = ipAcheteur(req.headers);
 
     const session = await initCheckout({
@@ -185,7 +186,7 @@ async function lancerAchatMatch(req: Request, body: any, user: any) {
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';
 
-  const pays = detecterPaysAcheteur(req.headers, body?.fuseau);
+  const pays = paysRetenu(req.headers, body?.fuseau, body?.pays);
   const ip = ipAcheteur(req.headers);
 
   const session = await initCheckout({

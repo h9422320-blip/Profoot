@@ -1,0 +1,40 @@
+/**
+ * Le pays retenu pour construire le lien de paiement.
+ *
+ * ── POURQUOI UN CHOIX EXPLICITE PEUT PASSER DEVANT L'ADRESSE IP ───────────
+ *
+ * La détection par IP se trompe dans des cas réels : un Ivoirien en voyage, un
+ * réseau d'entreprise qui sort par un autre pays, un opérateur mobile qui
+ * route par l'Europe. La personne voit alors Apple Pay là où elle attendait
+ * Wave, et elle abandonne — alors qu'elle sait parfaitement où elle est.
+ *
+ * La notice affichée avant la redirection lui permet de corriger. Ce choix
+ * n'aurait aucun intérêt s'il ne changeait pas la page suivante.
+ *
+ * ── CE QUI EST ACCEPTÉ, ET SEULEMENT CELA ────────────────────────────────
+ *
+ * Deux lettres, et un pays que la boutique sert réellement. Une valeur venue
+ * du navigateur ne mérite pas confiance : sans ce filtre, une chaîne fantaisie
+ * partirait telle quelle chez Chariow, qui retombe silencieusement sur la
+ * Guinée pour tout code inconnu — l'acheteur se verrait proposer Orange Money
+ * Guinée où qu'il soit.
+ *
+ * Sans choix valable, on retombe exactement sur le comportement d'avant.
+ */
+export function paysRetenu(
+  entetes: Headers,
+  fuseauClient?: unknown,
+  choixExplicite?: unknown
+): PaysDetecte {
+  const choix = String(choixExplicite ?? '').trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(choix)) {
+    // Import différé : ce module est chargé par des chemins qui n'ont aucun
+    // besoin de la table des moyens de paiement.
+    const { PAYS_SERVIS } = require('./moyens-paiement') as {
+      PAYS_SERVIS: { code: string }[];
+    };
+    if (PAYS_SERVIS.some((p) => p.code === choix)) return { code: choix, source: 'choix' };
+  }
+  return detecterPaysAcheteur(entetes, fuseauClient);
+}
+

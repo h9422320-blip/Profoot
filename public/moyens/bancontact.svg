@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Calque_1" data-name="Calque 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 45.03 45.03">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+      }
+
+      .cls-2 {
+        fill: url(#linear-gradient-2);
+      }
+
+      .cls-3 {
+        fill: url(#linear-gradient);
+      }
+
+      .cls-4 {
+        clip-path: url(#clippath-1);
+      }
+
+      .cls-5 {
+        fill: #f1f2f4;
+      }
+
+      .cls-6 {
+        clip-path: url(#clippath);
+      }
+    </style>
+    <clipPath id="clippath">
+      <path class="cls-1" d="M31.6,17.11c-4.54,0-6.81,2.7-9.08,5.41h15.07v-5.41h-5.99Z"/>
+    </clipPath>
+    <linearGradient id="linear-gradient" x1="22.51" y1="-5683.57" x2="37.58" y2="-5683.57" gradientTransform="translate(0 -5663.7605) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff9700"/>
+      <stop offset=".75" stop-color="#ffd400"/>
+      <stop offset="1" stop-color="#ffd400"/>
+    </linearGradient>
+    <clipPath id="clippath-1">
+      <path class="cls-1" d="M7.45,22.52v5.41h5.99c4.54,0,6.81-2.7,9.08-5.41H7.45Z"/>
+    </clipPath>
+    <linearGradient id="linear-gradient-2" x1="4.85" y1="-2480.12" x2="4.96" y2="-2480.12" gradientTransform="translate(-613.1572 317528.6326) scale(128.0195)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0439d1"/>
+      <stop offset=".25" stop-color="#0439d1"/>
+      <stop offset="1" stop-color="#0b2265"/>
+    </linearGradient>
+  </defs>
+  <path class="cls-5" d="M22.51,45.02c12.43,0,22.51-10.08,22.51-22.51S34.94,0,22.51,0,0,10.09,0,22.51s10.08,22.51,22.51,22.51Z"/>
+  <g>
+    <g class="cls-6">
+      <rect class="cls-3" x="22.51" y="17.11" width="15.07" height="5.41"/>
+    </g>
+    <g class="cls-4">
+      <rect class="cls-2" x="7.45" y="22.52" width="15.07" height="5.41"/>
+    </g>
+  </g>
+</svg>

@@ -6,6 +6,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
+import dynamic from "next/dynamic";
+import { usePaysAcheteur } from "@/components/usePaysAcheteur";
+
+/** Chargee a la demande : voir la note dans la page des tarifs. */
+const NoticePaiement = dynamic(() => import("@/components/NoticePaiement"), { ssr: false });
 
 interface Message {
   id: string;
@@ -74,6 +79,9 @@ export default function ExpertAgentPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingCheckout, setLoadingCheckout] = useState(false);
+  /** Vrai quand la notice de paiement est ouverte. */
+  const [noticeOuverte, setNoticeOuverte] = useState(false);
+  const paysDetecte = usePaysAcheteur(noticeOuverte);
   // L'offre la moins chère qui ouvre l'Agent VIP, telle que réglée dans
   // l'administration. Le serveur la désigne ; cette page se contente de
   // l'afficher.
@@ -183,7 +191,11 @@ export default function ExpertAgentPage() {
     );
   }
 
-  const handleSubscribe = async () => {
+  // Le clic ouvre la notice ; le paiement part ensuite, inchange.
+  const handleSubscribe = () => setNoticeOuverte(true);
+
+  const lancerPaiement = async (paysChoisi: string | null) => {
+    setNoticeOuverte(false);
     try {
       setLoadingCheckout(true);
       const res = await fetch('/api/payments/chariow/checkout', {
@@ -191,7 +203,12 @@ export default function ExpertAgentPage() {
         headers: { 'Content-Type': 'application/json' },
         // On envoie vers l'offre la moins chère qui ouvre l'Agent VIP, telle
         // que réglée dans l'administration — pas vers l'annuel par défaut.
-        body: JSON.stringify({ plan: offreVip?.cle ?? 'yearly', fuseau: fuseauDuNavigateur() })
+        body: JSON.stringify({
+          plan: offreVip?.cle ?? 'yearly',
+          fuseau: fuseauDuNavigateur(),
+          // Renseigne uniquement si l acheteur a corrige son pays.
+          ...(paysChoisi ? { pays: paysChoisi } : {}),
+        })
       });
       
       const data = await res.json();
@@ -260,6 +277,19 @@ export default function ExpertAgentPage() {
             </div>
           </div>
         </div>
+
+        {/* La notice n'existe QUE pendant le clic sur l'abonnement. Hors de ce
+            moment, elle n'est pas montée : rien à charger pour qui ne paie pas. */}
+        {noticeOuverte && (
+          <NoticePaiement
+            paysDetecte={paysDetecte}
+            libelleOffre={`Agent VIP — ${(offreVip?.prixXof ?? 15000).toLocaleString('fr-FR')} FCFA${
+              (offreVip?.dureeJours ?? 365) >= 365 ? ' / an' : ' / mois'
+            }`}
+            onContinuer={(paysRetenu) => lancerPaiement(paysRetenu)}
+            onFermer={() => setNoticeOuverte(false)}
+          />
+        )}
       </div>
     );
   }

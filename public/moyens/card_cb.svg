@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Calque_1" data-name="Calque 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 45.03 45.03">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fefefe;
+        fill-rule: evenodd;
+      }
+
+      .cls-2 {
+        fill: url(#linear-gradient);
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="29.49" y1="1.11" x2="15.54" y2="43.92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#222e72"/>
+      <stop offset=".59" stop-color="#40cbff"/>
+      <stop offset="1" stop-color="#3cb792"/>
+    </linearGradient>
+  </defs>
+  <g id="Group_1" data-name="Group 1">
+    <circle id="Ellipse_1" data-name="Ellipse 1" class="cls-2" cx="22.52" cy="22.51" r="22.51"/>
+  </g>
+  <path class="cls-1" d="M15.31,21.92h7.89c-.07-1.71-.47-3.46-1.67-4.59-1.44-1.35-3.95-1.84-6.2-1.84s-4.92.55-6.37,1.99c-1.24,1.24-1.51,3.24-1.51,5.04s.53,4.07,1.88,5.33c1.44,1.34,3.76,1.7,6.01,1.7s4.54-.4,5.97-1.68c1.42-1.27,1.92-3.42,1.92-5.36h0s-7.9,0-7.9,0v-.59ZM23.73,22.51v6.73h10.98c1.61-.1,2.88-1.54,2.88-3.32s-1.28-3.32-2.88-3.41h0s-10.98,0-10.98,0ZM34.58,15.76c1.57,0,2.81,1.36,2.81,3.07,0,1.62-1.14,2.95-2.59,3.08h-11.07v-6.17h10.5c.06,0,.14,0,.21,0,.05,0,.09,0,.13,0Z"/>
+</svg>

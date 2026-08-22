@@ -1,0 +1,3335 @@
+{
+ "AD": {
+  "nom": "Andorra",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AE": {
+  "nom": "United Arab Emirates",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AF": {
+  "nom": "Afghanistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "AG": {
+  "nom": "Antigua",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "AI": {
+  "nom": "Anguilla",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "AL": {
+  "nom": "Albania",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AM": {
+  "nom": "Armenia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AO": {
+  "nom": "Angola",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "AQ": {
+  "nom": "Antarctica",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "AR": {
+  "nom": "Argentina",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AS": {
+  "nom": "American Samoa",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "AT": {
+  "nom": "Austria",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "AU": {
+  "nom": "Australia",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AW": {
+  "nom": "Aruba",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "AX": {
+  "nom": "Aland Islands",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "AZ": {
+  "nom": "Azerbaijan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BA": {
+  "nom": "Bosnia and Herzegovina",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BB": {
+  "nom": "Barbados",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BD": {
+  "nom": "Bangladesh",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BE": {
+  "nom": "Belgium",
+  "moyens": [
+   {
+    "cle": "bancontact",
+    "nom": "Bancontact"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BF": {
+  "nom": "Burkina Faso",
+  "moyens": [
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "wave",
+    "nom": "Wave"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "telecel",
+    "nom": "Telecel Money"
+   },
+   {
+    "cle": "coris_money",
+    "nom": "Coris Money"
+   },
+   {
+    "cle": "sank_money",
+    "nom": "Sank Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BG": {
+  "nom": "Bulgaria",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "BH": {
+  "nom": "Bahrain",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "BI": {
+  "nom": "Burundi",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BJ": {
+  "nom": "Benin",
+  "moyens": [
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "celtiis",
+    "nom": "Celtiis"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BL": {
+  "nom": "Saint Barthelemy",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BM": {
+  "nom": "Bermuda",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BN": {
+  "nom": "Brunei Darussalam",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BO": {
+  "nom": "Bolivia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BQ": {
+  "nom": null,
+  "moyens": [],
+  "nonReconnu": true
+ },
+ "BR": {
+  "nom": "Brazil",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "pix",
+    "nom": "Pix"
+   }
+  ]
+ },
+ "BS": {
+  "nom": "Bahamas",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "BT": {
+  "nom": "Bhutan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BV": {
+  "nom": null,
+  "moyens": [],
+  "nonReconnu": true
+ },
+ "BW": {
+  "nom": "Botswana",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BY": {
+  "nom": "Belarus",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "BZ": {
+  "nom": "Belize",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CA": {
+  "nom": "Canada",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "CC": {
+  "nom": "Cocos (Keeling) Islands",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CD": {
+  "nom": "Congo, DR",
+  "moyens": [
+   {
+    "cle": "vodacom",
+    "nom": "Vodacom"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CF": {
+  "nom": "Central African",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CG": {
+  "nom": "Congo",
+  "moyens": [
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CH": {
+  "nom": "Switzerland",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CI": {
+  "nom": "Cote d&#x27;Ivoire",
+  "moyens": [
+   {
+    "cle": "wave",
+    "nom": "Wave"
+   },
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "djamo",
+    "nom": "Djamo"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CK": {
+  "nom": "Cook Islands",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CL": {
+  "nom": "Chile",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CM": {
+  "nom": "Cameroon",
+  "moyens": [
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CN": {
+  "nom": "China",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CO": {
+  "nom": "Colombia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CR": {
+  "nom": "Costa Rica",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CU": {
+  "nom": "Cuba",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CV": {
+  "nom": "Cape Verde",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CW": {
+  "nom": "Curacao",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CX": {
+  "nom": "Christmas Island",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "CY": {
+  "nom": "Cyprus",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CZ": {
+  "nom": "Czech",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "DE": {
+  "nom": "Germany",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "DJ": {
+  "nom": "Djibouti",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "DK": {
+  "nom": "Denmark",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "DM": {
+  "nom": "Dominica",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "DO": {
+  "nom": "Dominican",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "DZ": {
+  "nom": "Algeria",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "EC": {
+  "nom": "Ecuador",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "EE": {
+  "nom": "Estonia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "EG": {
+  "nom": "Egypt",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "EH": {
+  "nom": null,
+  "moyens": [],
+  "nonReconnu": true
+ },
+ "ER": {
+  "nom": "Eritrea",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "ES": {
+  "nom": "Spain",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "ET": {
+  "nom": "Ethiopia",
+  "moyens": [
+   {
+    "cle": "mpesa",
+    "nom": "M-Pesa"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "FI": {
+  "nom": "Finland",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "FJ": {
+  "nom": "Fiji",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "FK": {
+  "nom": "Falkland Islands",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "FM": {
+  "nom": "Micronesia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "FO": {
+  "nom": "Faroe Islands",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "FR": {
+  "nom": "France",
+  "moyens": [
+   {
+    "cle": "card_cb",
+    "nom": "Cartes Bancaires"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "GA": {
+  "nom": "Gabon",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GB": {
+  "nom": "United Kingdom",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "GD": {
+  "nom": "Grenada",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GE": {
+  "nom": "Georgia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GF": {
+  "nom": "French Guiana",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GG": {
+  "nom": "Guernsey",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GH": {
+  "nom": "Ghana",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GI": {
+  "nom": "Gibraltar",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GL": {
+  "nom": "Greenland",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GM": {
+  "nom": "Gambia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GN": {
+  "nom": "Guinea",
+  "moyens": [
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GP": {
+  "nom": "Guadeloupe",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GQ": {
+  "nom": "Equatorial Guinea",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GR": {
+  "nom": "Greece",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GS": {
+  "nom": "South Georgia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GT": {
+  "nom": "Guatemala",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GU": {
+  "nom": "Guam",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GW": {
+  "nom": "Guinea-Bissau",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "GY": {
+  "nom": "Guyana",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "HK": {
+  "nom": "Hong Kong",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "HM": {
+  "nom": null,
+  "moyens": [],
+  "nonReconnu": true
+ },
+ "HN": {
+  "nom": "Honduras",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "HR": {
+  "nom": "Croatia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "HT": {
+  "nom": "Haiti",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "HU": {
+  "nom": "Hungary",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "ID": {
+  "nom": "Indonesia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "IE": {
+  "nom": "Ireland",
+  "moyens": [
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "IL": {
+  "nom": "Israel",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "IM": {
+  "nom": "Isle of Man",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "IN": {
+  "nom": "India",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "upi",
+    "nom": "UPI"
+   }
+  ]
+ },
+ "IO": {
+  "nom": "British Indian Ocean",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "IQ": {
+  "nom": "Iraq",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "IR": {
+  "nom": "Iran",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "IS": {
+  "nom": "Iceland",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "IT": {
+  "nom": "Italy",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "JE": {
+  "nom": "Jersey",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "JM": {
+  "nom": "Jamaica",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "JO": {
+  "nom": "Jordan",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "JP": {
+  "nom": "Japan",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "KE": {
+  "nom": "Kenya",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "mpesa",
+    "nom": "M-Pesa"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "KG": {
+  "nom": "Kyrgyzstan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "KH": {
+  "nom": "Cambodia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "KI": {
+  "nom": "Kiribati",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "KM": {
+  "nom": "Comoros",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "KN": {
+  "nom": "Saint Kitts",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "KP": {
+  "nom": null,
+  "moyens": [],
+  "nonReconnu": true
+ },
+ "KR": {
+  "nom": "South Korea",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "kakao_pay",
+    "nom": "Kakao Pay"
+   },
+   {
+    "cle": "naver_pay",
+    "nom": "Naver Pay"
+   },
+   {
+    "cle": "payco",
+    "nom": "PAYCO"
+   },
+   {
+    "cle": "samsung_pay",
+    "nom": "Samsung Pay"
+   }
+  ]
+ },
+ "KW": {
+  "nom": "Kuwait",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "KY": {
+  "nom": "Cayman Islands",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "KZ": {
+  "nom": "Kazakhstan",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "LA": {
+  "nom": "Laos",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LB": {
+  "nom": "Lebanon",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LC": {
+  "nom": "Saint Lucia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LI": {
+  "nom": "Liechtenstein",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LK": {
+  "nom": "Sri Lanka",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LR": {
+  "nom": "Liberia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LS": {
+  "nom": "Lesotho",
+  "moyens": [
+   {
+    "cle": "mpesa",
+    "nom": "M-Pesa"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LT": {
+  "nom": "Lithuania",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LU": {
+  "nom": "Luxembourg",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LV": {
+  "nom": "Latvia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "LY": {
+  "nom": "Libyan Arab Jamahiriya",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MA": {
+  "nom": "Morocco",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MC": {
+  "nom": "Monaco",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MD": {
+  "nom": "Moldova",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "ME": {
+  "nom": "Montenegro",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MF": {
+  "nom": "Saint Martin",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MG": {
+  "nom": "Madagascar",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MH": {
+  "nom": "Marshall Islands",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MK": {
+  "nom": "Macedonia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "ML": {
+  "nom": "Mali",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   }
+  ]
+ },
+ "MM": {
+  "nom": "Myanmar",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MN": {
+  "nom": "Mongolia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MO": {
+  "nom": "Macao",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MP": {
+  "nom": "Northern Mariana Islands",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MQ": {
+  "nom": "Martinique",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MR": {
+  "nom": "Mauritania",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MS": {
+  "nom": "Montserrat",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MT": {
+  "nom": "Malta",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MU": {
+  "nom": "Mauritius",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MV": {
+  "nom": "Maldives",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MW": {
+  "nom": "Malawi",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "tnm",
+    "nom": "TNM"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "MX": {
+  "nom": "Mexico",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MY": {
+  "nom": "Malaysia",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MZ": {
+  "nom": "Mozambique",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "NA": {
+  "nom": "Namibia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "NC": {
+  "nom": "New Caledonia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "NE": {
+  "nom": "Niger",
+  "moyens": [
+   {
+    "cle": "mynita",
+    "nom": "MyNita"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "amanata",
+    "nom": "Amanata"
+   },
+   {
+    "cle": "zamani_cash",
+    "nom": "Zamani Cash"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "NF": {
+  "nom": "Norfolk Island",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "NG": {
+  "nom": "Nigeria",
+  "moyens": [
+   {
+    "cle": "opay",
+    "nom": "OPay"
+   },
+   {
+    "cle": "palmpay",
+    "nom": "PalmPay"
+   },
+   {
+    "cle": "bank_transfer",
+    "nom": "Bank Transfer"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "kuda",
+    "nom": "Kuda"
+   },
+   {
+    "cle": "bank_account",
+    "nom": "Bank Account"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "ussd",
+    "nom": "USSD"
+   }
+  ]
+ },
+ "NI": {
+  "nom": "Nicaragua",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "NL": {
+  "nom": "Netherlands",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "NO": {
+  "nom": "Norway",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "NP": {
+  "nom": "Nepal",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "NR": {
+  "nom": "Nauru",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "NU": {
+  "nom": "Niue",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "NZ": {
+  "nom": "New Zealand",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "OM": {
+  "nom": "Oman",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PA": {
+  "nom": "Panama",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PE": {
+  "nom": "Peru",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PF": {
+  "nom": "French Polynesia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "PG": {
+  "nom": "Papua New Guinea",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "PH": {
+  "nom": "Philippines",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "PK": {
+  "nom": "Pakistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "PL": {
+  "nom": "Poland",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PM": {
+  "nom": "Saint Pierre",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "PN": {
+  "nom": "Pitcairn",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "PR": {
+  "nom": "Puerto Rico",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PS": {
+  "nom": "Palestinian",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PT": {
+  "nom": "Portugal",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "mb_way",
+    "nom": "MB WAY"
+   },
+   {
+    "cle": "multibanco",
+    "nom": "Multibanco"
+   }
+  ]
+ },
+ "PW": {
+  "nom": "Palau",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "PY": {
+  "nom": "Paraguay",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "QA": {
+  "nom": "Qatar",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "RE": {
+  "nom": "Reunion",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "RO": {
+  "nom": "Romania",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "RS": {
+  "nom": "Serbia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "RU": {
+  "nom": "Russia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "RW": {
+  "nom": "Rwanda",
+  "moyens": [
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SA": {
+  "nom": "Saudi Arabia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SB": {
+  "nom": "Solomon Islands",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SC": {
+  "nom": "Seychelles",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SD": {
+  "nom": "Sudan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SE": {
+  "nom": "Sweden",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SG": {
+  "nom": "Singapore",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SH": {
+  "nom": "Saint Helena",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SI": {
+  "nom": "Slovenia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SJ": {
+  "nom": "Svalbard and Jan Mayen",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SK": {
+  "nom": "Slovakia",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SL": {
+  "nom": "Sierra Leone",
+  "moyens": [
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SM": {
+  "nom": "San Marino",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SN": {
+  "nom": "Senegal",
+  "moyens": [
+   {
+    "cle": "wave",
+    "nom": "Wave"
+   },
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "djamo",
+    "nom": "Djamo"
+   },
+   {
+    "cle": "freemoney",
+    "nom": "Free Money"
+   },
+   {
+    "cle": "emoney",
+    "nom": "E-Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SO": {
+  "nom": "Somalia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SR": {
+  "nom": "Suriname",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SS": {
+  "nom": "South Sudan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "ST": {
+  "nom": "Sao Tome and Principe",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SV": {
+  "nom": "El Salvador",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SX": {
+  "nom": "Sint Maarten (Dutch part)",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SY": {
+  "nom": "Syrian Arab",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "SZ": {
+  "nom": "Swaziland",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TC": {
+  "nom": "Turks and CI",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TD": {
+  "nom": "Chad",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TF": {
+  "nom": "French Southern Territories",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TG": {
+  "nom": "Togo",
+  "moyens": [
+   {
+    "cle": "mixx",
+    "nom": "Mixx by Yas"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TH": {
+  "nom": "Thailand",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TJ": {
+  "nom": "Tajikistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TK": {
+  "nom": "Tokelau",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TL": {
+  "nom": "Timor-Leste",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TM": {
+  "nom": "Turkmenistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TN": {
+  "nom": "Tunisia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TO": {
+  "nom": "Tonga",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TR": {
+  "nom": "Turkey",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TT": {
+  "nom": "Trinidad and Tobago",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TV": {
+  "nom": "Tuvalu",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "TW": {
+  "nom": "Taiwan",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "TZ": {
+  "nom": "Tanzania",
+  "moyens": [
+   {
+    "cle": "tigo",
+    "nom": "Tigo"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "halopesa",
+    "nom": "Halopesa"
+   },
+   {
+    "cle": "mpesa",
+    "nom": "M-Pesa"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "UA": {
+  "nom": "Ukraine",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "UG": {
+  "nom": "Uganda",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "UM": {
+  "nom": "Minor Outlying Islands (US)",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "US": {
+  "nom": "United States",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "cashapp",
+    "nom": "Cash App Pay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "UY": {
+  "nom": "Uruguay",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "UZ": {
+  "nom": "Uzbekistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "VA": {
+  "nom": "Holy See",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "VC": {
+  "nom": "Saint Vincent",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "VE": {
+  "nom": null,
+  "moyens": [],
+  "nonReconnu": true
+ },
+ "VG": {
+  "nom": "Virgin Islands, British",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "VI": {
+  "nom": "Virgin Islands, U.S.",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "VN": {
+  "nom": "Vietnam",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "VU": {
+  "nom": "Vanuatu",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "WF": {
+  "nom": "Wallis and Futuna",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "WS": {
+  "nom": "Samoa",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "YE": {
+  "nom": "Yemen",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "YT": {
+  "nom": "Mayotte",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "ZA": {
+  "nom": "South Africa",
+  "moyens": [
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   },
+   {
+    "cle": "bank_transfer",
+    "nom": "Bank Transfer"
+   }
+  ]
+ },
+ "ZM": {
+  "nom": "Zambia",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "zamtel",
+    "nom": "Zamtel"
+   },
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ },
+ "ZW": {
+  "nom": "Zimbabwe",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Card"
+   }
+  ]
+ }
+}

@@ -1,0 +1,3305 @@
+{
+ "AD": {
+  "nom": "Andorre",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AE": {
+  "nom": "Émirats arabes unis",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AF": {
+  "nom": "Afghanistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "AG": {
+  "nom": "Antigua-et-Barbuda",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "AI": {
+  "nom": "Anguilla",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "AL": {
+  "nom": "Albanie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AM": {
+  "nom": "Arménie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AO": {
+  "nom": "Angola",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "AQ": {
+  "nom": "Antarctique",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "AR": {
+  "nom": "Argentine",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AS": {
+  "nom": "Samoa américaines",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "AT": {
+  "nom": "Autriche",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "AU": {
+  "nom": "Australie",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "AW": {
+  "nom": "Aruba",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "AX": {
+  "nom": "Îles Åland",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "AZ": {
+  "nom": "Azerbaïdjan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BA": {
+  "nom": "Bosnie-Herzégovine",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BB": {
+  "nom": "Barbade",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BD": {
+  "nom": "Bangladesh",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BE": {
+  "nom": "Belgique",
+  "moyens": [
+   {
+    "cle": "bancontact",
+    "nom": "Bancontact"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BF": {
+  "nom": "Burkina Faso",
+  "moyens": [
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "wave",
+    "nom": "Wave"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "telecel",
+    "nom": "Telecel Money"
+   },
+   {
+    "cle": "coris_money",
+    "nom": "Coris Money"
+   },
+   {
+    "cle": "sank_money",
+    "nom": "Sank Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BG": {
+  "nom": "Bulgarie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "BH": {
+  "nom": "Bahreïn",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "BI": {
+  "nom": "Burundi",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BJ": {
+  "nom": "Bénin",
+  "moyens": [
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "celtiis",
+    "nom": "Celtiis"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BL": {
+  "nom": "Saint-Barthélemy",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BM": {
+  "nom": "Bermudes",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BN": {
+  "nom": "Brunei",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BO": {
+  "nom": "Bolivie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BR": {
+  "nom": "Brésil",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "pix",
+    "nom": "Pix"
+   }
+  ]
+ },
+ "BS": {
+  "nom": "Bahamas",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "BT": {
+  "nom": "Bhoutan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BW": {
+  "nom": "Botswana",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BY": {
+  "nom": "Biélorussie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "BZ": {
+  "nom": "Belize",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CA": {
+  "nom": "Canada",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "CC": {
+  "nom": "Îles Cocos",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CD": {
+  "nom": "Congo-Kinshasa",
+  "moyens": [
+   {
+    "cle": "vodacom",
+    "nom": "Vodacom"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CF": {
+  "nom": "République centrafricaine",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CG": {
+  "nom": "Congo-Brazzaville",
+  "moyens": [
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CH": {
+  "nom": "Suisse",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CI": {
+  "nom": "Côte d’Ivoire",
+  "moyens": [
+   {
+    "cle": "wave",
+    "nom": "Wave"
+   },
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "djamo",
+    "nom": "Djamo"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CK": {
+  "nom": "Îles Cook",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CL": {
+  "nom": "Chili",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CM": {
+  "nom": "Cameroun",
+  "moyens": [
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CN": {
+  "nom": "Chine",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CO": {
+  "nom": "Colombie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CR": {
+  "nom": "Costa Rica",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CU": {
+  "nom": "Cuba",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CV": {
+  "nom": "Cap-Vert",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CW": {
+  "nom": "Curaçao",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CX": {
+  "nom": "Île Christmas",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "CY": {
+  "nom": "Chypre",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "CZ": {
+  "nom": "Tchéquie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "DE": {
+  "nom": "Allemagne",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "DJ": {
+  "nom": "Djibouti",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "DK": {
+  "nom": "Danemark",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "DM": {
+  "nom": "Dominique",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "DO": {
+  "nom": "République dominicaine",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "DZ": {
+  "nom": "Algérie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "EC": {
+  "nom": "Équateur",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "EE": {
+  "nom": "Estonie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "EG": {
+  "nom": "Égypte",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "ER": {
+  "nom": "Érythrée",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "ES": {
+  "nom": "Espagne",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "ET": {
+  "nom": "Éthiopie",
+  "moyens": [
+   {
+    "cle": "mpesa",
+    "nom": "M-Pesa"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "FI": {
+  "nom": "Finlande",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "FJ": {
+  "nom": "Fidji",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "FK": {
+  "nom": "Îles Malouines",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "FM": {
+  "nom": "Micronésie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "FO": {
+  "nom": "Îles Féroé",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "FR": {
+  "nom": "France",
+  "moyens": [
+   {
+    "cle": "card_cb",
+    "nom": "Cartes Bancaires"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "GA": {
+  "nom": "Gabon",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GB": {
+  "nom": "Royaume-Uni",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "GD": {
+  "nom": "Grenade",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GE": {
+  "nom": "Géorgie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GF": {
+  "nom": "Guyane française",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GG": {
+  "nom": "Guernesey",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GH": {
+  "nom": "Ghana",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GI": {
+  "nom": "Gibraltar",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GL": {
+  "nom": "Groenland",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GM": {
+  "nom": "Gambie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GN": {
+  "nom": "Guinée",
+  "moyens": [
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GP": {
+  "nom": "Guadeloupe",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GQ": {
+  "nom": "Guinée équatoriale",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GR": {
+  "nom": "Grèce",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GS": {
+  "nom": "Géorgie du Sud-et-les Îles Sandwich du Sud",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GT": {
+  "nom": "Guatemala",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "GU": {
+  "nom": "Guam",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GW": {
+  "nom": "Guinée-Bissau",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "GY": {
+  "nom": "Guyana",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "HK": {
+  "nom": "R.A.S. chinoise de Hong Kong",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "HN": {
+  "nom": "Honduras",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "HR": {
+  "nom": "Croatie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "HT": {
+  "nom": "Haïti",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "HU": {
+  "nom": "Hongrie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "ID": {
+  "nom": "Indonésie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "IE": {
+  "nom": "Irlande",
+  "moyens": [
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "IL": {
+  "nom": "Israël",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "IM": {
+  "nom": "Île de Man",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "IN": {
+  "nom": "Inde",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "upi",
+    "nom": "UPI"
+   }
+  ]
+ },
+ "IO": {
+  "nom": "Territoire britannique de l’océan Indien",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "IQ": {
+  "nom": "Irak",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "IR": {
+  "nom": "Iran",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "IS": {
+  "nom": "Islande",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "IT": {
+  "nom": "Italie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "JE": {
+  "nom": "Jersey",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "JM": {
+  "nom": "Jamaïque",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "JO": {
+  "nom": "Jordanie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "JP": {
+  "nom": "Japon",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "KE": {
+  "nom": "Kenya",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "mpesa",
+    "nom": "M-Pesa"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "KG": {
+  "nom": "Kirghizstan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "KH": {
+  "nom": "Cambodge",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "KI": {
+  "nom": "Kiribati",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "KM": {
+  "nom": "Comores",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "KN": {
+  "nom": "Saint-Christophe-et-Niévès",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "KR": {
+  "nom": "Corée du Sud",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "kakao_pay",
+    "nom": "Kakao Pay"
+   },
+   {
+    "cle": "naver_pay",
+    "nom": "Naver Pay"
+   },
+   {
+    "cle": "payco",
+    "nom": "PAYCO"
+   },
+   {
+    "cle": "samsung_pay",
+    "nom": "Samsung Pay"
+   }
+  ]
+ },
+ "KW": {
+  "nom": "Koweït",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "KY": {
+  "nom": "Îles Caïmans",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "KZ": {
+  "nom": "Kazakhstan",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "LA": {
+  "nom": "Laos",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LB": {
+  "nom": "Liban",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LC": {
+  "nom": "Sainte-Lucie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LI": {
+  "nom": "Liechtenstein",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LK": {
+  "nom": "Sri Lanka",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LR": {
+  "nom": "Liberia",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LS": {
+  "nom": "Lesotho",
+  "moyens": [
+   {
+    "cle": "mpesa",
+    "nom": "M-Pesa"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LT": {
+  "nom": "Lituanie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LU": {
+  "nom": "Luxembourg",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LV": {
+  "nom": "Lettonie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "LY": {
+  "nom": "Libye",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MA": {
+  "nom": "Maroc",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MC": {
+  "nom": "Monaco",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MD": {
+  "nom": "Moldavie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "ME": {
+  "nom": "Monténégro",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MF": {
+  "nom": "Saint-Martin",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MG": {
+  "nom": "Madagascar",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MH": {
+  "nom": "Îles Marshall",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MK": {
+  "nom": "Macédoine du Nord",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "ML": {
+  "nom": "Mali",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   }
+  ]
+ },
+ "MM": {
+  "nom": "Myanmar (Birmanie)",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MN": {
+  "nom": "Mongolie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MO": {
+  "nom": "R.A.S. chinoise de Macao",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MP": {
+  "nom": "Îles Mariannes du Nord",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MQ": {
+  "nom": "Martinique",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MR": {
+  "nom": "Mauritanie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MS": {
+  "nom": "Montserrat",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MT": {
+  "nom": "Malte",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MU": {
+  "nom": "Maurice",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MV": {
+  "nom": "Maldives",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MW": {
+  "nom": "Malawi",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "tnm",
+    "nom": "TNM"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "MX": {
+  "nom": "Mexique",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MY": {
+  "nom": "Malaisie",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "MZ": {
+  "nom": "Mozambique",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "NA": {
+  "nom": "Namibie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "NC": {
+  "nom": "Nouvelle-Calédonie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "NE": {
+  "nom": "Niger",
+  "moyens": [
+   {
+    "cle": "mynita",
+    "nom": "MyNita"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "amanata",
+    "nom": "Amanata"
+   },
+   {
+    "cle": "zamani_cash",
+    "nom": "Zamani Cash"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "NF": {
+  "nom": "Île Norfolk",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "NG": {
+  "nom": "Nigeria",
+  "moyens": [
+   {
+    "cle": "opay",
+    "nom": "OPay"
+   },
+   {
+    "cle": "palmpay",
+    "nom": "PalmPay"
+   },
+   {
+    "cle": "bank_transfer",
+    "nom": "Virement bancaire"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "kuda",
+    "nom": "Kuda"
+   },
+   {
+    "cle": "bank_account",
+    "nom": "Compte bancaire"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "ussd",
+    "nom": "USSD (code sur le téléphone)"
+   }
+  ]
+ },
+ "NI": {
+  "nom": "Nicaragua",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "NL": {
+  "nom": "Pays-Bas",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "NO": {
+  "nom": "Norvège",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "NP": {
+  "nom": "Népal",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "NR": {
+  "nom": "Nauru",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "NU": {
+  "nom": "Niue",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "NZ": {
+  "nom": "Nouvelle-Zélande",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "OM": {
+  "nom": "Oman",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PA": {
+  "nom": "Panama",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PE": {
+  "nom": "Pérou",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PF": {
+  "nom": "Polynésie française",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "PG": {
+  "nom": "Papouasie-Nouvelle-Guinée",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "PH": {
+  "nom": "Philippines",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "PK": {
+  "nom": "Pakistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "PL": {
+  "nom": "Pologne",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PM": {
+  "nom": "Saint-Pierre-et-Miquelon",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "PN": {
+  "nom": "Îles Pitcairn",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "PR": {
+  "nom": "Porto Rico",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PS": {
+  "nom": "Territoires palestiniens",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "PT": {
+  "nom": "Portugal",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "mb_way",
+    "nom": "MB WAY"
+   },
+   {
+    "cle": "multibanco",
+    "nom": "Multibanco"
+   }
+  ]
+ },
+ "PW": {
+  "nom": "Palaos",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "PY": {
+  "nom": "Paraguay",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "QA": {
+  "nom": "Qatar",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "RE": {
+  "nom": "La Réunion",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "RO": {
+  "nom": "Roumanie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "RS": {
+  "nom": "Serbie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "RU": {
+  "nom": "Russie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "RW": {
+  "nom": "Rwanda",
+  "moyens": [
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SA": {
+  "nom": "Arabie saoudite",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SB": {
+  "nom": "Îles Salomon",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SC": {
+  "nom": "Seychelles",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SD": {
+  "nom": "Soudan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SE": {
+  "nom": "Suède",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SG": {
+  "nom": "Singapour",
+  "moyens": [
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SH": {
+  "nom": "Sainte-Hélène",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SI": {
+  "nom": "Slovénie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SJ": {
+  "nom": "Svalbard et Jan Mayen",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SK": {
+  "nom": "Slovaquie",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SL": {
+  "nom": "Sierra Leone",
+  "moyens": [
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SM": {
+  "nom": "Saint-Marin",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SN": {
+  "nom": "Sénégal",
+  "moyens": [
+   {
+    "cle": "wave",
+    "nom": "Wave"
+   },
+   {
+    "cle": "orange_money",
+    "nom": "Orange Money"
+   },
+   {
+    "cle": "djamo",
+    "nom": "Djamo"
+   },
+   {
+    "cle": "freemoney",
+    "nom": "Free Money"
+   },
+   {
+    "cle": "emoney",
+    "nom": "E-Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SO": {
+  "nom": "Somalie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SR": {
+  "nom": "Suriname",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SS": {
+  "nom": "Soudan du Sud",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "ST": {
+  "nom": "Sao Tomé-et-Principe",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SV": {
+  "nom": "Salvador",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "SX": {
+  "nom": "Saint-Martin (partie néerlandaise)",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SY": {
+  "nom": "Syrie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "SZ": {
+  "nom": "Eswatini",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TC": {
+  "nom": "Îles Turques-et-Caïques",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TD": {
+  "nom": "Tchad",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TF": {
+  "nom": "Terres australes françaises",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TG": {
+  "nom": "Togo",
+  "moyens": [
+   {
+    "cle": "mixx",
+    "nom": "Mixx by Yas"
+   },
+   {
+    "cle": "moov",
+    "nom": "Moov Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TH": {
+  "nom": "Thaïlande",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TJ": {
+  "nom": "Tadjikistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TK": {
+  "nom": "Tokelau",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TL": {
+  "nom": "Timor oriental",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TM": {
+  "nom": "Turkménistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TN": {
+  "nom": "Tunisie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TO": {
+  "nom": "Tonga",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TR": {
+  "nom": "Turquie",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TT": {
+  "nom": "Trinité-et-Tobago",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TV": {
+  "nom": "Tuvalu",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "TW": {
+  "nom": "Taïwan",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "TZ": {
+  "nom": "Tanzanie",
+  "moyens": [
+   {
+    "cle": "tigo",
+    "nom": "Tigo"
+   },
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "halopesa",
+    "nom": "Halopesa"
+   },
+   {
+    "cle": "mpesa",
+    "nom": "M-Pesa"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "UA": {
+  "nom": "Ukraine",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "UG": {
+  "nom": "Ouganda",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "UM": {
+  "nom": "Îles mineures éloignées des États-Unis",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "US": {
+  "nom": "États-Unis",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "cashapp",
+    "nom": "Cash App Pay"
+   },
+   {
+    "cle": "amazon_pay",
+    "nom": "Amazon Pay"
+   },
+   {
+    "cle": "alipay",
+    "nom": "Alipay"
+   },
+   {
+    "cle": "link",
+    "nom": "Link"
+   }
+  ]
+ },
+ "UY": {
+  "nom": "Uruguay",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "UZ": {
+  "nom": "Ouzbékistan",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "VA": {
+  "nom": "État de la Cité du Vatican",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "VC": {
+  "nom": "Saint-Vincent-et-les Grenadines",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "VG": {
+  "nom": "Îles Vierges britanniques",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "VI": {
+  "nom": "Îles Vierges des États-Unis",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "VN": {
+  "nom": "Viêt Nam",
+  "moyens": [
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   }
+  ]
+ },
+ "VU": {
+  "nom": "Vanuatu",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "WF": {
+  "nom": "Wallis-et-Futuna",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "WS": {
+  "nom": "Samoa",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "YE": {
+  "nom": "Yémen",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "YT": {
+  "nom": "Mayotte",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "ZA": {
+  "nom": "Afrique du Sud",
+  "moyens": [
+   {
+    "cle": "google_pay",
+    "nom": "Google Pay"
+   },
+   {
+    "cle": "apple_pay",
+    "nom": "Apple Pay"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   },
+   {
+    "cle": "bank_transfer",
+    "nom": "Virement bancaire"
+   }
+  ]
+ },
+ "ZM": {
+  "nom": "Zambie",
+  "moyens": [
+   {
+    "cle": "airtel",
+    "nom": "Airtel Money"
+   },
+   {
+    "cle": "mtn",
+    "nom": "MTN Mobile Money"
+   },
+   {
+    "cle": "zamtel",
+    "nom": "Zamtel"
+   },
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ },
+ "ZW": {
+  "nom": "Zimbabwe",
+  "moyens": [
+   {
+    "cle": "card",
+    "nom": "Carte bancaire (Visa / Mastercard)"
+   }
+  ]
+ }
+}
