@@ -77,13 +77,13 @@ test('CONTRAT — la recette part de la boutique Chariow, la base n est qu un se
   const recettes = src.slice(src.indexOf('async function recettesParMois'));
 
   assert.ok(
-    /recettesBoutique\(depuis\)/.test(recettes),
+    /recettesParJour\(\)/.test(recettes),
     "La boutique n'est plus interrogée : la recette repartirait de la table des " +
       "abonnements, qui ignore les ventes payées sans compte créé."
   );
 
   assert.ok(
-    recettes.indexOf('recettesBoutique(depuis)') < recettes.indexOf('from(\'subscriptions\')'),
+    recettes.indexOf('recettesParJour()') < recettes.indexOf('from(\'subscriptions\')'),
     "La base est consultée avant la boutique. L'ordre compte : le secours ne doit " +
       "servir que si la caisse ne répond pas."
   );
@@ -99,5 +99,63 @@ test('CONTRAT — la pagination Chariow ne perd pas per_page', () => {
       "dix ventes. Avec cinq pages on lisait 140 ventes en croyant tenir toute la " +
       "boutique — on ne voyait que les deux derniers jours, et la recette du 16 au " +
       "19 août était simplement invisible."
+  );
+});
+
+/**
+ * ── UNE SEULE CAISSE, UN SEUL CHIFFRE ────────────────────────────────────
+ *
+ * Trois pages affichaient de l'argent et chacune le comptait à sa façon. Le
+ * 22 août 2026, pour la même semaine : 343 000 côté partenaires, 319 000 côté
+ * vue d'ensemble, 325 000 réellement encaissés. C'est sur l'un de ces chiffres
+ * qu'on paie quelqu'un.
+ */
+test('CONTRAT — la vue d ensemble lit la boutique, pas les abonnements', () => {
+  const src = lire('src/lib/admin-metrics.ts');
+  const bloc = src.slice(src.indexOf('// ── Revenus ──'), src.indexOf('// ── Revenus ──') + 2600);
+
+  assert.ok(
+    /recettesParJour\(\)/.test(bloc) && /totalEntre\(/.test(bloc),
+    "La vue d'ensemble ne consulte plus la caisse : elle réadditionnerait les " +
+      "abonnements et redonnerait un chiffre différent de la page des partenaires " +
+      "pour la même semaine."
+  );
+});
+
+test('CONTRAT — une seule table de taux de change dans toute l application', () => {
+  const fichiers = ['src/lib/recettes-boutique.ts', 'src/lib/partenaires.ts', 'src/lib/chariow.ts'];
+  const definitions = fichiers.filter((f) => /export const TAUX_XOF\s*:/.test(lire(f)));
+
+  assert.equal(
+    definitions.length,
+    1,
+    `La table de change est définie ${definitions.length} fois (${definitions.join(', ')}). ` +
+      "Deux tables finissent toujours par diverger, et c'est sur elles qu'on paie un partenaire."
+  );
+});
+
+/**
+ * ── LA COMMANDE DOIT APPARAÎTRE TOUT DE SUITE ────────────────────────────
+ *
+ * Les recettes sont gardées quelques minutes en réserve. Sans cet effacement,
+ * une vente encaissée resterait invisible jusqu'à expiration.
+ */
+test('CONTRAT — une vente encaissée efface la réserve des recettes', () => {
+  const src = lire('src/app/api/payments/chariow/webhook/route.ts');
+
+  assert.ok(
+    /oublierRecettes\(\)/.test(src),
+    "Le webhook n'efface plus la réserve : une commande n'apparaîtrait dans " +
+      "l'administration qu'au bout de plusieurs minutes."
+  );
+
+  // L'ordre est le fond du sujet, pas un détail de style.
+  const efface = src.indexOf('oublierRecettes()');
+  const abandonSansAcheteur = src.indexOf("status: 'unmatched'");
+  assert.ok(
+    efface > 0 && efface < abandonSansAcheteur,
+    "L'effacement est placé APRÈS l'abandon des ventes sans acheteur identifiable. " +
+      "Or ce sont précisément celles que la base ne voit pas — trois sur la seule " +
+      "semaine du 16 août 2026. Placé là, il les manquerait toutes."
   );
 });

@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase-admin';
 import { getRevenusMatchsUniques } from './match-unique';
 import { ACCES_OFFERTS, niveauOffert, normalizePlan, PLANS, PlanKey, PlanTier } from '@/lib/subscription';
 import { TAUX_XOF } from '@/lib/partenaires';
+import { recettesParJour, totalEntre } from '@/lib/recettes-boutique';
 import { getPrecisionReelle } from '@/lib/precision-reelle';
 import { ADMIN_EMAILS } from '@/lib/admins';
 
@@ -595,10 +596,41 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
   ).length;
 
   // ── Revenus ──
-  const totalCumule = abosEnrichis.reduce((t, s) => t + s.montant, 0);
-  const surPeriode = nouveauxAbos.reduce((t, s) => t + s.montant, 0);
+  //
+  // ── LE CHIFFRE VIENT DE LA CAISSE, PAS DE SON REFLET ─────────────────────
+  //
+  // Ces trois totaux se calculaient en additionnant les montants des
+  // abonnements. C'est un reflet de la boutique, pas la boutique : une vente
+  // payée dont le compte ne s'est jamais créé n'y figure pas. Trois cas sur la
+  // seule semaine du 16 août 2026 — la vue d'ensemble affichait 319 000 FCFA
+  // quand la caisse en avait encaissé 325 000.
+  //
+  // Deux pages de la même administration donnaient donc deux chiffres pour la
+  // même semaine. On demande maintenant les deux à la même source.
+  //
+  // Si la boutique ne répond pas, on retombe sur les abonnements et on le dit :
+  // un chiffre approché vaut mieux qu'une page vide, à condition d'être
+  // annoncé comme tel.
+  const jour = (d: Date) => d.toISOString().slice(0, 10);
+  const boutique = await recettesParJour();
+  if (!boutique)
+    avertissements.push(
+      'Boutique Chariow injoignable : les revenus sont estimés depuis les abonnements ' +
+        'et peuvent être inférieurs à la réalité.'
+    );
+
+  const totalCumule = boutique
+    ? totalEntre(boutique).xof
+    : abosEnrichis.reduce((t, s) => t + s.montant, 0);
+
+  const surPeriode = boutique
+    ? totalEntre(boutique, jour(periode.debut), jour(periode.fin)).xof
+    : nouveauxAbos.reduce((t, s) => t + s.montant, 0);
+
   const surPeriodePrecedente = precedente
-    ? abosEnrichis
+    ? boutique
+      ? totalEntre(boutique, jour(precedente.debut), jour(precedente.fin)).xof
+      : abosEnrichis
         .filter((s) => {
           const d = new Date(s.souscritLe);
           return d >= precedente.debut && d <= precedente.fin;

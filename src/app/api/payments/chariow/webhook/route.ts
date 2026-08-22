@@ -5,6 +5,7 @@ import { ChariowSale } from '@/lib/chariow';
 import { debloquerMatch } from '@/lib/match-unique';
 import { activateSubscriptionFromSale } from '@/lib/subscription-activation';
 import { trouverAcheteur, marquerIntentionHonoree, intentionMatch } from '@/lib/payment-intents';
+import { oublierRecettes } from '@/lib/recettes-boutique';
 
 /**
  * Webhook Chariow (Pulse). Point d'entrée principal de l'activation
@@ -72,6 +73,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true, status: 'ignored' });
     }
     sale.product = sale.product ?? event?.product;
+
+    // ── L'ADMINISTRATION APPREND LA VENTE MAINTENANT ─────────────────────────
+    //
+    // Les recettes affichées dans l'administration sont lues chez Chariow et
+    // gardées quelques minutes en réserve, sinon chaque affichage coûterait une
+    // douzaine d'appels. On efface cette réserve dès qu'une vente est encaissée :
+    // le prochain affichage repart de la caisse et montre la commande.
+    //
+    // C'EST ICI, ET PAS PLUS BAS, POUR UNE RAISON PRÉCISE. La suite de cette
+    // route s'arrête net quand l'acheteur n'est pas identifiable — un achat fait
+    // directement sur la boutique, sans passer par l'application. Ces ventes-là
+    // sont pourtant de l'argent reçu : il y en avait trois sur la seule semaine
+    // du 16 août 2026, et ce sont exactement celles que la base ne voit pas.
+    // Placé après le `return`, l'effacement les aurait manquées.
+    //
+    // Une réserve qu'on n'arrive pas à effacer ne doit pas faire échouer un
+    // paiement : au pire, le chiffre s'actualise cinq minutes plus tard.
+    if (sale.status === 'completed' || sale.status === 'settled') {
+      await oublierRecettes().catch((e) =>
+        console.warn('[WEBHOOK] Réserve des recettes non effacée :', e?.message)
+      );
+    }
 
     const acheteur = await trouverAcheteur(admin, sale);
     if (!acheteur) {
