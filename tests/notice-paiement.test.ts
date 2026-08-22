@@ -102,9 +102,17 @@ test('CONTRAT — chaque moyen affiché a son icône en local', () => {
  *
  * Un obstacle de plus sur le chemin du paiement serait le contraire du but.
  */
-test('CONTRAT — la notice repart toute seule au bout de cinq secondes', () => {
+test('CONTRAT — la notice repart toute seule au bout de vingt secondes', () => {
   const src = lire('src/components/NoticePaiement.tsx');
-  assert.match(src, /const SECONDES = 5/);
+  assert.match(
+    src,
+    /const SECONDES = 20/,
+    "Le delai de redirection automatique n est plus de vingt secondes. Cinq " +
+      "secondes suffisaient a voir la fenetre, pas a la lire : trois etapes, la " +
+      "liste des moyens de paiement du pays et le lien pour corriger son pays. " +
+      "Une notice qu on n a pas eu le temps de lire ajoute une etape sans rien " +
+      "expliquer."
+  );
   assert.match(
     src,
     /if \(reste <= 0\) \{\s*\n\s*partir\(\);/,

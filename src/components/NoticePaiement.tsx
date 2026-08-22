@@ -26,7 +26,7 @@ import {
  *
  * ── ELLE NE RETIENT PERSONNE ──────────────────────────────────────────────
  *
- * Au bout de cinq secondes, la redirection se fait toute seule. Quelqu'un qui
+ * Au bout de vingt secondes, la redirection se fait toute seule. Quelqu'un qui
  * sait déjà comment payer n'a rien à cliquer et ne perd rien ; quelqu'un qui
  * hésite a le temps de lire. Un obstacle de plus sur le chemin du paiement
  * serait exactement le contraire du but recherché.
@@ -56,8 +56,27 @@ export interface NoticePaiementProps {
   onFermer: () => void;
 }
 
-/** Cinq secondes : le temps de lire trois lignes, pas celui d'hésiter. */
-const SECONDES = 5;
+/**
+ * ── LE SEUL RÉGLAGE À TOUCHER POUR CHANGER LE DÉLAI ──────────────────────
+ *
+ * Combien de secondes la notice reste affichée avant de partir toute seule
+ * vers le paiement. Le compte à rebours, la barre de progression et la phrase
+ * affichée en dessous se calent tous sur cette valeur : la changer ici suffit,
+ * il n'y a rien d'autre à modifier ailleurs.
+ *
+ * ── POURQUOI VINGT, ET PLUS CINQ ─────────────────────────────────────────
+ *
+ * Cinq secondes suffisaient à voir la fenêtre, pas à la lire. Il y a trois
+ * étapes numérotées, la liste des moyens de paiement du pays — jusqu'à neuf au
+ * Nigeria — et le lien pour corriger son pays. Personne ne lit tout cela en
+ * cinq secondes sur un téléphone, et une notice qu'on n'a pas eu le temps de
+ * lire ne sert à rien : elle ajoute une étape sans rien expliquer.
+ *
+ * Vingt secondes laissent le temps de comprendre. Et cela ne retient personne :
+ * le bouton « Continuer vers le paiement » reste actif dès la première seconde,
+ * et le simple fait de toucher la fenêtre arrête le compte à rebours.
+ */
+const SECONDES = 20;
 
 export default function NoticePaiement({
   paysDetecte,
