@@ -114,10 +114,58 @@ export function montantPartenaire(montant: number, devise: string): string {
   return `${valeur} ${symbole[devise] ?? devise}`;
 }
 
-/** Montant encaissé pour un abonnement, d'après l'offre souscrite. */
-function montantAbonnement(plan: string | null): number {
-  const cle = normalizePlan(plan) as PlanKey | null;
-  return cle ? PLANS[cle].amountXof : 0;
+/**
+ * Montant réellement encaissé pour un abonnement.
+ *
+ * ── POURQUOI CE N'EST PLUS LE PRIX CATALOGUE ──────────────────────────────
+ *
+ * Cette fonction lisait `PLANS[cle].amountXof` — le tarif AFFICHÉ AUJOURD'HUI.
+ * On payait donc un partenaire sur un prix théorique, pas sur de l'argent reçu.
+ * Trois écarts mesurés le 22 août 2026, sur la base réelle :
+ *
+ *   • DEUX VENTES ESSENTIAL À 2 000 étaient enregistrées avec le plan
+ *     `vip_yearly`. Comptées 15 000 chacune : 26 000 FCFA de recette inventée.
+ *   • LES ANCIENS PRIX étaient reprisés au tarif du jour. Sept ventes à 3 000
+ *     et 9 000 comptées 2 000 : 13 000 FCFA d'encaissé effacés.
+ *   • DEUX ANCIENS PLANS (`monthly`, `yearly`) ne figurent plus au catalogue.
+ *     `montantAbonnement` renvoyait 0 et l'appelant les sautait : 11 000 FCFA
+ *     purement disparus.
+ *
+ * Un tarif change ; l'argent déjà reçu, non. La colonne `amount` porte ce qui
+ * a effectivement été facturé au moment de la vente, dans la devise de la
+ * vente. C'est la seule valeur qui ne se déforme pas quand un prix bouge.
+ *
+ * ── ET SEULEMENT CE QUI A ÉTÉ PAYÉ ────────────────────────────────────────
+ *
+ * Un abonnement sans référence de vente — accès offert, compte de test,
+ * correction manuelle — n'a rapporté rien. Il ne doit donc rien déclencher.
+ * Aucun n'existe à ce jour, mais le script `offrir-acces.mjs` en crée, et ce
+ * jour-là la recette aurait grossi sans qu'un centime soit entré.
+ */
+function montantEncaisse(ligne: {
+  plan: string | null;
+  amount: number | null;
+  currency: string | null;
+  chariow_sale_id: string | null;
+  moneroo_payment_id: string | null;
+}): number {
+  // Sans trace de paiement, rien n'a été encaissé.
+  if (!ligne.chariow_sale_id && !ligne.moneroo_payment_id) return 0;
+
+  const brut = Number(ligne.amount ?? 0);
+  if (!Number.isFinite(brut) || brut <= 0) {
+    // Montant absent : on retombe sur le catalogue plutôt que d'effacer une
+    // vente réelle. C'est un pis-aller, et il est signalé.
+    const cle = normalizePlan(ligne.plan) as PlanKey | null;
+    const repli = cle ? PLANS[cle].amountXof : 0;
+    if (repli)
+      console.warn(
+        `[PARTENAIRES] Vente sans montant (${ligne.plan}) : prix catalogue retenu, ${repli} FCFA.`
+      );
+    return repli;
+  }
+
+  return Math.round(versXof(brut, ligne.currency ?? 'XOF'));
 }
 
 /**
@@ -131,7 +179,7 @@ async function recettesParMois(depuis: Date): Promise<Map<string, { xof: number;
   const parMois = new Map<string, { xof: number; ventes: number }>();
   const { data, error } = await createAdminClient()
     .from('subscriptions')
-    .select('plan, created_at')
+    .select('plan, created_at, amount, currency, chariow_sale_id, moneroo_payment_id')
     .gte('created_at', depuis.toISOString());
 
   if (error) {
@@ -139,8 +187,26 @@ async function recettesParMois(depuis: Date): Promise<Map<string, { xof: number;
     return parMois;
   }
 
+  // ── UNE VENTE NE COMPTE QU'UNE FOIS ─────────────────────────────────────
+  //
+  // Une même vente Chariow peut engendrer deux abonnements : un webhook rejoué,
+  // un double clic, une reprise après incident. Sans ce garde-fou, la recette
+  // — et donc la part du partenaire — doublerait sur cette vente. Aucun doublon
+  // n'existe à ce jour ; c'est précisément le moment de poser le verrou.
+  const ventesVues = new Set<string>();
+
   for (const ligne of data ?? []) {
-    const montant = montantAbonnement(ligne.plan);
+    if (ligne.chariow_sale_id) {
+      if (ventesVues.has(ligne.chariow_sale_id)) {
+        console.warn(
+          `[PARTENAIRES] Vente ${ligne.chariow_sale_id} vue deux fois : comptée une seule.`
+        );
+        continue;
+      }
+      ventesVues.add(ligne.chariow_sale_id);
+    }
+
+    const montant = montantEncaisse(ligne);
     if (!montant) continue;
     const mois = String(ligne.created_at).slice(0, 7); // AAAA-MM
     const poste = parMois.get(mois) ?? { xof: 0, ventes: 0 };
