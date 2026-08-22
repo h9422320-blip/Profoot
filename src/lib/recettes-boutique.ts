@@ -29,7 +29,7 @@
  * quelqu'un.
  */
 
-import { listRecentSales, STATUTS_ENCAISSES } from './chariow';
+import { listSalesEncaissees } from './chariow';
 import { lireReserve, ecrireReserve } from './api-football';
 
 /**
@@ -58,43 +58,38 @@ export interface JourneeBoutique {
 /** Journée par journée, indexée AAAA-MM-JJ. */
 export type RecettesParJour = Record<string, JourneeBoutique>;
 
-const CLE = 'chariow:recettes-jour';
-
 /**
- * Durée de vie de la réserve.
+ * Dernier chiffre connu, gardé UNIQUEMENT pour les pannes.
  *
- * ── POURQUOI SI COURT, ET POURQUOI ÇA NE COÛTE RIEN ───────────────────────
- *
- * Lire toute la boutique demande une douzaine d'appels à Chariow. Les refaire
- * à chaque affichage rendrait la page lente pour rien.
- *
- * Mais la réserve est VIDÉE à chaque vente encaissée, par le webhook (voir
- * `oublierRecettes`). Ces cinq minutes ne sont donc pas le délai normal de
- * mise à jour — c'est le filet du jour où un webhook se perdrait. En marche
- * normale, une commande apparaît à l'écran au rechargement suivant.
+ * Il n'est jamais servi quand la boutique répond. Ce n'est pas un cache : un
+ * cache aurait fait réapparaître le décalage qu'on vient de supprimer.
  */
-const TTL = 5 * 60 * 1000;
-
-/**
- * Efface le chiffre en réserve.
- *
- * Appelé par le webhook Chariow dès qu'une vente est encaissée : la lecture
- * suivante repart de la caisse, et l'administration montre la commande sans
- * attendre. C'est ce qui remplace une attente par une mise à jour.
- */
-export async function oublierRecettes(): Promise<void> {
-  await ecrireReserve(CLE, {}, 1);
-}
+const CLE_SECOURS = 'chariow:dernier-chiffre-connu';
+const SECOURS_TTL = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Les recettes de la boutique, jour par jour, depuis l'ouverture.
  *
+ * ── LA CAISSE EST INTERROGÉE À CHAQUE AFFICHAGE ───────────────────────────
+ *
+ * Aucune mise en réserve sur le chemin normal. C'est un choix, et il vient
+ * d'une erreur : la version précédente gardait le total cinq minutes, et deux
+ * pages ouvertes à une minute d'intervalle lisaient deux instantanés
+ * différents. Le 22 août 2026 à 12 h 16, la vue d'ensemble affichait
+ * 368 000 FCFA et la page des partenaires 325 000, quand la caisse en avait
+ * encaissé 375 200 et 336 000.
+ *
+ * Un chiffre en retard est un chiffre faux, et deux pages en désaccord font
+ * douter des deux. Comme demander à la caisse ne coûte que deux requêtes et
+ * moins d'une seconde (voir `listSalesEncaissees`), il n'y a plus aucune
+ * raison de garder quoi que ce soit : chaque affichage repart de la source.
+ *
  * ── CE QUE « ENCAISSÉ » VEUT DIRE ─────────────────────────────────────────
  *
  * Chariow marque une vente payée `completed` ou `settled`. Les autres —
- * `abandoned`, `failed`, `awaiting_payment` — n'ont rien rapporté. Sur la
- * semaine du 16 août : 1 141 ventes au total, 110 encaissées. Compter les
- * autres multiplierait la recette par dix.
+ * `abandoned`, `failed`, `awaiting_payment` — n'ont rien rapporté. Au 22 août
+ * 2026 : 1 163 ventes enregistrées, 115 encaissées. Compter les autres
+ * multiplierait la recette par dix.
  *
  * ── LA DATE RETENUE EST CELLE DU PAIEMENT ─────────────────────────────────
  *
@@ -102,20 +97,14 @@ export async function oublierRecettes(): Promise<void> {
  * date à laquelle l'argent est entré, donc celle qui décide du mois — et donc
  * du mois où elle compte pour un partenaire.
  *
- * Renvoie `null` quand la boutique est injoignable ET qu'aucune réserve,
- * même périmée, n'existe. L'appelant décide alors quoi faire.
+ * Renvoie `null` si la boutique est injoignable et qu'aucun chiffre de secours
+ * n'a jamais été enregistré. L'appelant décide alors quoi faire.
  */
 export async function recettesParJour(): Promise<RecettesParJour | null> {
-  const enReserve = await lireReserve<RecettesParJour>(CLE);
-  if (enReserve && !enReserve.expiree && Object.keys(enReserve.contenu ?? {}).length)
-    return enReserve.contenu;
-
   try {
     const parJour: RecettesParJour = {};
 
-    for (const v of await listRecentSales()) {
-      if (!STATUTS_ENCAISSES.includes(String(v.status))) continue;
-
+    for (const v of await listSalesEncaissees()) {
       const jour = String((v as any).completed_at ?? v.created_at ?? '').slice(0, 10);
       if (!jour) continue;
 
@@ -129,16 +118,16 @@ export async function recettesParJour(): Promise<RecettesParJour | null> {
       parJour[jour] = poste;
     }
 
-    void ecrireReserve(CLE, parJour, TTL);
+    // Écrit APRÈS coup, et jamais relu tant que la boutique répond : c'est un
+    // filet, pas une source.
+    void ecrireReserve(CLE_SECOURS, parJour, SECOURS_TTL);
     return parJour;
   } catch (e: any) {
     console.warn('[BOUTIQUE] Injoignable :', e?.message);
-    // Une réserve périmée reste une réserve : elle vient de la caisse, ce que
-    // la base ne peut pas dire d'elle-même. Mieux vaut un chiffre d'il y a une
-    // heure qu'un chiffre calculé autrement.
-    if (enReserve && Object.keys(enReserve.contenu ?? {}).length) {
-      console.warn('[BOUTIQUE] Chiffre resservi depuis la réserve périmée.');
-      return enReserve.contenu;
+    const secours = await lireReserve<RecettesParJour>(CLE_SECOURS);
+    if (secours && Object.keys(secours.contenu ?? {}).length) {
+      console.warn('[BOUTIQUE] Dernier chiffre connu resservi — il peut être daté.');
+      return secours.contenu;
     }
     return null;
   }

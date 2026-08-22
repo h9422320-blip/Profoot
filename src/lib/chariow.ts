@@ -409,7 +409,20 @@ export interface ChariowSale {
  * fournie dans la réponse. S'être trompé là-dessus a fait conclure un jour
  * « aucun paiement aujourd'hui » alors que seize mille francs étaient entrés.
  */
-export async function listRecentSales(pagesMax = 60): Promise<ChariowSale[]> {
+export async function listRecentSales(
+  pagesMax = 60,
+  /**
+   * S'arrêter dès qu'une page ne contient plus que des ventes antérieures à
+   * cette date (AAAA-MM-JJ).
+   *
+   * Les ventes arrivent de la plus récente à la plus ancienne. Pour rafraîchir
+   * les trois derniers jours, il est donc inutile de redescendre jusqu'à
+   * l'ouverture de la boutique : quatre requêtes suffisent là où douze étaient
+   * faites, et la page d'administration reste rapide à mesure que la boutique
+   * grandit.
+   */
+  jusquA?: string
+): Promise<ChariowSale[]> {
   const ventes: ChariowSale[] = [];
   let url: string | null = `${CHARIOW_API_URL}/sales?per_page=100`;
 
@@ -422,7 +435,13 @@ export async function listRecentSales(pagesMax = 60): Promise<ChariowSale[]> {
       console.error('Erreur listing ventes Chariow:', res.status, data);
       throw new Error(`Impossible de lire les ventes Chariow (${res.status}).`);
     }
-    if (Array.isArray(data?.data)) ventes.push(...data.data);
+    const lot: ChariowSale[] = Array.isArray(data?.data) ? data.data : [];
+    ventes.push(...lot);
+
+    // Les ventes descendent de la plus récente à la plus ancienne : dès qu'une
+    // page entière est antérieure à la borne, tout ce qui suit l'est aussi.
+    if (jusquA && lot.length && lot.every((v) => String(v.created_at ?? '').slice(0, 10) < jusquA))
+      return ventes;
 
     // ── `per_page` NE SURVIT PAS AU LIEN DE PAGE SUIVANTE ──────────────────
     //
@@ -453,6 +472,67 @@ export async function listRecentSales(pagesMax = 60): Promise<ChariowSale[]> {
 
 /** Statuts sous lesquels Chariow considère l'argent comme reçu. */
 export const STATUTS_ENCAISSES = ['completed', 'settled'];
+
+/**
+ * Les ventes RÉELLEMENT encaissées, et elles seules.
+ *
+ * ── POURQUOI DEMANDER PAR STATUT PLUTÔT QUE TOUT LIRE ─────────────────────
+ *
+ * La boutique contient surtout des paniers abandonnés : au 22 août 2026,
+ * 1 163 ventes enregistrées dont 115 encaissées. Tout relire pour en garder
+ * un dixième coûtait douze requêtes et près de sept secondes — au point qu'il
+ * fallait mettre le résultat en réserve, et qu'une page affichait alors un
+ * chiffre en retard sur la caisse.
+ *
+ * Chariow accepte `?status=`. Deux requêtes suffisent, en parallèle : 830 ms,
+ * et le même total au franc près (377 200 FCFA, vérifié contre la lecture
+ * complète). La page peut donc interroger la caisse à CHAQUE affichage, ce qui
+ * supprime le décalage au lieu d'essayer de le rattraper.
+ *
+ * Les deux listes sont réunies par identifiant : si Chariow rangeait un jour
+ * une vente sous les deux statuts, elle ne serait pas comptée deux fois.
+ */
+export async function listSalesEncaissees(): Promise<ChariowSale[]> {
+  const parStatut = await Promise.all(
+    STATUTS_ENCAISSES.map(async (statut) => {
+      const ventes: ChariowSale[] = [];
+      let url: string | null = `${CHARIOW_API_URL}/sales?per_page=100&status=${statut}`;
+
+      for (let page = 0; page < 60 && url; page++) {
+        const res: Response = await fetch(url, {
+          headers: { Authorization: `Bearer ${apiKey()}`, Accept: 'application/json' },
+        });
+        const data: any = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          console.error('Erreur listing ventes Chariow:', res.status, data);
+          throw new Error(`Impossible de lire les ventes Chariow (${res.status}).`);
+        }
+        if (Array.isArray(data?.data)) ventes.push(...data.data);
+
+        // Ni `per_page` ni `status` ne survivent au lien de page suivante :
+        // Chariow les honore sur la première requête puis les laisse tomber.
+        // Sans les reposer, les pages retombent à dix ventes et rouvrent la
+        // liste complète — c'est ce qui rendait invisible la moitié de la
+        // boutique avant le 22 août 2026.
+        const suivante: string | null = data?.pagination?.next_page_url ?? null;
+        if (!suivante) break;
+        try {
+          const u = new URL(suivante);
+          u.searchParams.set('per_page', '100');
+          u.searchParams.set('status', statut);
+          url = u.toString();
+        } catch {
+          url = suivante;
+        }
+      }
+      return ventes;
+    })
+  );
+
+  const parId = new Map<string, ChariowSale>();
+  for (const v of parStatut.flat()) parId.set(v.id, v);
+  return [...parId.values()];
+}
 
 /**
  * Liste les ventes complétées associées à un email client.

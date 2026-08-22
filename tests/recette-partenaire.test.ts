@@ -89,19 +89,6 @@ test('CONTRAT — la recette part de la boutique Chariow, la base n est qu un se
   );
 });
 
-test('CONTRAT — la pagination Chariow ne perd pas per_page', () => {
-  const src = lire('src/lib/chariow.ts');
-  const fonction = src.slice(src.indexOf('export async function listRecentSales'));
-
-  assert.ok(
-    /searchParams\.set\('per_page', '100'\)/.test(fonction.slice(0, 2500)),
-    "Le lien de page suivante ne reporte pas `per_page` : les pages retombent à " +
-      "dix ventes. Avec cinq pages on lisait 140 ventes en croyant tenir toute la " +
-      "boutique — on ne voyait que les deux derniers jours, et la recette du 16 au " +
-      "19 août était simplement invisible."
-  );
-});
-
 /**
  * ── UNE SEULE CAISSE, UN SEUL CHIFFRE ────────────────────────────────────
  *
@@ -135,27 +122,81 @@ test('CONTRAT — une seule table de taux de change dans toute l application', (
 });
 
 /**
- * ── LA COMMANDE DOIT APPARAÎTRE TOUT DE SUITE ────────────────────────────
+ * ── LE CHIFFRE NE DOIT JAMAIS ÊTRE EN RETARD SUR LA CAISSE ───────────────
  *
- * Les recettes sont gardées quelques minutes en réserve. Sans cet effacement,
- * une vente encaissée resterait invisible jusqu'à expiration.
+ * Une version a gardé le total cinq minutes en réserve. Deux pages ouvertes à
+ * une minute d'intervalle lisaient alors deux instantanés différents : le
+ * 22 août 2026 à 12 h 16, la vue d'ensemble affichait 368 000 FCFA et la page
+ * des partenaires 325 000, quand la caisse en avait encaissé 375 200 et
+ * 336 000. Un chiffre en retard est un chiffre faux.
  */
-test('CONTRAT — une vente encaissée efface la réserve des recettes', () => {
-  const src = lire('src/app/api/payments/chariow/webhook/route.ts');
+test('CONTRAT — aucune mise en réserve sur le chemin normal des recettes', () => {
+  const src = lire('src/lib/recettes-boutique.ts');
+  const fonction = src.slice(src.indexOf('export async function recettesParJour'));
+  const corps = fonction.slice(0, fonction.indexOf('\n}\n'));
+  const essai = corps.slice(0, corps.indexOf('} catch'));
 
   assert.ok(
-    /oublierRecettes\(\)/.test(src),
-    "Le webhook n'efface plus la réserve : une commande n'apparaîtrait dans " +
-      "l'administration qu'au bout de plusieurs minutes."
+    !/lireReserve/.test(essai),
+    "Une lecture de réserve est réapparue sur le chemin normal. Le chiffre " +
+      "pourrait de nouveau être servi en retard, et deux pages de la même " +
+      "administration se contrediraient."
   );
 
-  // L'ordre est le fond du sujet, pas un détail de style.
-  const efface = src.indexOf('oublierRecettes()');
-  const abandonSansAcheteur = src.indexOf("status: 'unmatched'");
   assert.ok(
-    efface > 0 && efface < abandonSansAcheteur,
-    "L'effacement est placé APRÈS l'abandon des ventes sans acheteur identifiable. " +
-      "Or ce sont précisément celles que la base ne voit pas — trois sur la seule " +
-      "semaine du 16 août 2026. Placé là, il les manquerait toutes."
+    /lireReserve/.test(corps.slice(corps.indexOf('} catch'))),
+    "Le filet de panne a disparu : si Chariow ne répond pas, la page n'aurait " +
+      "plus aucun chiffre à montrer."
+  );
+});
+
+/**
+ * ── ON NE DEMANDE QUE LES VENTES PAYÉES ──────────────────────────────────
+ *
+ * La boutique est surtout faite de paniers abandonnés : 1 163 ventes
+ * enregistrées au 22 août 2026, 115 encaissées. Tout relire coûtait douze
+ * requêtes et sept secondes — c'est ce qui avait rendu la mise en réserve
+ * nécessaire, et donc le décalage inévitable.
+ */
+test('CONTRAT — les recettes sont demandées par statut, pagination préservée', () => {
+  const src = lire('src/lib/chariow.ts');
+  const fonction = src.slice(src.indexOf('export async function listSalesEncaissees'));
+  const corps = fonction.slice(0, 2600);
+
+  assert.ok(
+    /status=\$\{statut\}/.test(corps),
+    "La lecture ne filtre plus par statut : elle relirait toute la boutique, " +
+      "abandons compris, et la page redeviendrait trop lente pour se passer de cache."
+  );
+
+  assert.ok(
+    /searchParams\.set\('per_page', '100'\)/.test(corps) &&
+      /searchParams\.set\('status', statut\)/.test(corps),
+    "Le lien de page suivante ne reporte ni `per_page` ni `status` : Chariow les " +
+      "honore sur la première requête puis les laisse tomber. Sans les reposer, " +
+      "les pages retombent à dix ventes et rouvrent la liste complète — c'est ce " +
+      "qui rendait invisible la moitié de la boutique."
+  );
+});
+
+/**
+ * ── LA RÈGLE DE COMPTAGE EST CELLE DE CHARIOW ────────────────────────────
+ *
+ * Vérifié le 22 août 2026 contre le tableau de bord de la boutique :
+ * `completed + settled` donne 103 ventes et 336 000 FCFA du 16 au 22 août,
+ * et 375 200 FCFA depuis l'ouverture — au franc près. Ajouter
+ * `awaiting_payment` donnait 344 000 : huit mille francs qui n'étaient pas
+ * entrés.
+ */
+test('CONTRAT — seuls completed et settled comptent comme encaissés', () => {
+  const src = lire('src/lib/chariow.ts');
+  const ligne = src.match(/export const STATUTS_ENCAISSES = \[([^\]]*)\]/)?.[1] ?? '';
+  const statuts = ligne.split(',').map((s) => s.trim().replace(/['"]/g, '')).filter(Boolean);
+
+  assert.deepEqual(
+    statuts.sort(),
+    ['completed', 'settled'],
+    `Les statuts comptés comme encaissés sont devenus [${statuts.join(', ')}]. ` +
+      "Le total de l'administration ne correspondrait plus à celui de la boutique."
   );
 });
