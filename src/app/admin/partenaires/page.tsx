@@ -3,6 +3,7 @@ import {
   ArrowRight, CalendarDays, Coins, Handshake, Percent, Users, Wallet,
 } from "lucide-react";
 import { calculerEconomie, getPartenaires } from "@/lib/partenaires";
+import { heureDeLecture } from "@/lib/recettes-boutique";
 import { Indicateur } from "../_components/Indicateur";
 import { Panneau } from "../_components/Panneaux";
 import { EnTete } from "../_components/EnTete";
@@ -85,11 +86,16 @@ export default async function PartenairesPage() {
               </div>
             </div>
 
-            {/* Le mois n'est pas fini : le dire évite de prendre ce montant
-                pour la facture définitive. */}
+            {/* L'heure de lecture est ici pour être confrontée au tableau de
+                bord Chariow. Le 22 août 2026, cette page annonçait 325 000 FCFA
+                et la boutique 336 000 : les deux étaient justes, lus à vingt
+                minutes d'écart, et rien à l'écran ne permettait de s'en
+                apercevoir. On a cherché une erreur de calcul là où il n'y avait
+                qu'un écart d'horloge. */}
             <p className="text-[11px] text-white/35 mt-5 leading-relaxed">
               Mois en cours, arrêté à aujourd'hui — ces montants montent encore à chaque vente.
-              Calculé sur les abonnements réellement encaissés.
+              Lu chez Chariow à <span className="text-white/60 font-bold tabular-nums">{heureDeLecture()}</span>,
+              au moment où cette page s'est affichée. Rechargez pour lire l'instant présent.
             </p>
           </div>
 

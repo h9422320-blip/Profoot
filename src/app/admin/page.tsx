@@ -2,6 +2,7 @@ import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import SelecteurPeriode from "./_components/SelecteurPeriode";
 import Audience from "./_components/Audience";
 import EchecsAnalyse from "./_components/EchecsAnalyse";
+import { heureDeLecture } from "@/lib/recettes-boutique";
 import { Courbe, Barres, Camembert } from "./_components/Graphique";
 import { Etiquette, LienCompte, Vide, montant, dateCourte, ilYA } from "./_components/Ui";
 import { Panneau, Classement } from "./_components/Panneaux";
@@ -29,7 +30,11 @@ export default async function AdminOverview({
       {/* En-tête : les trois rapports qui résument l'état du produit. */}
       <EnTete
         titre="Vue d'ensemble"
-        sousTitre={`${m.periode.libelle} — données réelles lues dans la base`}
+        // L'heure de lecture accompagne le chiffre : sans elle, un montant ne
+        // peut être confronté à rien. Le 22 août 2026, on a cherché une erreur
+        // de calcul entre 325 000 et 336 000 alors que les deux étaient justes,
+        // lus à vingt minutes d'écart.
+        sousTitre={`${m.periode.libelle} — recettes lues chez Chariow à ${heureDeLecture()}`}
         icone={<LayoutDashboard className="w-6 h-6" />}
         action={<SelecteurPeriode />}
         reperes={[

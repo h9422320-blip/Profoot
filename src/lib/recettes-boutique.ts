@@ -156,6 +156,32 @@ export function totalEntre(
   return { xof, ventes };
 }
 
+/**
+ * L'heure de lecture, telle qu'elle doit être écrite sous un chiffre d'argent.
+ *
+ * ── POURQUOI UN CHIFFRE D'ARGENT DOIT PORTER SON HEURE ────────────────────
+ *
+ * Le 22 août 2026, la page affichait 325 000 FCFA et la boutique 336 000. Les
+ * deux étaient exacts : ils avaient simplement été lus à vingt minutes
+ * d'intervalle, et rien à l'écran ne permettait de s'en apercevoir. On a donc
+ * cherché une erreur de calcul là où il n'y avait qu'un écart d'horloge.
+ *
+ * Un montant sans heure ne peut pas être confronté à quoi que ce soit. Avec
+ * son heure, la comparaison avec le tableau de bord Chariow devient immédiate
+ * et sans ambiguïté : mêmes secondes, mêmes francs.
+ *
+ * L'heure est celle de Conakry, celle du propriétaire — pas celle du serveur,
+ * qui tourne en Europe.
+ */
+export function heureDeLecture(): string {
+  return new Date().toLocaleTimeString('fr-FR', {
+    timeZone: 'Africa/Conakry',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 /** Regroupe les journées par mois, indexé AAAA-MM. */
 export function parMois(
   parJour: RecettesParJour,
