@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { sessionProbable } from "@/lib/session-legere";
 import {
   ArrowRight,
   BarChart3,
@@ -72,9 +72,20 @@ function useCounter(end: number, duration: number = 2000, startOnView: boolean =
  */
 function useStartHref() {
   const [href, setHref] = useState('/signup');
+  // ── LA DESTINATION SE DÉCIDE SANS CHARGER SUPABASE ──────────────────────
+  //
+  // Ces lignes appelaient `supabase.auth.getUser()`, ce qui imposait au
+  // navigateur de télécharger le client Supabase entier — 226 Ko de code — sur
+  // la page que voient TOUS les nouveaux visiteurs, pour une seule décision :
+  // ce bouton mène-t-il vers `/analyze` ou vers `/signup` ?
+  //
+  // La présence du cookie de session suffit à répondre. Elle ne PROUVE rien —
+  // le cookie peut être périmé — mais elle n'ouvre aucun accès : les droits
+  // restent vérifiés par le serveur à chaque requête. Au pire, la personne
+  // arrive sur `/analyze` et se voit renvoyée vers la connexion, exactement
+  // comme avant quand sa session avait expiré entre deux visites.
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => setHref(user ? '/analyze' : '/signup'));
+    if (sessionProbable()) setHref('/analyze');
   }, []);
   return href;
 }
@@ -143,24 +154,21 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  // `user` ne servait qu'à répondre « connecté ou non » : les cinq endroits
+  // qui l'utilisaient choisissent une adresse de lien ou un libellé de bouton.
+  // Aucun n'affiche le nom, l'adresse ou quoi que ce soit du compte. Charger
+  // tout le client Supabase — et rester à l'écoute des changements de session —
+  // pour un booléen coûtait 226 Ko sur la page d'entrée du site.
+  const [user, setUser] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    setUser(sessionProbable());
 
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
-    
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      subscription.unsubscribe();
     };
   }, []);
 

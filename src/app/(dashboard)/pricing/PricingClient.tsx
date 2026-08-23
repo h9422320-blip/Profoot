@@ -4,7 +4,7 @@ import { Check, Zap, Brain, TrendingUp, Shield, Star, Loader2, Crown, X, Flame, 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
-import { createClient } from "@/utils/supabase/client";
+import { sessionProbable } from "@/lib/session-legere";
 import dynamic from "next/dynamic";
 import { usePaysAcheteur } from "@/components/usePaysAcheteur";
 
@@ -181,24 +181,25 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
   // puisque l'offre par défaut est déjà « FREE ». On ne l'interroge donc que
   // lorsqu'il y a réellement quelqu'un à reconnaître.
   useEffect(() => {
-    // getSession lit la session déjà présente dans le navigateur : aucun appel
-    // réseau, et surtout aucune fonction Vercel réveillée pour rien.
-    createClient()
-      .auth.getSession()
-      .then(({ data: { session } }) => {
-        if (!session) {
-          setCheckingStatus(false);
-          return;
-        }
-        fetch('/api/payments/status')
-          .then(res => res.json())
-          .then(data => {
-            if (data.plan) setPlan(data.plan as PlanTier);
-          })
-          .catch(err => console.error(err))
-          .finally(() => setCheckingStatus(false));
+    // ── ON NE CHARGE PLUS SUPABASE POUR SAVOIR S'IL Y A QUELQU'UN ─────────
+    //
+    // `getSession()` imposait le client Supabase entier — 226 Ko — sur la page
+    // des tarifs, alors qu'il ne servait qu'à éviter d'interroger le serveur
+    // pour un visiteur non connecté. La présence du cookie répond aussi bien.
+    //
+    // Ce que le serveur dit ensuite reste la seule vérité sur l'offre en cours :
+    // ce raccourci décide seulement s'il vaut la peine de lui poser la question.
+    if (!sessionProbable()) {
+      setCheckingStatus(false);
+      return;
+    }
+    fetch('/api/payments/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data.plan) setPlan(data.plan as PlanTier);
       })
-      .catch(() => setCheckingStatus(false));
+      .catch(err => console.error(err))
+      .finally(() => setCheckingStatus(false));
   }, []);
 
   /**
