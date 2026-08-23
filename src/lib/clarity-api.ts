@@ -23,11 +23,23 @@
  */
 
 import { lireReserve, ecrireReserve } from '@/lib/api-football';
+import { reserverAppel } from './clarity-quota';
 
 const ENDPOINT = 'https://www.clarity.ms/export-data/api/v1/project-live-insights';
 
-/** Trois heures : huit appels par jour au pire, sous le plafond de dix. */
-const TTL = 3 * 60 * 60 * 1000;
+/**
+ * SIX HEURES, ET NON PLUS TROIS.
+ *
+ * À trois heures, ouvrir les deux pages d'administration quatre fois dans la
+ * soirée suffisait à épuiser les dix appels quotidiens de Microsoft — c'est
+ * arrivé le 23 août 2026, et plus rien n'était lisible jusqu'au lendemain.
+ *
+ * Six heures ramènent le pire cas à quatre lectures par jour, appels de
+ * diagnostic compris. Les chiffres de Clarity portent sur trois jours : ils ne
+ * bougent pas assez vite pour qu'une demi-journée de retard change une
+ * décision.
+ */
+const TTL = 6 * 60 * 60 * 1000;
 const CLE = 'clarity:apercu';
 
 export interface LigneClarity {
@@ -81,6 +93,50 @@ export const clarityConfigure = () => !!process.env.CLARITY_API_TOKEN;
  * emploie. Une intégration qui casse sur un nom de champ n'apprend rien à
  * personne.
  */
+/**
+ * Le nombre de sessions d'une ligne Clarity.
+ *
+ * ── POURQUOI CE N'EST PAS « LE PLUS GRAND NOMBRE DU BLOC » ────────────────
+ *
+ * C'est ce que faisait la version précédente, et l'administration a affiché
+ * « 59 991,46 sessions » et « 11689.02 Côte d'Ivoire ». Un nombre de sessions
+ * n'a pas de virgule : la lecture attrapait un pourcentage ou une durée
+ * moyenne, et les additionnait d'une ligne à l'autre.
+ *
+ * ── LES TROIS RÈGLES ──────────────────────────────────────────────────────
+ *
+ * 1. Les noms EXACTS d'abord. Ceux que Clarity emploie sont connus ; les
+ *    chercher nommément évite toute confusion.
+ * 2. Un compte de sessions est un ENTIER. Une valeur à virgule est un taux ou
+ *    une moyenne — jamais un décompte. C'est ce seul contrôle qui aurait
+ *    empêché les chiffres absurdes.
+ * 3. À défaut, un champ qui parle de sessions sans parler de pourcentage.
+ *
+ * Renvoie zéro quand rien ne convient : une ligne sans décompte fiable est
+ * écartée par l'appelant, ce qui vaut mieux qu'un nombre inventé.
+ */
+function compterSessions(info: any): number {
+  const NOMS_EXACTS = [
+    'sessionsCount', 'sessionCount', 'totalSessionCount',
+    'sessionsWithMetricCount', 'sessionsCountTotal',
+  ];
+
+  for (const nom of NOMS_EXACTS) {
+    const n = Number(info?.[nom]);
+    if (Number.isInteger(n) && n > 0) return n;
+  }
+
+  let trouve = 0;
+  for (const [cle, v] of Object.entries(info ?? {})) {
+    if (!/session/i.test(cle)) continue;
+    if (/percent|percentage|rate|ratio|avg|average|time|duration/i.test(cle)) continue;
+    const n = Number(v);
+    // L'entier est la condition qui compte : elle sépare un décompte d'un taux.
+    if (Number.isInteger(n) && n > trouve) trouve = n;
+  }
+  return trouve;
+}
+
 function agreger(blocs: any[], nomDimension: string): LigneClarity[] {
   const total = new Map<string, number>();
 
@@ -110,19 +166,7 @@ function agreger(blocs: any[], nomDimension: string): LigneClarity[] {
       // Plutôt que de deviner une fois de plus, on prend la première valeur
       // numérique dont le nom parle de sessions — et à défaut, n'importe quel
       // nombre du bloc. Clarity peut renommer ses champs, la lecture tiendra.
-      let sessions = 0;
-      for (const [cle, v] of Object.entries(info)) {
-        if (!/session/i.test(cle)) continue;
-        const n = Number(v);
-        if (Number.isFinite(n) && n > sessions) sessions = n;
-      }
-      if (sessions === 0) {
-        for (const [cle, v] of Object.entries(info)) {
-          if (/percent|rate|ratio/i.test(cle)) continue;
-          const n = Number(v);
-          if (Number.isFinite(n) && n > sessions) sessions = n;
-        }
-      }
+      const sessions = compterSessions(info);
       if (sessions <= 0) continue;
       total.set(String(valeur), (total.get(String(valeur)) ?? 0) + sessions);
     }
@@ -140,6 +184,22 @@ interface Reponse {
 }
 
 async function interroger(dimension: string, jours: number): Promise<Reponse> {
+  // ── ON S'ARRÊTE AVANT LE PLAFOND, PLUS EN LE HEURTANT ───────────────────
+  //
+  // Sans ce garde-fou, on découvrait la limite en recevant « Exceeded daily
+  // limit » — c'est-à-dire une fois l'appel déjà compté par Microsoft, et
+  // toutes les lectures bloquées jusqu'au lendemain, diagnostic compris.
+  //
+  // Un appel refusé ici ne coûte rien.
+  if (!(await reserverAppel())) {
+    return {
+      blocs: null,
+      probleme:
+        'Plafond quotidien atteint (8 appels sur les 10 autorisés par Microsoft). ' +
+        'Les chiffres affichés viennent de la dernière lecture. Remise à zéro à minuit.',
+    };
+  }
+
   const url = new URL(ENDPOINT);
   url.searchParams.set('numOfDays', String(jours));
   if (dimension) url.searchParams.set('dimension1', dimension);

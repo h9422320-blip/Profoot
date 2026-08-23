@@ -1,5 +1,6 @@
 import { lireApercuClarity, lireComportementClarity, clarityConfigure } from '@/lib/clarity-api';
 import { composerBilan } from '@/lib/bilan-clarity';
+import { etatQuota, PLAFOND_MICROSOFT } from '@/lib/clarity-quota';
 import { EnTete } from '../_components/EnTete';
 import { Panneau } from '../_components/Panneaux';
 import { Vide } from '../_components/Ui';
@@ -55,6 +56,7 @@ export default async function ClarityPage() {
     lireComportementClarity(3),
   ]);
   const b = composerBilan(apercu, comportement);
+  const quota = await etatQuota();
 
   const quand = new Date(b.releveLe).toLocaleString('fr-FR', {
     timeZone: 'Africa/Conakry',
@@ -75,8 +77,26 @@ export default async function ClarityPage() {
           { libelle: 'Sessions', valeur: b.sessions.toLocaleString('fr-FR'), accent: true },
           { libelle: 'Pages vues', valeur: b.pagesVues.toLocaleString('fr-FR') },
           { libelle: 'Problèmes repérés', valeur: String(b.problemes.length) },
+          { libelle: 'Appels restants', valeur: `${quota.restants} / ${quota.plafond}` },
         ]}
       />
+
+      {/* ── LE QUOTA SE DIT, IL NE SE DÉCOUVRE PAS ─────────────────────────
+          Le 23 août 2026, les dix appels quotidiens de Microsoft ont été
+          épuisés en une soirée : rien n'indiquait qu'ouvrir cette page coûtait
+          quelque chose. Un plafond invisible se heurte toujours. */}
+      {quota.restants === 0 && (
+        <div className="rounded-[18px] border border-warning/30 bg-warning/[0.07] p-4">
+          <p className="text-[13px] font-bold text-warning mb-1">
+            Plafond quotidien atteint
+          </p>
+          <p className="text-[12px] text-foreground/60 leading-relaxed">
+            {quota.plafond} appels utilisés sur les {PLAFOND_MICROSOFT} autorisés par Microsoft.
+            Les chiffres ci-dessous viennent de la dernière lecture réussie. La remise à zéro
+            a lieu à minuit, heure universelle.
+          </p>
+        </div>
+      )}
 
       {/* ── Ce qu'il faut retenir ───────────────────────────────────────── */}
       {b.resume.length > 0 && (
