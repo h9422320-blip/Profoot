@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { calculerEconomie, getPartenaires } from "@/lib/partenaires";
 import { heureDeLecture } from "@/lib/recettes-boutique";
+import Reconciliation from "./Reconciliation";
 import { Indicateur } from "../_components/Indicateur";
 import { Panneau } from "../_components/Panneaux";
 import { EnTete } from "../_components/EnTete";
@@ -42,6 +43,18 @@ export default async function PartenairesPage() {
           { libelle: `Recettes ${moisCourant}`, valeur: fcfa(eco.recettesMoisXof) },
         ]}
       />
+
+      {/* ── LE CONTRÔLE DES CHIFFRES, AVANT LES CHIFFRES ────────────────────
+          Le 23 août 2026, le propriétaire a signalé trois fois en une journée
+          que cette page « ne collait pas ». Les trois fois, le calcul était
+          juste : deux périodes différentes, des ventes tombées entre la capture
+          d'écran et la vérification, un autre écran.
+
+          Le défaut n'était pas dans le calcul — il était dans l'impossibilité
+          de le vérifier sans ouvrir un terminal. Ce panneau confronte le total
+          de la page à la caisse, dit sur quelle période, et explique l'écart
+          normal avec la vue d'ensemble. */}
+      <Reconciliation partenaire={partenaires[0]} />
 
       {partenaires.length === 0 ? (
         <Panneau titre="Aucun partenaire" sousTitre="La table est vide">
