@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { appelerOpenRouter, MODELES_OPENROUTER } from '@/lib/openrouter';
+import { createClient as createServerClient } from '@/utils/supabase/server';
+import { estAdmin } from '@/lib/admins';
 
 /**
  * CHAQUE MODÈLE SAIT-IL VRAIMENT RENDRE UNE ANALYSE EXPLOITABLE ?
@@ -104,6 +106,30 @@ function verifier(j: any): { ok: boolean; defauts: string[] } {
 }
 
 export async function GET(req: Request) {
+  // ── RÉSERVÉE À L'ADMINISTRATION, ET CE N'EST PAS DU CONFORT ──────────────
+  //
+  // Cette route lance de VRAIS appels payants : trois analyses par requête,
+  // et le paramètre `?i=` laisse choisir le modèle — donc le plus cher de la
+  // liste. Elle était ouverte à tout Internet.
+  //
+  // Une boucle depuis n'importe quel ordinateur vidait le solde OpenRouter en
+  // quelques heures. Et un solde vide n'est pas une gêne : c'est l'arrêt de
+  // toutes les analyses, pour tous les abonnés, jusqu'au rechargement. Le
+  // 19 août 2026, trois heures de crédit épuisé ont coûté cent cinquante
+  // analyses perdues.
+  //
+  // Le contrôle est le même que pour les autres routes de diagnostic, et il
+  // est répété ici : une route ne traverse pas le gabarit de l'administration
+  // et n'hérite d'aucune de ses protections.
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!estAdmin(user?.email)) {
+    return NextResponse.json({ erreur: "Réservé à l'administration." }, { status: 403 });
+  }
+
   if (!process.env.OPENROUTER_API_KEY)
     return NextResponse.json({ erreur: 'OPENROUTER_API_KEY absente' }, { status: 500 });
 
