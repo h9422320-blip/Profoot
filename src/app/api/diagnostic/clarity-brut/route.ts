@@ -27,6 +27,7 @@
 
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { estAdmin } from '@/lib/admins';
+import { reserverAppel, signalerRefus } from '@/lib/clarity-quota';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -50,6 +51,11 @@ export async function GET(req: Request) {
   const dimension = params.get('dimension') ?? 'Page';
   const jours = Math.min(3, Math.max(1, Number(params.get('jours')) || 1));
 
+  // Le diagnostic passe par le meme compteur que le reste : une route qui
+  // ignore le plafond finit par le faire atteindre aux autres.
+  if (!(await reserverAppel()))
+    return Response.json({ erreur: "Plafond atteint ou verrou actif. Reessayez plus tard." }, { status: 200 });
+
   const url = new URL(ENDPOINT);
   url.searchParams.set('numOfDays', String(jours));
   if (dimension) url.searchParams.set('dimension1', dimension);
@@ -61,6 +67,8 @@ export async function GET(req: Request) {
     });
 
     const texte = await res.text();
+
+    if (res.status === 429 || /exceeded/i.test(texte)) await signalerRefus();
 
     if (!res.ok) {
       return Response.json(

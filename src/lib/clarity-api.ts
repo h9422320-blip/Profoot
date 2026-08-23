@@ -23,7 +23,7 @@
  */
 
 import { lireReserve, ecrireReserve } from '@/lib/api-football';
-import { reserverAppel } from './clarity-quota';
+import { reserverAppel, signalerRefus } from './clarity-quota';
 
 const ENDPOINT = 'https://www.clarity.ms/export-data/api/v1/project-live-insights';
 
@@ -220,6 +220,24 @@ async function interroger(dimension: string, jours: number): Promise<Reponse> {
     return { blocs: null, probleme: `Jeton refusé (${res.status}). Vérifiez CLARITY_API_TOKEN dans Vercel.` };
   }
   if (!res.ok) {
+    // ── UN REFUS FERME LE ROBINET ─────────────────────────────────────────
+    //
+    // Microsoft compte probablement ses refus comme des appels. Réessayer
+    // après un « Exceeded daily limit », c'est donc creuser le trou à chaque
+    // affichage de page. On cesse d'insister pendant trois heures.
+    //
+    // C'est ce qui manquait le 23 août 2026 : le plafond était atteint, et
+    // chaque ouverture de la page relançait une requête aussitôt rejetée.
+    if (res.status === 429 || /exceeded/i.test(texte)) {
+      await signalerRefus();
+      return {
+        blocs: null,
+        probleme:
+          'Microsoft a refusé : plafond quotidien atteint. Plus aucun appel ne partira ' +
+          'pendant trois heures — insister le ferait durer plus longtemps.',
+        brut: texte.slice(0, 300),
+      };
+    }
     return { blocs: null, probleme: `Clarity a répondu ${res.status}.`, brut: texte.slice(0, 300) };
   }
 
