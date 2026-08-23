@@ -50,6 +50,8 @@ function ChampsMatchPaye() {
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
+  /** La porte de sortie proposée avec le message : créer un compte, se connecter. */
+  const [lienErreur, setLienErreur] = useState<{ texte: string; href: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
@@ -60,6 +62,7 @@ export default function LoginPage() {
       const result = await login(formData)
       if (result?.error) {
         setError(result.error)
+        setLienErreur((result as { lien?: { texte: string; href: string } }).lien ?? null)
         setIsLoading(false)
       }
     } catch (e: any) {
@@ -159,6 +162,16 @@ export default function LoginPage() {
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <p className="text-sm text-red-200">{error}</p>
+                {/* Une porte de sortie, quand le message en propose une. Sans
+                    elle, la personne relit le même message et recommence. */}
+                {lienErreur && (
+                  <Link
+                    href={lienErreur.href}
+                    className="inline-block mt-2 text-sm font-bold text-white underline underline-offset-2"
+                  >
+                    {lienErreur.texte}
+                  </Link>
+                )}
               </div>
             )}
 

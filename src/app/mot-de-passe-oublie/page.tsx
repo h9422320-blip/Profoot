@@ -82,10 +82,36 @@ export default function ForgotPasswordPage() {
               <p className="text-sm text-zinc-500">
                 Le lien est valable une heure. Pensez à regarder dans les courriers indésirables.
               </p>
+
+              {/* ── LA SORTIE QUI MANQUAIT ──────────────────────────────────
+                  Cet écran s'affiche même quand aucun compte n'existe à cette
+                  adresse — et c'est volontaire : dire lesquelles en ont un
+                  permettrait de dresser la liste des clients.
+
+                  Mais alors, aucun courriel n'arrivera jamais, et rien ne le
+                  laissait deviner. Le 23 août 2026, quelqu'un au Bénin a fait
+                  trois allers-retours entre la connexion et cette page avant
+                  d'abandonner en soixante-sept secondes.
+
+                  On nomme donc la deuxième possibilité, sans jamais confirmer
+                  laquelle est la bonne. */}
+              <p className="text-sm text-zinc-500 leading-relaxed pt-2">
+                Rien ne vous parvient au bout de quelques minutes ? C&apos;est peut-être
+                qu&apos;aucun compte n&apos;existe encore à cette adresse.
+              </p>
             </div>
-            <Link href="/login" className="inline-flex items-center gap-2 text-sm font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Retour à la connexion
-            </Link>
+
+            <div className="flex flex-col items-center gap-3">
+              <Link
+                href="/signup"
+                className="text-sm font-bold text-white underline underline-offset-2 hover:text-emerald-300 transition-colors"
+              >
+                Créer un compte
+              </Link>
+              <Link href="/login" className="inline-flex items-center gap-2 text-sm font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
+                <ArrowLeft className="w-4 h-4" /> Retour à la connexion
+              </Link>
+            </div>
           </div>
         ) : (
           <>

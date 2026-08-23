@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { messageAuth } from '@/lib/messages-auth'
 import { headers } from 'next/headers'
 import { createClient } from '@/utils/supabase/server'
 import { lireOrigine, metadonneesOrigine } from '@/lib/origine-visiteur'
@@ -46,7 +47,16 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    // ── JAMAIS LE MESSAGE BRUT DE SUPABASE ────────────────────────────────
+    //
+    // Il est en anglais — « Invalid login credentials » — sur une application
+    // entièrement en français destinée à l'Afrique de l'Ouest. Et il ne dit pas
+    // qu'on peut simplement ne pas avoir de compte : le 23 août 2026, quelqu'un
+    // au Bénin a fait trois allers-retours entre la connexion et la
+    // récupération de mot de passe avant d'abandonner en soixante-sept
+    // secondes, sans jamais entrer.
+    const m = messageAuth(error.message)
+    return { error: m.texte, lien: m.lien }
   }
 
   await releverOrigine(supabase)
@@ -130,7 +140,16 @@ export async function signup(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    // ── JAMAIS LE MESSAGE BRUT DE SUPABASE ────────────────────────────────
+    //
+    // Il est en anglais — « Invalid login credentials » — sur une application
+    // entièrement en français destinée à l'Afrique de l'Ouest. Et il ne dit pas
+    // qu'on peut simplement ne pas avoir de compte : le 23 août 2026, quelqu'un
+    // au Bénin a fait trois allers-retours entre la connexion et la
+    // récupération de mot de passe avant d'abandonner en soixante-sept
+    // secondes, sans jamais entrer.
+    const m = messageAuth(error.message)
+    return { error: m.texte, lien: m.lien }
   }
 
   revalidatePath('/', 'layout')
