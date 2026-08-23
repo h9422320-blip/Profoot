@@ -95,12 +95,21 @@ async function ecrireCompte(c: Compte): Promise<void> {
  */
 export async function signalerRefus(): Promise<void> {
   const c = await lireCompte();
-  await ecrireCompte({
-    // Le compte est porté au plafond : Microsoft nous dit lui-même qu'il n'en
-    // reste plus, quelle que soit notre propre estimation.
-    appels: Array.from({ length: PLAFOND_QUOTIDIEN }, () => Date.now()),
-    bloqueJusqua: Date.now() + VERROU_MS,
-  });
+
+  // ── LE VERROU SUFFIT : ON N'INVENTE PAS D'APPELS ─────────────────────────
+  //
+  // La première version portait aussi le compte au plafond, en écrivant huit
+  // faux horodatages. C'était une double peine, et elle s'est retournée contre
+  // nous : ces faux appels restaient valides vingt-quatre heures dans la
+  // fenêtre glissante.
+  //
+  // Résultat le 23 août 2026 : Microsoft avait remis son compteur à zéro dans
+  // la nuit, Clarity répondait normalement — et notre propre code refusait
+  // encore à dix heures du matin, pour des appels qui n'avaient jamais eu lieu.
+  //
+  // Seule la date de déblocage est écrite. Passé ce délai, on reprend au compte
+  // réel, celui des appels qu'on a vraiment faits.
+  await ecrireCompte({ appels: c.appels, bloqueJusqua: Date.now() + VERROU_MS });
 }
 
 /** Combien d'appels restent avant notre plafond. */
