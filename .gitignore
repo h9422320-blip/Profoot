@@ -49,3 +49,6 @@ scripts/.xg.json
 scripts/.resultat-xg.txt
 scripts/.socle-xg.log
 scripts/_*.mjs
+
+# Le dernier bilan Clarity : un relevé local, pas du code.
+bilan-clarity.json

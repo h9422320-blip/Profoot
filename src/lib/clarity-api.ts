@@ -241,3 +241,181 @@ export async function lireApercuClarity(jours: 1 | 2 | 3 = 3): Promise<ApercuCla
     return null;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  LE COMPORTEMENT : CE QUE LES GENS FONT, ET OÙ ILS DÉCROCHENT
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * L'aperçu ci-dessus répond à « combien, et d'où ». Il ne dit rien de ce qui
+ * se passe SUR la page : les clics rageurs, les clics dans le vide, les
+ * demi-tours immédiats, la profondeur de lecture.
+ *
+ * Ce sont pourtant ces chiffres-là qui désignent une conversion perdue. Un
+ * visiteur qui clique trois fois sur un élément qui ne réagit pas ne revient
+ * pas expliquer pourquoi il est parti.
+ *
+ * ── UN SEUL APPEL POUR TOUT ─────────────────────────────────────────────
+ *
+ * Clarity plafonne à dix appels par jour, tous confondus. Mais son point
+ * d'entrée renvoie TOUTES ses métriques d'un coup, ventilées selon la
+ * dimension demandée. Une seule requête avec `dimension1=Page` donne donc à la
+ * fois les pages les plus vues et, pour chacune, le comportement observé.
+ *
+ * Le résultat est conservé trois heures, comme l'aperçu. Relire un bilan déjà
+ * établi ne consomme rien.
+ */
+
+const CLE_COMPORTEMENT = 'clarity:comportement';
+
+export interface PageClarity {
+  /** Adresse de la page, telle que Clarity la rapporte. */
+  url: string;
+  sessions: number;
+  /** Clics répétés sur un élément qui ne réagit pas — de l'agacement mesuré. */
+  clicsDeRage: number;
+  /** Clics sur ce qui ressemble à un bouton et n'en est pas un. */
+  clicsMorts: number;
+  /** Arrivées suivies d'un demi-tour immédiat : la page a déçu en une seconde. */
+  retoursRapides: number;
+  /** Jusqu'où la page est lue, en pourcentage de sa hauteur. */
+  profondeurScroll: number | null;
+  /** Secondes passées à interagir réellement. */
+  tempsActif: number | null;
+}
+
+export interface ComportementClarity {
+  pages: PageClarity[];
+  /** Totaux tous supports confondus, quand Clarity les fournit. */
+  totaux: {
+    clicsDeRage: number;
+    clicsMorts: number;
+    retoursRapides: number;
+    profondeurScroll: number | null;
+  };
+  jours: number;
+  releveLe: string;
+  enReserve: boolean;
+  probleme?: string;
+}
+
+/**
+ * Cherche un nombre dans un bloc, quel que soit le nom exact du champ.
+ *
+ * Clarity nomme ses champs différemment selon les métriques, et les renomme
+ * au fil des versions. Exiger un nom précis, c'est tout perdre le jour où il
+ * change d'une lettre — on décrit donc ce qu'on cherche, pas où le trouver.
+ */
+function nombreSelon(info: any, motifs: RegExp): number {
+  let trouve = 0;
+  for (const [cle, v] of Object.entries(info ?? {})) {
+    if (!motifs.test(cle)) continue;
+    const n = Number(v);
+    if (Number.isFinite(n) && n > trouve) trouve = n;
+  }
+  return trouve;
+}
+
+/** Le nom d'une métrique dans un bloc Clarity. */
+const nomMetrique = (bloc: any): string =>
+  String(bloc?.metricName ?? bloc?.metric ?? bloc?.name ?? '');
+
+/**
+ * Le comportement observé, page par page.
+ *
+ * Renvoie `null` quand le jeton n'est pas configuré. En cas de plafond atteint
+ * ou de service muet, ressert la dernière lecture connue plutôt que rien : un
+ * chiffre d'il y a trois heures reste exploitable pour décider quoi corriger.
+ */
+export async function lireComportementClarity(
+  jours: 1 | 2 | 3 = 3
+): Promise<ComportementClarity | null> {
+  if (!clarityConfigure()) return null;
+
+  try {
+    const enBase = await lireReserve<ComportementClarity>(CLE_COMPORTEMENT);
+    if (enBase && !enBase.expiree && enBase.contenu)
+      return { ...enBase.contenu, enReserve: true };
+
+    const reponse = await interroger('Page', jours);
+
+    if (!reponse.blocs) {
+      const perime = await lireReserve<ComportementClarity>(CLE_COMPORTEMENT);
+      if (perime?.contenu)
+        return { ...perime.contenu, enReserve: true, probleme: reponse.probleme };
+      return {
+        pages: [],
+        totaux: { clicsDeRage: 0, clicsMorts: 0, retoursRapides: 0, profondeurScroll: null },
+        jours,
+        releveLe: new Date().toISOString(),
+        enReserve: false,
+        probleme: reponse.probleme ?? 'Clarity n’a rien renvoyé.',
+      };
+    }
+
+    const parPage = new Map<string, PageClarity>();
+    const totaux = { clicsDeRage: 0, clicsMorts: 0, retoursRapides: 0, profondeurScroll: null as number | null };
+
+    for (const bloc of reponse.blocs) {
+      const metrique = nomMetrique(bloc).toLowerCase();
+
+      for (const info of bloc?.information ?? []) {
+        if (!info || typeof info !== 'object') continue;
+
+        // L'adresse de la page : sous son nom, ou la première chaîne qui
+        // ressemble à un chemin.
+        const url = String(
+          info.Page ?? info.page ?? info.Url ?? info.url ??
+          Object.entries(info).find(([, v]) => typeof v === 'string' && String(v).startsWith('/'))?.[1] ??
+          ''
+        );
+        if (!url) continue;
+
+        const ligne = parPage.get(url) ?? {
+          url, sessions: 0, clicsDeRage: 0, clicsMorts: 0,
+          retoursRapides: 0, profondeurScroll: null, tempsActif: null,
+        };
+
+        const sessions = nombreSelon(info, /session/i);
+        if (sessions > ligne.sessions) ligne.sessions = sessions;
+
+        // Chaque bloc porte UNE métrique : on range sa valeur au bon endroit.
+        if (/rage/.test(metrique)) {
+          const n = nombreSelon(info, /count|clicks?|total/i);
+          ligne.clicsDeRage += n; totaux.clicsDeRage += n;
+        } else if (/dead/.test(metrique)) {
+          const n = nombreSelon(info, /count|clicks?|total/i);
+          ligne.clicsMorts += n; totaux.clicsMorts += n;
+        } else if (/quickback|quick_back|back/.test(metrique)) {
+          const n = nombreSelon(info, /count|total|session/i);
+          ligne.retoursRapides += n; totaux.retoursRapides += n;
+        } else if (/scroll/.test(metrique)) {
+          const n = nombreSelon(info, /depth|percent|scroll/i);
+          if (n > 0) ligne.profondeurScroll = n;
+        } else if (/engagement|activetime|active/.test(metrique)) {
+          const n = nombreSelon(info, /time|second|duration/i);
+          if (n > 0) ligne.tempsActif = n;
+        }
+
+        parPage.set(url, ligne);
+      }
+    }
+
+    const scrolls = [...parPage.values()].map((p) => p.profondeurScroll).filter((n): n is number => n != null);
+    if (scrolls.length) totaux.profondeurScroll = Math.round(scrolls.reduce((a, b) => a + b, 0) / scrolls.length);
+
+    const resultat: ComportementClarity = {
+      pages: [...parPage.values()].sort((a, b) => b.sessions - a.sessions),
+      totaux,
+      jours,
+      releveLe: new Date().toISOString(),
+      enReserve: false,
+      probleme: reponse.probleme,
+    };
+
+    void ecrireReserve(CLE_COMPORTEMENT, resultat, TTL);
+    return resultat;
+  } catch (e: any) {
+    console.warn('[CLARITY] Comportement illisible :', e?.message);
+    return null;
+  }
+}
