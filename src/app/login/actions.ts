@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { messageAuth } from '@/lib/messages-auth'
+import { compterTentative, effacerTentatives, messageAttente } from '@/lib/limite-partagee'
 import { headers } from 'next/headers'
 import { createClient } from '@/utils/supabase/server'
 import { lireOrigine, metadonneesOrigine } from '@/lib/origine-visiteur'
@@ -39,6 +40,38 @@ export async function login(formData: FormData) {
     return { error: 'Veuillez remplir tous les champs.' }
   }
 
+  // ── ON NE PEUT PLUS ESSAYER MILLE MOTS DE PASSE ─────────────────────────
+  //
+  // Rien ne limitait les tentatives côté application. Or l'adresse du compte
+  // administrateur était, jusqu'à ce matin, lisible publiquement dans
+  // `app_settings` : un attaquant savait donc exactement qui viser, et pouvait
+  // essayer autant de mots de passe qu'il voulait.
+  //
+  // LA LIMITE PORTE SUR L'ADRESSE, PAS SUR L'ADRESSE IP.
+  //
+  // Une IP se change en une seconde — réseau mobile, réseau partagé, service
+  // de relais. L'adresse e-mail visée, elle, ne change pas : c'est justement
+  // ce que l'attaquant veut forcer. C'est donc elle qu'on compte.
+  //
+  // HUIT ESSAIS PAR QUART D'HEURE, ET LE COMPTEUR S'EFFACE À LA RÉUSSITE.
+  //
+  // Assez pour quelqu'un qui hésite entre deux de ses mots de passe habituels,
+  // beaucoup trop peu pour un automate. Et celui qui finit par entrer ne reste
+  // pas puni pour ses fautes de frappe : sans cet effacement, trois erreurs le
+  // matin et cinq le soir bloqueraient un client légitime.
+  const ESSAIS_MAX = 8
+  const FENETRE_MS = 15 * 60 * 1000
+
+  const verdict = await compterTentative('connexion', email, ESSAIS_MAX, FENETRE_MS)
+  if (verdict.bloque) {
+    console.warn(`[CONNEXION] Trop de tentatives sur ${email.slice(0, 3)}…`)
+    return {
+      error:
+        'Trop de tentatives de connexion sur cette adresse. ' +
+        messageAttente(verdict.attendreSecondes),
+    }
+  }
+
   const supabase = await createClient()
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -58,6 +91,10 @@ export async function login(formData: FormData) {
     const m = messageAuth(error.message)
     return { error: m.texte, lien: m.lien }
   }
+
+  // La connexion a réussi : le compteur de tentatives repart à zéro. Quelqu'un
+  // qui finit par entrer ne doit pas rester puni pour ses fautes de frappe.
+  await effacerTentatives('connexion', email)
 
   await releverOrigine(supabase)
 
