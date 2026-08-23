@@ -112,3 +112,40 @@ test('★ ACQUIS — les étapes du tunnel sont écartées des statistiques de p
     "L'agrégation par page ne filtre plus les étapes."
   );
 });
+
+/**
+ * LA VÉRIFICATION DOIT TENIR DANS LE TEMPS QUE LA PLATEFORME ACCORDE.
+ *
+ * ── CE QUI A ÉTÉ TROUVÉ LE 24 AOÛT 2026 ───────────────────────────────────
+ *
+ * Chaque analyse demandait un aller-retour vers la base, attendu avant de
+ * passer à la suivante. Trois cents analyses faisaient donc trois cents
+ * allers-retours en file indienne : plus de dix minutes, alors que la tâche
+ * quotidienne dispose de cent vingt secondes.
+ *
+ * Elle était donc coupée en plein travail, chaque nuit, sans que rien ne le
+ * signale. Relevé ce jour-là : 9 180 analyses, 2 329 vérifiées, 6 851 en
+ * attente — un arriéré qui ne se résorbait jamais.
+ *
+ * Après correction : trois cents analyses en 11,6 secondes, cinquante fois
+ * plus vite.
+ */
+test('★ ACQUIS — la vérification traite les analyses par paquets', () => {
+  const src = lire('src/lib/precision-reelle.ts');
+
+  assert.ok(
+    /TAILLE_PAQUET/.test(src) && /Promise\.all\(/.test(src),
+    'La vérification est revenue à un traitement une-par-une. Trois cents ' +
+      "allers-retours en file indienne dépassent les cent vingt secondes que la " +
+      'plateforme accorde : la tâche serait coupée en plein travail, chaque nuit.'
+  );
+
+  // La réserve doit garder la PROMESSE, pas la valeur : sinon dix analyses de
+  // la même affiche lancées ensemble déclenchent dix appels au fournisseur.
+  assert.ok(
+    /Map<string, Promise</.test(src),
+    "La réserve des résultats garde de nouveau la valeur et non la promesse. " +
+      "En parallèle, dix analyses de la même affiche déclencheraient dix appels " +
+      'au fournisseur — dont le quota est la ressource la plus rare du projet.'
+  );
+});

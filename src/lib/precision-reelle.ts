@@ -183,7 +183,17 @@ export async function verifierPronostics(limite = 60): Promise<{
   //
   // Le résultat est donc cherché une fois par paire d'équipes, puis appliqué à
   // toutes les analyses qui portent sur cette rencontre.
-  const resultatsParPaire = new Map<string, Awaited<ReturnType<typeof trouverResultat>>>();
+  // ── LA RÉSERVE GARDE LA PROMESSE, PAS LA VALEUR ─────────────────────────
+  //
+  // Les analyses sont désormais traitées par paquets, en parallèle. Si la
+  // réserve gardait le résultat une fois obtenu, dix analyses de la même
+  // affiche lancées ensemble déclencheraient dix appels au fournisseur avant
+  // que le premier n'ait répondu — et le quota du fournisseur est la ressource
+  // la plus rare du projet.
+  //
+  // En gardant la promesse dès le premier appel, les neuf autres attendent la
+  // même réponse. Un seul appel par affiche, quoi qu'il arrive.
+  const resultatsParPaire = new Map<string, Promise<Awaited<ReturnType<typeof trouverResultat>>>>();
 
   const resultatPourAnalyse = async (analyse: any) => {
     const id1 = identifiantEquipe(analyse.team1_logo);
@@ -196,9 +206,9 @@ export async function verifierPronostics(limite = 60): Promise<{
     const cle = `${[id1, id2].sort().join('-')}@${jour}`;
 
     if (!resultatsParPaire.has(cle)) {
-      resultatsParPaire.set(cle, await trouverResultat(analyse));
+      resultatsParPaire.set(cle, trouverResultat(analyse));
     }
-    const commun = resultatsParPaire.get(cle) ?? null;
+    const commun = await resultatsParPaire.get(cle);
     if (!commun) return null;
 
     // « inverse » dépend de l'ordre dans lequel CETTE analyse nomme les
@@ -208,13 +218,31 @@ export async function verifierPronostics(limite = 60): Promise<{
     return { ...commun, inverse: String(commun.idDomicile) !== String(id1) };
   };
 
-  for (const analyse of data ?? []) {
+  // ── PAR PAQUETS, ET NON UNE PAR UNE ─────────────────────────────────────
+  //
+  // Chaque analyse demandait un aller-retour vers la base, attendu avant de
+  // passer à la suivante. Trois cents analyses faisaient donc trois cents
+  // allers-retours en file indienne — plusieurs minutes, dépassant les cent
+  // vingt secondes que la plateforme accorde à la tâche quotidienne.
+  //
+  // Résultat mesuré le 24 août 2026 : 9 180 analyses au total, 2 329 vérifiées,
+  // 6 851 en attente. À trois cents par jour dans le meilleur des cas, et avec
+  // de nouvelles analyses qui arrivent plus vite que ça, l'arriéré ne se
+  // résorbait jamais.
+  //
+  // Vingt à la fois : la base répond aussi vite pour vingt écritures que pour
+  // une, et l'on reste très loin de la saturer. Le temps total est divisé par
+  // vingt.
+  const TAILLE_PAQUET = 20;
+  const analyses = data ?? [];
+
+  const traiter = async (analyse: any) => {
     const prediction = lirePrediction(analyse.score);
     const resultat = await resultatPourAnalyse(analyse);
 
     if (!resultat || !prediction) {
       enAttente++;
-      continue;
+      return;
     }
 
     const [butsEq1, butsEq2] = resultat.inverse
@@ -245,9 +273,13 @@ export async function verifierPronostics(limite = 60): Promise<{
     if (erreurEcriture) {
       console.error(`[PRECISION] Écriture impossible sur ${analyse.id} :`, erreurEcriture.message);
       enAttente++;
-      continue;
+      return;
     }
     verifiees++;
+  };
+
+  for (let i = 0; i < analyses.length; i += TAILLE_PAQUET) {
+    await Promise.all(analyses.slice(i, i + TAILLE_PAQUET).map(traiter));
   }
 
   console.log(`[PRECISION] ${verifiees} pronostic(s) vérifié(s), ${enAttente} en attente.`);
