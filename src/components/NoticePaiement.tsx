@@ -10,6 +10,7 @@ import {
   PAYS_SERVIS,
   type MoyenPaiement,
 } from '@/lib/moyens-paiement';
+import { signalerEtape } from './etapes-vente';
 
 /**
  * LE DERNIER PAS AVANT LE PAIEMENT.
@@ -110,10 +111,29 @@ export default function NoticePaiement({
     ? ordonnerPourAfrique(fiche.moyens)
     : [MOYEN_GENERIQUE];
 
-  const partir = useCallback(() => onContinuer(pays), [onContinuer, pays]);
+  // ── CHAQUE SORTIE DE LA NOTICE EST NOMMÉE ────────────────────────────────
+  //
+  // Trois façons d'en sortir, et elles ne disent pas la même chose : cliquer
+  // « Continuer » est une décision, laisser filer les vingt secondes est de
+  // l'indifférence, fermer est un refus. Les confondre reviendrait à mesurer
+  // un départ sans savoir s'il faut raccourcir le délai, réécrire le texte, ou
+  // ne rien changer.
+  const partir = useCallback(
+    (cause: 'notice-continuer' | 'notice-auto' = 'notice-continuer') => {
+      signalerEtape(cause);
+      onContinuer(pays);
+    },
+    [onContinuer, pays]
+  );
 
   // `createPortal` a besoin du document : on attend le montage côté navigateur.
   useEffect(() => setMonte(true), []);
+
+  // L'ouverture est le premier point de mesure : c'est lui qui donne le
+  // dénominateur — combien de personnes ont vraiment vu cet écran.
+  useEffect(() => {
+    signalerEtape('offre-cliquee');
+  }, []);
 
   // Le corps de la page ne défile plus derrière la feuille : sur téléphone,
   // un fond qui bouge sous le doigt donne l'impression que rien n'est cliquable.
@@ -128,20 +148,26 @@ export default function NoticePaiement({
   useEffect(() => {
     if (arrete) return;
     if (reste <= 0) {
-      partir();
+      partir('notice-auto');
       return;
     }
     const t = setTimeout(() => setReste((r) => r - 1), 1000);
     return () => clearTimeout(t);
   }, [reste, arrete, partir]);
 
+  // Fermer, c'est refuser. On le note avant de rendre la main.
+  const fermer = useCallback(() => {
+    signalerEtape('notice-fermee');
+    onFermer();
+  }, [onFermer]);
+
   useEffect(() => {
     const clavier = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onFermer();
+      if (e.key === 'Escape') fermer();
     };
     window.addEventListener('keydown', clavier);
     return () => window.removeEventListener('keydown', clavier);
-  }, [onFermer]);
+  }, [fermer]);
 
   if (!monte) return null;
 
@@ -182,7 +208,7 @@ export default function NoticePaiement({
       {/* Le fond assombri. Un simple appui dessus referme. */}
       <button
         aria-label="Fermer"
-        onClick={onFermer}
+        onClick={fermer}
         className="absolute inset-0 w-full h-full bg-black/70 backdrop-blur-[6px] animate-[apparition_200ms_ease-out]"
       />
 
@@ -203,7 +229,7 @@ export default function NoticePaiement({
         </div>
 
         <button
-          onClick={onFermer}
+          onClick={fermer}
           aria-label="Fermer"
           className="absolute top-3 right-3 p-2 rounded-full text-white/40 hover:text-white/80 hover:bg-white/10 transition-colors"
         >
@@ -306,7 +332,7 @@ export default function NoticePaiement({
 
           {/* ── Le bouton ───────────────────────────────────────────────── */}
           <button
-            onClick={partir}
+            onClick={() => partir('notice-continuer')}
             className="
               mt-5 w-full rounded-[16px] bg-[#10b981] hover:bg-[#059669] active:scale-[0.99]
               px-4 py-4 text-[14.5px] font-black text-[#06231a]

@@ -1,7 +1,7 @@
 import { lireBilanVisites } from '@/lib/mesure-visites';
 import { Panneau } from '../_components/Panneaux';
 import { Vide } from '../_components/Ui';
-import { Activity, DoorOpen, Route, LogOut } from 'lucide-react';
+import { Activity, DoorOpen, Route, LogOut, ShoppingCart } from 'lucide-react';
 
 /**
  * LA MESURE MAISON, AFFICHÉE.
@@ -96,6 +96,63 @@ export default async function MesureMaison({ heures = 24 }: { heures?: number })
           </p>
         )}
       </div>
+
+      {/* ── LE TUNNEL DE VENTE ───────────────────────────────────────────
+          Le 23 août 2026, on connaissait les deux bouts et rien du milieu :
+          900 personnes voyaient les tarifs, 417 arrivaient en caisse, 48
+          payaient. Trois cent soixante-neuf décrochaient quelque part, sans
+          qu'on puisse dire où — donc sans pouvoir corriger autrement qu'au
+          hasard. */}
+      {b.entonnoir.some((e) => e.visites > 0) && (
+        <Panneau
+          titre="Le tunnel de vente"
+          sousTitre="De la page des tarifs au départ vers la caisse"
+          icone={<ShoppingCart className="w-4 h-4" />}
+          teinte="or"
+        >
+          <div className="space-y-2.5">
+            {b.entonnoir.map((e) => {
+              const perte = e.partPrecedente !== null && e.partPrecedente < 50;
+              const issue = e.cle.startsWith('notice-') || e.cle === 'echec-lien';
+              return (
+                <div key={e.cle} className={issue ? 'pl-5' : ''}>
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-[18px] font-black text-foreground tabular-nums w-14 text-right shrink-0">
+                      {e.visites}
+                    </span>
+                    <span className="text-[12.5px] text-foreground/75 flex-1 min-w-0">
+                      {e.libelle}
+                    </span>
+                    {e.partPrecedente !== null && (
+                      <span
+                        className={`text-[12px] font-bold tabular-nums shrink-0 ${
+                          perte ? 'text-warning' : 'text-primary'
+                        }`}
+                      >
+                        {e.partPrecedente} %
+                      </span>
+                    )}
+                  </div>
+                  {e.perdues > 0 && !issue && (
+                    <p className="text-[11px] text-warning/70 ml-[68px] mt-0.5">
+                      {e.perdues} personne{e.perdues > 1 ? 's' : ''} perdue
+                      {e.perdues > 1 ? 's' : ''} à cette marche
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-[11px] text-foreground/35 mt-4 leading-relaxed">
+            Les trois lignes en retrait sont les issues de la notice de paiement : elles se
+            partagent ceux qui ont cliqué sur une offre, elles ne se suivent pas. Cliquer
+            « Continuer » est une décision, laisser filer les vingt secondes est de
+            l&apos;indifférence, fermer est un refus — les distinguer dit s&apos;il faut
+            raccourcir le délai, réécrire le texte, ou ne rien changer.
+          </p>
+        </Panneau>
+      )}
 
       {/* ── LÀ OÙ ILS FERMENT ────────────────────────────────────────────── */}
       {b.sorties.length > 0 && (

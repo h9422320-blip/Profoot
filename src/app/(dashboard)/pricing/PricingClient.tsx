@@ -7,6 +7,7 @@ import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
 import { sessionProbable } from "@/lib/session-legere";
 import dynamic from "next/dynamic";
 import { usePaysAcheteur } from "@/components/usePaysAcheteur";
+import { signalerEtape } from "@/components/etapes-vente";
 
 /**
  * La notice est chargee A LA DEMANDE, et c est deliberé.
@@ -247,8 +248,17 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
       const data = await res.json();
 
       if (data.checkoutUrl) {
+        // ── LE DERNIER POINT DE MESURE AVANT DE QUITTER LE SITE ────────────
+        //
+        // C'est ici que se referme le trou du 23 août : on savait combien de
+        // gens voyaient les tarifs, et combien arrivaient en caisse chez
+        // Chariow, sans rien de ce qui se passait entre les deux.
+        signalerEtape('depart-caisse', selectedPlan);
         window.location.href = data.checkoutUrl;
       } else {
+        // Une erreur ici veut dire que personne n'atteindra jamais la caisse :
+        // ces cas-là ne doivent pas se confondre avec un abandon volontaire.
+        signalerEtape('echec-lien', selectedPlan);
         alert(data.error || "Une erreur est survenue lors de l'initialisation du paiement.");
         setLoadingPlan(null);
       }

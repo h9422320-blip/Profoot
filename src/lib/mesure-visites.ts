@@ -50,6 +50,18 @@ export interface CheminSuivi {
   passages: number;
 }
 
+/** Une étape du tunnel de vente, et ce qu'elle a retenu. */
+export interface EtapeEntonnoir {
+  cle: string;
+  libelle: string;
+  /** Visites distinctes ayant atteint cette étape. */
+  visites: number;
+  /** Part de l'étape précédente, en pourcentage. */
+  partPrecedente: number | null;
+  /** Perte par rapport à l'étape précédente. */
+  perdues: number;
+}
+
 export interface BilanVisites {
   /** Depuis quand on regarde. */
   depuis: string;
@@ -65,6 +77,8 @@ export interface BilanVisites {
   sorties: PageMesuree[];
   cheminsFrequents: CheminSuivi[];
   pays: { valeur: string; visites: number }[];
+  /** Le tunnel de vente, de la page des tarifs au départ vers la caisse. */
+  entonnoir: EtapeEntonnoir[];
   /** Vrai quand la table n'existe pas encore. */
   tableAbsente?: boolean;
 }
@@ -120,6 +134,7 @@ export async function lireBilanVisites(heures = 24): Promise<BilanVisites> {
   const vide: BilanVisites = {
     depuis, visites: 0, pagesVues: 0, pagesParVisite: 0, tauxUnePage: 0,
     partMobile: null, pages: [], sorties: [], cheminsFrequents: [], pays: [],
+    entonnoir: [],
   };
 
   const lignes = await lireTout(depuis);
@@ -134,6 +149,15 @@ export async function lireBilanVisites(heures = 24): Promise<BilanVisites> {
     passages.set(l.visite_id, liste);
   }
   for (const liste of passages.values()) liste.sort((a, b) => a.ordre - b.ordre);
+
+  // ── LES ÉTAPES DU TUNNEL NE SONT PAS DES PAGES ──────────────────────────
+  //
+  // Elles sont enregistrées dans la même table, sous un chemin commençant par
+  // « /~ », pour hériter de tout ce qui existe déjà — identifiant de visite,
+  // pays, support, signal qui survit à la fermeture. Mais les mêler aux pages
+  // fausserait tout : une étape n'a pas de durée, ne s'ouvre pas, et compterait
+  // comme une sortie.
+  const estEtape = (chemin: string) => chemin.startsWith('/~');
 
   // ── Agrégation par page ──────────────────────────────────────────────────
   const parPage = new Map<string, {
@@ -151,7 +175,8 @@ export async function lireBilanVisites(heures = 24): Promise<BilanVisites> {
   };
 
   for (const [, liste] of passages) {
-    liste.forEach((l, i) => {
+    const pagesSeules = liste.filter((l) => !estEtape(l.chemin));
+    pagesSeules.forEach((l, i) => {
       const p = poste(l.chemin);
       p.vues++;
       p.visites.add(l.visite_id);
@@ -160,7 +185,7 @@ export async function lireBilanVisites(heures = 24): Promise<BilanVisites> {
         p.avecDuree++;
       } else p.sansDuree++;
       if (i === 0) p.arrivees++;
-      if (i === liste.length - 1) p.sorties++;
+      if (i === pagesSeules.length - 1) p.sorties++;
     });
   }
 
@@ -189,10 +214,11 @@ export async function lireBilanVisites(heures = 24): Promise<BilanVisites> {
   // ── Les chemins les plus suivis ─────────────────────────────────────────
   const parcours = new Map<string, number>();
   for (const [, liste] of passages) {
-    if (liste.length < 2) continue;
+    const seulesPages = liste.filter((l) => !estEtape(l.chemin));
+    if (seulesPages.length < 2) continue;
     // Quatre pages suffisent à voir l'intention ; au-delà, chaque parcours
     // devient unique et le classement ne dit plus rien.
-    const cle = liste.slice(0, 4).map((l) => l.chemin).join(' → ');
+    const cle = seulesPages.slice(0, 4).map((l) => l.chemin).join(' → ');
     parcours.set(cle, (parcours.get(cle) ?? 0) + 1);
   }
   const cheminsFrequents: CheminSuivi[] = [...parcours]
@@ -216,13 +242,70 @@ export async function lireBilanVisites(heures = 24): Promise<BilanVisites> {
   const surMobile = [...mobileParVisite.values()].filter(Boolean).length;
   const totalSupport = mobileParVisite.size;
 
-  const unePage = [...passages.values()].filter((l) => l.length === 1).length;
+  // ── LE TUNNEL DE VENTE, ÉTAPE PAR ÉTAPE ─────────────────────────────────
+  //
+  // On compte des VISITES DISTINCTES, jamais des signaux : quelqu'un qui ouvre
+  // la notice, la ferme, la rouvre et paie doit compter pour une personne à
+  // chaque étape. Compter les signaux gonflerait le haut de l'entonnoir et
+  // ferait paraître la perte plus grande qu'elle n'est.
+  //
+  // La première marche est la PAGE DES TARIFS, pas le clic : c'est elle qui
+  // donne le vrai dénominateur — combien de gens ont vu les prix.
+  const visitesAvec = (predicat: (chemin: string) => boolean) => {
+    const vus = new Set<string>();
+    for (const [id, liste] of passages)
+      if (liste.some((l) => predicat(l.chemin))) vus.add(id);
+    return vus.size;
+  };
+
+  const MARCHES: { cle: string; libelle: string; test: (c: string) => boolean }[] = [
+    { cle: 'tarifs', libelle: 'Ont vu les tarifs', test: (c) => c === '/pricing' },
+    { cle: 'offre-cliquee', libelle: 'Ont cliqué sur une offre', test: (c) => c.startsWith('/~offre-cliquee') },
+    { cle: 'notice-continuer', libelle: 'Ont cliqué « Continuer »', test: (c) => c.startsWith('/~notice-continuer') },
+    { cle: 'notice-auto', libelle: 'Sont partis après 20 s, sans agir', test: (c) => c.startsWith('/~notice-auto') },
+    { cle: 'notice-fermee', libelle: 'Ont fermé la notice', test: (c) => c.startsWith('/~notice-fermee') },
+    { cle: 'depart-caisse', libelle: 'Sont partis vers la caisse', test: (c) => c.startsWith('/~depart-caisse') },
+    { cle: 'echec-lien', libelle: 'Lien de paiement en échec', test: (c) => c.startsWith('/~echec-lien') },
+  ];
+
+  const brut = MARCHES.map((m) => ({ ...m, visites: visitesAvec(m.test) }));
+
+  // Les trois issues de la notice sont des SŒURS, pas des marches : elles se
+  // partagent ceux qui ont cliqué sur une offre. Seul le départ vers la caisse
+  // est une marche de plus. La part affichée se calcule donc contre la bonne
+  // référence, sinon « fermé » paraîtrait suivre « continuer ».
+  const reference: Record<string, string | null> = {
+    tarifs: null,
+    'offre-cliquee': 'tarifs',
+    'notice-continuer': 'offre-cliquee',
+    'notice-auto': 'offre-cliquee',
+    'notice-fermee': 'offre-cliquee',
+    'depart-caisse': 'offre-cliquee',
+    'echec-lien': 'offre-cliquee',
+  };
+
+  const parCle = new Map(brut.map((m) => [m.cle, m.visites]));
+  const entonnoir: EtapeEntonnoir[] = brut.map((m) => {
+    const ref = reference[m.cle];
+    const base = ref ? (parCle.get(ref) ?? 0) : 0;
+    return {
+      cle: m.cle,
+      libelle: m.libelle,
+      visites: m.visites,
+      partPrecedente: ref && base > 0 ? arrondi((m.visites / base) * 100) : null,
+      perdues: ref && base > 0 ? Math.max(0, base - m.visites) : 0,
+    };
+  });
+
+  const unePage = [...passages.values()].filter(
+    (l) => l.filter((x) => !estEtape(x.chemin)).length === 1
+  ).length;
 
   return {
     depuis,
     visites: passages.size,
-    pagesVues: lignes.length,
-    pagesParVisite: arrondi(lignes.length / passages.size),
+    pagesVues: lignes.filter((l) => !estEtape(l.chemin)).length,
+    pagesParVisite: arrondi(lignes.filter((l) => !estEtape(l.chemin)).length / passages.size),
     tauxUnePage: arrondi((unePage / passages.size) * 100),
     partMobile: totalSupport ? arrondi((surMobile / totalSupport) * 100) : null,
     pages: pages.slice(0, 15),
@@ -232,5 +315,6 @@ export async function lireBilanVisites(heures = 24): Promise<BilanVisites> {
       .map(([valeur, visites]) => ({ valeur, visites }))
       .sort((a, b) => b.visites - a.visites)
       .slice(0, 8),
+    entonnoir,
   };
 }

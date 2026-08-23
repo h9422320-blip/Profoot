@@ -115,8 +115,20 @@ test('CONTRAT — la notice repart toute seule au bout de vingt secondes', () =>
   );
   assert.match(
     src,
-    /if \(reste <= 0\) \{\s*\n\s*partir\(\);/,
+    /if \(reste <= 0\) \{\s*\n\s*partir\(/,
     'La redirection automatique a disparu : quelqu\'un qui ne clique pas resterait bloqué.'
+  );
+
+  // ── LE DÉPART AUTOMATIQUE NE SE CONFOND PAS AVEC UN CLIC ────────────────
+  //
+  // Cliquer « Continuer » est une décision, laisser filer les vingt secondes
+  // est de l'indifférence. Les compter ensemble reviendrait à mesurer un départ
+  // sans savoir s'il faut raccourcir le délai ou réécrire le texte.
+  assert.match(
+    src,
+    /partir\('notice-auto'\)/,
+    "Le départ automatique n'est plus distingué du clic volontaire : la mesure " +
+      'du tunnel ne pourrait plus dire si les gens décident ou subissent.'
   );
 });
 
