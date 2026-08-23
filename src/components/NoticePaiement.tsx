@@ -129,11 +129,14 @@ export default function NoticePaiement({
   // `createPortal` a besoin du document : on attend le montage côté navigateur.
   useEffect(() => setMonte(true), []);
 
-  // L'ouverture est le premier point de mesure : c'est lui qui donne le
-  // dénominateur — combien de personnes ont vraiment vu cet écran.
-  useEffect(() => {
-    signalerEtape('offre-cliquee');
-  }, []);
+  // ── L'OUVERTURE EST SIGNALÉE PAR L'APPELANT, PAS D'ICI ──────────────────
+  //
+  // Cette fenêtre ne sait pas quelle offre a été choisie : le paywall vend un
+  // match seul à 600 FCFA, la page des tarifs trois abonnements. Signaler
+  // depuis ici aurait tout fondu dans un seul compteur — et, sur le paywall
+  // qui signale déjà, aurait compté deux fois le même clic.
+  //
+  // Chaque porte d'achat émet donc son propre signal, avec le nom de l'offre.
 
   // Le corps de la page ne défile plus derrière la feuille : sur téléphone,
   // un fond qui bouge sous le doigt donne l'impression que rien n'est cliquable.

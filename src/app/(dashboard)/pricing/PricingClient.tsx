@@ -216,6 +216,10 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
    * `lancerPaiement` ci-dessous, exactement l'ancien code.
    */
   const handleSubscribe = (selectedPlan: PlanKey) => {
+    // Le dénominateur du tunnel, avec le nom de l'offre : sans lui, on ignore
+    // combien de personnes ont vraiment voulu payer, et laquelle des trois
+    // offres retient l'attention.
+    signalerEtape('offre-cliquee', selectedPlan);
     setNoticePour(selectedPlan);
   };
 

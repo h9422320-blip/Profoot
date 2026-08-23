@@ -2,7 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Loader, Lock } from "lucide-react";
+import { signalerEtape } from "@/components/etapes-vente";
+import { usePaysAcheteur } from "@/components/usePaysAcheteur";
+
+/**
+ * La notice est chargée À LA DEMANDE, comme sur la page des tarifs.
+ *
+ * Elle embarque la table des moyens de paiement des 243 pays — quarante-huit
+ * kilo-octets. Ce paywall s'affiche à CHAQUE visiteur gratuit qui ouvre une
+ * analyse : l'imposer à tout le monde pour les quelques-uns qui cliquent
+ * alourdirait la page la plus visitée du site.
+ */
+const NoticePaiement = dynamic(() => import("@/components/NoticePaiement"), { ssr: false });
 
 /**
  * Le paywall à deux chemins.
@@ -46,8 +59,28 @@ export default function PaywallDeuxChemins({
 }) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  /** Vrai quand la notice de paiement est ouverte pour l'achat du match. */
+  const [notice, setNotice] = useState(false);
+  const paysDetecte = usePaysAcheteur(notice);
 
-  const acheterCeMatch = async () => {
+  /**
+   * ── LE CLIC OUVRE LA NOTICE, IL NE PART PLUS DIRECTEMENT ─────────────────
+   *
+   * Ce paywall envoyait chez Chariow sans un mot d'explication. Un acheteur à
+   * Abidjan y arrivait sans savoir qu'il pouvait payer avec Wave ou Orange
+   * Money — alors que la page des tarifs, elle, le lui disait depuis le 22 août.
+   *
+   * Or c'est ici que passe le plus gros du trafic : 1 381 visites sur la page
+   * d'analyse contre 900 sur les tarifs. La moitié des acheteurs n'avaient
+   * aucune aide, et aucun d'eux n'était compté.
+   */
+  const ouvrirNotice = () => {
+    signalerEtape('offre-cliquee', 'match-unique');
+    setNotice(true);
+  };
+
+  const acheterCeMatch = async (paysChoisi: string | null) => {
+    setNotice(false);
     setEnCours(true);
     setErreur(null);
     try {
@@ -63,6 +96,9 @@ export default function PaywallDeuxChemins({
           // Sert à situer l'acheteur quand l'en-tête de géolocalisation manque :
           // sans pays juste, la page de paiement propose les mauvais moyens.
           fuseau: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          // Renseigné seulement si l'acheteur a corrigé son pays dans la
+          // notice. Absent, le serveur détecte comme avant.
+          ...(paysChoisi ? { pays: paysChoisi } : {}),
         }),
       });
       const data = await r.json();
@@ -74,13 +110,18 @@ export default function PaywallDeuxChemins({
           window.location.reload();
           return;
         }
+        // Un échec ici veut dire que personne n'atteindra la caisse : à ne pas
+        // confondre avec un abandon volontaire.
+        signalerEtape('echec-lien', 'match-unique');
         setErreur(data?.error ?? "Paiement indisponible pour le moment.");
         setEnCours(false);
         return;
       }
 
+      signalerEtape('depart-caisse', 'match-unique');
       window.location.href = data.checkoutUrl;
     } catch {
+      signalerEtape('echec-lien', 'match-unique');
       setErreur("Connexion interrompue. Réessayez.");
       setEnCours(false);
     }
@@ -117,7 +158,7 @@ export default function PaywallDeuxChemins({
               engage sans réfléchir, pour un match précis, tout de suite. */}
           <button
             type="button"
-            onClick={acheterCeMatch}
+            onClick={ouvrirNotice}
             disabled={enCours}
             className="w-full inline-flex items-center justify-center gap-2 font-black py-4 px-5 rounded-full transition-all text-[14px] sm:text-[15px] text-center shadow-[0_8px_32px_rgba(45,212,191,0.4)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-wait min-h-[52px]"
             style={{
@@ -160,6 +201,7 @@ export default function PaywallDeuxChemins({
           rapport : c'est vrai, et c'est là que se trouve la valeur réelle. */}
       <Link
         href="/pricing"
+        onClick={() => signalerEtape('offre-cliquee', 'vers-tarifs')}
         className={`w-full inline-flex items-center justify-center gap-2 font-black py-4 px-5 rounded-full transition-all text-[13px] sm:text-sm text-center active:scale-95 min-h-[52px] ${
           achatUniteDisponible
             ? "bg-white/[0.07] border border-white/15 text-white hover:bg-white/[0.12]"
@@ -183,6 +225,22 @@ export default function PaywallDeuxChemins({
             ? "analyses illimitées"
             : `${quotaAbonnement} analyses complètes par mois`}
         </p>
+      )}
+
+      {/* ── LA MÊME NOTICE QUE SUR LA PAGE DES TARIFS ─────────────────────
+          Elle n'existe QUE pendant le clic : hors de ce moment, elle n'est pas
+          montée, et les quarante-huit kilo-octets de la table des moyens de
+          paiement ne partent pas dans le téléphone des visiteurs qui ne
+          cliquent pas — c'est-à-dire la quasi-totalité. */}
+      {notice && (
+        <NoticePaiement
+          paysDetecte={paysDetecte}
+          libelleOffre={`Analyse complète — ${equipe1Nom} contre ${equipe2Nom} · ${prixMatch.toLocaleString(
+            "fr-FR"
+          )} FCFA`}
+          onContinuer={(paysRetenu) => acheterCeMatch(paysRetenu)}
+          onFermer={() => setNotice(false)}
+        />
       )}
     </div>
   );
