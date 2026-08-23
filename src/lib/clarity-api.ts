@@ -28,18 +28,24 @@ import { reserverAppel, signalerRefus } from './clarity-quota';
 const ENDPOINT = 'https://www.clarity.ms/export-data/api/v1/project-live-insights';
 
 /**
- * SIX HEURES, ET NON PLUS TROIS.
+ * DOUZE HEURES.
  *
- * À trois heures, ouvrir les deux pages d'administration quatre fois dans la
- * soirée suffisait à épuiser les dix appels quotidiens de Microsoft — c'est
- * arrivé le 23 août 2026, et plus rien n'était lisible jusqu'au lendemain.
+ * ── LE CALCUL, EN CLAIR ───────────────────────────────────────────────────
  *
- * Six heures ramènent le pire cas à quatre lectures par jour, appels de
- * diagnostic compris. Les chiffres de Clarity portent sur trois jours : ils ne
- * bougent pas assez vite pour qu'une demi-journée de retard change une
- * décision.
+ * Microsoft autorise dix appels par jour. Chaque rafraîchissement en coûte
+ * deux : un pour les pages, un pour l'audience. À douze heures de réserve,
+ * c'est QUATRE appels par jour au pire — il en reste six pour diagnostiquer.
+ *
+ * Avant, c'était trois heures et quatre appels par rafraîchissement, soit
+ * trente-deux appels par jour dans le pire cas. Le quota a été épuisé le
+ * 22 août au soir en ouvrant deux pages trois fois de suite, et Microsoft a
+ * refusé pendant plus de trente-six heures.
+ *
+ * Les chiffres de Clarity portent sur trois jours glissants : une demi-journée
+ * de retard ne change aucune décision. Ce qui en change une, c'est de ne plus
+ * avoir de chiffres du tout.
  */
-const TTL = 6 * 60 * 60 * 1000;
+const TTL = 12 * 60 * 60 * 1000;
 const CLE = 'clarity:apercu';
 
 export interface LigneClarity {
@@ -183,7 +189,22 @@ interface Reponse {
   brut?: string;
 }
 
-async function interroger(dimension: string, jours: number): Promise<Reponse> {
+/**
+ * Interroge Clarity. Une requête, jusqu'à TROIS dimensions.
+ *
+ * ── POURQUOI PLUSIEURS DIMENSIONS À LA FOIS ──────────────────────────────
+ *
+ * L'aperçu d'audience faisait trois requêtes — pays, navigateur, appareil —
+ * là où l'API en accepte trois d'un coup. Avec la lecture des pages, chaque
+ * rafraîchissement coûtait QUATRE des dix appels quotidiens.
+ *
+ * C'est ce qui a épuisé le quota le 22 août 2026 au soir : ouvrir deux pages
+ * d'administration trois fois de suite, et Microsoft refusait tout le reste
+ * de la journée.
+ *
+ * Deux requêtes suffisent désormais : une pour les pages, une pour l'audience.
+ */
+async function interroger(dimension: string, jours: number, dimension2?: string, dimension3?: string): Promise<Reponse> {
   // ── ON S'ARRÊTE AVANT LE PLAFOND, PLUS EN LE HEURTANT ───────────────────
   //
   // Sans ce garde-fou, on découvrait la limite en recevant « Exceeded daily
@@ -203,6 +224,8 @@ async function interroger(dimension: string, jours: number): Promise<Reponse> {
   const url = new URL(ENDPOINT);
   url.searchParams.set('numOfDays', String(jours));
   if (dimension) url.searchParams.set('dimension1', dimension);
+  if (dimension2) url.searchParams.set('dimension2', dimension2);
+  if (dimension3) url.searchParams.set('dimension3', dimension3);
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${process.env.CLARITY_API_TOKEN}` },
@@ -264,15 +287,17 @@ export async function lireApercuClarity(jours: 1 | 2 | 3 = 3): Promise<ApercuCla
       return { ...enBase.contenu, enReserve: true };
     }
 
-    const [parPays, parNavigateur, parAppareil] = await Promise.all([
-      interroger('Country', jours),
-      interroger('Browser', jours),
-      interroger('Device', jours),
-    ]);
+    // Les trois dimensions dans UNE seule requête : chaque ligne renvoyée
+    // porte à la fois le pays, le navigateur et l'appareil. On agrège ensuite
+    // selon celle qui nous intéresse.
+    const reponse = await interroger('Country', jours, 'Browser', 'Device');
+    const parPays = reponse;
+    const parNavigateur = reponse;
+    const parAppareil = reponse;
 
-    const probleme = parPays.probleme ?? parNavigateur.probleme ?? parAppareil.probleme;
+    const probleme = reponse.probleme;
 
-    if (!parPays.blocs && !parNavigateur.blocs && !parAppareil.blocs) {
+    if (!reponse.blocs) {
       // Plafond atteint ou service muet : on ressert la dernière valeur connue,
       // même périmée. Un chiffre d'hier vaut mieux qu'un écran vide.
       const perime = await lireReserve<ApercuClarity>(CLE);
