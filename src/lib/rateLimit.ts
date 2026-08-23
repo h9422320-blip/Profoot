@@ -1,5 +1,41 @@
-// Rate Limiting Anti-Spam - ProFoot AI
-// Protège les ressources de l'Agent IA contre les requêtes excessives.
+/**
+ * LIMITE DE DÉBIT EN MÉMOIRE — POUR LE BRUIT, PAS POUR L'ARGENT.
+ *
+ * ── CE QU'ELLE VAUT VRAIMENT ──────────────────────────────────────────────
+ *
+ * Les compteurs vivent dans un `Map`, en mémoire. Sur Vercel, chaque requête
+ * peut atterrir sur une instance différente, et chaque instance a sa propre
+ * mémoire : « quarante par minute » devient quarante par minute PAR INSTANCE.
+ * Le serveur redémarre aussi plusieurs fois par heure, ce qui remet tout à
+ * zéro.
+ *
+ * Autrement dit : cette limite freine le bruit, elle n'arrête pas une attaque.
+ *
+ * ── POURQUOI ELLE RESTE, MALGRÉ TOUT ──────────────────────────────────────
+ *
+ * Elle ne protège plus rien de coûteux. Les deux routes où un abus coûte de
+ * l'argent réel — l'analyse et l'Agent VIP — sont passées à
+ * `limite-partagee.ts`, qui compte en base et vaut pour toutes les instances.
+ *
+ * Les quatre routes qui l'utilisent encore — `fixtures`, `search`,
+ * `standings`, `competitions/live` — servent des données football. On aurait
+ * pu les basculer aussi ; on ne l'a pas fait, et c'est délibéré :
+ *
+ *   • LEUR QUOTA EST DÉJÀ PROTÉGÉ AILLEURS. `apiFootball()` lit la réserve
+ *     avant d'appeler le fournisseur. Mille requêtes identiques ne consomment
+ *     qu'un seul appel : c'est le cache qui garde le quota, pas ce compteur.
+ *   • LEUR CLÉ EST UNE ADRESSE IP, qu'un attaquant change en une seconde. Une
+ *     limite plus stricte ne l'arrêterait pas davantage.
+ *   • ÉCRIRE EN BASE À CHAQUE APPEL COÛTERAIT PLUS QUE ÇA NE PROTÈGE. À
+ *     quarante requêtes par minute et par visiteur, on ajouterait des milliers
+ *     d'écritures par minute pour freiner ce que le cache absorbe déjà.
+ *
+ * ── LA RÈGLE, POUR LA SUITE ───────────────────────────────────────────────
+ *
+ * Si une route dépense de l'argent — un modèle d'IA, un envoi, un paiement —
+ * elle utilise `limite-partagee.ts`. Ce module-ci ne convient qu'aux routes
+ * dont l'abus ne coûte qu'un peu de calcul.
+ */
 
 interface RateLimitTracker {
   count: number;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MODELES_GEMINI } from "@/lib/gemini-models";
 import { genererAnalyseJSON } from "@/lib/analyse-modele";
+import { compterTentative, messageAttente } from "@/lib/limite-partagee";
 import { PRIX_MATCH_UNIQUE, matchDebloque, matchUniqueDisponible } from "@/lib/match-unique";
 import { openRouterDisponible } from "@/lib/openrouter";
 import { requireUser } from "@/lib/subscription";
@@ -303,7 +304,7 @@ function getCurrentSeason(): number {
   return month >= 8 ? now.getFullYear() : now.getFullYear() - 1;
 }
 
-import { isRateLimited, clientIp, setBounded } from "@/lib/rateLimit";
+import { clientIp, setBounded } from "@/lib/rateLimit";
 
 // L'analyse enchaîne plusieurs appels API-Football puis un appel Gemini : bien
 // au-delà des 10 s accordées par défaut à une fonction serverless. Sans cette
@@ -453,13 +454,25 @@ async function analyser(req: Request, billet: BilletQuota) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
 
-  // --- BOUCLIER ANTI-SPAM (5 requêtes par minute) ---
+  // ── BOUCLIER ANTI-SPAM : CINQ ANALYSES PAR MINUTE ────────────────────────
+  //
   // Clé = identifiant du compte : contrairement à l'IP, il n'est pas
   // renouvelable à volonté par l'attaquant.
+  //
+  // LE COMPTE VIT EN BASE, PLUS EN MÉMOIRE. Sur Vercel, chaque requête peut
+  // atterrir sur une instance différente, et chaque instance avait son propre
+  // compteur : « cinq par minute » devenait cinq par minute PAR INSTANCE. Avec
+  // dix instances éveillées, cinquante analyses payantes par minute passaient
+  // pour un seul compte. C'est cette route qui appelle le modèle : chaque
+  // requête coûte de l'argent réel.
   const ip = guard.user.id;
-  if (isRateLimited(ip, 'analyze', 5, 60 * 1000)) {
+  const limite = await compterTentative('analyse', ip, 5, 60 * 1000);
+  if (limite.bloque) {
     console.warn(`[ANTI-SPAM] Compte ${ip} bloqué pour abus d'analyse.`);
-    return NextResponse.json({ error: "Trop de requêtes. Veuillez patienter une minute." }, { status: 429 });
+    return NextResponse.json(
+      { error: `Trop de requêtes. ${messageAttente(limite.attendreSecondes)}` },
+      { status: 429 }
+    );
   }
   // --------------------------------------------------
 

@@ -84,3 +84,30 @@ test('★ ACQUIS — le compteur de tentatives vit en base, pas en mémoire', ()
       'tentatives en quelques secondes, à cheval sur deux tranches.'
   );
 });
+
+/**
+ * LES ROUTES QUI DÉPENSENT DE L'ARGENT COMPTENT EN BASE.
+ *
+ * La limite en mémoire vaut par instance : sur Vercel, « cinq par minute »
+ * devenait cinq par minute PAR INSTANCE. Avec dix instances éveillées, un seul
+ * compte pouvait lancer cinquante analyses payantes par minute.
+ */
+test('★ ACQUIS — l analyse et l Agent VIP comptent en base', () => {
+  for (const [chemin, domaine] of [
+    ['src/app/api/analyze/route.ts', 'analyse'],
+    ['src/app/api/chat/route.ts', 'agent'],
+  ] as const) {
+    const src = lire(chemin);
+
+    assert.ok(
+      src.includes("compterTentative('" + domaine + "'"),
+      `${chemin} ne compte plus en base. En mémoire, la limite est multipliée ` +
+        "par le nombre d'instances — et cette route appelle un modèle payant."
+    );
+
+    assert.ok(
+      !/isRateLimited\(/.test(src),
+      `${chemin} est revenue à la limite en mémoire.`
+    );
+  }
+});

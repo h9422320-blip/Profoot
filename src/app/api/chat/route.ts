@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { MODELE as MODELE_AGENT, interrogerAgentVip } from '@/lib/agent-vip';
 import { enregistrerEchange } from '@/lib/conversations-vip';
-import { isRateLimited } from '@/lib/rateLimit';
+import { compterTentative, messageAttente } from '@/lib/limite-partagee';
 import { requireVip } from '@/lib/subscription';
 
 export const maxDuration = 60;
@@ -11,13 +11,20 @@ export async function POST(req: Request) {
   const guard = await requireVip();
   if (!guard.ok) return guard.response;
 
-  // --- BOUCLIER ANTI-SPAM (10 requêtes par minute pour l'agent IA) ---
+  // ── BOUCLIER ANTI-SPAM : DIX QUESTIONS PAR MINUTE ───────────────────────
+  //
   // Clé = identifiant du compte (non renouvelable, contrairement à l'IP).
+  //
+  // LE COMPTE VIT EN BASE, PLUS EN MÉMOIRE. Chaque instance avait le sien :
+  // « dix par minute » devenait dix par minute PAR INSTANCE. L'Agent VIP
+  // tourne sur le modèle le plus cher de l'application — c'est la route où un
+  // abus coûte le plus vite.
   const compte = guard.user.id;
-  if (isRateLimited(compte, 'agent', 10, 60 * 1000)) {
+  const limite = await compterTentative('agent', compte, 10, 60 * 1000);
+  if (limite.bloque) {
     console.warn(`[ANTI-SPAM] Compte ${compte} bloqué pour abus du chat IA.`);
     return Response.json(
-      { error: "Trop de requêtes à l'Agent IA. Veuillez patienter une minute." },
+      { error: `Trop de requêtes à l'Agent IA. ${messageAttente(limite.attendreSecondes)}` },
       { status: 429 }
     );
   }
