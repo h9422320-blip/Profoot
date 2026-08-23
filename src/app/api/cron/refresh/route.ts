@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { autoriserCron } from '@/lib/garde-cron';
 import { LEAGUE_IDS } from '@/lib/api-football';
 import { getAllCompetitionStatuses } from '@/lib/competition-status';
 import { getLiveTeams } from '@/lib/teams-live';
@@ -18,18 +19,13 @@ export const dynamic = 'force-dynamic';
  * mettraient à jour qu'à l'expiration des caches, au gré des visites.
  */
 export async function GET(request: Request) {
-  // Vercel signe ses appels planifiés ; en l'absence de secret configuré on
-  // accepte l'en-tête officiel pour ne pas bloquer la mise en place.
-  const secret = process.env.CRON_SECRET;
-  const auth = request.headers.get('authorization');
-  const estVercelCron = request.headers.get('user-agent')?.includes('vercel-cron');
-
-  if (secret) {
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-  } else if (!estVercelCron) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  // Le repli qui acceptait un simple user-agent « vercel-cron » a disparu :
+  // c'était une chaîne que n'importe qui écrit en trois secondes, et cette
+  // route consomme le quota du fournisseur de données football — la ressource
+  // la plus rare du projet. Voir `garde-cron.ts`.
+  const verdict = autoriserCron(request, 'refresh');
+  if (!verdict.autorise) {
+    return NextResponse.json({ error: 'Non autorisé', motif: verdict.raison }, { status: 401 });
   }
 
   const debut = Date.now();
