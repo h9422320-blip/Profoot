@@ -22,6 +22,8 @@
  */
 
 import { createAdminClient } from '@/lib/supabase-admin';
+import { compterTentative } from '@/lib/limite-partagee';
+import { clientIp } from '@/lib/rateLimit';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -43,6 +45,31 @@ export async function POST(req: Request) {
 
     const vueId = borner(corps.vueId, 40);
     if (!vueId) return recu();
+
+    // ── UNE MESURE NE DOIT PAS POUVOIR NOYER LA BASE ────────────────────────
+    //
+    // Cette route écrit sans rien demander : c'est nécessaire, puisqu'elle
+    // enregistre le passage de visiteurs anonymes. Mais rien ne bornait le
+    // NOMBRE d'appels. Un script pouvait insérer des millions de lignes dans
+    // la table des visites, gonfler la base et fausser tous les chiffres — au
+    // point de rendre la mesure inutilisable, donc de détruire précisément ce
+    // qu'elle sert à voir.
+    //
+    // CENT VINGT PAR HEURE ET PAR VISITEUR. Une visite normale ouvre une
+    // dizaine de pages, chacune comptant deux signaux — arrivée et départ.
+    // Cent vingt laissent donc largement la place à quelqu'un qui navigue
+    // beaucoup, et coupent net un automate.
+    //
+    // La clé est l'adresse IP. Elle se change, oui — mais en changer à chaque
+    // requête coûte à l'attaquant, et le but n'est pas d'empêcher
+    // l'entêtement : c'est d'empêcher qu'un simple script lancé depuis un
+    // poste remplisse la base en une nuit.
+    //
+    // Le refus reste un 204, comme tout le reste ici : le navigateur d'un
+    // visiteur ordinaire ne doit jamais voir d'erreur à cause de la mesure.
+    const empreinte = clientIp(req) ?? 'inconnu';
+    const limite = await compterTentative('mesure', empreinte, 120, 60 * 60 * 1000);
+    if (limite.bloque) return recu();
 
     const admin = createAdminClient();
 

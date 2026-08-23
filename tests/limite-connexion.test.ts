@@ -111,3 +111,36 @@ test('★ ACQUIS — l analyse et l Agent VIP comptent en base', () => {
     );
   }
 });
+
+/**
+ * LA MESURE MAISON NE PEUT PAS SERVIR À NOYER LA BASE.
+ *
+ * `/api/mesure` écrit sans rien demander — c'est nécessaire, elle enregistre le
+ * passage de visiteurs anonymes. Mais rien ne bornait le NOMBRE d'appels : un
+ * script pouvait insérer des millions de lignes, gonfler la base et fausser
+ * tous les chiffres, détruisant précisément ce que la mesure sert à voir.
+ */
+test('★ ACQUIS — les écritures de mesure sont bornées', () => {
+  const src = lire('src/app/api/mesure/route.ts');
+
+  assert.ok(
+    src.includes("compterTentative('mesure'"),
+    "Plus aucune limite sur /api/mesure. Un script peut y insérer des millions " +
+      'de lignes et rendre la mesure inutilisable.'
+  );
+
+  // La limite doit précéder l'écriture, sinon elle ne protège rien.
+  assert.ok(
+    src.indexOf("compterTentative('mesure'") < src.indexOf('.insert('),
+    "La limite arrive APRÈS l'insertion : les lignes seraient écrites avant " +
+      "d'être comptées."
+  );
+
+  // Et le refus reste silencieux : la mesure ne doit jamais gêner un visiteur.
+  const bloc = src.slice(src.indexOf('limite.bloque'), src.indexOf('limite.bloque') + 60);
+  assert.ok(
+    /recu\(\)/.test(bloc),
+    'Le refus ne renvoie plus le 204 silencieux. Le navigateur d\'un visiteur ' +
+      "ordinaire verrait une erreur à cause d'une simple statistique."
+  );
+});
