@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import Script from "next/script";
 import { classesPolices } from "./polices";
 import SignalReact from "@/components/SignalReact";
+import MesureVisite from "@/components/MesureVisite";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -289,6 +290,13 @@ export default function RootLayout({
           <LanguageProvider>
             {children}
             <SignalReact />
+            {/* La mesure maison : quelle page, combien de temps, où l'on ferme.
+                Elle n'envoie rien de personnel et n'attend aucune réponse — le
+                visiteur ne la remarque jamais. Elle existe parce que Clarity
+                plafonne à dix appels par jour et répond avec un jour de retard :
+                le 22 août 2026, le quota a été épuisé en une soirée et plus
+                aucun chiffre n'a été lisible pendant trente-six heures. */}
+            <MesureVisite />
             <Analytics />
             <SpeedInsights />
           </LanguageProvider>

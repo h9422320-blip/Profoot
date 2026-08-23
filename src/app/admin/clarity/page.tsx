@@ -1,6 +1,7 @@
 import { lireApercuClarity, lireComportementClarity, clarityConfigure } from '@/lib/clarity-api';
 import { composerBilan } from '@/lib/bilan-clarity';
 import { etatQuota, PLAFOND_MICROSOFT } from '@/lib/clarity-quota';
+import MesureMaison from './MesureMaison';
 import { EnTete } from '../_components/EnTete';
 import { Panneau } from '../_components/Panneaux';
 import { Vide } from '../_components/Ui';
@@ -97,6 +98,23 @@ export default async function ClarityPage() {
           </p>
         </div>
       )}
+
+      {/* ── LA MESURE MAISON D'ABORD ───────────────────────────────────────
+          Elle passe avant Clarity parce qu'elle n'a ni plafond ni retard, et
+          qu'elle seule répond à « sur quelle page ferment-ils ». Clarity suit
+          en dessous, pour ce qu'il fait mieux : la comparaison des supports, et
+          les enregistrements vidéo que son interface est seule à montrer. */}
+      <MesureMaison heures={24} />
+
+      <div className="pt-2">
+        <h2 className="text-[13px] font-black uppercase tracking-wider text-foreground/70 px-1">
+          Ce que Clarity ajoute
+        </h2>
+        <p className="text-[11.5px] text-foreground/40 px-1 mt-1 leading-relaxed">
+          Chiffres agrégés sur trois jours, plafonnés à dix appels quotidiens par
+          Microsoft. Pour les enregistrements vidéo, ouvrez Clarity directement.
+        </p>
+      </div>
 
       {/* ── Ce qu'il faut retenir ───────────────────────────────────────── */}
       {b.resume.length > 0 && (
