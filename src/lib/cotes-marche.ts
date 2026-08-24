@@ -282,7 +282,20 @@ export async function releverCotes(
   maintenant = new Date()
 ): Promise<{ jours: number; matchs: number; ligues: number; detail: { jour: string; matchs: number }[] }> {
   const saison = saisonCourante(maintenant);
-  const ligues = [...NOS_LIGUES];
+  // ── LA LISTE TOURNE D'UN JOUR À L'AUTRE ─────────────────────────────────
+  //
+  // Le budget coupe le relevé au milieu : mesuré le 24 août 2026, 36
+  // championnats sur 63. Parcourue toujours dans le même ordre, la liste
+  // condamnait les vingt-sept derniers à n'être JAMAIS relevés — pas « plus
+  // tard », jamais. C'est le même affamement qui laissait 1 871 analyses en
+  // attente sans espoir d'être vérifiées un jour.
+  //
+  // Le point de départ avance donc chaque jour. Sur trois ou quatre jours,
+  // toute la liste est passée, et aucun championnat n'est laissé de côté.
+  const toutes = [...NOS_LIGUES];
+  const jourAbsolu = Math.floor(maintenant.getTime() / 86400000);
+  const depart = toutes.length ? (jourAbsolu * DE_FRONT * 3) % toutes.length : 0;
+  const ligues = [...toutes.slice(depart), ...toutes.slice(0, depart)];
 
   // ── LES CHAMPIONNATS SONT INTERROGÉS PAR PAQUETS ────────────────────────
   //

@@ -179,6 +179,35 @@ export async function GET(request: Request) {
       console.warn('[CRON] Réconciliation des ventes impossible :', e?.message);
     }
 
+    // ── ET ON PRÉVIENT CELUI QUI A PAYÉ SANS RIEN RECEVOIR ────────────────
+    //
+    // La réconciliation ci-dessus ROUVRE l'accès, mais elle ne dit rien au
+    // client. L'e-mail qui le prévient partait d'un seul endroit :
+    // `entretien-quotidien.ts`, appelé par la page publique du mur de
+    // preuves. Autrement dit, il ne partait que si un visiteur ouvrait cette
+    // page — et personne ne l'ouvre un mardi matin.
+    //
+    // Quelqu'un pouvait donc payer, voir son accès rouvert par la tâche de
+    // minuit, et ne jamais l'apprendre. Le 22 août 2026, trois personnes
+    // étaient dans ce cas, l'une depuis deux jours ; la seule alerte a été un
+    // client assez patient pour écrire.
+    //
+    // Le rattrapage est désormais branché ici, sur le serveur, sans dépendre
+    // de la visite de qui que ce soit.
+    let accesRattrapes: { repares: number; prevenus: number } | null = null;
+    try {
+      const { rattraperAccesManquants } = await import('@/lib/acces-manquants');
+      const bilan = await rattraperAccesManquants(true);
+      accesRattrapes = { repares: bilan.repares, prevenus: bilan.prevenus };
+      if (bilan.repares || bilan.prevenus) {
+        console.warn(
+          `[CRON] Accès rattrapés : ${bilan.repares} rouvert(s), ${bilan.prevenus} client(s) prévenu(s) par courriel.`
+        );
+      }
+    } catch (e: any) {
+      console.warn('[CRON] Rattrapage des accès impossible :', e?.message);
+    }
+
     console.log(
       `[CRON] Rafraîchissement terminé en ${Date.now() - debut}ms — ` +
       `${Object.keys(statuses).length} compétitions, ${teams.length} équipes, ` +
@@ -195,6 +224,7 @@ export async function GET(request: Request) {
       // le moteur retombe alors sur son comportement d'avant, sans rien casser.
       championnats,
       cotes,
+      accesRattrapes,
       ventesReparees: ventes?.reparees ?? [],
       ventesSansTrace: ventes?.sansTrace ?? [],
       resume,
