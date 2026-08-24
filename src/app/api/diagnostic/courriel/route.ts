@@ -33,6 +33,55 @@ import { courrielDisponible, envoyerCourriel } from '@/lib/courriel';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
+/**
+ * CONSTATER SANS RIEN ENVOYER.
+ *
+ * ── POURQUOI CETTE LECTURE EXISTE ─────────────────────────────────────────
+ *
+ * La question « la clé est-elle bien dans Vercel ? » ne se répond pas depuis
+ * un poste de développement : `.env.local` et l'environnement de production
+ * sont deux choses différentes, et les confondre a produit le 24 août 2026 un
+ * « l'envoi d'e-mail n'est pas configuré du tout » qui ne décrivait que la
+ * machine locale.
+ *
+ * Seul le serveur de production sait ce que le serveur de production a. Cette
+ * lecture le lui demande, depuis un navigateur connecté en administrateur.
+ *
+ * ── CE QU'ELLE NE DIT JAMAIS ──────────────────────────────────────────────
+ *
+ * La valeur de la clé. Ni son début, ni sa fin, ni sa longueur exacte. Une
+ * clé qui apparaît dans une réponse HTTP finit dans un historique de
+ * navigateur, un journal, une capture d'écran. On répond par oui ou par non.
+ */
+export async function GET() {
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!estAdmin(user?.email)) {
+    return Response.json({ erreur: 'Réservé à l\'administration.' }, { status: 403 });
+  }
+
+  const presente = courrielDisponible();
+
+  return Response.json({
+    // Le nom EXACT que le code lit. Une variable nommée RESEND_KEY ou
+    // RESEND_API dans Vercel ne serait jamais vue.
+    variableAttendue: 'RESEND_API_KEY',
+    presenteSurCeServeur: presente,
+    expediteur: process.env.COURRIEL_EXPEDITEUR || 'ProFoot AI <noreply@profootai.com>',
+    repondreA: process.env.COURRIEL_REPONSE || 'm09997818@gmail.com',
+    // Ces deux-là ont une valeur de repli : leur absence n'empêche rien.
+    expediteurPersonnalise: !!process.env.COURRIEL_EXPEDITEUR,
+    reponsePersonnalisee: !!process.env.COURRIEL_REPONSE,
+    verdict: presente
+      ? 'La clé est en place sur ce serveur. Les courriels peuvent partir.'
+      : 'Aucune clé RESEND_API_KEY sur ce serveur. Ajoutez-la dans Vercel ' +
+        '(Settings → Environment Variables), cochez Production, puis redéployez.',
+  });
+}
+
 export async function POST() {
   const supabase = await createServerClient();
   const {

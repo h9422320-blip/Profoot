@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Mail, Check, X, Loader2 } from 'lucide-react';
 
 /**
@@ -20,6 +20,31 @@ import { Mail, Check, X, Loader2 } from 'lucide-react';
 export default function TestCourriel() {
   const [etat, setEtat] = useState<'repos' | 'envoi' | 'ok' | 'erreur'>('repos');
   const [detail, setDetail] = useState<string>('');
+
+  /**
+   * L'ÉTAT DU SERVEUR, CONSTATÉ SANS RIEN ENVOYER.
+   *
+   * La question « la clé est-elle bien dans Vercel ? » ne se répond pas depuis
+   * un poste de développement : `.env.local` et la production sont deux
+   * environnements distincts. Les confondre a produit, le 24 août 2026, un
+   * « l'envoi n'est pas configuré » qui ne décrivait que la machine locale.
+   *
+   * Cette lecture interroge le serveur qui sert cette page. Elle ne montre
+   * jamais la clé — seulement si elle est là.
+   */
+  const [config, setConfig] = useState<{
+    variableAttendue: string;
+    presenteSurCeServeur: boolean;
+    expediteur: string;
+    verdict: string;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/diagnostic/courriel')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setConfig(d))
+      .catch(() => setConfig(null));
+  }, []);
 
   async function tester() {
     setEtat('envoi');
@@ -52,6 +77,36 @@ export default function TestCourriel() {
         C&apos;est ce canal qui prévient un client lorsque son accès, payé mais non reçu,
         vient d&apos;être rouvert automatiquement. Le test écrit à votre propre adresse.
       </p>
+
+      {/* ── L'ÉTAT DU SERVEUR, AVANT MÊME D'ESSAYER ──────────────────────
+          Le nom exact de la variable est affiché : une clé posée dans Vercel
+          sous RESEND_KEY ou RESEND_API ne serait jamais lue, et rien ne le
+          signalerait — les courriels ne partiraient simplement pas. */}
+      {config && (
+        <div
+          className={`rounded-[14px] border px-3.5 py-2.5 mb-4 ${
+            config.presenteSurCeServeur
+              ? 'border-primary/25 bg-primary/[0.07]'
+              : 'border-warning/30 bg-warning/[0.07]'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {config.presenteSurCeServeur ? (
+              <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+            ) : (
+              <X className="w-3.5 h-3.5 text-warning shrink-0" />
+            )}
+            <span className="text-[12px] font-bold text-foreground/80">
+              {config.variableAttendue}{' '}
+              {config.presenteSurCeServeur ? 'est en place sur ce serveur' : 'absente de ce serveur'}
+            </span>
+          </div>
+          <p className="text-[11px] text-foreground/45 mt-1.5 leading-relaxed">
+            {config.verdict} Les messages partent de{' '}
+            <span className="text-foreground/70">{config.expediteur}</span>.
+          </p>
+        </div>
+      )}
 
       <button
         onClick={tester}
