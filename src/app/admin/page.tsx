@@ -3,6 +3,7 @@ import SelecteurPeriode from "./_components/SelecteurPeriode";
 import Audience from "./_components/Audience";
 import EchecsAnalyse from "./_components/EchecsAnalyse";
 import Fidelisation from "./_components/Fidelisation";
+import SuiviPrecision from "./_components/SuiviPrecision";
 import { heureDeLecture } from "@/lib/recettes-boutique";
 import { Courbe, Barres, Camembert } from "./_components/Graphique";
 import { Etiquette, LienCompte, Vide, montant, dateCourte, ilYA } from "./_components/Ui";
@@ -332,6 +333,10 @@ export default async function AdminOverview({
           chaque panne se découvrait en lançant une analyse et en voyant
           « ANALYSE INTERROMPUE ». Trois fois dans la seule journée du 21 août.
           Un chiffre que personne ne regarde ne sert à rien. */}
+      {/* La precision du moteur, avant les echecs : elle dit si le produit
+          tient sa promesse, ce qui passe avant de savoir s il a plante. */}
+      <SuiviPrecision />
+
       <EchecsAnalyse />
 
       {/* La fidélisation, après les échecs et avant l'audience.

@@ -16,6 +16,7 @@ import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
 import { lireForcesLigue } from "@/lib/forces-equipes";
+import { lireForcesChampionnats, rapportEntreChampionnats } from "@/lib/forces-championnats";
 import { lirePredictionFigee, figerPrediction } from "@/lib/prediction-figee";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
@@ -1390,11 +1391,22 @@ async function analyser(req: Request, billet: BilletQuota) {
     facteursPour(await lireCalibrages(), nomCompetition),
     // ── DEUX CHAMPIONNATS, DEUX ÉCHELLES ─────────────────────────────────
     //
-    // N'agit que sur la confiance affichée. Le score annoncé, les
-    // probabilités et l'issue retenue sortent identiques à ce qu'ils étaient
-    // avant ce drapeau : trois correctifs du pronostic lui-même ont été
-    // mesurés puis rejetés — voir `CONFIANCE_MAX_COMPARAISON_CROISEE`.
-    comparaisonCroisee
+    // Abaisse la confiance affichée : le moteur se trompe d'autant plus qu'il
+    // est sûr de lui sur ces rencontres — voir `CONFIANCE_MAX_COMPARAISON_CROISEE`.
+    comparaisonCroisee,
+    // ── ET ON LES RAMÈNE À LA MÊME ÉCHELLE ───────────────────────────────
+    //
+    // Le 24 août 2026, seule la confiance baissait : trois correctifs du
+    // pronostic avaient été essayés et rejetés, faute de matière — 116 matchs
+    // croisés ne suffisent pas à régler quoi que ce soit.
+    //
+    // Avec 22 443 rencontres réelles collectées chez le fournisseur, dont
+    // 2 030 confrontations entre championnats, le réglage devient mesurable.
+    // Résultat sur 10 157 matchs jamais vus pendant l'apprentissage : les
+    // rencontres entre championnats passent de 42,5 % à 50,1 % de réussite,
+    // les coupes européennes de 48,6 % à 55,9 %, et les matchs internes ne
+    // bougent pas — le rapport y vaut exactement 1.
+    rapportEntreChampionnats(await lireForcesChampionnats(), t1League, t2League)
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────

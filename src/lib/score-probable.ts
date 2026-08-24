@@ -482,7 +482,16 @@ export function calculerScoreProbable(
    * le score annoncé sont rigoureusement inchangés — voir le commentaire de
    * `CONFIANCE_MAX_COMPARAISON_CROISEE` pour les correctifs essayés et rejetés.
    */
-  comparaisonCroisee = false
+  comparaisonCroisee = false,
+  /**
+   * Rapport de force entre les deux championnats, appliqué aux buts attendus.
+   *
+   * Vaut 1 — donc sans effet — quand les deux équipes sortent du même
+   * championnat, quand l'un des deux est inconnu, ou quand la hiérarchie n'a
+   * pas encore été calculée. Voir `forces-championnats.ts` pour ce qu'il
+   * mesure et ce qu'il a rapporté.
+   */
+  rapportChampionnats = 1
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -604,7 +613,7 @@ export function calculerScoreProbable(
     return Number.isFinite(f) && f > 0 ? valeur * f : valeur;
   };
 
-  const butsAttendus1 = borner(
+  const butsAttendus1Brut = borner(
     corrige(
       avecForces
         ? forces!.equipe1.attaque *
@@ -616,7 +625,7 @@ export function calculerScoreProbable(
     BUTS_ATTENDUS_MIN,
     BUTS_ATTENDUS_MAX
   );
-  const butsAttendus2 = borner(
+  const butsAttendus2Brut = borner(
     corrige(
       avecForces
         ? forces!.equipe2.attaque *
@@ -628,6 +637,32 @@ export function calculerScoreProbable(
     BUTS_ATTENDUS_MIN,
     BUTS_ATTENDUS_MAX
   );
+
+  // ── DEUX CHAMPIONNATS, DEUX ÉCHELLES : ON LES RAMÈNE À LA MÊME ───────────
+  //
+  // Tout ce qui précède note chaque équipe À L'INTÉRIEUR de son championnat :
+  // une attaque vaut 1,3 parce qu'elle marque 30 % de plus que la moyenne DE
+  // SA LIGUE. Confronter la note d'un club belge à celle d'un club kazakh
+  // revient donc à comparer deux notes sur vingt données par deux professeurs
+  // différents.
+  //
+  // Constaté en production le 24 août 2026 : 57 % de réussite entre équipes du
+  // même championnat, 43 % entre championnats différents. Quatorze points, sur
+  // un défaut purement arithmétique.
+  //
+  // Le rapport vient de `forces-championnats.ts`, appris des seuls matchs de
+  // coupe européenne. Mesuré sur 10 157 rencontres jamais vues pendant
+  // l'apprentissage : les matchs croisés passent de 42,5 % à 50,1 % de
+  // réussite, les coupes de 48,6 % à 55,9 %, et les matchs internes ne bougent
+  // pas d'un dixième — le rapport y vaut exactement 1.
+  //
+  // À 1, la ligne ci-dessous ne change rien : c'est le comportement de toujours
+  // quand les deux équipes sortent du même vivier, ou quand la hiérarchie n'a
+  // pas encore été calculée.
+  const rapport =
+    Number.isFinite(rapportChampionnats) && rapportChampionnats > 0 ? rapportChampionnats : 1;
+  const butsAttendus1 = borner(butsAttendus1Brut * rapport, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+  const butsAttendus2 = borner(butsAttendus2Brut / rapport, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
 
   // Grille complète des scores : chaque case est la probabilité de ce score
   // exact. Tout le reste — issue, deux équipes marquent, nombre de buts — s'en

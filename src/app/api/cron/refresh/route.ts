@@ -4,6 +4,7 @@ import { LEAGUE_IDS } from '@/lib/api-football';
 import { getAllCompetitionStatuses } from '@/lib/competition-status';
 import { getLiveTeams } from '@/lib/teams-live';
 import { verifierPronostics } from '@/lib/precision-reelle';
+import { recalculerForcesChampionnats } from '@/lib/forces-championnats';
 import { construirePreuves } from '@/lib/preuves';
 import { enregistrerPrecisionDuJour } from '@/lib/precision-quotidienne';
 
@@ -72,6 +73,38 @@ export async function GET(request: Request) {
     // accorde.
     const precision = await verifierPronostics(10000);
 
+    // ── LA HIÉRARCHIE DES CHAMPIONNATS SE REFAIT ICI ──────────────────────
+    //
+    // Elle sert à comparer une équipe belge et une équipe kazakhe, dont les
+    // notes sont calculées dans deux championnats différents et ne veulent
+    // rien dire l'une contre l'autre. Mesuré : les rencontres entre
+    // championnats passent de 42,5 % à 50,1 % de réussite, les coupes
+    // européennes de 48,6 % à 55,9 %.
+    //
+    // Elle bouge lentement — un championnat ne change pas de niveau en une
+    // nuit — et la réserve la garde huit jours. Le recalcul quotidien coûte
+    // donc surtout des lectures en réserve, et se refait proprement quand
+    // elle expire.
+    //
+    // Un échec ne fait rien tomber : sans hiérarchie, le rapport vaut 1 et le
+    // moteur se comporte exactement comme avant qu'elle existe.
+    let championnats: { compétitions: number; confrontations: number } | null = null;
+    try {
+      const forces = await recalculerForcesChampionnats();
+      if (forces) {
+        championnats = {
+          compétitions: Object.keys(forces.coefficients).length,
+          confrontations: forces.confrontations,
+        };
+        console.log(
+          `[CRON] Hiérarchie des championnats refaite : ${championnats.compétitions} compétitions, ` +
+            `${forces.confrontations} confrontations, ${forces.matchsUtilises} matchs lus.`
+        );
+      }
+    } catch (e: any) {
+      console.warn('[CRON] Hiérarchie des championnats non refaite :', e?.message);
+    }
+
     // ── LE MUR SE RECONSTRUIT ICI AUSSI ───────────────────────────────────────
     //
     // Vérifier les pronostics sans reconstruire les preuves laissait le mur en
@@ -133,6 +166,9 @@ export async function GET(request: Request) {
       competitions: Object.keys(statuses).length,
       equipes: teams.length,
       pronostics: precision,
+      // `null` signale que la hiérarchie n'a pas pu être refaite ce jour-là :
+      // le moteur retombe alors sur son comportement d'avant, sans rien casser.
+      championnats,
       ventesReparees: ventes?.reparees ?? [],
       ventesSansTrace: ventes?.sansTrace ?? [],
       resume,
