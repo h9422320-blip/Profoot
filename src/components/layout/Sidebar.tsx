@@ -24,6 +24,15 @@ export function Sidebar() {
   const [todayCount, setTodayCount] = useState(0);
   const [isPro, setIsPro] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  /**
+   * Y a-t-il vraiment quelqu un de connecte ?
+   *
+   *  tant qu on ne sait pas encore : entre le chargement de la page et
+   * la reponse du serveur, on n affiche NI l un ni l autre. Montrer un profil
+   * puis le remplacer par une invitation a se connecter ferait clignoter le
+   * menu a chaque ouverture de page.
+   */
+  const [connecte, setConnecte] = useState<boolean | null>(null);
 
   // Le lien vers l'administration N'EXISTAIT PAS.
   //
@@ -60,6 +69,7 @@ export function Sidebar() {
     const supabase = createClient();
 
     supabase.auth.getUser().then(({ data: { user } }) => {
+      setConnecte(!!user);
       if (user?.email) setUserEmail(user.email);
 
       // ── POURQUOI CET APPEL EST CONDITIONNÉ ──────────────────────────────
@@ -197,42 +207,93 @@ export function Sidebar() {
               quand on se demande à quoi on a droit. */}
           <MessagePersonnel />
 
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-foreground/60">
-              <BarChart2 className="w-4 h-4" />
-              <span className="text-xs font-semibold">{t("sidebar.todayAnalyses")}</span>
+          {/* Le compteur d'analyses du jour n'a de sens que pour quelqu'un qui
+              en a un. Servi à un visiteur sans compte, il affiche « 0 analyse »
+              sous une barre de progression vide — un tableau de bord personnel
+              pour une personne qui n'en a pas. C'est ce qui, avec le bouton de
+              déconnexion, lui faisait croire qu'il était connecté. */}
+          {connecte && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-foreground/60">
+                <BarChart2 className="w-4 h-4" />
+                <span className="text-xs font-semibold">{t("sidebar.todayAnalyses")}</span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-black text-primary tracking-tight">{todayCount}</span>
+                <span className="text-sm font-bold text-foreground/30">{todayCount > 1 ? t("sidebar.analyses_plural") : t("sidebar.analysis_singular")}</span>
+              </div>
+              <div className="h-2 bg-primary/10 rounded-full overflow-hidden w-full">
+                <div className="h-full bg-gradient-to-r from-primary/50 to-primary rounded-full transition-all duration-700" style={{ width: `${Math.min(todayCount * 10, 100)}%` }} />
+              </div>
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black text-primary tracking-tight">{todayCount}</span>
-              <span className="text-sm font-bold text-foreground/30">{todayCount > 1 ? t("sidebar.analyses_plural") : t("sidebar.analysis_singular")}</span>
-            </div>
-            <div className="h-2 bg-primary/10 rounded-full overflow-hidden w-full">
-              <div className="h-full bg-gradient-to-r from-primary/50 to-primary rounded-full transition-all duration-700" style={{ width: `${Math.min(todayCount * 10, 100)}%` }} />
-            </div>
-          </div>
+          )}
 
-          <div className="pt-4 border-t border-border-card space-y-1">
-            <div className="flex items-center gap-3 px-2 py-2">
-              <div className="w-8 h-8 rounded-full bg-card flex items-center justify-center text-foreground/50 border border-border-card">
-                <User className="w-4 h-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-foreground truncate capitalize">{userEmail !== "Utilisateur" ? userEmail.split('@')[0].replace('.', ' ') : "Utilisateur"}</p>
-                <p className={`text-[10px] font-bold uppercase tracking-widest ${isPro ? "text-warning" : "text-primary"}`}>
-                  {isPro ? t("sidebar.proElite") : t("sidebar.free")}
-                </p>
-              </div>
+          {/* ── LE BAS DU MENU DÉPEND DE QUI REGARDE ────────────────────────
+              Il affichait un profil « Utilisateur · Gratuit » et un bouton
+              « Se déconnecter » à TOUT LE MONDE, y compris à un visiteur qui
+              n'a jamais eu de compte. Cette barre s'affiche aussi sur les
+              pages publiques — /pricing, /matches, /competitions, /preuves —
+              vues par des milliers de gens non connectés.
+
+              Le résultat, du point de vue du visiteur : il se croit connecté,
+              clique sur « Analyse tactique », et le site le renvoie vers la
+              page de connexion sans explication. Vu de sa place, le site
+              bugue. Et il ne le signale jamais — on abandonne, on ne se
+              plaint pas.
+
+              Tant que la réponse du serveur n'est pas arrivée (`null`), on
+              n'affiche NI l'un NI l'autre : montrer un profil puis le
+              remplacer ferait clignoter le menu à chaque ouverture. */}
+          {connecte !== null && (
+            <div className="pt-4 border-t border-border-card space-y-1">
+              {connecte ? (
+                <>
+                  <div className="flex items-center gap-3 px-2 py-2">
+                    <div className="w-8 h-8 rounded-full bg-card flex items-center justify-center text-foreground/50 border border-border-card">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate capitalize">{userEmail !== "Utilisateur" ? userEmail.split('@')[0].replace('.', ' ') : "Utilisateur"}</p>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest ${isPro ? "text-warning" : "text-primary"}`}>
+                        {isPro ? t("sidebar.proElite") : t("sidebar.free")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <form action={logout}>
+                    <button type="submit" className="w-full flex items-center justify-between gap-3 px-4 py-2 mt-2 rounded-[16px] text-xs font-bold text-foreground/50 hover:bg-foreground/5 hover:text-foreground transition-all border border-transparent hover:border-border-card">
+                      <div className="flex items-center gap-3">
+                        <LogOut className="w-4 h-4" />
+                        <span>{t("sidebar.logout")}</span>
+                      </div>
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <p className="px-2 pb-1 text-[11px] text-foreground/45 leading-relaxed">
+                    Créez un compte pour lancer votre première analyse.
+                  </p>
+                  <Link
+                    href="/signup"
+                    onClick={() => setMobileOpen(false)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[16px] text-xs font-black bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 transition-all"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Créer un compte</span>
+                  </Link>
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 mt-1 rounded-[16px] text-xs font-bold text-foreground/50 hover:bg-foreground/5 hover:text-foreground transition-all border border-transparent hover:border-border-card"
+                  >
+                    <LogOut className="w-4 h-4 rotate-180" />
+                    <span>Se connecter</span>
+                  </Link>
+                </>
+              )}
             </div>
-            
-            <form action={logout}>
-              <button type="submit" className="w-full flex items-center justify-between gap-3 px-4 py-2 mt-2 rounded-[16px] text-xs font-bold text-foreground/50 hover:bg-foreground/5 hover:text-foreground transition-all border border-transparent hover:border-border-card">
-                <div className="flex items-center gap-3">
-                  <LogOut className="w-4 h-4" />
-                  <span>{t("sidebar.logout")}</span>
-                </div>
-              </button>
-            </form>
-          </div>
+          )}
         </div>
       </aside>
     </>
