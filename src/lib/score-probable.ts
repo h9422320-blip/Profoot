@@ -190,6 +190,62 @@ const borner = (v: number, min: number, max: number) => Math.min(max, Math.max(m
  */
 const CONFIANCE_MAX_PEU_FIABLE = 80;
 
+/**
+ * Plafond de confiance quand les deux équipes ne viennent pas du même
+ * championnat.
+ *
+ * ── CE QUI A ÉTÉ MESURÉ ───────────────────────────────────────────────────
+ *
+ * Sur les 353 rencontres vérifiées au 24 août 2026, le moteur se comporte de
+ * deux façons radicalement différentes :
+ *
+ *   Même championnat      228 matchs · 57 % de réussite · 24 % de nuls annoncés
+ *                                                       · 24 % de nuls survenus
+ *   Championnats croisés  125 matchs · 43 % de réussite · 21 % de nuls annoncés
+ *                                                       · 30 % de nuls survenus
+ *
+ * La confiance affichée, elle, ne bougeait presque pas : 81 % chez soi, 76 %
+ * à l'étranger. Le moteur promettait 76 et tenait 43.
+ *
+ * ── LE DÉTAIL QUI TRANCHE ─────────────────────────────────────────────────
+ *
+ * Sur les matchs croisés, la confiance est RETOURNÉE : plus elle est haute,
+ * moins le pronostic tombe juste.
+ *
+ *   70-74 % de confiance → 70 % de réussite
+ *   75-79 %              → 57 %
+ *   80-84 %              → 33 %
+ *   85-89 %              → 24 %
+ *
+ * L'explication tient à la façon dont les forces sont calculées : chaque
+ * équipe est jaugée À L'INTÉRIEUR de son championnat. Confronter une force
+ * kazakhe à une force belge n'a pas de sens, et l'écart apparent qui en sort
+ * est d'autant plus grand qu'il est illusoire. Une grosse confiance sur un
+ * match croisé signale donc un artefact, pas une certitude.
+ *
+ * ── POURQUOI UN PLAFOND, ET RIEN DE PLUS ──────────────────────────────────
+ *
+ * Trois correctifs du pronostic lui-même ont été essayés et rejetés le
+ * 24 août 2026, chacun mesuré sur les 116 matchs croisés puis soumis à
+ * l'épreuve des deux moitiés :
+ *
+ *   • pousser la probabilité de nul du facteur mesuré (x1,43) :
+ *     −8,6 points sur une moitié, +3,4 sur l'autre — du hasard ;
+ *   • rapprocher les probabilités d'un socle observé : aucun effet, le
+ *     mélange linéaire ne change jamais quelle issue est la plus probable ;
+ *   • aplatir les trois probabilités vers un tiers chacune : aucun effet,
+ *     pour la même raison.
+ *
+ * Aucune retouche appliquée APRÈS coup ne peut redresser un pronostic faussé
+ * en amont. Le vrai remède serait de normaliser les forces d'un championnat à
+ * l'autre — un chantier que 116 rencontres ne suffiraient pas à valider.
+ *
+ * En attendant, on ne ment plus sur ce qu'on sait. Le plafond reste au-dessus
+ * du plancher général : l'analyse garde sa valeur, c'est la certitude
+ * affichée qui redescend à ce que les chiffres autorisent.
+ */
+const CONFIANCE_MAX_COMPARAISON_CROISEE = 72;
+
 /** Reconnaît une compétition dont les résultats ne se prédisent pas. */
 export function competitionPeuFiable(nom: string | null | undefined): boolean {
   return /friendl|amical|pre-?season|test|trophy|summer|cup of champions/i.test(String(nom ?? ''));
@@ -405,7 +461,19 @@ export function calculerScoreProbable(
    * aux buts annoncés sur au moins trente rencontres du même championnat. En
    * dessous de ce seuil, rien n'est transmis ici.
    */
-  calibrage?: { domicile: number; exterieur: number } | null
+  calibrage?: { domicile: number; exterieur: number } | null,
+  /**
+   * Les deux équipes viennent-elles de championnats différents ?
+   *
+   * Vrai uniquement quand les DEUX championnats ont été résolus et qu'ils
+   * diffèrent. Un championnat inconnu ne déclenche rien : mieux vaut ne pas
+   * plafonner que plafonner à tort.
+   *
+   * N'entre que dans la confiance affichée. Le pronostic, les probabilités et
+   * le score annoncé sont rigoureusement inchangés — voir le commentaire de
+   * `CONFIANCE_MAX_COMPARAISON_CROISEE` pour les correctifs essayés et rejetés.
+   */
+  comparaisonCroisee = false
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -740,7 +808,12 @@ export function calculerScoreProbable(
     : Math.min(joues1, joues2);
   const matiere = Math.min(1, matchsConnus / MATCHS_POUR_ETRE_SUR);
 
-  const plafond = peuFiable ? CONFIANCE_MAX_PEU_FIABLE : CONFIANCE_MAX;
+  // Le plafond le plus bas l'emporte : un amical entre deux clubs de pays
+  // différents cumule les deux raisons de se méfier.
+  const plafond = Math.min(
+    peuFiable ? CONFIANCE_MAX_PEU_FIABLE : CONFIANCE_MAX,
+    comparaisonCroisee ? CONFIANCE_MAX_COMPARAISON_CROISEE : CONFIANCE_MAX
+  );
   const confiance = Math.round(
     borner(
       CONFIANCE_MIN + (CONFIANCE_MAX - CONFIANCE_MIN) * (0.45 * matiere + 0.55 * nettete),

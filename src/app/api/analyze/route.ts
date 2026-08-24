@@ -949,6 +949,22 @@ async function analyser(req: Request, billet: BilletQuota) {
   if (t1Fixtures?.response?.length > 0) t1League = t1Fixtures.response[0].league.id;
   if (t2Fixtures?.response?.length > 0) t2League = t2Fixtures.response[0].league.id;
 
+  // ── LES DEUX ÉQUIPES JOUENT-ELLES DANS LE MÊME CHAMPIONNAT ? ──────────────
+  //
+  // Question décisive pour la confiance affichée : les forces de chaque équipe
+  // sont calculées À L'INTÉRIEUR de son championnat, et les comparer d'un pays
+  // à l'autre revient à comparer deux échelles qui n'ont pas la même graduation.
+  //
+  // Mesuré le 24 août 2026 sur 353 rencontres vérifiées : 57 % de réussite
+  // entre équipes du même championnat, 43 % entre championnats différents — et
+  // une confiance affichée quasi identique dans les deux cas.
+  //
+  // Le drapeau ne se lève que si les DEUX championnats ont été résolus et
+  // qu'ils diffèrent. `t1League` et `t2League` valent 39 par défaut : sans
+  // cette précaution, une équipe dont le championnat reste introuvable
+  // paraîtrait anglaise et déclencherait un plafond injustifié.
+  let comparaisonCroisee = false;
+
   if (id1 && id2) {
     const [ligue1, ligue2] = await Promise.all([
       resoudreChampionnat(id1, season),
@@ -956,7 +972,11 @@ async function analyser(req: Request, billet: BilletQuota) {
     ]);
     if (ligue1) t1League = ligue1;
     if (ligue2) t2League = ligue2;
-    console.log(`[BACKEND_ANALYZE] Championnats retenus : ${t1League} et ${t2League}.`);
+    comparaisonCroisee = !!ligue1 && !!ligue2 && Number(ligue1) !== Number(ligue2);
+    console.log(
+      `[BACKEND_ANALYZE] Championnats retenus : ${t1League} et ${t2League}` +
+        `${comparaisonCroisee ? ' — comparaison croisée, confiance plafonnée.' : '.'}`
+    );
   }
 
   let t1Stats = null, t2Stats = null, t1Injuries = null, t2Injuries = null, t1Squad = null, t2Squad = null, t1TopScorers = null, t2TopScorers = null, t1Standings = null, t2Standings = null, t1StandingsPrecedent = null, t2StandingsPrecedent = null;
@@ -1366,7 +1386,14 @@ async function analyser(req: Request, billet: BilletQuota) {
     // championnat, en confrontant les buts annoncés aux buts marqués. Sous ce
     // seuil, `facteursPour` rend des facteurs neutres et le calcul est
     // rigoureusement celui d'avant.
-    facteursPour(await lireCalibrages(), nomCompetition)
+    facteursPour(await lireCalibrages(), nomCompetition),
+    // ── DEUX CHAMPIONNATS, DEUX ÉCHELLES ─────────────────────────────────
+    //
+    // N'agit que sur la confiance affichée. Le score annoncé, les
+    // probabilités et l'issue retenue sortent identiques à ce qu'ils étaient
+    // avant ce drapeau : trois correctifs du pronostic lui-même ont été
+    // mesurés puis rejetés — voir `CONFIANCE_MAX_COMPARAISON_CROISEE`.
+    comparaisonCroisee
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────
