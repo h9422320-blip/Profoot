@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ShieldCheck, X, ArrowRight, Smartphone, ChevronDown } from 'lucide-react';
+import { ShieldCheck, X, ArrowRight, Smartphone, ChevronDown, Wallet } from 'lucide-react';
 import {
   moyensDuPays,
   ordonnerPourAfrique,
@@ -65,6 +65,25 @@ export interface NoticePaiementProps {
    */
   cleOffre?: string;
   /**
+   * Le montant à payer, en francs CFA.
+   *
+   * ── POURQUOI IL EST AFFICHÉ UNE SECONDE FOIS ─────────────────────────────
+   *
+   * Il figure déjà dans `libelleOffre`, en petit, sous le titre. Mais il sert
+   * ici à autre chose : rappeler d'avoir la somme SUR SON COMPTE avant de
+   * partir.
+   *
+   * Mesuré du 6 au 24 août 2026 : sur 1 974 arrivées à la caisse, 267 se sont
+   * soldées par un ÉCHEC de paiement — 13,5 %. Ce ne sont pas des hésitants,
+   * ce sont des gens qui ont saisi leur numéro et validé. Le motif le plus
+   * banal d'un refus mobile money est un solde insuffisant, et personne ne le
+   * vérifie avant de cliquer.
+   *
+   * Absent, la ligne ne s'affiche pas : mieux vaut aucune consigne qu'une
+   * consigne sans montant.
+   */
+  montantXof?: number;
+  /**
    * Lance le paiement. Reçoit le pays retenu — celui détecté, ou celui que
    * l'acheteur a corrigé dans la liste.
    */
@@ -98,6 +117,7 @@ export default function NoticePaiement({
   paysDetecte,
   libelleOffre,
   cleOffre,
+  montantXof,
   onContinuer,
   onFermer,
 }: NoticePaiementProps) {
@@ -348,6 +368,30 @@ export default function NoticePaiement({
               </label>
             )}
           </div>
+
+          {/* ── LE RAPPEL DU SOLDE ───────────────────────────────────────
+              Mesuré du 6 au 24 août 2026 : 267 paiements échoués sur 1 974
+              arrivées en caisse, soit 13,5 %. Ce ne sont pas des hésitants —
+              ils ont saisi leur numéro et validé. Le motif le plus banal d'un
+              refus mobile money est un solde insuffisant, et personne ne le
+              vérifie avant de partir.
+
+              La ligne ne s'affiche que pour le mobile money : servie à un
+              acheteur qui paie par carte, elle décrirait une manipulation qui
+              n'existe pas chez lui — et une consigne qui ne correspond pas à
+              l'écran fait douter de tout le reste. */}
+          {parMobile && Number.isFinite(montantXof) && (montantXof as number) > 0 && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-[14px] border border-amber-400/25 bg-amber-400/[0.07] px-3.5 py-2.5">
+              <Wallet className="w-4 h-4 text-amber-400 shrink-0 mt-[1px]" />
+              <p className="text-[12.5px] text-white/80 leading-relaxed">
+                Assurez-vous d&apos;avoir{' '}
+                <strong className="text-amber-300">
+                  {(montantXof as number).toLocaleString('fr-FR')} FCFA
+                </strong>{' '}
+                sur votre compte mobile money avant de payer.
+              </p>
+            </div>
+          )}
 
           {/* ── Le bouton ───────────────────────────────────────────────── */}
           <button

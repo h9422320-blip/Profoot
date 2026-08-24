@@ -246,6 +246,10 @@ export default function PaywallDeuxChemins({
           // Sans cette clé, les sorties de la notice tombaient dans un panier
           // sans nom, séparé des clics qui les avaient provoquées.
           cleOffre="match-unique"
+          // Le montant sert au rappel du solde : 267 paiements ont echoue sur
+          // 1 974 arrivees en caisse, et un solde insuffisant en est le motif
+          // le plus banal.
+          montantXof={prixMatch}
           onContinuer={(paysRetenu) => acheterCeMatch(paysRetenu)}
           onFermer={() => setNotice(false)}
         />

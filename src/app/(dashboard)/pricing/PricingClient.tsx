@@ -55,6 +55,14 @@ const OFFRES = [
     accroche: "Pour découvrir l'analyse IA à votre rythme.",
     icone: Zap,
     cta: "Choisir l'Essentiel",
+    // ── LE BADGE A CHANGE DE CARTE LE 24 AOUT 2026 ────────────────────────
+    //
+    // Il vivait sur le Pro, ou il etait FAUX : 199 des 241 acheteurs ont pris
+    // l Essentiel. Mesure sur 1 974 arrivees en caisse, l Essentiel convertit
+    // a 16,3 %, le Pro a 7,7 %, l Annuel a 6,2 %. La carte mise en avant etait
+    // celle qui fait le plus renoncer, et elle l affirmait la plus choisie.
+    badge: { texte: 'Le plus choisi', style: 'bg-sky-400 text-[#06231a]' },
+    vedette: true,
     avantages: [
       QUOTA,
       'Analyses Premium',
@@ -83,8 +91,6 @@ const OFFRES = [
     accroche: 'Le meilleur équilibre pour analyser sérieusement.',
     icone: Flame,
     cta: 'Choisir le Pro',
-    badge: { texte: 'Plus populaire', style: 'bg-primary text-white' },
-    vedette: true,
     avantages: [
       QUOTA,
       'Analyses Premium',
@@ -338,8 +344,19 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
 
                   <h3 className="text-xl font-bold">{offre.nom}</h3>
 
+                  {/* ── LE PRIX DE L'OFFRE MISE EN AVANT EST PLUS GROS ─────
+                      Quatre-vingt-douze pour cent du trafic est sur téléphone,
+                      où les trois cartes s'empilent l'une sous l'autre. La
+                      position ne suffit donc pas à distinguer : c'est la taille
+                      qui dit laquelle regarder en premier. */}
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-4xl font-black tracking-tight">{reglee?.prix ?? offre.prix}</span>
+                    <span
+                      className={`font-black tracking-tight ${
+                        offre.vedette ? 'text-5xl sm:text-[3.25rem]' : 'text-3xl'
+                      }`}
+                    >
+                      {reglee?.prix ?? offre.prix}
+                    </span>
                     <span className="text-foreground/40 text-sm font-semibold">{offre.periode}</span>
                   </div>
 
@@ -453,6 +470,9 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
           // comptait 146 clics sur l Essentiel d un cote et 192 « Continuer »
           // sans offre de l autre.
           cleOffre={noticePour}
+          // Le montant reel de l offre choisie, reglable depuis /admin/offres :
+          // afficher un prix ecrit en dur mentirait le jour ou il change.
+          montantXof={offres[noticePour]?.prixBrut}
           onContinuer={(paysRetenu) => lancerPaiement(noticePour, paysRetenu)}
           onFermer={() => setNoticePour(null)}
         />
