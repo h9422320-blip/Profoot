@@ -2,6 +2,7 @@ import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import SelecteurPeriode from "./_components/SelecteurPeriode";
 import Audience from "./_components/Audience";
 import EchecsAnalyse from "./_components/EchecsAnalyse";
+import Fidelisation from "./_components/Fidelisation";
 import { heureDeLecture } from "@/lib/recettes-boutique";
 import { Courbe, Barres, Camembert } from "./_components/Graphique";
 import { Etiquette, LienCompte, Vide, montant, dateCourte, ilYA } from "./_components/Ui";
@@ -332,6 +333,12 @@ export default async function AdminOverview({
           « ANALYSE INTERROMPUE ». Trois fois dans la seule journée du 21 août.
           Un chiffre que personne ne regarde ne sert à rien. */}
       <EchecsAnalyse />
+
+      {/* La fidélisation, après les échecs et avant l'audience.
+          L'audience dit combien de gens arrivent ; celle-ci dit combien
+          restent. Les deux se lisent ensemble : un tableau d'arrivées sans
+          taux de retour laisse croire que la croissance suffit. */}
+      <Fidelisation />
 
       {/* En bas : le chiffre d'affaires et les comptes passent devant.
           C'est ce qu'on vient voir en ouvrant l'administration. */}
