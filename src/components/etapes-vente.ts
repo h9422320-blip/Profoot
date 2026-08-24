@@ -41,6 +41,20 @@
 export type EtapeVente =
   /** L'acheteur a cliqué sur une offre : la notice s'ouvre. */
   | 'offre-cliquee'
+  /**
+   * Il quitte le paywall pour aller lire la page des tarifs.
+   *
+   * ── POURQUOI CETTE ÉTAPE A SA PROPRE LIGNE ──────────────────────────────
+   *
+   * Elle était comptée comme un `offre-cliquee` portant l'étiquette
+   * « vers-tarifs ». Or ce bouton n'ouvre aucune notice et ne mène à aucune
+   * caisse : il envoie simplement lire les prix. Mesuré du 22 au 24 août
+   * 2026, il pesait 377 clics sur les 579 comptés comme des clics d'offre —
+   * les deux tiers. L'entonnoir affichait donc une fuite de 49 % qui
+   * n'existait pas : ces gens n'abandonnaient rien, ils allaient se
+   * renseigner.
+   */
+  | 'vers-tarifs'
   /** Il a cliqué lui-même sur « Continuer vers le paiement ». */
   | 'notice-continuer'
   /** Il a fermé la notice sans aller au paiement. */

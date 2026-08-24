@@ -258,9 +258,32 @@ export async function lireBilanVisites(heures = 24): Promise<BilanVisites> {
     return vus.size;
   };
 
+  // ── « VERS LES TARIFS » N'EST PAS UN CLIC D'ACHAT ───────────────────────
+  //
+  // Le bouton du paywall qui envoie lire les prix partageait l'étape
+  // « offre-cliquee ». Il n'ouvre pourtant aucune notice et ne mène à aucune
+  // caisse. Mesuré du 22 au 24 août 2026, il pesait 377 des 579 clics comptés
+  // en haut de l'entonnoir : les deux tiers. L'entonnoir affichait donc une
+  // fuite massive qui n'était que le trajet normal vers la page des tarifs.
+  //
+  // Il a désormais sa propre étape. L'exclusion par le suffixe reste
+  // nécessaire pour les semaines déjà enregistrées sous l'ancien chemin :
+  // sans elle, le haut de l'entonnoir resterait faux jusqu'à ce que ces
+  // lignes sortent de la fenêtre de lecture.
+  const ANCIEN_VERS_TARIFS = '/~offre-cliquee/vers-tarifs';
+
   const MARCHES: { cle: string; libelle: string; test: (c: string) => boolean }[] = [
+    {
+      cle: 'vers-tarifs',
+      libelle: 'Sont allés du paywall vers les tarifs',
+      test: (c) => c.startsWith('/~vers-tarifs') || c === ANCIEN_VERS_TARIFS,
+    },
     { cle: 'tarifs', libelle: 'Ont vu les tarifs', test: (c) => c === '/pricing' },
-    { cle: 'offre-cliquee', libelle: 'Ont cliqué sur une offre', test: (c) => c.startsWith('/~offre-cliquee') },
+    {
+      cle: 'offre-cliquee',
+      libelle: 'Ont cliqué sur une offre',
+      test: (c) => c.startsWith('/~offre-cliquee') && c !== ANCIEN_VERS_TARIFS,
+    },
     { cle: 'notice-continuer', libelle: 'Ont cliqué « Continuer »', test: (c) => c.startsWith('/~notice-continuer') },
     { cle: 'notice-auto', libelle: 'Sont partis après 20 s, sans agir', test: (c) => c.startsWith('/~notice-auto') },
     { cle: 'notice-fermee', libelle: 'Ont fermé la notice', test: (c) => c.startsWith('/~notice-fermee') },
@@ -275,6 +298,10 @@ export async function lireBilanVisites(heures = 24): Promise<BilanVisites> {
   // est une marche de plus. La part affichée se calcule donc contre la bonne
   // référence, sinon « fermé » paraîtrait suivre « continuer ».
   const reference: Record<string, string | null> = {
+    // Une porte d'entrée parmi d'autres : on arrive aussi sur les tarifs par
+    // le menu ou par un lien direct. Lui donner un pourcentage laisserait
+    // croire qu'elle est la seule.
+    'vers-tarifs': null,
     tarifs: null,
     'offre-cliquee': 'tarifs',
     'notice-continuer': 'offre-cliquee',

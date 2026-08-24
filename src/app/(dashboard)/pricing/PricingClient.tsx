@@ -448,6 +448,11 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
         <NoticePaiement
           paysDetecte={paysDetecte}
           libelleOffre={libelleDe(noticePour, offres)}
+          // La meme cle que celle du clic, pour que les sorties de la notice
+          // se rapportent a l offre qui les a declenchees. Sans elle, on
+          // comptait 146 clics sur l Essentiel d un cote et 192 « Continuer »
+          // sans offre de l autre.
+          cleOffre={noticePour}
           onContinuer={(paysRetenu) => lancerPaiement(noticePour, paysRetenu)}
           onFermer={() => setNoticePour(null)}
         />

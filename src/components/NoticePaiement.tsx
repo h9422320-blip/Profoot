@@ -50,6 +50,21 @@ export interface NoticePaiementProps {
   /** Ce que l'acheteur s'apprête à payer, affiché tel quel. */
   libelleOffre: string;
   /**
+   * L'identifiant de l'offre, pour la mesure. Jamais affiché.
+   *
+   * ── POURQUOI IL EST INDISPENSABLE ────────────────────────────────────────
+   *
+   * Cette fenêtre émettait ses trois sorties — continuer, fermer, laisser
+   * filer — SANS nom d'offre. Elles tombaient donc toutes dans un panier
+   * commun, séparé des clics qui les avaient provoquées. Mesuré du 22 au
+   * 24 août 2026 : 146 clics sur l'offre Essentiel d'un côté, 192 « Continuer »
+   * sans offre de l'autre, et un entonnoir qui affichait « 267 % ont cliqué
+   * Continuer » — un pourcentage impossible, faute de dénominateur commun.
+   *
+   * L'appelant sait quelle offre il vend ; il le dit maintenant.
+   */
+  cleOffre?: string;
+  /**
    * Lance le paiement. Reçoit le pays retenu — celui détecté, ou celui que
    * l'acheteur a corrigé dans la liste.
    */
@@ -82,6 +97,7 @@ const SECONDES = 20;
 export default function NoticePaiement({
   paysDetecte,
   libelleOffre,
+  cleOffre,
   onContinuer,
   onFermer,
 }: NoticePaiementProps) {
@@ -120,10 +136,10 @@ export default function NoticePaiement({
   // ne rien changer.
   const partir = useCallback(
     (cause: 'notice-continuer' | 'notice-auto' = 'notice-continuer') => {
-      signalerEtape(cause);
+      signalerEtape(cause, cleOffre);
       onContinuer(pays);
     },
-    [onContinuer, pays]
+    [onContinuer, pays, cleOffre]
   );
 
   // `createPortal` a besoin du document : on attend le montage côté navigateur.
@@ -160,9 +176,9 @@ export default function NoticePaiement({
 
   // Fermer, c'est refuser. On le note avant de rendre la main.
   const fermer = useCallback(() => {
-    signalerEtape('notice-fermee');
+    signalerEtape('notice-fermee', cleOffre);
     onFermer();
-  }, [onFermer]);
+  }, [onFermer, cleOffre]);
 
   useEffect(() => {
     const clavier = (e: KeyboardEvent) => {

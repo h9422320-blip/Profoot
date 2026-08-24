@@ -201,7 +201,12 @@ export default function PaywallDeuxChemins({
           rapport : c'est vrai, et c'est là que se trouve la valeur réelle. */}
       <Link
         href="/pricing"
-        onClick={() => signalerEtape('offre-cliquee', 'vers-tarifs')}
+        // Ce bouton n'ouvre aucune notice et ne mène à aucune caisse : il
+        // envoie lire les prix. Il avait sa propre étiquette mais partageait
+        // l'étape « offre-cliquee », et pesait à lui seul les deux tiers du
+        // haut de l'entonnoir — d'où une fuite apparente de 49 % qui n'était
+        // que le trajet normal vers la page des tarifs.
+        onClick={() => signalerEtape('vers-tarifs')}
         className={`w-full inline-flex items-center justify-center gap-2 font-black py-4 px-5 rounded-full transition-all text-[13px] sm:text-sm text-center active:scale-95 min-h-[52px] ${
           achatUniteDisponible
             ? "bg-white/[0.07] border border-white/15 text-white hover:bg-white/[0.12]"
@@ -238,6 +243,9 @@ export default function PaywallDeuxChemins({
           libelleOffre={`Analyse complète — ${equipe1Nom} contre ${equipe2Nom} · ${prixMatch.toLocaleString(
             "fr-FR"
           )} FCFA`}
+          // Sans cette clé, les sorties de la notice tombaient dans un panier
+          // sans nom, séparé des clics qui les avaient provoquées.
+          cleOffre="match-unique"
           onContinuer={(paysRetenu) => acheterCeMatch(paysRetenu)}
           onFermer={() => setNotice(false)}
         />
