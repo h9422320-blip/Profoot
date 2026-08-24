@@ -48,6 +48,23 @@ export interface SegmentPrecision {
 export interface SemainePrecision extends SegmentPrecision {
   /** Lundi de la semaine, en ISO court. */
   debut: string;
+  /**
+   * La même semaine, découpée par segment.
+   *
+   * ── POURQUOI CE DÉTAIL EST INDISPENSABLE ────────────────────────────────
+   *
+   * La normalisation des championnats mise en service le 24 août 2026 promet
+   * +7,6 points sur les matchs entre championnats et rien du tout sur les
+   * autres. Ce gain a été mesuré sur un backtest — 10 157 rencontres rejouées.
+   * Un backtest reste une simulation.
+   *
+   * La seule preuve qui compte est celle des matchs À VENIR. Sans ce découpage
+   * hebdomadaire, un gain de sept points sur un cinquième des matchs
+   * disparaîtrait dans la moyenne : il n'y pèserait qu'un point et demi,
+   * indiscernable du hasard d'une bonne semaine.
+   */
+  memeChampionnat: SegmentPrecision;
+  championnatsCroises: SegmentPrecision;
 }
 
 export interface SuiviPrecision {
@@ -170,7 +187,19 @@ export function calculerSuivi(analyses: Ligne[]): SuiviPrecision {
 
   const semaines: SemainePrecision[] = [...parSemaine.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([debut, l]) => ({ debut, ...mesurer(l) }));
+    .map(([debut, l]) => {
+      const connusSemaine = l.filter((a) => a.team1_league && a.team2_league);
+      return {
+        debut,
+        ...mesurer(l),
+        memeChampionnat: mesurer(
+          connusSemaine.filter((a) => String(a.team1_league) === String(a.team2_league))
+        ),
+        championnatsCroises: mesurer(
+          connusSemaine.filter((a) => String(a.team1_league) !== String(a.team2_league))
+        ),
+      };
+    });
 
   return {
     vide: false,

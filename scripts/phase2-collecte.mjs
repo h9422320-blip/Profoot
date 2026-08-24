@@ -53,7 +53,7 @@ const ligues = [...new Set([...[...demandes].filter(([, n]) => n >= 20).map(([id
 console.log(`\n  ${demandes.size} compétitions demandées, ${ligues.length} retenues (au moins 20 analyses, plus les coupes).\n`);
 
 // ── Collecte ────────────────────────────────────────────────────────────
-const SAISONS = [2024, 2025];
+const SAISONS = [2024, 2025, 2026];
 const matchs = [];
 let appels = 0;
 

@@ -5,6 +5,7 @@ import { getAllCompetitionStatuses } from '@/lib/competition-status';
 import { getLiveTeams } from '@/lib/teams-live';
 import { verifierPronostics } from '@/lib/precision-reelle';
 import { recalculerForcesChampionnats } from '@/lib/forces-championnats';
+import { releverCotes } from '@/lib/cotes-marche';
 import { construirePreuves } from '@/lib/preuves';
 import { enregistrerPrecisionDuJour } from '@/lib/precision-quotidienne';
 
@@ -105,6 +106,30 @@ export async function GET(request: Request) {
       console.warn('[CRON] Hiérarchie des championnats non refaite :', e?.message);
     }
 
+    // ── LE RELEVÉ DES COTES DU MARCHÉ ─────────────────────────────────────
+    //
+    // Il ne sert à RIEN aujourd'hui, et c'est assumé : il constitue la matière
+    // qui manquera dans trois semaines.
+    //
+    // Les cotes des bookmakers sont le meilleur prédicteur public du football.
+    // Le 24 août 2026, elles ont dû être écartées de la mise au point du
+    // moteur parce que le fournisseur ne les garde pas : celles du 23 août
+    // rendaient dix matchs, celles du 16 août plus rien. Rien n'était donc
+    // validable sur l'historique.
+    //
+    // Chaque jour sans relevé est un jour de mesure perdu pour toujours.
+    let cotes: { jours: number; matchs: number } | null = null;
+    try {
+      const r = await releverCotes();
+      cotes = { jours: r.jours, matchs: r.matchs };
+      console.log(
+        `[CRON] Cotes relevées : ${r.matchs} rencontres sur ${r.jours} journées — ` +
+          r.detail.map((d) => `${d.jour.slice(5)} ${d.matchs}`).join(', ')
+      );
+    } catch (e: any) {
+      console.warn('[CRON] Relevé des cotes impossible :', e?.message);
+    }
+
     // ── LE MUR SE RECONSTRUIT ICI AUSSI ───────────────────────────────────────
     //
     // Vérifier les pronostics sans reconstruire les preuves laissait le mur en
@@ -169,6 +194,7 @@ export async function GET(request: Request) {
       // `null` signale que la hiérarchie n'a pas pu être refaite ce jour-là :
       // le moteur retombe alors sur son comportement d'avant, sans rien casser.
       championnats,
+      cotes,
       ventesReparees: ventes?.reparees ?? [],
       ventesSansTrace: ventes?.sansTrace ?? [],
       resume,

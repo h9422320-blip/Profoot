@@ -117,14 +117,15 @@ export default async function SuiviPrecision() {
               </h4>
             </div>
             <div className="overflow-x-auto -mx-1 px-1">
-              <table className="w-full text-[12px] min-w-[420px]">
+              <table className="w-full text-[12px] min-w-[540px]">
                 <thead>
                   <tr className="text-[10px] font-bold uppercase tracking-wider text-white/30">
                     <th className="text-left pb-2">Semaine du</th>
                     <th className="text-right pb-2">Matchs</th>
-                    <th className="text-right pb-2">Vainqueur</th>
+                    <th className="text-right pb-2">Ensemble</th>
+                    <th className="text-right pb-2">Même champ.</th>
+                    <th className="text-right pb-2 text-amber-400/60">Croisés</th>
                     <th className="text-right pb-2">Score exact</th>
-                    <th className="text-right pb-2">Écart confiance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -137,21 +138,37 @@ export default async function SuiviPrecision() {
                       <td className="py-2 text-right tabular-nums font-bold text-cyan-400">
                         {w.vainqueur === null ? '—' : `${w.vainqueur} %`}
                       </td>
+                      <td className="py-2 text-right tabular-nums text-white/60">
+                        {w.memeChampionnat.vainqueur === null
+                          ? `— (${w.memeChampionnat.matchs})`
+                          : `${w.memeChampionnat.vainqueur} % (${w.memeChampionnat.matchs})`}
+                      </td>
+                      {/* La colonne qui porte la preuve : c'est ici que la
+                          normalisation des championnats doit se voir, ou nulle
+                          part. Le backtest promet +7,6 points. */}
+                      <td className="py-2 text-right tabular-nums font-bold text-amber-400">
+                        {w.championnatsCroises.vainqueur === null
+                          ? `— (${w.championnatsCroises.matchs})`
+                          : `${w.championnatsCroises.vainqueur} % (${w.championnatsCroises.matchs})`}
+                      </td>
                       <td className="py-2 text-right tabular-nums text-white/70">
                         {w.scoreExact === null ? '—' : `${w.scoreExact} %`}
-                      </td>
-                      <td
-                        className={`py-2 text-right tabular-nums ${
-                          w.ecartConfiance !== null && w.ecartConfiance > 15 ? 'text-warning' : 'text-white/50'
-                        }`}
-                      >
-                        {w.ecartConfiance === null ? '—' : `${w.ecartConfiance > 0 ? '+' : ''}${w.ecartConfiance} pt`}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            <p className="text-[11px] text-white/35 mt-3 leading-relaxed">
+              La colonne <strong className="text-amber-400">Croisés</strong> est celle à
+              surveiller. La mise à la même échelle des championnats, en service depuis le
+              24 août 2026, promet <strong className="text-white/70">+7,6 points</strong> sur ces
+              rencontres et rien du tout sur les autres — mesuré sur 10 157 matchs rejoués, ce
+              qui reste une simulation. Les semaines à venir diront si la promesse tient sur de
+              vrais matchs. Le nombre entre parenthèses est l&apos;effectif : sous huit
+              rencontres, aucun taux n&apos;est publié.
+            </p>
           </div>
         )}
 
