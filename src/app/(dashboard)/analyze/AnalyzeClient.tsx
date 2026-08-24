@@ -1969,6 +1969,37 @@ export default function AnalyzePage({
                       <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-4">Les deux équipes marquent</h5>
                       <DualBar label="" v1={result.predictions.btts.yes} v2={result.predictions.btts.no} suffix="%" customL1="Oui" customL2="Non" hideTitle={true} />
                     </div>
+
+                    {/* ── LA CAGE INVIOLÉE ──────────────────────────────────
+                        Tirée de la même grille de Poisson que tout ce qui
+                        précède, sans donnée supplémentaire. Elle répond à ce
+                        que « les deux marquent : non » laissait ouvert : cette
+                        réponse-là couvre 1-0, 0-1 et 0-0 sans jamais dire
+                        laquelle des deux défenses tient. */}
+                    {result.predictions.cleanSheet && (
+                      <div className="pt-4 border-t border-white/5">
+                        <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-4">Garde sa cage inviolée</h5>
+                        <div className="space-y-2.5">
+                          {[
+                            { nom: getClub(team1!).name, valeur: result.predictions.cleanSheet.team1 },
+                            { nom: getClub(team2!).name, valeur: result.predictions.cleanSheet.team2 },
+                          ].map((c) => (
+                            <div key={c.nom} className="flex items-center gap-3">
+                              <span className="text-xs text-white/60 flex-1 min-w-0 truncate">{c.nom}</span>
+                              <div className="h-1.5 w-24 rounded-full bg-white/10 overflow-hidden shrink-0">
+                                <div
+                                  className="h-full rounded-full bg-[#10B981]"
+                                  style={{ width: `${Math.max(0, Math.min(100, c.valeur))}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-black text-white/90 tabular-nums w-10 text-right shrink-0">
+                                {c.valeur} %
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-sm">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { absencesRetenues, ligneAbsences } from "@/lib/absences";
 import { MODELES_GEMINI } from "@/lib/gemini-models";
 import { genererAnalyseJSON } from "@/lib/analyse-modele";
 import { compterTentative, messageAttente } from "@/lib/limite-partagee";
@@ -1504,6 +1505,15 @@ async function analyser(req: Request, billet: BilletQuota) {
         over25: scoreCalcule.probaPlusDe.deuxCinq,
         over35: scoreCalcule.probaPlusDe.troisCinq,
       },
+      // ── LA CAGE INVIOLÉE ────────────────────────────────────────────────
+      //
+      // Tirée de la grille déjà calculée, sans un appel de plus au
+      // fournisseur. « Les deux marquent : non » regroupait 1-0, 0-1 et 0-0
+      // sans jamais dire quelle défense tenait : cette mention le dit.
+      cleanSheet: {
+        team1: scoreCalcule.probaCageInviolee1,
+        team2: scoreCalcule.probaCageInviolee2,
+      },
     };
 
     // ── MATCH EN COURS ────────────────────────────────────────────────────────
@@ -1661,6 +1671,15 @@ async function analyser(req: Request, billet: BilletQuota) {
     const estApercu = estApercuGlobal;
 
     const apiDataMissing = (baseGoalsFor1 === 0 && baseGoalsFor2 === 0 && played1 <= 1);
+
+    // ── LA DATE À LAQUELLE ON JUGE LES ABSENCES ───────────────────────────
+    //
+    // Celle du match analysé, quand elle est connue. Le fournisseur rend
+    // l'historique des blessures de TOUTE la saison ; sans cette référence, on
+    // citerait comme absents des joueurs revenus depuis des mois. Absente, le
+    // filtre se rabat sur l'instant présent.
+    const dateDuMatchAnalyse: string | null =
+      (targetFutureMatch || targetPastMatch || nextH2H)?.fixture?.date ?? null;
     const prompt = `Tu es le moteur de prédiction IA de ProFoot, un système ultra-avancé d'analyse de football.
 TA MISSION : Analyser le match entre ${team1.name} et ${team2.name}, prendre en compte LA FORCE REELLE DES ÉQUIPES, évaluer les dynamiques et PREDIRE LE SCORE EXACT.
 
@@ -1673,7 +1692,7 @@ DONNÉES REELLES FOURNIES :
 - Niveau/Classement : ${stand1}
 - Statistiques globales : ${baseGoalsFor1} buts marqués, ${baseGoalsAgainst1} encaissés en ${played1} matchs. Possession : ${baseAvgPossession1}%.
 - Derniers résultats : ${JSON.stringify(recent1)}
-- Blessures majeures : ${JSON.stringify(t1Injuries?.response?.slice(0,5).map((i:any)=>i.player.name) || "Aucune")}
+- Blessures majeures : ${ligneAbsences(absencesRetenues(t1Injuries?.response, dateDuMatchAnalyse))}
 - Meilleurs buteurs : ${scorers1.length > 0 ? scorers1.map((s:any) => `${s.name} (${s.goals})`).join(', ') : "Inconnu (utilise tes connaissances)"}
 - Effectif complet : ${squad1.all.length > 0 ? squad1.all.slice(0, 20).join(', ') : "Inconnu (API injoignable, base-toi sur ta propre connaissance des titulaires et remplaçants actuels de " + team1.name + ")"}
 
@@ -1681,7 +1700,7 @@ DONNÉES REELLES FOURNIES :
 - Niveau/Classement : ${stand2}
 - Statistiques globales : ${baseGoalsFor2} buts marqués, ${baseGoalsAgainst2} encaissés en ${played2} matchs. Possession : ${baseAvgPossession2}%.
 - Derniers résultats : ${JSON.stringify(recent2)}
-- Blessures majeures : ${JSON.stringify(t2Injuries?.response?.slice(0,5).map((i:any)=>i.player.name) || "Aucune")}
+- Blessures majeures : ${ligneAbsences(absencesRetenues(t2Injuries?.response, dateDuMatchAnalyse))}
 - Meilleurs buteurs : ${scorers2.length > 0 ? scorers2.map((s:any) => `${s.name} (${s.goals})`).join(', ') : "Inconnu (utilise tes connaissances)"}
 - Effectif complet : ${squad2.all.length > 0 ? squad2.all.slice(0, 20).join(', ') : "Inconnu (API injoignable, base-toi sur ta propre connaissance des titulaires et remplaçants actuels de " + team2.name + ")"}
 

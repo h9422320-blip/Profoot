@@ -30,10 +30,25 @@ import { calculerScoreProbable } from '../src/lib/score-probable';
 const PLAFOND_CROISE = 72;
 const PLANCHER = 70;
 
-/** Deux équipes très déséquilibrées : de quoi produire une forte confiance. */
+/**
+ * Deux équipes très déséquilibrées : de quoi produire une forte confiance.
+ *
+ * Les statistiques attendues sont des TOTAUX DE SAISON, pas des moyennes par
+ * match. Passer 2,6 au lieu de 78 écrase les buts attendus sur leur plancher
+ * de 0,25 et rend toutes les affiches identiques : l'épreuve passait encore,
+ * mais elle ne mesurait plus rien. Corrigé le 24 août 2026, après que la
+ * sonde du moteur eut sorti neuf fois le même 0-0.
+ */
+const MATCHS = 30;
+const parSaison = (marques: number, encaisses: number) => ({
+  butsMarques: Math.round(marques * MATCHS),
+  butsEncaisses: Math.round(encaisses * MATCHS),
+  matchsJoues: MATCHS,
+});
+
 const ECRASANTE = {
-  equipe1: { butsMarques: 2.6, butsEncaisses: 0.5, matchsJoues: 30 },
-  equipe2: { butsMarques: 0.7, butsEncaisses: 2.2, matchsJoues: 30 },
+  equipe1: parSaison(2.6, 0.5),
+  equipe2: parSaison(0.7, 2.2),
 };
 
 test('★ ACQUIS — championnats différents : la confiance est plafonnée à 72', () => {

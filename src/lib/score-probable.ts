@@ -41,6 +41,15 @@ export interface ScoreProbable {
   probaVictoire2: number;
   /** Probabilité que les deux équipes marquent. */
   probaLesDeuxMarquent: number;
+  /**
+   * Probabilité que chaque équipe garde sa cage inviolée, en pourcentage.
+   *
+   * Tirée de la même grille : la colonne où l'adversaire reste à zéro. Elle
+   * répond à une question que « les deux marquent : non » laisse ouverte —
+   * cette réponse-là regroupe 1-0, 0-1 et 0-0 sans dire quelle défense tient.
+   */
+  probaCageInviolee1: number;
+  probaCageInviolee2: number;
   /** Probabilité de dépasser 0,5 / 1,5 / 2,5 / 3,5 buts au total. */
   probaPlusDe: { zeroCinq: number; unCinq: number; deuxCinq: number; troisCinq: number };
   /** Probabilité du score exact retenu — la mesure honnête de l'incertitude. */
@@ -669,6 +678,7 @@ export function calculerScoreProbable(
    */
   let meilleurGlobal = { buts1: 1, buts2: 1, proba: -1, ecart: Infinity };
   let victoire1 = 0, nul = 0, victoire2 = 0, lesDeux = 0;
+  let cageInviolee1 = 0, cageInviolee2 = 0;
   const total = [0, 0, 0, 0]; // au moins 1, 2, 3 ou 4 buts au total
 
   for (let i = 0; i <= BUTS_MAX; i++) {
@@ -701,6 +711,18 @@ export function calculerScoreProbable(
       if (somme >= 2) total[1] += p;
       if (somme >= 3) total[2] += p;
       if (somme >= 4) total[3] += p;
+
+      // ── LA CAGE INVIOLÉE ──────────────────────────────────────────────
+      //
+      // Une équipe garde sa cage inviolée quand l'AUTRE ne marque pas. Rien
+      // de nouveau n'est calculé : c'est une colonne de la grille déjà
+      // construite, celle où l'adversaire reste à zéro.
+      //
+      // Elle n'est pas déductible de ce qui était déjà affiché. « Les deux
+      // marquent : non » regroupe trois situations très différentes — 1-0,
+      // 0-1 et 0-0 — et ne dit pas laquelle des deux défenses tient.
+      if (j === 0) cageInviolee1 += p;
+      if (i === 0) cageInviolee2 += p;
     }
   }
 
@@ -760,10 +782,51 @@ export function calculerScoreProbable(
    * avant même d'être comparés, et il ne restait que des scores de victoire,
    * dont le plus proche des buts attendus est 2-1 pour des équipes ordinaires.
    *
-   * Désormais : si l'issue en tête ne domine pas nettement, on annonce le score
-   * le plus proche des buts attendus, quelle que soit son issue. Si elle domine
-   * vraiment, elle commande le score — c'est ce qui empêche de revoir un
-   * Alavés — Getafe annoncé « 1-1 » puis perdu 3-0.
+   * Un temps, la règle a donc été : si l'issue en tête ne domine pas nettement,
+   * on annonce le score le plus probable quelle que soit son issue. Elle a
+   * rendu la variété, mais au prix d'une contradiction affichée.
+   *
+   * ── LE SEUIL RESSERRÉ DE HUIT À QUATRE (24 AOÛT 2026) ───────────────────
+   *
+   * L'échappatoire produisait 9 % d'analyses affichant un score de PARITÉ sous
+   * un texte annonçant une VICTOIRE. « 1-1 » écrit en gros au-dessus de
+   * « Victoire de Liverpool, 54 % » : l'abonné n'a aucun moyen de savoir
+   * lequel des deux croire.
+   *
+   * Le rejeu des 344 rencontres vérifiées dont les buts attendus sont
+   * conservés — la grille de Poisson reconstruite à l'identique, confrontée au
+   * score réellement tombé — donne :
+   *
+   *   seuil │ score exact │ scores diff. │ le plus servi │ contradictoires
+   *       8 │    14,5 %   │      11      │   2-1 · 25 %  │      9 %
+   *       4 │    15,4 %   │      11      │   2-1 · 25 %  │      3 %
+   *       0 │    16,6 %   │      10      │   2-1 · 25 %  │      0 %
+   *
+   * Quatre est retenu, et non zéro, parce que le seuil zéro fait disparaître
+   * les scores de parité : deux équipes de force identique n'en produisent
+   * plus aucun, et `non-regression.test.ts` le refuse à juste titre — un
+   * moteur qui n'annonce jamais 1-1 est faux, quelle que soit sa justesse par
+   * ailleurs. Trois échoue à la même épreuve ; quatre est le plus bas qui la
+   * passe.
+   *
+   * Le gain tient sur les deux moitiés de l'échantillon prises séparément —
+   * +0,5 point sur la récente, +1,2 sur l'ancienne — ce qui exclut un réglage
+   * taillé sur la chance. La variété ne bouge pas : onze scores distincts
+   * avant comme après, et le 2-1 reste à 25 %.
+   *
+   * ── CE QUI A ÉTÉ ESSAYÉ ET REFUSÉ LE MÊME JOUR ──────────────────────────
+   *
+   * Écarter la correction Dixon-Coles du choix du score fait mieux sur le
+   * papier — 17,2 % de scores exacts, et elle n'a jamais été validée pour cet
+   * usage, seulement pour la probabilité de nul. Mais elle fait passer le
+   * score dominant de « 2-1 à 25 % » à « 1-0 à 32 % » : plus juste, et plus
+   * répétitif. Le moteur n'a rien à gagner à répondre 1-0 un tiers du temps.
+   *
+   * Élargir la variété au-delà, en annonçant des scores moins probables, fait
+   * baisser la justesse à chaque essai. La variété des vrais scores n'est pas
+   * un réglage manquant : c'est du hasard, et le modèle le porte déjà
+   * correctement — dispersion des buts que la grille peut produire 1,32,
+   * dispersion réellement observée 1,31, sur les mêmes 344 rencontres.
    */
   const issueDuScoreNaturel: 'victoire1' | 'nul' | 'victoire2' =
     meilleurGlobal.buts1 > meilleurGlobal.buts2
@@ -776,7 +839,10 @@ export function calculerScoreProbable(
   const avanceDeLIssue =
     pourcentageAffiche[issueRetenue] - pourcentageAffiche[issueDuScoreNaturel];
 
-  const ECART_DOMINATION = 8;
+  // Quatre : le seuil le plus bas qui laisse encore sortir un score de parité
+  // entre deux équipes de force égale. Voir juste au-dessus pour le rejeu qui
+  // l'a fixé, et pour ce qui a été essayé puis refusé.
+  const ECART_DOMINATION = 4;
   const meilleur =
     issueDuScoreNaturel === issueRetenue || avanceDeLIssue < ECART_DOMINATION
       ? meilleurGlobal
@@ -831,6 +897,8 @@ export function calculerScoreProbable(
     probaNul: pn,
     probaVictoire2: pv2,
     probaLesDeuxMarquent: Math.round(lesDeux * 100),
+    probaCageInviolee1: Math.round(cageInviolee1 * 100),
+    probaCageInviolee2: Math.round(cageInviolee2 * 100),
     probaPlusDe: {
       zeroCinq: pct(total[0]),
       unCinq: pct(total[1]),
