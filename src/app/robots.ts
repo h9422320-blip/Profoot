@@ -33,7 +33,12 @@ export default function robots(): MetadataRoute.Robots {
           '/history',
           '/settings',
           '/search',
-          '/ia-center',
+          // '/ia-center' retirée le 24/08/2026, en même temps que la page.
+          //
+          // L'interdiction n'est PAS conservée, et c'est délibéré : une adresse
+          // interdite aux robots reste dans l'index de Google, marquée
+          // « bloquée ». Pour qu'elle en sorte, il faut au contraire laisser le
+          // robot venir constater qu'elle n'existe plus.
           '/payment-success',
           '/payment-failed',
         ],

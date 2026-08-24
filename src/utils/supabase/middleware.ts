@@ -71,7 +71,15 @@ export async function updateSession(request: NextRequest) {
   //
   // /club, /match et /stats ont suivi le 16/08/2026, une fois branchés sur
   // des données réelles et rendus par le serveur.
-  const protectedPaths = ['/dashboard', '/analyze', '/settings', '/history', '/search', '/ia-center', '/expert', '/payment-success', '/payment-failed', '/admin'];
+  // /ia-center a été retirée le 24/08/2026. Elle n'était liée depuis nulle
+  // part, mais tout compte connecté l'atteignait en tapant l'adresse : elle
+  // n'était protégée que par la connexion, pas par le droit d'administrer.
+  // Ses quatre chiffres — précision réelle, score exact, pronostics vérifiés,
+  // en attente — vivent déjà sur /admin/system, avec en plus l'écart entre la
+  // confiance affichée et la précision constatée. Elle portait par ailleurs
+  // des promesses jamais tenues : « plus de 50 sources », « 200 variables »,
+  // « conditions météo », qui décrivaient un moteur qui n'existe pas.
+  const protectedPaths = ['/dashboard', '/analyze', '/settings', '/history', '/search', '/expert', '/payment-success', '/payment-failed', '/admin'];
 
   // Comparaison sur le SEGMENT complet, et non sur le simple début du chemin.
   //
