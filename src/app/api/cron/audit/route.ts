@@ -45,10 +45,14 @@ export async function GET(request: Request) {
     let verification: { examinees: number; verifiees: number; enAttente: number } | null = null;
     try {
       // Le lot est large parce que le coût ne dépend plus du nombre d'analyses
-      // mais du nombre de RENCONTRES distinctes : 300 analyses ne représentent
-      // qu'une soixantaine d'appels. Avec un lot de 150, l'arriéré ne se
-      // résorbait jamais — il grossissait plus vite qu'il n'était traité.
-      verification = await verifierPronostics(300);
+      // mais du nombre de RENCONTRES distinctes, lues vingt par appel : les
+      // 7 046 analyses en attente du 24 août 2026 tenaient dans 21 appels.
+      //
+      // Six mille et non dix mille comme la tâche de minuit : celle-ci ne
+      // dispose que de cent vingt secondes, contre trois cents. Ce passage de
+      // 5 h 37 rattrape ce que la nuit a manqué — deux filets valent mieux
+      // qu'un, et ils n'ont pas besoin d'avoir la même maille.
+      verification = await verifierPronostics(6000);
     } catch (e: any) {
       console.warn('[AUDIT] Vérification des pronostics impossible :', e?.message);
     }

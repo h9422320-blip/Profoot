@@ -49,10 +49,28 @@ export async function GET(request: Request) {
     // quotidien qui alimente la précision affichée : sans lui, aucun taux ne
     // pourrait être mesuré et il faudrait en inventer un.
     //
-    // Le lot est large parce que le coût ne dépend plus du nombre d'analyses
-    // mais du nombre de RENCONTRES distinctes : les cinquante-deux analyses de
-    // FC Barcelone — Elche ne coûtent qu'un seul appel.
-    const precision = await verifierPronostics(300);
+    // ── POURQUOI DIX MILLE, ET PLUS TROIS CENTS ───────────────────────────
+    //
+    // Le lot de trois cents comptait des ANALYSES, et les prenait de la plus
+    // récente à la plus ancienne. Comme dix-sept analyses portent en moyenne
+    // sur la même rencontre, un passage n'examinait qu'une vingtaine de
+    // matchs — pendant que la boutique en produisait deux mille par jour.
+    //
+    // Pire, l'arriéré était AFFAMÉ : les nouvelles analyses passant devant,
+    // les anciennes n'étaient jamais atteintes. Mesuré le 24 août 2026,
+    // 1 871 analyses attendaient depuis plus de trois jours sans aucune
+    // chance d'être vues un jour.
+    //
+    // Le coût ne dépend plus du nombre d'analyses mais du nombre de
+    // RENCONTRES distinctes, lues vingt par appel : les 7 046 analyses en
+    // attente ce jour-là tenaient dans 21 appels au fournisseur, et 4 530
+    // d'entre elles ont été vérifiées d'un coup. Le reste portait sur des
+    // matchs pas encore joués.
+    //
+    // Dix mille couvre donc plusieurs jours de production. Mesuré : 2 653
+    // analyses examinées en 6,6 secondes, sur les 300 que la plateforme
+    // accorde.
+    const precision = await verifierPronostics(10000);
 
     // ── LE MUR SE RECONSTRUIT ICI AUSSI ───────────────────────────────────────
     //

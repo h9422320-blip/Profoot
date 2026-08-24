@@ -131,6 +131,115 @@ async function trouverResultat(analyse: any): Promise<{
   };
 }
 
+/** Ce qu'on retient d'une rencontre terminée, quel que soit le chemin suivi. */
+interface RencontreTerminee {
+  fixtureId: number;
+  butsDomicile: number;
+  butsExterieur: number;
+  idDomicile: string;
+  competition: string | null;
+}
+
+/** Le fournisseur n'accepte pas plus de vingt identifiants par appel. */
+const IDENTIFIANTS_PAR_APPEL = 20;
+
+/** Statuts qui signifient « c'est fini, le score ne bougera plus ». */
+const STATUTS_TERMINES = new Set(['FT', 'AET', 'PEN']);
+
+/**
+ * LE CHEMIN RAPIDE : ON DEMANDE LES MATCHS PAR LEUR IDENTIFIANT.
+ *
+ * ── POURQUOI IL EXISTE ────────────────────────────────────────────────────
+ *
+ * La vérification cherchait chaque résultat par la PAIRE D'ÉQUIPES, avec un
+ * appel par affiche. Mesuré le 24 août 2026 : 7 046 analyses en attente,
+ * portant sur 408 rencontres distinctes — donc 408 appels au fournisseur, la
+ * ressource la plus rare du projet.
+ *
+ * Or chaque analyse porte déjà l'identifiant de sa rencontre, enregistré à sa
+ * création. Le fournisseur accepte vingt identifiants par appel. Les mêmes
+ * 408 rencontres tiennent donc dans 21 appels au lieu de 408 : dix-neuf fois
+ * moins.
+ *
+ * ── ET C'EST AUSSI PLUS JUSTE ─────────────────────────────────────────────
+ *
+ * La recherche par paire devait deviner LAQUELLE des confrontations entre deux
+ * équipes était visée, à partir de la date de l'analyse. L'identifiant, lui,
+ * ne se devine pas : c'est exactement la rencontre qui a été analysée. Un
+ * aller et un retour ne peuvent plus être confondus.
+ *
+ * Les rencontres non terminées sont simplement absentes du résultat : leurs
+ * analyses restent en attente et seront reprises au passage suivant.
+ */
+async function lireRencontresParIdentifiant(
+  identifiants: string[]
+): Promise<Map<string, RencontreTerminee>> {
+  const trouvees = new Map<string, RencontreTerminee>();
+  if (!identifiants.length) return trouvees;
+
+  const paquets: string[][] = [];
+  for (let i = 0; i < identifiants.length; i += IDENTIFIANTS_PAR_APPEL) {
+    paquets.push(identifiants.slice(i, i + IDENTIFIANTS_PAR_APPEL));
+  }
+
+  // ── PAR VAGUES, ET NON TOUS À LA FOIS ───────────────────────────────────
+  //
+  // L'abonnement au fournisseur borne le nombre d'appels PAR MINUTE. Lancer
+  // les vingt-et-un paquets ensemble a fait refuser plusieurs appels le
+  // 24 août 2026 — « too many requests per minute » — et les analyses
+  // concernées sont restées en attente pour rien.
+  //
+  // Six à la fois laissent de la marge pour les appels que l'application sert
+  // en même temps à ses abonnés : la tâche quotidienne ne doit jamais manger
+  // le quota d'un client qui lance une analyse au même moment.
+  const PAQUETS_SIMULTANES = 6;
+  const reponses: any[] = [];
+
+  for (let i = 0; i < paquets.length; i += PAQUETS_SIMULTANES) {
+    const vague = await Promise.all(
+      paquets.slice(i, i + PAQUETS_SIMULTANES).map((paquet) =>
+        apiFootball<any>(
+          `/fixtures?ids=${paquet.join('-')}`,
+          // Cinq minutes : une rencontre terminée ne change plus, mais le même
+          // paquet contient souvent des matchs encore à venir. Une réserve
+          // longue les figerait « non joués » jusqu'au lendemain.
+          CACHE_TTL.FIXTURES_TODAY
+        ).catch((e: any) => {
+          // Un paquet perdu n'annule pas les autres : ses analyses restent en
+          // attente et repasseront demain.
+          console.warn(`[PRECISION] Paquet de rencontres illisible : ${e?.message}`);
+          return null;
+        })
+      )
+    );
+    reponses.push(...vague);
+  }
+
+  for (const data of reponses) {
+    for (const f of data?.response ?? []) {
+      const statut = f?.fixture?.status?.short;
+      if (!STATUTS_TERMINES.has(String(statut))) continue;
+
+      const id = String(f?.fixture?.id ?? '');
+      if (!id) continue;
+
+      trouvees.set(id, {
+        fixtureId: Number(f.fixture.id),
+        butsDomicile: f.goals?.home ?? 0,
+        butsExterieur: f.goals?.away ?? 0,
+        idDomicile: String(f.teams?.home?.id ?? ''),
+        // La compétition vient de la fiche du match, seule source qui ne
+        // puisse pas se tromper — celle enregistrée à l'analyse retombait sur
+        // le championnat de la première équipe quand la rencontre n'avait pas
+        // pu être résolue.
+        competition: f.league?.name ?? null,
+      });
+    }
+  }
+
+  return trouvees;
+}
+
 /**
  * Confronte les analyses passées aux résultats réels et enregistre le verdict.
  *
@@ -144,10 +253,20 @@ export async function verifierPronostics(limite = 60): Promise<{
 }> {
   const sb = createAdminClient();
 
-  const { data, error } = await sb
-    .from('analysis_history')
-    .select('id, team1_logo, team2_logo, score, created_at, predicted_winner, predicted_at')
-    .is('verified_at', null)
+  // ── ON LIT PAGE PAR PAGE ────────────────────────────────────────────────
+  //
+  // Supabase rend mille lignes au maximum par requête, silencieusement. Une
+  // limite de trois mille en rendait donc mille, et les deux tiers du lot
+  // demandé n'étaient jamais examinés — sans qu'aucune erreur ne le signale.
+  const data: any[] = [];
+  let error: { message: string } | null = null;
+
+  for (let de = 0; de < limite; de += 1000) {
+    const taille = Math.min(1000, limite - de);
+    const { data: page, error: erreurPage } = await sb
+      .from('analysis_history')
+      .select('id, team1_logo, team2_logo, score, created_at, predicted_winner, predicted_at, fixture_id')
+      .is('verified_at', null)
     // Deux heures, et non vingt-quatre.
     //
     // Le délai précédent rendait invisible tout match joué le jour même. Le 12
@@ -159,11 +278,27 @@ export async function verifierPronostics(limite = 60): Promise<{
     // Une rencontre dure environ deux heures. Passé ce délai, elle PEUT être
     // terminée ; c'est la recherche du résultat qui tranche, et elle ne retient
     // que les matchs réellement achevés.
-    .lt('created_at', new Date(Date.now() - 2 * 3600 * 1000).toISOString())
-    // Les analyses les plus récentes d'abord : ce sont les matchs du jour qui
-    // intéressent, pas un arriéré de la semaine passée.
-    .order('created_at', { ascending: false })
-    .limit(limite);
+      .lt('created_at', new Date(Date.now() - 2 * 3600 * 1000).toISOString())
+      // Les analyses les plus récentes d'abord : ce sont les matchs du jour qui
+      // intéressent, pas un arriéré de la semaine passée.
+      //
+      // Cet ordre affamait l'arriéré tant que le lot était petit : à trois
+      // cents analyses par passage, les plus vieilles n'étaient jamais
+      // atteintes, puisque les nouvelles leur passaient devant chaque jour.
+      // Mesuré le 24 août 2026, 1 871 analyses attendaient depuis plus de
+      // trois jours sans espoir d'être vues. Le lot couvre désormais tout
+      // l'arriéré : l'ordre ne décide plus que de qui passe en premier.
+      .order('created_at', { ascending: false })
+      .range(de, de + taille - 1);
+
+    if (erreurPage) {
+      error = erreurPage;
+      break;
+    }
+    if (!page?.length) break;
+    data.push(...page);
+    if (page.length < taille) break;
+  }
 
   if (error) {
     console.error('[PRECISION] Lecture impossible :', error.message);
@@ -195,10 +330,40 @@ export async function verifierPronostics(limite = 60): Promise<{
   // même réponse. Un seul appel par affiche, quoi qu'il arrive.
   const resultatsParPaire = new Map<string, Promise<Awaited<ReturnType<typeof trouverResultat>>>>();
 
+  // ── LES RENCONTRES CONNUES PAR LEUR IDENTIFIANT, D'UN SEUL COUP ─────────
+  //
+  // La quasi-totalité des analyses portent l'identifiant de leur rencontre,
+  // enregistré à leur création. Vingt identifiants tiennent dans un appel :
+  // les 408 rencontres de l'arriéré du 24 août 2026 se lisaient ainsi en
+  // 21 appels au lieu de 408.
+  const identifiants = [
+    ...new Set(
+      (data ?? [])
+        .map((a: any) => a.fixture_id)
+        .filter((v: any) => v !== null && v !== undefined && v !== '')
+        .map(String)
+    ),
+  ];
+  const rencontresParId = await lireRencontresParIdentifiant(identifiants);
+
   const resultatPourAnalyse = async (analyse: any) => {
     const id1 = identifiantEquipe(analyse.team1_logo);
     const id2 = identifiantEquipe(analyse.team2_logo);
     if (!id1 || !id2) return null;
+
+    // ── LE CHEMIN RAPIDE PASSE EN PREMIER ────────────────────────────────
+    //
+    // Quand l'analyse porte un identifiant de rencontre, il n'y a rien à
+    // deviner : c'est exactement le match analysé. Une rencontre absente de
+    // la table n'est pas terminée — l'analyse reste en attente, et l'on ne
+    // retombe PAS sur la recherche par paire. Y retomber relancerait un appel
+    // par affiche pour un résultat qui n'existe pas encore, et risquerait de
+    // ramener l'aller quand c'est le retour qui a été analysé.
+    if (analyse.fixture_id !== null && analyse.fixture_id !== undefined && analyse.fixture_id !== '') {
+      const connue = rencontresParId.get(String(analyse.fixture_id));
+      if (!connue) return null;
+      return { ...connue, inverse: String(connue.idDomicile) !== String(id1) };
+    }
 
     // La date entre dans la clé : deux analyses de la même affiche à des dates
     // éloignées peuvent viser deux rencontres différentes (aller et retour).
@@ -233,7 +398,17 @@ export async function verifierPronostics(limite = 60): Promise<{
   // Vingt à la fois : la base répond aussi vite pour vingt écritures que pour
   // une, et l'on reste très loin de la saturer. Le temps total est divisé par
   // vingt.
-  const TAILLE_PAQUET = 20;
+  //
+  // ── PUIS CENT, LE 24 AOÛT 2026 ──────────────────────────────────────────
+  //
+  // Une fois les résultats lus d'un seul coup par identifiant, l'écriture est
+  // devenue le seul goulot : 4 530 analyses vérifiées en 237 secondes, quand
+  // la plateforme en accorde 300. Une journée un peu chargée aurait fait
+  // couper la tâche au milieu.
+  //
+  // Cent écritures simultanées restent très en deçà de ce que Postgres
+  // encaisse, et ramènent le même travail sous la minute.
+  const TAILLE_PAQUET = 100;
   const analyses = data ?? [];
 
   const traiter = async (analyse: any) => {
