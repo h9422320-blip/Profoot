@@ -200,8 +200,18 @@ export function extraireCotes(reponse: any[]): CoteMatch[] {
       id: Number(x.fixture.id),
       date: String(x.fixture.date),
       ligue,
-      dom: Number(x?.teams?.home?.id ?? 0),
-      ext: Number(x?.teams?.away?.id ?? 0),
+      // ── LES ÉQUIPES NE SONT PAS DANS LA RÉPONSE DES COTES ────────────
+      //
+      // `/odds` rend `league`, `fixture`, `update` et `bookmakers`. Pas
+      // `teams`. Les lire ici donnait zéro pour les 661 rencontres du premier
+      // relevé — et comme le rapprochement compare cet identifiant à celui de
+      // l'équipe analysée, TOUS les matchs étaient déclarés inversés : la
+      // probabilité de victoire à domicile allait à l'équipe qui se déplace.
+      // Le marché ressortait alors à 25 % de réussite, sous le hasard pur.
+      //
+      // Ils sont remplis juste après, depuis la fiche du match.
+      dom: 0,
+      ext: 0,
       cote,
       proba: {
         dom: Math.round(proba.dom * 10000) / 10000,
@@ -298,9 +308,56 @@ export async function releverCotes(
     interroges += paquet.length;
   }
 
+  // ── ON VA CHERCHER LES ÉQUIPES DANS LA FICHE DU MATCH ───────────────────
+  //
+  // Sans elles, impossible de savoir qui reçoit — donc impossible de rapprocher
+  // la cote d'une analyse, dont l'abonné a pu nommer les équipes dans l'autre
+  // sens. Le fournisseur accepte vingt identifiants par appel : six cents
+  // rencontres coûtent trente appels.
+  const parId = new Map<number, CoteMatch>();
+  for (const m of tous) parId.set(m.id, m);
+
+  const identifiants = [...parId.keys()];
+  const paquets: number[][] = [];
+  for (let i = 0; i < identifiants.length; i += 20) paquets.push(identifiants.slice(i, i + 20));
+
+  for (let i = 0; i < paquets.length; i += DE_FRONT) {
+    // Le budget couvre AUSSI cette étape. Sans cela, le relevé du 24 août 2026
+    // a duré trois cent trente et une secondes — au-delà des trois cents que
+    // la plateforme accorde à toute la tâche quotidienne, qui serait tombée.
+    if (Date.now() - debut > BUDGET_MS * 1.5) {
+      console.warn('[COTES] Budget épuisé pendant la lecture des fiches : le reste attendra demain.');
+      break;
+    }
+    const lot = paquets.slice(i, i + DE_FRONT);
+    const reponses = await Promise.all(
+      lot.map((p) =>
+        apiFootball<any>(`/fixtures?ids=${p.join('-')}`, CACHE_TTL.FIXTURES_UPCOMING).catch((e: any) => {
+          console.warn(`[COTES] Fiches de match illisibles : ${e?.message}`);
+          return null;
+        })
+      )
+    );
+    for (const r of reponses) {
+      for (const f of r?.response ?? []) {
+        const m = parId.get(Number(f?.fixture?.id));
+        if (!m) continue;
+        m.dom = Number(f?.teams?.home?.id ?? 0);
+        m.ext = Number(f?.teams?.away?.id ?? 0);
+      }
+    }
+  }
+
+  // Une cote sans équipes ne sert à rien : elle ne peut être rapprochée
+  // d'aucune analyse. Mieux vaut ne pas l'enregistrer que la voir compter plus
+  // tard comme une mesure.
+  const complets = [...parId.values()].filter((m) => m.dom > 0 && m.ext > 0);
+  const perdus = parId.size - complets.length;
+  if (perdus) console.warn(`[COTES] ${perdus} rencontres écartées : équipes introuvables.`);
+
   // ── RANGEMENT PAR JOURNÉE DE MATCH ──────────────────────────────────────
   const parJour = new Map<string, CoteMatch[]>();
-  for (const m of tous) {
+  for (const m of complets) {
     const jour = String(m.date).slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(jour)) continue;
     const l = parJour.get(jour);

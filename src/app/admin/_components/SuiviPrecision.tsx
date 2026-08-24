@@ -2,6 +2,7 @@ import { Target, TrendingUp, Scale } from 'lucide-react';
 import { lireSuiviPrecision } from '@/lib/suivi-precision';
 import { Panneau } from './Panneaux';
 import { Vide } from './Ui';
+import ControleMarche from './ControleMarche';
 
 /**
  * LA PRÉCISION DU MOTEUR, SUIVIE DANS LE TEMPS ET PAR SEGMENT.
@@ -171,6 +172,13 @@ export default async function SuiviPrecision() {
             </p>
           </div>
         )}
+
+        {/* ── LE MOTEUR CONTRE LE MARCHÉ ────────────────────────────────
+            Le seul juge extérieur dont on dispose. Tant que le marché seul
+            ressort SOUS le moteur, l'échantillon est trop petit : les
+            bookmakers ne perdent pas contre un modèle maison sur un vrai
+            échantillon, et prétendre le contraire serait se mentir. */}
+        <ControleMarche />
 
         <p className="text-[11px] text-white/30 leading-relaxed">
           Un match compte pour un, quel que soit le nombre d&apos;abonnés qui l&apos;ont analysé :{' '}

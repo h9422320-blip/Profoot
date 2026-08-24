@@ -143,7 +143,37 @@ test('★ ACQUIS — ce qui est conserve permet de retrouver le match', () => {
   const [m] = extraireCotes([rencontre([maison('A', '2.00', '3.50', '4.00')])]);
 
   assert.equal(m.id, 999, 'Sans l identifiant de rencontre, aucun rapprochement n est possible.');
-  assert.equal(m.dom, 33);
-  assert.equal(m.ext, 40);
   assert.ok(m.date.startsWith('2026-08-25'), 'La date du coup d envoi range la cote dans la bonne journee.');
+});
+
+test('★ ACQUIS — les equipes ne sont JAMAIS lues dans la reponse des cotes', () => {
+  // ── LE PIEGE DU 24 AOUT 2026 ────────────────────────────────────────────
+  //
+  // La reponse de `/odds` ne contient que `league`, `fixture`, `update` et
+  // `bookmakers`. Pas `teams`. Les y chercher rendait zero pour les 661
+  // rencontres du premier releve.
+  //
+  // Or le rapprochement compare cet identifiant a celui de l equipe analysee
+  // pour savoir si l abonne a nomme les equipes dans l autre sens. A zero,
+  // TOUS les matchs etaient declares inverses : la probabilite de victoire a
+  // domicile allait a l equipe qui se deplace. Le marche ressortait a 25 % de
+  // reussite — sous le hasard pur — et l on a d abord cru a un echantillon
+  // trop petit.
+  //
+  // Les equipes sont donc remplies APRES, depuis la fiche du match. Cette
+  // epreuve interdit de les relire ici, meme si une reponse fabriquee semble
+  // en contenir.
+  const [m] = extraireCotes([
+    {
+      fixture: { id: 999, date: '2026-08-25T18:00:00+00:00' },
+      league: { id: 39 },
+      // Volontairement present : le vrai fournisseur ne l envoie pas, et s y
+      // fier a coute une demi-heure de fausse piste.
+      teams: { home: { id: 33 }, away: { id: 40 } },
+      bookmakers: [maison('A', '2.00', '3.50', '4.00')],
+    },
+  ]);
+
+  assert.equal(m.dom, 0, 'Les equipes doivent rester a zero : elles viennent de la fiche du match.');
+  assert.equal(m.ext, 0);
 });
