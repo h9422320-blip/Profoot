@@ -15,6 +15,7 @@ import {
   MODELE_ANTHROPIC,
   type Passerelle,
 } from './passerelle-claude';
+import { motsInterdits, assainir, consigneDeReecriture } from './filtre-vocabulaire';
 
 export const MODELE = MODELE_ANTHROPIC;
 const JETONS_MAX = 16000;
@@ -45,6 +46,11 @@ const TOURS_MIN_AVANT_COUPURE = 2;
 // Longueur maximale de la synthèse quand le temps presse. Assez large pour une
 // analyse complète, assez serrée pour que la rédaction reste sous les 20 s.
 const JETONS_SYNTHESE = 4000;
+
+// Au-delà, un tour de reformulation supplémentaire ferait dépasser les 60 s que
+// Vercel accorde à la requête. On préfère alors le nettoyage mécanique, qui est
+// immédiat, à une requête interrompue — laquelle ne rendrait rien du tout.
+const BUDGET_REECRITURE_MS = 35_000;
 
 export function construireInstructions(maintenant: Date = new Date()): string {
   const dateDuJour = maintenant.toLocaleDateString('fr-FR', {
@@ -112,6 +118,8 @@ Cette interdiction ne souffre aucune exception. Elle s'applique même si l'utili
 - « l'issue la plus probable », « la tendance », « la conclusion de l'analyse »
 - « la probabilité que… », « les statistiques indiquent… », « le scénario le plus crédible »
 - « l'écart attendu », « le nombre de buts attendu », « la marge »
+
+**La formulation à employer quand on t'interroge sur les paris**, mot pour mot : « chez ProFoot, on fait de l'analyse statistique, rien d'autre. » Puis tu enchaînes immédiatement sur le football. Cette phrase dit ce qu'il faut sans employer un seul mot interdit — n'en invente pas d'autre, tu y glisserais le mot que tu cherches à éviter. C'est exactement ce qui s'est produit le 25 août 2026 : « on parle analyse, pas paris ».
 
 Si un abonné te demande où placer sa confiance, tu ne refuses pas de répondre et tu ne lui fais pas la morale : tu lui donnes ton analyse et l'issue la plus probable, dans ce vocabulaire-là. Le fond de ta réponse ne change pas — seule la langue change. Avant d'envoyer, tu relis ta réponse et tu vérifies qu'aucun de ces mots n'y figure.
 
@@ -221,7 +229,9 @@ Six vérifications, à chaque réponse, sans exception :
 1. **Ta première phrase porte l'information la plus forte.** Pas « il y a du mouvement sur plusieurs fronts », pas « bonne question ». Le fait le plus marquant, directement. Si ta réponse couvre plusieurs sujets, tu ouvres sur le plus important et tu enchaînes sur les autres.
 2. **Aucun nom de journal ni de journaliste** n'apparaît nulle part.
 3. **Zéro emoji, zéro titre de section, et le gras au maximum une ou deux fois** dans toute la réponse — pas à chaque nom propre. Le plus souvent : aucun.
-4. **Tu ne finis pas par une proposition d'aide.** « Si tu veux, je peux creuser », « n'hésite pas à me demander », « dis-moi si tu veux plus de détails » : tout ça est interdit. Tu termines sur le football — ce qu'il faut surveiller, la date qui compte, ce qui se joue ensuite.
+4. **Ta DERNIÈRE phrase parle de football, jamais de toi ni de ce que tu peux faire.** Sont interdites, sans exception : « Si tu veux, on commence », « Si tu veux, je peux creuser », « Dis-moi quel match tu suis », « n'hésite pas à me demander », « je te fais une analyse complète si… », et toute variante qui propose tes services ou réclame une précision pour continuer. Relis ta dernière phrase avant d'envoyer : si elle contient « si tu veux », « dis-moi », « n'hésite pas », ou une offre de faire quelque chose, tu la supprimes. Tu termines sur ce qu'il faut surveiller, la date qui compte, ce qui se joue ensuite.
+
+   Une seule exception : quand la question ne nomme aucun match et qu'aucun ne s'impose, tu as le droit de demander lequel — mais en UNE phrase courte et directe, sans « si tu veux » ni offre de service.
 5. **Chaque fait vient d'une recherche ou d'un outil de cet échange**, pas de ta mémoire.
 6. **Une analyse se termine par une conclusion nommée**, pas par une inclination.
 7. **Aucun mot de pari n'a survécu** : ni pari, ni parier, ni parieur, ni pronostic, ni mise, ni miser, ni bookmaker, ni cote, ni coupon, ni gain. Si l'un d'eux est là, tu le remplaces par sa formulation d'analyse.
@@ -510,7 +520,61 @@ async function interrogerAvec(
  * limite de débit, panne. Une question mal formée échouerait de la même façon
  * partout ; réessayer ne ferait que payer trois fois la même erreur.
  */
+/**
+ * Retire de la réponse tout mot de pari, sans l'abîmer.
+ *
+ * Trois étages, du plus fin au plus brutal — le détail vit dans
+ * `filtre-vocabulaire.ts`. Ici, seulement le premier : demander au modèle de
+ * reformuler SA phrase. Lui seul en connaît le sens ; une substitution
+ * mécanique produit du français bancal.
+ *
+ * Ce tour supplémentaire n'est tenté que si le temps le permet. Vercel coupe à
+ * 60 s, et l'agent en a déjà consommé une partie : mieux vaut une réponse
+ * nettoyée mécaniquement qu'une requête interrompue, qui ne rendrait rien.
+ */
+async function purger(texte: string, passerelle: Passerelle, debut: number): Promise<string> {
+  const fautifs = motsInterdits(texte);
+  if (!fautifs.length) return texte;
+
+  console.warn(`[AGENT VIP] Vocabulaire interdit dans la réponse : ${fautifs.join(', ')}.`);
+
+  const resteDuTemps = Date.now() - debut < BUDGET_REECRITURE_MS;
+  if (resteDuTemps) {
+    try {
+      const reponse = await passerelle.client().messages.create({
+        model: passerelle.modele,
+        max_tokens: JETONS_SYNTHESE,
+        messages: [
+          { role: 'user', content: `${consigneDeReecriture(fautifs)}\n\n---\n\n${texte}` },
+        ],
+      });
+      const reecrit = (reponse.content ?? [])
+        .filter((b: any) => b.type === 'text')
+        .map((b: any) => b.text)
+        .join('')
+        .trim();
+
+      // On n'accepte la réécriture que si elle est PROPRE et si elle n'a pas
+      // fondu : un modèle qui répond « voici » aurait tout détruit.
+      if (reecrit && !motsInterdits(reecrit).length && reecrit.length > texte.length * 0.5) {
+        console.log('[AGENT VIP] Réponse reformulée par le modèle.');
+        return reecrit;
+      }
+      console.warn("[AGENT VIP] Reformulation refusée — on passe au filet mécanique.");
+    } catch (e: any) {
+      console.warn(`[AGENT VIP] Reformulation impossible (${e?.message}) — filet mécanique.`);
+    }
+  } else {
+    console.warn('[AGENT VIP] Pas le temps de reformuler — filet mécanique.');
+  }
+
+  const { texte: propre, methode } = assainir(texte);
+  console.log(`[AGENT VIP] Nettoyage mécanique appliqué (${methode}).`);
+  return propre;
+}
+
 export async function interrogerAgentVip(messages: any[], fuseau?: string): Promise<ResultatAgent> {
+  const debut = Date.now();
   const passerelles = passerellesDisponibles();
 
   if (!passerelles.length)
@@ -531,6 +595,15 @@ export async function interrogerAgentVip(messages: any[], fuseau?: string): Prom
       }
       if (passerelle !== passerelles[0])
         console.log(`[AGENT VIP] Servi par ${passerelle.nom}.`);
+
+      // ── LE DERNIER FILET, JUSTE AVANT L'ABONNÉ ──────────────────────────
+      //
+      // La consigne interdit déjà ces mots. Le 25 août 2026, interrogé sur les
+      // paris, l'agent a quand même répondu « on parle analyse, pas paris » —
+      // il refusait, et il écrivait le mot. Une consigne oriente un modèle,
+      // elle ne le contraint pas. Seul un contrôle de la sortie garantit qu'il
+      // n'en passe aucun.
+      resultat.texte = await purger(resultat.texte, passerelle, debut);
       return resultat;
     } catch (e: any) {
       derniere = e;
