@@ -15,7 +15,7 @@ import {
   MODELE_ANTHROPIC,
   type Passerelle,
 } from './passerelle-claude';
-import { motsInterdits, assainir, consigneDeReecriture } from './filtre-vocabulaire';
+import { motsInterdits, assainir, consigneDeReecriture, retirerOffreFinale } from './filtre-vocabulaire';
 import { fuseauUtilisable } from './heure-locale';
 
 export const MODELE = MODELE_ANTHROPIC;
@@ -268,7 +268,11 @@ Six vérifications, à chaque réponse, sans exception :
 3. **Zéro emoji, zéro titre de section, et le gras au maximum une ou deux fois** dans toute la réponse — pas à chaque nom propre. Le plus souvent : aucun.
 4. **Ta DERNIÈRE phrase parle de football, jamais de toi ni de ce que tu peux faire.** Sont interdites, sans exception : « Si tu veux, on commence », « Si tu veux, je peux creuser », « Dis-moi quel match tu suis », « n'hésite pas à me demander », « je te fais une analyse complète si… », et toute variante qui propose tes services ou réclame une précision pour continuer. Relis ta dernière phrase avant d'envoyer : si elle contient « si tu veux », « dis-moi », « n'hésite pas », ou une offre de faire quelque chose, tu la supprimes. Tu termines sur ce qu'il faut surveiller, la date qui compte, ce qui se joue ensuite.
 
-   Une seule exception : quand la question ne nomme aucun match et qu'aucun ne s'impose, tu as le droit de demander lequel — mais en UNE phrase courte et directe, sans « si tu veux » ni offre de service.
+   Il n'y a AUCUNE exception. Une version antérieure de cette consigne t'autorisait à demander quel match approfondir « quand la question n'en nomme aucun » : tu t'en es servi deux fois de suite, le 25 août 2026, pour terminer par « Tu veux que je décortique l'une de ces affiches ? » et « Si tu veux que je creuse une de ces trois-là ». L'exception est supprimée.
+
+   Quand la question ne nomme aucun match, tu ne demandes pas lequel : tu traites les plus marquants d'emblée et tu conclus sur chacun. C'est ce qu'attend quelqu'un qui paie — pas un formulaire à remplir.
+
+   Ta dernière phrase est un fait de football : une conclusion, une date, un joueur à surveiller. Jamais une question, jamais une offre.
 5. **Chaque fait vient d'une recherche ou d'un outil de cet échange**, pas de ta mémoire.
 6. **Une analyse se termine par une conclusion nommée**, pas par une inclination.
 7. **Aucun mot de pari n'a survécu** : ni pari, ni parier, ni parieur, ni pronostic, ni mise, ni miser, ni bookmaker, ni cote, ni coupon, ni gain. Si l'un d'eux est là, tu le remplaces par sa formulation d'analyse.
@@ -570,6 +574,14 @@ async function interrogerAvec(
  * nettoyée mécaniquement qu'une requête interrompue, qui ne rendrait rien.
  */
 async function purger(texte: string, passerelle: Passerelle, debut: number): Promise<string> {
+  // La clôture par une offre de service part d'abord, indépendamment du
+  // vocabulaire : elle n'a rien d'interdit, elle est simplement contraire à ce
+  // qu'on vend. Le prompt l'interdit nommément depuis le 25 août 2026 — et
+  // l'agent a terminé deux réponses de suite par « Si tu veux que je creuse ».
+  const sansOffre = retirerOffreFinale(texte);
+  if (sansOffre !== texte) console.log("[AGENT VIP] Offre de service finale retirée.");
+  texte = sansOffre;
+
   const fautifs = motsInterdits(texte);
   if (!fautifs.length) return texte;
 

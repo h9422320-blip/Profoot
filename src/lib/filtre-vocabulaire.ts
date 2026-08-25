@@ -163,6 +163,54 @@ const REMPLACEMENTS: [RegExp, Remplacement][] = [
 ];
 
 /**
+ * LA PROPOSITION DE SERVICE EN FIN DE RÉPONSE.
+ *
+ * ── POURQUOI ELLE EST TRAITÉE À PART ──────────────────────────────────────
+ *
+ * Ce n'est pas un problème de conformité — aucun mot de pari n'y figure — mais
+ * de produit. L'agent est vendu comme un analyste qui tranche ; terminer par
+ * « Si tu veux que je creuse, dis-moi laquelle » le ramène au niveau d'un
+ * formulaire, et laisse l'abonné sans la conclusion qu'il a payée.
+ *
+ * Le prompt l'interdit nommément depuis le 25 août 2026. Le même jour, l'agent
+ * a fini DEUX réponses de suite par « Tu veux que je décortique l'une de ces
+ * affiches ? » et « Si tu veux que je creuse une de ces trois-là ». Deux
+ * consignes enfreintes coup sur coup : on ne s'en remet plus à la consigne.
+ *
+ * ── POURQUOI SEULEMENT LA FIN ─────────────────────────────────────────────
+ *
+ * « Si tu veux » en milieu de texte peut être légitime : « si tu veux mon
+ * avis, City passe ». C'est la CLÔTURE par une offre qui pose problème. On ne
+ * regarde donc que les dernières phrases, et on les retire — le reste de la
+ * réponse, lui, n'est jamais touché.
+ */
+const OFFRES_DE_SERVICE =
+  /^(?:si tu veux|tu veux que|veux-tu que|dis-moi (?:laquelle|lequel|si|quel)|n'hésite pas|je peux (?:te )?(?:creuser|décortiquer|détailler|sortir)|je te (?:sors|fais|donne) (?:les chiffres|une analyse)|on (?:commence|attaque) quand)/i;
+
+/**
+ * Retire la ou les phrases finales qui proposent un service.
+ *
+ * Ne touche jamais au corps de la réponse, et renonce si l'opération laissait
+ * moins de la moitié du texte : mieux vaut une offre de trop qu'une réponse
+ * vidée.
+ */
+export function retirerOffreFinale(texte: string): string {
+  const source = String(texte ?? '');
+  const phrases = source.split(/(?<=[.!?…])\s+|\n+/).filter((p) => p.trim());
+  if (phrases.length < 2) return source;
+
+  let fin = phrases.length;
+  // On remonte depuis la fin tant que la phrase est une offre : l'agent en
+  // enchaîne parfois deux (« Tu veux que je décortique ? Je te sors les
+  // chiffres. »).
+  while (fin > 1 && OFFRES_DE_SERVICE.test(phrases[fin - 1].trim())) fin--;
+  if (fin === phrases.length) return source;
+
+  const garde = phrases.slice(0, fin).join(' ').replace(/[ \t]+/g, ' ').trim();
+  return garde.length >= source.length * 0.5 ? garde : source;
+}
+
+/**
  * Détection seule — sans rien modifier.
  *
  * Sert à décider s'il faut agir, et à écrire dans le journal ce qui a été

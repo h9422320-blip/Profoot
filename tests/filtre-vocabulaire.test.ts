@@ -31,6 +31,7 @@ import {
   retirerPhrasesFautives,
   remplacerVocabulaire,
   assainir,
+  retirerOffreFinale,
 } from '../src/lib/filtre-vocabulaire';
 
 // ── LE CAS RÉEL ────────────────────────────────────────────────────────────
@@ -363,5 +364,55 @@ test('★ ACQUIS — le prompt proscrit les marchés écrits en clair', () => {
     agent,
     /Mais tu continues de trancher/i,
     "Rien ne protège plus l'agent de devenir évasif."
+  );
+});
+
+// ── LA CLÔTURE PAR UNE OFFRE DE SERVICE ────────────────────────────────────
+//
+// Le prompt l'interdit nommément depuis le 25 août 2026. Le même jour, l'agent
+// a terminé DEUX réponses de suite par une offre. Une consigne enfreinte deux
+// fois de suite ne se corrige pas par une consigne de plus.
+
+test('★ ACQUIS — les deux clôtures réellement observées sont retirées', () => {
+  const observees = [
+    "Il y a trois affiches au programme. Valencia – Real Betis en Liga, un beau morceau. Lask Linz – Celtic en Ligue des Champions, les Écossais sont en forme. Tu veux que je décortique l'une de ces affiches ? Je te sors les chiffres et la tendance.",
+    "Voici ce qui se joue ce soir dans ton fuseau. Valencia – Real Betis, l'affiche de la soirée à Mestalla. Bodo/Glimt – NEC Nijmegen, le piège nordique. Si tu veux que je creuse une de ces trois-là — forme, absents, confrontations — dis-moi laquelle.",
+  ];
+
+  for (const brute of observees) {
+    const apres = retirerOffreFinale(brute);
+    assert.notEqual(apres, brute, `L'offre finale a été conservée : « ${brute.slice(-60)} »`);
+    assert.ok(!/tu veux que|si tu veux|dis-moi laquelle/i.test(apres), `Il reste une offre : « ${apres.slice(-70)} »`);
+    // Le corps de la réponse, lui, ne bouge pas.
+    assert.match(apres, /Valencia/, 'Le corps de la réponse a été amputé.');
+  }
+});
+
+test('★ ACQUIS — seule la CLÔTURE est visée, jamais le corps du texte', () => {
+  // « si tu veux mon avis, City passe » est une tournure légitime en cours de
+  // phrase. Ce qui pose problème, c'est de TERMINER par une offre.
+  const intacts = [
+    "City part favori. Si tu veux mon avis, la tendance est nette : victoire à domicile.",
+    "L'issue la plus probable est une victoire de City. Surveille Haaland, décisif sur les cinq dernières.",
+    'Match unique, sans phrase de fin.',
+  ];
+  for (const t of intacts) {
+    assert.equal(retirerOffreFinale(t), t, `Texte légitime modifié : « ${t} »`);
+  }
+});
+
+test('★ ACQUIS — le retrait de la clôture est branché sur la sortie de l agent', () => {
+  // Même angle mort que pour le vocabulaire : un filtre qui ne tourne pas ne
+  // protège de rien.
+  const agent = lireSource('src/lib/agent-vip.ts');
+  assert.match(
+    agent,
+    /retirerOffreFinale\(texte\)/,
+    "La réponse de l'agent ne passe plus par le retrait de la clôture."
+  );
+  // Et l'exception qui servait de licence doit rester supprimée.
+  assert.ok(
+    !/Une seule exception : quand la question ne nomme aucun match/.test(agent),
+    "L'exception qui autorisait l'agent à demander quel match est revenue."
   );
 });
