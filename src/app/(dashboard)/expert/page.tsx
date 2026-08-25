@@ -228,7 +228,7 @@ export default function ExpertAgentPage() {
 
   if (!hasAccess) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-190px)] animate-fade-in px-4 pb-6">
+      <div className="flex items-start justify-center pt-6 sm:pt-10 pb-6 animate-fade-in px-4">
         {/* ── POURQUOI CET ÉCRAN A ÉTÉ REPRIS UNE TROISIÈME FOIS ────────────
             Reproche du propriétaire, deux fois : « on sent que c'est fait par
             l'IA ». Ce n'est pas un jugement vague — ce sont des traits
@@ -306,30 +306,46 @@ export default function ExpertAgentPage() {
                 ))}
               </div>
 
-                <div className="relative w-full group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-sky-400 to-emerald-400 rounded-[18px] blur opacity-35 group-hover:opacity-60 transition duration-500 pointer-events-none" />
-              <button 
-                onClick={handleSubscribe} 
+              {/* ── LE BOUTON ÉTAIT L'ÉLÉMENT CASSÉ ─────────────────────────
+                  Vu sur capture : « Débloquer l'Accès VIP » passait sur deux
+                  lignes, la pastille du prix se trouvait comprimée à côté et
+                  la flèche flottait. Trois informations entassées dans une
+                  barre de trois cent quarante pixels de large.
+
+                  Le libellé est raccourci et tient sur une ligne ; le prix
+                  descend SOUS le bouton, en gris, avec la mention qui rassure.
+                  Un bouton ne porte qu'une seule idée : l'action.
+
+                  ── ET IL A PERDU SON DÉGRADÉ ─────────────────────────────
+                  J'y avais collé le dégradé cyan-vert des cartes de tarifs
+                  sans me demander s'il allait avec cet écran-ci. Il ne va pas :
+                  la carte est sombre et retenue, le bouton hurlait. Un vert
+                  plein, sans dégradé ni lueur, tient la même promesse sans
+                  casser le calme de la composition. */}
+              <button
+                onClick={handleSubscribe}
                 disabled={loadingCheckout}
-                className="relative w-full min-h-[50px] bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-400 text-[#04262b] font-black px-4 py-3 rounded-[16px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:brightness-110 shadow-lg shadow-emerald-400/30 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full min-h-[50px] bg-[#10B981] hover:bg-[#0ea472] text-[#04231c] font-black text-[14px] px-4 rounded-[14px] flex items-center justify-center gap-2 transition-colors active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loadingCheckout ? (
-                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    <span className="text-[13.5px]">Débloquer l'Accès VIP</span>
-                    <div className="flex items-center">
-                      <span className="bg-black/15 px-2 py-0.5 rounded-full text-[11px] font-bold">
-                        {offreVip
-                          ? `dès ${offreVip.prixXof.toLocaleString("fr-FR")} FCFA${offreVip.dureeJours >= 365 ? "/an" : "/mois"}`
-                          : "Voir les offres"}
-                      </span>
-                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                    </div>
+                    Débloquer l&apos;accès
+                    <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
                   </>
                 )}
               </button>
-                </div>
+
+              {/* Le prix vit ici, lisible, sans encombrer l'action. Toujours
+                  lu depuis le réglage de l'administration. */}
+              <p className="mt-2.5 text-center text-[11.5px] text-white/35 font-medium">
+                {offreVip
+                  ? `dès ${offreVip.prixXof.toLocaleString('fr-FR')} FCFA${
+                      offreVip.dureeJours >= 365 ? ' par an' : ' par mois'
+                    } · sans engagement`
+                  : 'Voir les offres disponibles'}
+              </p>
               </div>
             </div>
           </div>
