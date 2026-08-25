@@ -20,13 +20,31 @@ const dictionaries: Record<Language, Dictionary> = {
   en,
 };
 
+/**
+ * ── L'ANGLAIS ATTEND SA TRADUCTION ────────────────────────────────────────
+ *
+ * Le dictionnaire anglais existe et compte 62 clés. L'application, elle,
+ * compte 105 écrans : trois fichiers seulement passent par `t()`. Basculer en
+ * anglais ne traduit donc quasiment rien — on obtient une interface française
+ * avec une poignée de mots anglais. C'est pire que du français assumé.
+ *
+ * Aucun sélecteur n'expose ce basculement : `setLang` n'est appelé nulle part.
+ * Le seul chemin restant est une valeur « en » écrite dans le navigateur par
+ * une version antérieure, qui y survivrait indéfiniment.
+ *
+ * On ferme donc ce chemin — sans rien supprimer. Le contexte, les deux
+ * dictionnaires et `setLang` restent en place et fonctionnels : le jour où la
+ * traduction est faite, il suffit de repasser cette constante à `true`.
+ */
+const ANGLAIS_PRET = false;
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Language>("fr");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const savedLang = localStorage.getItem("profoot_lang") as Language | null;
-    if (savedLang === "fr" || savedLang === "en") {
+    if (savedLang === "fr" || (savedLang === "en" && ANGLAIS_PRET)) {
       setLangState(savedLang);
     }
     setMounted(true);

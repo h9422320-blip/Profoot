@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Radio, CheckCircle2, CalendarX } from "lucide-react";
 import { lireMatchsReels, type MatchReel } from "@/lib/matchs-reels";
+import { HeureMatch } from "@/components/HeureMatch";
 
 /**
  * Le calendrier des matchs, en données réelles.
@@ -148,7 +149,10 @@ function Carte({ m }: { m: MatchReel }) {
             // croire que la rencontre se joue encore ce jour-là.
             <span className="text-amber-400/80">Reporté</span>
           ) : (
-            `${jour} · ${heure}`
+            // Le serveur ne peut pas connaître le fuseau du lecteur : cette
+            // page est mise en cache et servie identique au monde entier.
+            // Le navigateur corrige l'heure dès son arrivée.
+            <HeureMatch iso={m.date} repliJour={jour} repliHeure={heure} />
           )}
         </span>
       </div>

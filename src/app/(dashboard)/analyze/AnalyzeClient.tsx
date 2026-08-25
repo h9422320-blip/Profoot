@@ -10,6 +10,7 @@ import chargerADemande from "next/dynamic";
 import { signalerEtape } from "@/components/etapes-vente";
 import { usePaysAcheteur } from "@/components/usePaysAcheteur";
 import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
+import { heureLocale, dateLongueLocale, jourEtMoisLocaux } from "@/lib/heure-locale";
 
 /**
  * La notice est chargee A LA DEMANDE, comme sur le paywall et les tarifs.
@@ -1390,7 +1391,11 @@ export default function AnalyzePage({
                 {futureMatches.map((m) => {
                   const hCl = getClub(m.homeTeam);
                   const aCl = getClub(m.awayTeam);
-                  const [day, month] = m.date.split("/");
+                  // Le jour et l'heure sortent du MÊME instant, donc du même
+                  // fuseau : ils ne peuvent plus se contredire. Avant, la
+                  // colonne donnait le jour du serveur et l'heure celui de
+                  // Paris — « 25/08 à 00:30 » pour un match du 26.
+                  const [day, month] = jourEtMoisLocaux(m.kickoffISO ?? m.timestamp, m.date);
                   return (
                     <button 
                       key={m.id}
@@ -1400,7 +1405,7 @@ export default function AnalyzePage({
                       {/* Date column — fixed width */}
                       <div className="w-[52px] shrink-0 text-center border-r border-white/5 pr-3 mr-3">
                         <span className="text-[10px] text-white/40 font-bold leading-none block">{day}/{month}</span>
-                        <span className="text-[10px] text-white/30 font-semibold leading-none block mt-0.5">{m.time}</span>
+                        <span className="text-[10px] text-white/30 font-semibold leading-none block mt-0.5">{heureLocale(m.kickoffISO ?? m.timestamp, m.time)}</span>
                       </div>
 
                       {/* Match row — flex with fixed logo sizes and centered vs */}
@@ -1747,10 +1752,16 @@ export default function AnalyzePage({
                   <span className="flex items-center gap-1.5">
                     <span className="text-sm">🏆</span> {result.competition || "Match International"}
                   </span>
-                  {result.date && (
+                  {(result.kickoffISO || result.date) && (
                     <span className="flex items-center gap-1.5">
                       <span className="text-sm">📅</span>
-                      {result.date}{result.time ? ` à ${result.time}` : ""}
+                      {/* Date ET heure dans le fuseau du lecteur, tirées du
+                          même instant. Un abonné à Conakry lisait 21:00 pour
+                          un coup d'envoi à 19:00 chez lui. */}
+                      {dateLongueLocale(result.kickoffISO, result.date)}
+                      {heureLocale(result.kickoffISO, result.time)
+                        ? ` à ${heureLocale(result.kickoffISO, result.time)}`
+                        : ""}
                     </span>
                   )}
                   <span className="flex items-center gap-1.5">

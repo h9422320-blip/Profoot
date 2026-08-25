@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { InstantLocal } from "@/components/HeureMatch";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Brain, Radio, CalendarDays } from "lucide-react";
@@ -122,7 +123,7 @@ export default async function FicheRencontre({ params }: { params: Promise<{ id:
             ) : (
               <>
                 <CalendarDays className="w-3.5 h-3.5" />
-                {quand.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
+                <InstantLocal iso={m.date} rendu="date-longue" repli={quand.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })} />
               </>
             )}
           </span>
@@ -140,7 +141,7 @@ export default async function FicheRencontre({ params }: { params: Promise<{ id:
               </p>
             ) : (
               <p className="text-[22px] font-black text-white/70 tabular-nums">
-                {quand.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                <InstantLocal iso={m.date} rendu="heure" repli={quand.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} />
               </p>
             )}
             <p className="text-[10px] font-bold uppercase tracking-wider text-white/35 mt-1.5">

@@ -296,9 +296,22 @@ export async function initCheckout(params: {
   // l'acheteur corrige de toute façon ses coordonnées sur la page de paiement.
   const phoneDigits = params.phoneNumber?.replace(/\D/g, '');
   const neutralPhone = fallbackPhone(params.paysAcheteur);
+  // ── LE PAYS DU NUMÉRO EST CELUI DE L'ACHETEUR, PAS CELUI DU REMPLISSAGE ──
+  //
+  // `neutralPhone.country_code` retombe sur la Côte d'Ivoire pour tout pays
+  // absent de la table des numéros de remplissage — soit 230 pays, dont les
+  // États-Unis, l'Allemagne, le Brésil et le Japon. Un vrai numéro allemand
+  // partait donc annoncé comme ivoirien : Chariow le valide contre le plan de
+  // numérotation du pays reçu, et le rejette.
+  //
+  // Le repli reste inchangé quand aucun numéro n'est connu — c'est le cas de
+  // tous les comptes aujourd'hui, l'inscription n'en demande pas.
+  const paysReel = /^[A-Z]{2}$/.test((params.paysAcheteur || '').toUpperCase())
+    ? params.paysAcheteur.toUpperCase()
+    : neutralPhone.country_code;
   const phoneDuCompte =
     phoneDigits && phoneDigits.length >= 6
-      ? { number: phoneDigits, country_code: neutralPhone.country_code }
+      ? { number: phoneDigits, country_code: paysReel }
       : null;
   body.phone = phoneDuCompte ?? neutralPhone;
 

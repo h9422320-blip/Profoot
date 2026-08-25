@@ -586,9 +586,22 @@ export function normalizeFixture(fixture: any) {
       logo: league.logo,
       round: league.round,
     },
+    // ── L'INSTANT DU COUP D'ENVOI, MIS EN FORME PAR LE NAVIGATEUR ──────────
+    //
+    // `kickoffISO` est la seule valeur qui compte désormais : elle porte
+    // l'instant exact, et l'écran la met en forme dans le fuseau de celui qui
+    // lit (voir `heure-locale.ts`). L'heure était auparavant figée en
+    // « Europe/Paris » ici même — un abonné à Conakry lisait 21:00 pour un
+    // match qui commençait à 19:00 chez lui, et le ratait.
+    //
+    // Les trois chaînes ci-dessous RESTENT, et c'est délibéré : elles servent
+    // de repli aux analyses déjà en réserve, qui ne portent pas encore
+    // `kickoffISO`. Elles ne doivent plus être affichées quand l'instant est
+    // disponible.
+    kickoffISO: f.date,
     date: matchDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
     fullDate: matchDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long", year: "numeric" }),
-    time: matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }),
+    time: matchDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
     timestamp: matchDate.getTime(),
     venue: f.venue?.name || "TBD",
     city: f.venue?.city || "",

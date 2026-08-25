@@ -2,7 +2,12 @@
 export interface Competition{id:string;name:string;shortName:string;country:string;logo:string;region:"europe"|"africa"|"international";matchesPerSeason:number;iaAccuracy:number;iaTrend:"up"|"stable"|"down";currentSeason:string;status:string;}
 export interface Club{id:string;name:string;shortName:string;logo:string;country:string;league:string;coach:string;stadium:string;ranking:number;points:number;stats:{played:number;wins:number;draws:number;losses:number;goalsScored:number;goalsConceded:number;possession:number;xG:number;cleanSheets:number;};form:("W"|"D"|"L")[];squad:{name:string;position:string;status:"starter"|"sub"|"injured"|"suspended"}[];group?:string;}
 export type MatchStatus="finished"|"live"|"today"|"upcoming";
-export interface Match{id:string;homeTeam:string;awayTeam:string;competition:string;date:string;time:string;venue:string;status:MatchStatus;minute?:number;score?:{home:number;away:number};prediction?:{winner:"home"|"away"|"draw";score:string;confidence:number};result?:{home:number;away:number};}
+// `kickoffISO` et `timestamp` portent l'INSTANT du coup d'envoi ; `date` et
+// `time` n'en sont qu'une mise en forme, faite par le serveur et donc dans le
+// mauvais fuseau pour presque tout le monde. Les deux premiers sont optionnels
+// parce que les rencontres déjà en réserve ne les portent pas encore : l'écran
+// retombe alors sur les anciennes chaînes.
+export interface Match{id:string;homeTeam:string;awayTeam:string;competition:string;date:string;time:string;kickoffISO?:string;timestamp?:number;venue:string;status:MatchStatus;minute?:number;score?:{home:number;away:number};prediction?:{winner:"home"|"away"|"draw";score:string;confidence:number};result?:{home:number;away:number};}
 const T=(id:number)=>`https://media.api-sports.io/football/teams/${id}.png`;
 const L=(id:number)=>`https://media.api-sports.io/football/leagues/${id}.png`;
 const c=(id:string,n:string,s:string,tid:number,co:string,le:string,ch:string,st:string,r:number,pts:number,p:number,w:number,d:number,l:number,gs:number,gc:number,pos:number,xg:number,cs:number,f:("W"|"D"|"L")[]):Club=>({id,name:n,shortName:s,logo:T(tid),country:co,league:le,coach:ch,stadium:st,ranking:r,points:pts,stats:{played:p,wins:w,draws:d,losses:l,goalsScored:gs,goalsConceded:gc,possession:pos,xG:xg,cleanSheets:cs},form:f,squad:[]});

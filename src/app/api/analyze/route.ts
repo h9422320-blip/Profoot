@@ -1905,6 +1905,14 @@ ${estApercu ? `{
       const f = fixtureSource.fixture;
       const kickoff = new Date(f.date);
       parsedData.competition = fixtureSource.league?.name || parsedData.competition;
+      // L'INSTANT, pas une heure déjà mise en forme. Ces deux lignes
+      // fabriquaient la date et l'heure dans le fuseau du SERVEUR — UTC chez
+      // Vercel — et tout le monde les lisait telles quelles. L'écran met
+      // désormais `kickoffISO` en forme dans le fuseau du lecteur.
+      //
+      // Les deux chaînes restent renseignées : les analyses déjà en réserve
+      // n'ont que celles-là, et un repli lisible vaut mieux qu'un blanc.
+      parsedData.kickoffISO = f.date;
       parsedData.date = kickoff.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
       parsedData.time = kickoff.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       parsedData.venue = f.venue?.name || null;

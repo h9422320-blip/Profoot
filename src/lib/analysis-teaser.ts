@@ -14,6 +14,12 @@
 const TEASER_FIELDS = [
   // Contexte du match : informations publiques, jamais payantes.
   'competition',
+  // L'instant du coup d'envoi, que l'écran met en forme dans le fuseau du
+  // lecteur. Il n'ajoute AUCUNE information payante : c'est la même heure que
+  // `date` et `time`, déjà autorisés — simplement pas encore mise en forme.
+  // Sans lui dans cette liste, un visiteur gratuit retomberait sur l'ancienne
+  // chaîne, fausse de deux heures en Afrique de l'Ouest.
+  'kickoffISO',
   'date',
   'time',
   'venue',

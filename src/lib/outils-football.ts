@@ -182,7 +182,24 @@ function resumerMatch(f: any) {
     exterieur: f.teams?.away?.name,
     score: termine || enCours ? `${f.goals?.home ?? 0}-${f.goals?.away ?? 0}` : null,
     statut: enCours ? `EN DIRECT (${f.fixture.status.elapsed}')` : termine ? 'terminé' : 'à venir',
-    heure: termine ? undefined : new Date(f.fixture.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }),
+    // ── L'HEURE EST DITE, ET SON FUSEAU AVEC ────────────────────────────────
+    //
+    // Cette heure était calculée en « Europe/Paris » et donnée à l'agent SANS
+    // le préciser. L'agent annonçait donc « le match est à 21h00 » à un abonné
+    // de Conakry dont le coup d'envoi tombe à 19h00 : il ratait le match.
+    //
+    // Les écrans, eux, mettent désormais l'instant en forme dans le fuseau du
+    // lecteur. L'agent ne le peut pas : il répond depuis le serveur et ne
+    // connaît pas le fuseau de son interlocuteur. Tant qu'il ne le connaît
+    // pas, il doit NOMMER celui qu'il emploie — une heure sans fuseau est une
+    // heure fausse pour presque tout le monde.
+    //
+    // `heureISO` porte l'instant exact : c'est ce qui permettra de convertir
+    // le jour où le fuseau du navigateur remontera jusqu'ici.
+    heure: termine
+      ? undefined
+      : `${new Date(f.fixture.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })} heure de Paris`,
+    heureISO: termine ? undefined : f.fixture.date,
   };
 }
 
