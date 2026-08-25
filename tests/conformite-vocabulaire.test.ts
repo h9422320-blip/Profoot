@@ -41,7 +41,18 @@ const lire = (p: string) => fs.readFileSync(path.join(racine, p), 'utf8');
  * laisse passer que l'usage « cote de pari ».
  */
 const INTERDITS =
-  /\b(?:pari|paris\s+sportifs?|pari(?:er|ez|ons|[eé]e?s?)|parieur(?:s|se|ses)?|pronostics?|pronostiqu\w*|mis(?:er|ez|ons|é\w*)|bookmakers?|coupons?|banco|value\s*bets?)\b|\b(?:la|une|les|des|sa|leur)\s+cotes?\b/i;
+  /\b(?:pari|paris\s+sportifs?|pari(?:er|ez|ons|[eé]e?s?)|parieur(?:s|se|ses)?|pronostics?|pronostiqu\w*|mis(?:er|ez|ons|é\w*)|bookmakers?|coupons?|banco|value\s*bets?)\b|\bcotes?\b(?!\s*d['’\s]?\s*ivoire)|\bprédi(?:ction|ctions|ctif|ctifs|ctive|ctives|re|t|ts|te|tes)\b/i;
+
+/**
+ * Les noms de marchés de pari, cherchés en RESPECTANT LA CASSE.
+ *
+ * `btts` en minuscules est une clé de données que le moteur renvoie
+ * (`result.predictions.btts.yes`) : la renommer casserait le contrat entre le
+ * serveur et l'écran sans rien protéger, puisqu'elle n'est jamais affichée.
+ * Ce qui était affiché, c'était « BTTS » en capitales, dans une phrase de
+ * vente. C'est cette forme-là qu'on interdit.
+ */
+const MARCHES_DE_PARI = /\bBTTS\b|Over\s*\/\s*Under|\b1X2\b/;
 
 // ── LES INSTRUCTIONS DONNÉES AUX MODÈLES ───────────────────────────────────
 
@@ -160,6 +171,10 @@ test('★ ACQUIS — aucune page publique n emploie le vocabulaire de pari', () 
     'src/app/(dashboard)/preuves/page.tsx',
     'src/app/(dashboard)/expert/page.tsx',
     'src/app/(dashboard)/analyze/AnalyzeClient.tsx',
+    'src/app/(dashboard)/history/page.tsx',
+    'src/app/(dashboard)/history/list/page.tsx',
+    'src/app/(dashboard)/pricing/PricingClient.tsx',
+    'src/app/mentions-legales/page.tsx',
     'src/components/preuves/SectionPreuves.tsx',
     'src/dictionaries/fr.ts',
   ];
@@ -174,7 +189,11 @@ test('★ ACQUIS — aucune page publique n emploie le vocabulaire de pari', () 
     // signalait ses propres explications comme des infractions.
     let dansUnBloc = false;
 
-    lire(page).split('\n').forEach((ligne, i) => {
+    // Découpage sur `\r?\n` : le dépôt est en fins de ligne Windows, et un
+    // `\r` traînant en fin de ligne empêchait `/\/\/.*$/` de reconnaître un
+    // commentaire — `.` ne franchit pas un retour chariot. Des lignes de
+    // commentaire étaient donc jugées comme du code affiché.
+    lire(page).split(/\r?\n/).forEach((ligne, i) => {
       const nue = ligne.trim();
       const etaitDansUnBloc = dansUnBloc;
 
@@ -199,10 +218,49 @@ test('★ ACQUIS — aucune page publique n emploie le vocabulaire de pari', () 
         utile = utile.slice(0, ouverture);
       }
 
-      assert.ok(
-        !INTERDITS.test(utile),
-        `${page}:${i + 1} emploie le vocabulaire de pari :\n    ${nue.slice(0, 120)}`
+      // ── ON NE JUGE QUE CE QUI PEUT S'AFFICHER ────────────────────────────
+      //
+      // Juger la ligne entière revenait à juger du code. `cote` est un nom de
+      // variable dans `matchsRecents(result, cote)` et un champ envoyé par le
+      // serveur dans `b.cote` : le test les signalait comme des infractions,
+      // et « corriger » ces lignes cassait l'affichage des buteurs en direct.
+      //
+      // Un mot ne devient visible que par deux chemins : une chaîne de
+      // caractères, ou du texte JSX entre deux balises. On extrait donc
+      // exactement ces deux choses, et rien d'autre. Aucun nom de variable,
+      // aucune clé d'objet, aucune annotation de type n'y figure — ils ne
+      // s'affichent jamais.
+      const chaines = [...utile.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)].map(
+        (m) => m[1] ?? m[2] ?? m[3] ?? ''
       );
+
+      // Le texte JSX est ce qui reste une fois retirées les balises et les
+      // expressions `{…}` — ces dernières sont du code, et leurs éventuelles
+      // chaînes ont déjà été relevées ci-dessus.
+      //
+      // Encore faut-il que la ligne SOIT du JSX. Appliqué à n'importe quelle
+      // ligne, ce nettoyage rendait le code tel quel : la signature
+      // `matchsRecents(result, cote: "team1")` passait pour du texte affiché.
+      // Deux cas seulement comptent : une ligne qui porte une balise, et une
+      // ligne de prose pure — celle d'un paragraphe dont les balises sont sur
+      // les lignes voisines, qui ne contient donc aucune ponctuation de code.
+      const porteUneBalise = /<[A-Za-z/]/.test(utile);
+      const estDeLaProse = utile.trim().length > 0 && !/[<>{}=();]/.test(utile);
+      const texteJsx =
+        porteUneBalise || estDeLaProse
+          ? utile.replace(/\{[^{}]*\}/g, ' ').replace(/<[^>]*>/g, ' ')
+          : '';
+
+      for (const affichable of [...chaines, texteJsx]) {
+        assert.ok(
+          !INTERDITS.test(affichable),
+          `${page}:${i + 1} emploie le vocabulaire de pari :\n    ${nue.slice(0, 120)}`
+        );
+        assert.ok(
+          !MARCHES_DE_PARI.test(affichable),
+          `${page}:${i + 1} nomme un marché de pari :\n    ${nue.slice(0, 120)}`
+        );
+      }
     });
   }
 });

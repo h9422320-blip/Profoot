@@ -144,7 +144,7 @@ export default function MobileHistoryListPage() {
                 className="flex-1 bg-white/5 border border-white/5 rounded-[16px] px-3 py-2.5 text-[11px] font-semibold text-white outline-none focus:border-[#10B981]/40"
               >
                 <option value="all" className="bg-[#18272f]">Tous les types</option>
-                <option value="future" className="bg-[#18272f]">Prédictions IA</option>
+                <option value="future" className="bg-[#18272f]">Analyses IA</option>
                 <option value="past" className="bg-[#18272f]">Résultats passés</option>
               </select>
             </div>
@@ -176,7 +176,7 @@ export default function MobileHistoryListPage() {
                           </span>
                         ) : (
                           <span className="text-[9px] text-[#10B981] font-black uppercase tracking-widest flex items-center gap-1">
-                            <Brain className="w-3 h-3" /> Prédiction IA
+                            <Brain className="w-3 h-3" /> Analyse IA
                           </span>
                         )}
                         <span className="text-[10px] font-semibold text-white/60 truncate max-w-[150px]">
@@ -276,7 +276,7 @@ export default function MobileHistoryListPage() {
                 <div className={`flex flex-col items-center justify-center w-[30%] ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <span className="text-2xl font-black text-white">{selectedItem.score}</span>
                   <span className="text-[9px] font-bold text-[#10B981] uppercase tracking-wider mt-1">
-                    {selectedItem.isFinished ? "Final" : "Prédit"}
+                    {selectedItem.isFinished ? "Final" : "Estimé"}
                   </span>
                 </div>
                 <div className="flex flex-col items-center gap-2 w-[35%]">

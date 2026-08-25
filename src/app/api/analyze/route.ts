@@ -1327,7 +1327,7 @@ async function analyser(req: Request, billet: BilletQuota) {
   if (lieuInconnu) {
     console.warn(
       `[BACKEND_ANALYZE] Rencontre introuvable pour ${team1.name} — ${team2.name} : ` +
-        `l'avantage du terrain ne peut pas être appliqué, la prédiction ne sera pas figée.`
+        `l'avantage du terrain ne peut pas être appliqué, l'analyse ne sera pas figée.`
     );
   }
 
@@ -1670,7 +1670,7 @@ async function analyser(req: Request, billet: BilletQuota) {
   const echecsParModele: string[] = [];
 
   try {
-    console.log(`[BACKEND_ANALYZE] Génération de la prédiction et de l'analyse experte...`);
+    console.log(`[BACKEND_ANALYZE] Génération de l'estimation et de l'analyse experte...`);
     // Le modèle, la passerelle et le délai sont choisis plus bas, tentative par
     // tentative : un `AbortController` unique condamnait la deuxième tentative
     // avant qu'elle commence, puisqu'il continuait de courir entre les essais.
@@ -1708,7 +1708,7 @@ async function analyser(req: Request, billet: BilletQuota) {
     // filtre se rabat sur l'instant présent.
     const dateDuMatchAnalyse: string | null =
       (targetFutureMatch || targetPastMatch || nextH2H)?.fixture?.date ?? null;
-    const prompt = `Tu es le moteur de prédiction IA de ProFoot, un système ultra-avancé d'analyse de football.
+    const prompt = `Tu es le moteur d'analyse IA de ProFoot, un système ultra-avancé d'analyse de football.
 TA MISSION : Analyser le match entre ${team1.name} et ${team2.name}, prendre en compte LA FORCE REELLE DES ÉQUIPES, évaluer les dynamiques et PREDIRE LE SCORE EXACT.
 
 ⚠️ RÈGLE ABSOLUE N°1 - INTERDIT : Il est FORMELLEMENT INTERDIT d'écrire des phrases du genre "absence de données récentes", "manque d'informations", "données insuffisantes" ou toute formulation similaire. TU ES UNE IA ENTRAÎNÉE SUR DES MILLIONS DE DONNÉES FOOTBALLISTIQUES. Tu connais ${team1.name} et ${team2.name} : leurs joueurs, leurs résultats récents, leur style de jeu. UTILISE CES CONNAISSANCES.

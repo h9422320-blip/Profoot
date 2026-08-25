@@ -122,11 +122,11 @@ const competitions = [
 const faqItems = [
   {
     q: "Comment fonctionne l'analyse IA de ProFoot ?",
-    a: "ProFoot utilise un moteur de prédiction mathématique connecté en temps réel à API-Football. L'algorithme analyse la forme récente, les confrontations directes, les statistiques avancées (xG, possession, tirs cadrés) et génère un score prédictif avec un indice de confiance.",
+    a: "ProFoot utilise un moteur d'analyse mathématique connecté en temps réel à API-Football. L'algorithme analyse la forme récente, les confrontations directes, les statistiques avancées (xG, possession, tirs cadrés) et génère une estimation avec un indice de confiance.",
   },
   {
-    q: "Les prédictions sont-elles fiables ?",
-    a: "Nos prédictions sont basées sur des données réelles et des modèles statistiques. Aucune IA n'est infaillible, mais ProFoot vous donne un avantage analytique majeur en traitant des centaines de variables que le cerveau humain ne peut pas traiter simultanément.",
+    q: "Les analyses sont-elles fiables ?",
+    a: "Nos analyses sont basées sur des données réelles et des modèles statistiques. Aucune IA n'est infaillible, mais ProFoot vous donne un avantage analytique majeur en traitant des centaines de variables que le cerveau humain ne peut pas traiter simultanément.",
   },
   {
     q: "Quelles compétitions sont couvertes ?",
@@ -140,7 +140,7 @@ const faqItems = [
 
 // Testimonials data
 const testimonials = [
-  { name: "Karim B.", role: "Analyste Football", text: "ProFoot a complètement changé ma façon d'analyser les matchs. Les prédictions sont incroyablement précises.", rating: 5 },
+  { name: "Karim B.", role: "Analyste Football", text: "ProFoot a complètement changé ma façon d'analyser les matchs. Les analyses sont incroyablement précises.", rating: 5 },
   { name: "Lucas M.", role: "Passionné de foot", text: "L'interface est magnifique et les analyses IA sont bluffantes. Je ne regarde plus un match sans consulter ProFoot.", rating: 5 },
   { name: "Sofiane A.", role: "Passionné de football", text: "Les statistiques avancées (xG, forme récente) m'ont permis de mieux comprendre chaque rencontre. Indispensable !", rating: 5 },
   { name: "Thomas R.", role: "Coach amateur", text: "J'utilise ProFoot pour préparer mes analyses tactiques avant chaque match. Le moteur IA est impressionnant.", rating: 4 },
@@ -261,7 +261,7 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
                 La promesse reste en tête et en gros ; le nom vient dessous,
                 dans le même titre. */}
             <h1 className="hero-title">
-              PRÉDIT CHAQUE MATCH<br />
+              ANALYSE CHAQUE MATCH<br />
               AVANT QU'IL <span className="text-emerald-gradient">NE COMMENCE.</span>
               <span className="block mt-3 text-[15px] sm:text-lg font-bold tracking-normal text-white/55">
                 ProFoot AI — l&apos;analyse de match par intelligence artificielle
@@ -481,7 +481,7 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
               <span className="nav-brand-text">ProFoot</span>
             </div>
             <p className="footer-desc">
-              La plateforme d'analyse IA football la plus avancée. Prédictions, statistiques et scénarios tactiques en temps réel.
+              La plateforme d'analyse IA football la plus avancée. Analyses, statistiques et scénarios tactiques en temps réel.
             </p>
           </div>
           <div className="footer-links-group">
@@ -598,7 +598,7 @@ function ShowcaseContent() {
         UNE ARCHITECTURE IA<br/><span className="text-gradient">SANS PRÉCÉDENT</span>
       </h2>
       <p className="showcase-desc">
-        Nous ne nous contentons pas de résumer un classement. Notre moteur ingère la forme récente, les xG, les compositions probables et l'historique H2H pour générer un modèle mathématique complet.
+        Nous ne nous contentons pas des données de surface. Notre moteur ingère la forme récente, les xG, les compositions probables et l'historique H2H pour générer un modèle mathématique complet.
       </p>
       
       <div className="flex flex-wrap justify-center gap-4 mt-8 mb-10">
@@ -632,7 +632,7 @@ function FeaturesContent() {
     { icon: Brain, title: "Analyse IA avant match", desc: "Notre algorithme génère un rapport complet analysant dynamique, forces et faiblesses des deux équipes en temps réel." },
     { icon: BarChart3, title: "Statistiques avancées (xG)", desc: "Expected Goals, possession, tirs cadrés, zones de danger — toutes les métriques avancées pour comprendre le vrai niveau." },
     { icon: Target, title: "Scénarios tactiques", desc: "L'IA simule le déroulement probable du match et vous donne le pourcentage de chance de chaque scénario." },
-    { icon: TrendingUp, title: "Prédictions précises", desc: "Score exact, Over/Under, BTTS avec un indice de confiance calculé mathématiquement à partir de données réelles." },
+    { icon: TrendingUp, title: "Analyses précises", desc: "Score exact, nombre de buts attendus, probabilité que les deux équipes marquent, avec un indice de confiance calculé mathématiquement à partir de données réelles." },
     { icon: Globe, title: "+15 compétitions", desc: "Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, CAN et bien d'autres couvertes." },
     { icon: Cpu, title: "Moteur temps réel", desc: "Données actualisées en permanence via API-Football. Pas de cache périmé, pas de données inventées." },
   ];
@@ -663,7 +663,7 @@ function HowItWorksContent() {
   const steps = [
     { num: "01", title: "Choisissez un match", desc: "Sélectionnez l'une des centaines de rencontres parmi les grands championnats.", icon: Eye },
     { num: "02", title: "L'IA analyse les données", desc: "L'IA croise la forme, l'historique et les xG en temps réel.", icon: Cpu },
-    { num: "03", title: "Consultez la prédiction", desc: "Obtenez un rapport détaillé et les scénarios probables du match.", icon: Target },
+    { num: "03", title: "Consultez l’analyse", desc: "Obtenez un rapport détaillé et les scénarios probables du match.", icon: Target },
   ];
 
   return (
@@ -694,7 +694,7 @@ function StatsContent() {
     <div className="stats-inner">
       <h2 className="section-title">NOUS ANALYSONS<br /><span className="text-[#10b981]">+220 SOURCES</span></h2>
       <p className="section-subtitle">
-        Des millions de données football compilées à partir de plus de 220 sources pour fournir les meilleures prédictions possibles.
+        Des millions de données football compilées à partir de plus de 220 sources pour fournir les meilleures analyses possibles.
       </p>
       <div className="stats-grid">
         <div className="stat-card">
@@ -728,7 +728,7 @@ function AnalysisContent() {
           VOS MATCHS, ANTICIPÉS<br /><span className="text-gradient">PAR L'IA.</span>
         </h2>
         <p className="analysis-desc text-center">
-          Plus de devinettes. Notre moteur analyse des millions de données pour prédire l'issue de chaque rencontre.
+          Plus de devinettes. Notre moteur analyse des millions de données pour anticiper l'issue de chaque rencontre.
         </p>
         <Link href={startHref} className="analysis-cta w-full md:w-auto justify-center">
           <Zap className="w-4 h-4" /> Accéder à la plateforme

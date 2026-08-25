@@ -453,7 +453,7 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
 
       {/* Pro Features Showcase */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12">
-        <ProBadge icon={Brain} title="IA Neuronale" desc="Modèles prédictifs entraînés sur 10 ans de données réelles." />
+        <ProBadge icon={Brain} title="IA Neuronale" desc="Modèles d'analyse entraînés sur 10 ans de données réelles." />
         <ProBadge icon={Shield} title="Data Vérifiée" desc="Source directe des ligues officielles pour une précision totale." />
         <ProBadge icon={TrendingUp} title="Smart Insights" desc="Détection automatique des baisses de forme et opportunités." />
       </div>

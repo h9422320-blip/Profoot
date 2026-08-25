@@ -104,11 +104,11 @@ export default function CGVPage() {
               </p>
               <p>
                 ProFoot AI est un <strong className="text-white">outil d'aide à l'analyse statistique du football</strong>. 
-                Les prédictions, probabilités, scénarios et rapports générés par notre intelligence artificielle sont fournis 
+                Les analyses, probabilités, scénarios et rapports générés par notre intelligence artificielle sont fournis 
                 <strong className="text-white"> à des fins d'information et d'analyse sportive uniquement</strong>.
               </p>
               <p>
-                ProFoot AI <strong className="text-amber-300">ne garantit pas</strong> l'exactitude ni la réalisation des prédictions émises. 
+                ProFoot AI <strong className="text-amber-300">ne garantit pas</strong> l'exactitude ni la réalisation des analyses émises. 
                 Le football reste un sport soumis à de nombreux facteurs imprévisibles (blessures de dernière minute, erreurs arbitrales, 
                 conditions climatiques, état psychologique des joueurs, etc.).
               </p>
@@ -119,7 +119,7 @@ export default function CGVPage() {
               </p>
               <p>
                 L'utilisateur reconnaît utiliser ProFoot AI sous sa seule et entière responsabilité. ProFoot AI décline toute 
-                responsabilité en cas de résultat différent des prédictions générées.
+                responsabilité en cas de résultat différent des analyses générées.
               </p>
             </div>
           </section>

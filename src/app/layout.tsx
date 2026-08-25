@@ -52,7 +52,7 @@ export const metadata: Metadata = {
   publisher: "ProFoot AI",
 
   keywords: [
-    "analyse football IA", "analyse de match football", "prédiction match football",
+    "analyse football IA", "analyse de match football", "statistiques de match football",
     "statistiques football", "Premier League", "La Liga", "Ligue 1",
     "Serie A", "Bundesliga", "Ligue des Champions", "CAN",
     "analyse tactique football", "xG football",

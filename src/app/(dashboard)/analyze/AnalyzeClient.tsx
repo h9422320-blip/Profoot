@@ -936,7 +936,7 @@ export default function AnalyzePage({
             date: new Date().toISOString(),
             isFinished: data.isFinished,
             competition: data.competition || t1Obj.league || "Europe",
-            type: data.isFinished ? "Résultat passé" : "Prédiction IA",
+            type: data.isFinished ? "Résultat passé" : "Analyse IA",
             // Aucune valeur de repli : un score absent doit rester absent.
             // Ce `?? 2` et ce `?? 1` inscrivaient un 2-1 en base des que la
             // prediction manquait, et venaient gonfler le fleau du 2-1.
@@ -946,7 +946,7 @@ export default function AnalyzePage({
                 ? `${data.predictedScore.team1Goals} - ${data.predictedScore.team2Goals}`
                 : null,
             confidence: data.confidence || (data.isFinished ? 100 : 85),
-            summary: data.quickSummary || data.summary || "Analyse tactique et prédictive complète générée par l'IA ProFoot.",
+            summary: data.quickSummary || data.summary || "Analyse tactique complète générée par l'IA ProFoot.",
             winProb: data.winProb,
             drawProb: data.drawProb,
             loseProb: data.loseProb,
@@ -2023,7 +2023,7 @@ export default function AnalyzePage({
                   {result.predictedScore && (
                     <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 md:p-8 shadow-lg">
                       {/* ── L'ÉTIQUETTE CHANGE QUAND LE MATCH EST COMMENCÉ ──────
-                          « Score prédit par l'IA » au-dessus d'un 1-2, pendant
+                          « Score estimé par l'IA » au-dessus d'un 1-2, pendant
                           qu'un direct affiche 1-1 plus haut, se lit comme une
                           contradiction. C'en est une seulement si l'on ignore
                           QUAND le pronostic a été fait.
@@ -2033,7 +2033,7 @@ export default function AnalyzePage({
                       <div className="flex items-center gap-3 mb-2">
                         <Trophy className="w-5 h-5 text-[#10B981]" />
                         <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>
-                          {result.live ? "Analyse d'avant-match" : "Score prédit par l'IA"}
+                          {result.live ? "Analyse d'avant-match" : "Score estimé par l'IA"}
                         </h4>
                       </div>
                       {result.live && (
@@ -2134,7 +2134,7 @@ export default function AnalyzePage({
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 px-2">
                     <span className="text-lg">🎯</span>
-                    <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Nos prédictions</h4>
+                    <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Nos analyses</h4>
                   </div>
                   
                   <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-sm">
@@ -2418,7 +2418,7 @@ function LockedAnalysisPreview({ scenarios, sections }: { scenarios?: number; se
         <div className="flex items-center gap-3">
           <Trophy className="w-5 h-5 text-[#10B981]" />
           <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
-            Score prédit par l'IA
+            Score estimé par l'IA
           </h4>
         </div>
         <div className="flex items-center justify-center gap-6 py-4">

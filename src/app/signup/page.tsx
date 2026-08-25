@@ -66,7 +66,7 @@ export default function SignupPage() {
 
           <div className="space-y-6">
             {[
-              { icon: TrendingUp, text: "Prédictions basées sur l'IA", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25 shadow-[0_0_18px_rgba(16,185,129,0.15)]" },
+              { icon: TrendingUp, text: "Analyses basées sur l'IA", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25 shadow-[0_0_18px_rgba(16,185,129,0.15)]" },
               { icon: Zap, text: "Données en temps réel", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25 shadow-[0_0_18px_rgba(6,182,212,0.15)]" },
               { icon: ShieldCheck, text: "Statistiques avancées", color: "text-violet-400 bg-violet-500/10 border-violet-500/25 shadow-[0_0_18px_rgba(139,92,246,0.15)]" }
             ].map((Feature, i) => (

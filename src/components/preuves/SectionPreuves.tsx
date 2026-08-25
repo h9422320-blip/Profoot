@@ -258,7 +258,7 @@ export function MurPreuves({
     },
     {
       valeur: bilan.reussites,
-      libelle: bilan.reussites > 1 ? "analyses justes" : "analyse juste",
+      libelle: bilan.reussites > 1 ? "analyses réussies" : "analyse réussie",
       ton: "vert" as const,
     },
     bilan.competitions > 1 && {

@@ -88,7 +88,7 @@ export default function HistoryPage() {
               date: item.created_at,
               isFinished: item.is_finished,
               competition: item.competition,
-              type: item.is_finished ? 'Résultat passé' : 'Prédiction IA',
+              type: item.is_finished ? 'Résultat passé' : 'Analyse IA',
               score: item.score,
               confidence: item.confidence,
               summary: item.summary,
@@ -281,7 +281,7 @@ export default function HistoryPage() {
             Historique des analyses
           </h1>
           <p className="text-xs md:text-sm text-white/50 font-medium mt-1">
-            Retrouvez l'intégralité de vos analyses tactiques, prédictions IA et historiques de matchs.
+            Retrouvez l'intégralité de vos analyses tactiques, estimations IA et historiques de matchs.
           </p>
         </div>
 
@@ -315,7 +315,7 @@ export default function HistoryPage() {
               Aucune analyse disponible pour le moment.
             </h3>
             <p className="text-xs md:text-sm text-white/50 font-medium leading-relaxed">
-              Votre historique personnel est vide. Commencez votre première analyse IA pour débloquer des rapports tactiques et des prédictions ultra-précises.
+              Votre historique personnel est vide. Commencez votre première analyse IA pour débloquer des rapports tactiques et des analyses ultra-précises.
             </p>
           </div>
 
@@ -376,7 +376,7 @@ export default function HistoryPage() {
                 className="w-full md:w-auto bg-white/5 border border-white/5 rounded-[16px] px-4 py-3 text-xs font-semibold text-white outline-none focus:border-[#10B981]/40 transition-colors cursor-pointer"
               >
                 <option value="all" className="bg-[#18272f]">Tous les types</option>
-                <option value="future" className="bg-[#18272f]">Prédictions IA (Futur)</option>
+                <option value="future" className="bg-[#18272f]">Analyses IA (à venir)</option>
                 <option value="past" className="bg-[#18272f]">Résultats passés (Terminé)</option>
               </select>
             </div>
@@ -408,7 +408,7 @@ export default function HistoryPage() {
                           </span>
                         ) : (
                           <span className="bg-[#10B981]/10 border border-[#10B981]/20 text-[#10B981] px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                            <Brain className="w-3 h-3" /> Prédiction IA
+                            <Brain className="w-3 h-3" /> Analyse IA
                           </span>
                         )}
                         <span className="text-[11px] font-bold text-white/40 truncate max-w-[120px]">
@@ -531,7 +531,7 @@ export default function HistoryPage() {
                     <Lock className="w-8 h-8 text-orange-400" />
                   </div>
                   <h3 className="text-lg font-black text-white text-center" style={{ fontFamily: "var(--police-titre), sans-serif" }}>Contenu réservé aux membres Premium</h3>
-                  <p className="text-xs text-white/50 text-center max-w-sm">Passez à l'abonnement Premium pour accéder aux analyses détaillées, scores prédits, probabilités et résumés tactiques complets.</p>
+                  <p className="text-xs text-white/50 text-center max-w-sm">Passez à l'abonnement Premium pour accéder aux analyses détaillées, scores estimés, probabilités et résumés tactiques complets.</p>
                   <Link href="/pricing" className="bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-black font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_4px_20px_rgba(245,158,11,0.3)]">
                     <CreditCard className="w-4 h-4" /> Devenir Premium
                   </Link>
@@ -553,7 +553,7 @@ export default function HistoryPage() {
                     {selectedItem.score}
                   </span>
                   <span className="text-xs font-black text-[#10B981] mt-1">
-                    {selectedItem.isFinished ? "Score Final" : "Score Prédit"}
+                    {selectedItem.isFinished ? "Score Final" : "Score Estimé"}
                   </span>
                 </div>
 

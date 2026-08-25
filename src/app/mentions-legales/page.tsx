@@ -81,7 +81,7 @@ export default function MentionsLegalesPage() {
             <div className="space-y-4 text-white/70 leading-relaxed">
               <p>
                 ProFoot AI est un outil d'analyse statistique des matchs de football basé sur l'intelligence artificielle. 
-                Les analyses, prédictions et scénarios fournis par la plateforme sont générés à des fins 
+                Les analyses, estimations et scénarios fournis par la plateforme sont générés à des fins 
                 <strong className="text-white"> d'information et d'analyse sportive uniquement</strong>. 
                 Ils ne constituent en aucun cas des conseils financiers ou des certitudes de résultats sportifs.
               </p>

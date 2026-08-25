@@ -66,7 +66,7 @@ export default function SupportPage() {
           a: "Notre moteur d'intelligence artificielle analyse des millions de données en temps réel : forme des équipes, historique des confrontations (H2H), statistiques avancées (Expected Goals, possession, tirs cadrés), compositions probables et niveau relatif des championnats. Il génère ensuite des probabilités et scénarios pour chaque match."
         },
         {
-          q: "Les prédictions de l'IA sont-elles garanties à 100% ?",
+          q: "Les analyses de l'IA sont-elles garanties à 100% ?",
           a: "Non, et aucun outil au monde ne peut garantir des résultats sportifs à 100%. Le football reste imprévisible. ProFoot AI est un outil d'analyse statistique qui augmente ta compréhension d'un match. Utilise-le pour mieux analyser, pas comme seule source de décision."
         },
         {
