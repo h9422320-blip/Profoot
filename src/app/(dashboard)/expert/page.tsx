@@ -229,87 +229,82 @@ export default function ExpertAgentPage() {
   if (!hasAccess) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-190px)] animate-fade-in px-4 pb-6">
-        {/* ── UNE CARTE ÉTROITE, PAS UN PANNEAU ─────────────────────────────
-            Elle faisait `max-w-2xl` et remplissait l'écran de haut en bas ;
-            le bouton passait sous la barre de navigation. Un écran qui déborde
-            ne se lit pas, il s'endure.
+        {/* ── POURQUOI CET ÉCRAN A ÉTÉ REPRIS UNE TROISIÈME FOIS ────────────
+            Reproche du propriétaire, deux fois : « on sent que c'est fait par
+            l'IA ». Ce n'est pas un jugement vague — ce sont des traits
+            identifiables, et ils étaient tous là :
 
-            Ramenée à 360 pixels de large et calée au centre, elle redevient un
-            objet — c'est ce qui distingue une composition d'un empilement. */}
-        <div className="w-full max-w-[360px] relative">
-          {/* Halo doux, immobile. Il vit derrière la carte, dont le fond est
-              opaque : il ne peut donc jamais délaver le texte. */}
-          <div
-            aria-hidden
-            className="absolute inset-0 -m-8 rounded-full bg-gradient-to-br from-sky-500/15 via-emerald-500/15 to-transparent blur-3xl pointer-events-none"
-          />
+              — TOUT ÉTAIT CENTRÉ. Emblème, pastille, titre, phrase : une
+                colonne parfaitement symétrique. C'est la signature n°1 d'une
+                interface générée. Un designer aligne à gauche et laisse
+                l'asymétrie porter la composition ;
 
-          {/* Le cadre dégradé des cartes de prix, repris à l'identique : un
-              cercle d'un pixel et demi rempli du dégradé, la carte opaque
-              par-dessus. Le dégradé ne se voit QUE sur le liseré. */}
-          <div className="relative rounded-[25.5px] p-[1.5px] bg-gradient-to-br from-sky-400 via-cyan-300 to-emerald-400 shadow-xl shadow-emerald-500/15">
-            <div className="relative bg-card rounded-[24px] px-6 py-7 text-center">
-              {/* Le reflet qui fait le verre. */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 top-0 h-12 rounded-t-[24px] bg-gradient-to-b from-white/[0.07] to-transparent"
-              />
+              — LE SQUELETTE ÉTAIT LE GABARIT PAR DÉFAUT : pastille, grosse
+                icône ronde, titre, sous-titre, liste à coches, bouton. Tout
+                le monde reconnaît ce patron ;
 
-              <div className="relative z-10">
-                {/* ── L'EMBLÈME ────────────────────────────────────────────
-                    Soixante-quatre pixels au lieu de quatre-vingt-seize : sur
-                    un écran de téléphone, un emblème plus grand ne dit pas
-                    « premium », il dit « il n'y avait rien d'autre à mettre ». */}
-                <div className="relative mx-auto mb-4 w-fit">
-                  <div aria-hidden className="absolute inset-0 -m-2.5 rounded-full bg-emerald-400/25 blur-xl" />
-                  <div className="relative rounded-full p-[1.5px] bg-gradient-to-br from-sky-400 via-cyan-300 to-emerald-400">
-                    <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center bg-gradient-to-b from-white/[0.07] to-transparent">
-                      <Lock className="w-6 h-6 text-[#34D399]" strokeWidth={2} />
-                    </div>
+              — CINQ EFFETS EMPILÉS : cadre dégradé, halo, reflet, texte en
+                dégradé, lueur portée. Un designer en choisit un. En mettre
+                cinq, c'est précisément ce qui fait « machine » ;
+
+              — UNE PASTILLE « PREMIUM » AVEC DES ÉTINCELLES. Le cliché.
+
+            Ici : alignement à gauche, UN SEUL effet décoratif — un liseré
+            blanc qui s'éteint vers le bas — et la hiérarchie portée par la
+            typographie, pas par la décoration. Le cadenas devient une petite
+            marque en haut, pas un médaillon. */}
+        <div className="w-full max-w-[340px] relative">
+          <div className="rounded-[21px] p-[1px] bg-gradient-to-b from-white/[0.14] via-white/[0.06] to-transparent">
+            <div className="bg-card rounded-[20px] p-6">
+              {/* ── L'EN-TÊTE : UNE LIGNE, PAS UN MÉDAILLON ────────────────
+                  Un emblème de soixante-quatre pixels centré annonce une page
+                  d'erreur ; une marque discrète en haut à gauche annonce un
+                  produit. */}
+              <div className="flex items-center gap-2 mb-7">
+                <span className="w-7 h-7 rounded-lg bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center shrink-0">
+                  <Lock className="w-3.5 h-3.5 text-[#34D399]" strokeWidth={2.25} />
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">
+                  Réservé aux abonnés
+                </span>
+              </div>
+
+              {/* Le titre porte seul la hiérarchie : grand, serré, à gauche,
+                  en blanc franc. Pas de dégradé sur le texte — c'est joli une
+                  fois, et ça affaiblit le contraste. */}
+              <h1
+                className="text-[30px] leading-[1.05] font-black tracking-[-0.02em] text-white mb-3"
+                style={{ fontFamily: 'var(--police-marque), sans-serif' }}
+              >
+                Votre analyste
+                <br />
+                football, à part.
+              </h1>
+
+              <p className="text-[13px] leading-relaxed text-white/45 mb-6">
+                <strong className="text-white/75 font-semibold">ProFoot Expert</strong> répond à
+                vos questions sur le football, à toute heure, en s&apos;appuyant sur les données
+                réelles et l&apos;actualité du jour.
+              </p>
+
+              {/* ── TROIS LIGNES, SANS COCHES ─────────────────────────────
+                  La liste à coches vertes est le marqueur visuel du gabarit de
+                  vente. Trois lignes séparées par un filet se lisent aussi
+                  vite et ne ressemblent à rien de généré. */}
+              <div className="border-t border-white/[0.06] mb-6">
+                {[
+                  ['24h/24', 'Disponible à toute heure, sans limite de questions'],
+                  ['En direct', "Connecté à l'actualité et aux résultats du jour"],
+                  ['Complet', 'Statistiques, tactique, projections, transferts'],
+                ].map(([titre, detail]) => (
+                  <div key={titre} className="flex gap-3 py-2.5 border-b border-white/[0.06]">
+                    <span className="text-[11px] font-black text-[#34D399] w-[54px] shrink-0 pt-px">
+                      {titre}
+                    </span>
+                    <span className="text-[12px] text-white/55 leading-snug">{detail}</span>
                   </div>
-                </div>
-
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2.5 rounded-full bg-emerald-400/10 border border-emerald-400/25 text-[#34D399] text-[9px] font-black uppercase tracking-[0.16em]">
-                  <Sparkles className="w-2.5 h-2.5" />
-                  Premium
-                </div>
-
-                <h1
-                  className="text-[26px] font-black tracking-tight leading-none mb-2 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent"
-                  style={{ fontFamily: 'var(--police-marque), sans-serif' }}
-                >
-                  Accès Réservé VIP
-                </h1>
-
-                <p className="text-[12.5px] text-white/50 font-medium leading-snug mb-5 mx-auto max-w-[260px]">
-                  <strong className="text-white/90 font-bold">ProFoot Expert</strong> est votre
-                  analyste football personnel.
-                </p>
-
-                {/* ── CINQ LIGNES, PAS SEPT ────────────────────────────────
-                    Une liste qu'on ne finit pas de lire ne vend rien. On garde
-                    ce qui distingue vraiment l'offre ; le reste se découvre à
-                    l'usage. L'aperçu flouté de la conversation a disparu : il
-                    occupait un tiers de la carte pour un rectangle gris qui
-                    ressemblait à du contenu cassé, pas à une promesse. */}
-                <ul className="space-y-2 text-left mb-6">
-                  {[
-                    'Analyste disponible 24h/24',
-                    "Connecté à l'actualité en temps réel",
-                    'Statistiques et analyses tactiques',
-                    'Projections de rencontres',
-                    'Aucune limite de questions',
-                  ].map((avantage) => (
-                    <li key={avantage} className="flex items-center gap-2.5">
-                      <span className="w-4 h-4 rounded-full bg-emerald-400/15 text-[#34D399] flex items-center justify-center shrink-0">
-                        <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
-                      </span>
-                      <span className="text-[12.5px] font-semibold text-white/80 leading-tight">
-                        {avantage}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                ))}
+              </div>
 
                 <div className="relative w-full group">
               <div className="absolute -inset-1 bg-gradient-to-r from-sky-400 to-emerald-400 rounded-[18px] blur opacity-35 group-hover:opacity-60 transition duration-500 pointer-events-none" />
@@ -338,7 +333,6 @@ export default function ExpertAgentPage() {
               </div>
             </div>
           </div>
-        </div>
 
         {/* La notice n'existe QUE pendant le clic sur l'abonnement. Hors de ce
             moment, elle n'est pas montée : rien à charger pour qui ne paie pas. */}
