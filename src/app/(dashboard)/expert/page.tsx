@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Shield, Send, Loader, Sparkles, Lock, ArrowRight, Zap, Loader2 } from "lucide-react";
+import { Shield, Send, Loader, Sparkles, Lock, ArrowRight, Zap, Loader2, Check } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -230,27 +230,115 @@ export default function ExpertAgentPage() {
     return (
       <div className="flex items-center justify-center min-h-[75vh] animate-fade-in px-4">
         <div className="max-w-2xl w-full relative">
-          {/* Animated Glowing Background Orbs */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-[#10B981]/20 to-blue-500/20 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
-          
-          <div className="bg-[#16242e]/60 backdrop-blur-3xl border border-white/[0.08] rounded-[32px] p-10 md:p-14 text-center shadow-[0_0_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
-            {/* Inner top highlight */}
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#10B981]/50 to-transparent" />
-            
-            {/* The Lock Icon */}
-            <div className="w-24 h-24 rounded-full bg-gradient-to-b from-[#10B981]/10 to-transparent border border-[#10B981]/30 flex items-center justify-center mx-auto mb-8 shadow-[inset_0_0_30px_rgba(16,185,129,0.15)] relative z-10 group transition-transform duration-500 hover:scale-110">
-              <div className="absolute inset-0 bg-[#10B981]/20 rounded-full blur-xl group-hover:bg-[#10B981]/30 transition-all" />
-              <Lock className="w-10 h-10 text-[#10B981] drop-shadow-[0_0_15px_rgba(16,185,129,0.8)] relative z-10" strokeWidth={1.5} />
+          {/* ── LE HALO NE CLIGNOTE PLUS ──────────────────────────────────
+              Il portait `animate-pulse` sur une surface de 120 % floutée à
+              cent pixels. Une grande zone floue repeinte en boucle est ce qui
+              coûte le plus cher sur un téléphone d'entrée de gamme, et 96 %
+              du trafic en est un. Le halo reste — il cesse de se rafraîchir. */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-[#10B981]/20 to-blue-500/20 rounded-full blur-[100px] pointer-events-none" />
+
+          <div className="bg-[#16242e]/70 backdrop-blur-3xl border border-white/[0.08] rounded-[32px] p-6 sm:p-9 md:p-11 text-center shadow-[0_0_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
+            {/* Liseré lumineux en haut de carte : c'est lui qui donne l'arête
+                de verre. */}
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#10B981]/60 to-transparent" />
+
+            {/* ── LE BADGE ───────────────────────────────────────────────── */}
+            <div className="relative z-10 inline-flex items-center gap-1.5 px-3 py-1 mb-5 rounded-full bg-[#10B981]/10 border border-[#10B981]/25 text-[#34D399] text-[9.5px] font-black uppercase tracking-[0.15em]">
+              <Sparkles className="w-3 h-3" />
+              Premium
             </div>
-            
-            <h1 className="text-3xl md:text-5xl font-black mb-5 tracking-tight relative z-10 bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent" style={{fontFamily: "var(--police-marque), sans-serif"}}>
+
+            {/* ── L'EMBLÈME ──────────────────────────────────────────────────
+                L'anneau est un dégradé, pas une bordure : un `border` ne sait
+                pas dégrader. On enveloppe donc le disque dans un cercle d'un
+                pixel et demi rempli du dégradé — même technique que le cadre
+                des cartes de prix. Le halo derrière donne la profondeur. */}
+            <div className="relative z-10 mx-auto mb-6 w-fit">
+              <div
+                aria-hidden
+                className="absolute inset-0 -m-3 rounded-full bg-[#10B981]/25 blur-2xl"
+              />
+              <div className="relative rounded-full p-[1.5px] bg-gradient-to-br from-sky-400 via-cyan-300 to-emerald-400 shadow-lg shadow-emerald-500/25">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#16242e] flex items-center justify-center bg-gradient-to-b from-white/[0.06] to-transparent">
+                  <Lock
+                    className="w-8 h-8 sm:w-10 sm:h-10 text-[#34D399] drop-shadow-[0_0_14px_rgba(52,211,153,0.7)]"
+                    strokeWidth={1.75}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <h1 className="text-[28px] sm:text-4xl md:text-5xl font-black mb-3 tracking-tight relative z-10 bg-gradient-to-b from-white to-white/55 bg-clip-text text-transparent" style={{fontFamily: "var(--police-marque), sans-serif"}}>
               Accès Réservé VIP
             </h1>
-            
-            <p className="text-base md:text-lg text-white/60 font-medium leading-relaxed mb-12 max-w-md mx-auto relative z-10">
-              L'Agent IA <strong className="text-white font-bold">ProFoot Expert</strong> est réservé aux <strong className="text-white font-bold">abonnés ProFoot</strong> : un analyste football personnel disponible 24h/24, connecté à l'actualité en temps réel — statistiques, tactiques, projections, transferts, sans aucune limite.
+
+            {/* ── LE PAVÉ EST DEVENU UNE PHRASE ────────────────────────────
+                Les sept bénéfices étaient empilés en prose sur cinq lignes.
+                Personne ne lit ça sur un téléphone : ils descendent dans la
+                liste ci-dessous, où l'œil les parcourt en deux secondes. */}
+            <p className="text-[13.5px] sm:text-base text-white/55 font-medium leading-relaxed mb-6 max-w-sm mx-auto relative z-10">
+              <strong className="text-white font-bold">ProFoot Expert</strong> est votre analyste
+              football personnel, réservé aux abonnés.
             </p>
-            
+
+            {/* ── CE QU'ON OBTIENT, EN UN COUP D'ŒIL ─────────────────────── */}
+            <ul className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2 mb-7 text-left max-w-md mx-auto">
+              {[
+                'Analyste disponible 24h/24',
+                "Connecté à l'actualité en temps réel",
+                'Statistiques détaillées',
+                'Analyses tactiques',
+                'Projections de rencontres',
+                'Transferts et mercato',
+                'Aucune limite de questions',
+              ].map((avantage) => (
+                <li key={avantage} className="flex items-center gap-2.5">
+                  <span className="w-4 h-4 rounded-full bg-[#10B981]/15 text-[#34D399] flex items-center justify-center shrink-0">
+                    <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
+                  </span>
+                  <span className="text-[12.5px] font-semibold text-white/80 leading-tight">{avantage}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* ── L'APERÇU VERROUILLÉ ────────────────────────────────────────
+                Montrer ce qu'on n'a pas donne davantage envie que le décrire.
+                Ces trois bulles sont DÉCORATIVES : `aria-hidden` les retire
+                des lecteurs d'écran, qui ne doivent pas lire une conversation
+                qui n'a jamais eu lieu. Leur texte respecte le vocabulaire de
+                l'analyse et ne promet aucun résultat.
+                Le flou est appliqué au texte lui-même, pas à un calque
+                par-dessus : on ne peut donc pas le retirer en inspectant la
+                page — il n'y a rien à révéler, ce contenu est faux. */}
+            <div aria-hidden className="relative z-10 mb-7 rounded-[20px] overflow-hidden border border-white/[0.07] bg-black/25">
+              <div className="p-4 space-y-2.5 blur-[3px] select-none pointer-events-none">
+                <div className="flex justify-end">
+                  <span className="max-w-[75%] rounded-2xl rounded-br-md bg-[#10B981]/80 px-3 py-2 text-[11.5px] font-semibold text-black text-left">
+                    Comment se présente Manchester City ce week-end ?
+                  </span>
+                </div>
+                <div className="flex justify-start">
+                  <span className="max-w-[85%] rounded-2xl rounded-bl-md bg-white/[0.07] px-3 py-2 text-[11.5px] text-white/85 text-left">
+                    City reste sur cinq victoires de rang, quinze buts marqués et trois encaissés.
+                    Haaland a retrouvé son rythme après sa gêne musculaire.
+                  </span>
+                </div>
+                <div className="flex justify-start">
+                  <span className="max-w-[70%] rounded-2xl rounded-bl-md bg-white/[0.07] px-3 py-2 text-[11.5px] text-white/85 text-left">
+                    Rodri a repris une place de titulaire, ce qui change tout au milieu.
+                  </span>
+                </div>
+              </div>
+
+              {/* Le voile de verre et son cadenas */}
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-[#16242e]/40 via-[#16242e]/60 to-[#16242e]/85 backdrop-blur-[2px]">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/45 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/75">
+                  <Lock className="w-3 h-3 text-[#34D399]" strokeWidth={2.5} />
+                  Aperçu verrouillé
+                </span>
+              </div>
+            </div>
+
             <div className="relative z-10 w-full sm:w-auto mx-auto mt-4 group">
               <div className="absolute -inset-1 bg-gradient-to-r from-[#10B981] to-[#047857] rounded-full blur opacity-40 group-hover:opacity-75 transition duration-500" />
               <button 
