@@ -6,6 +6,20 @@ import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, Chevr
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { clubs, getClub, matches, competitions } from "@/lib/data";
+import chargerADemande from "next/dynamic";
+import { signalerEtape } from "@/components/etapes-vente";
+import { usePaysAcheteur } from "@/components/usePaysAcheteur";
+import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
+
+/**
+ * La notice est chargee A LA DEMANDE, comme sur le paywall et les tarifs.
+ *
+ * Elle embarque la table des moyens de paiement des 243 pays — quarante-huit
+ * kilo-octets. La page d analyse est la plus visitee du site : l imposer a
+ * tout le monde pour les rares abonnes qui tombent a sec l alourdirait pour
+ * rien.
+ */
+const NoticePaiement = chargerADemande(() => import("@/components/NoticePaiement"), { ssr: false });
 
 // Extract future matches for the "Prochains matchs" list
 const futureMatches = matches.filter(m => m.status === "upcoming");
@@ -543,10 +557,31 @@ export default function AnalyzePage({
   const [result, setResult] = useState<any>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzingStep, setAnalyzingStep] = useState(0);
+  /** Avancement supplementaire, en points, une fois les etapes nommees epuisees. */
+  const [avancementLent, setAvancementLent] = useState(0);
   const [showGlobalForm, setShowGlobalForm] = useState(false);
   const [pickerOpen, setPickerOpen] = useState<1 | 2 | null>(null);
   const [todayHistory, setTodayHistory] = useState<any[]>([]);
   const [isPremium, setIsPremium] = useState(false); // Default false to prevent data leaking before check finishes
+  /**
+   * L offre que l abonne a DEJA, pour pouvoir la recharger en un clic.
+   *
+   * Jamais l offre d entree : les droits retiennent l abonnement le plus
+   * eleve, et un niveau egal ou inferieur ne remplace jamais celui en cours.
+   * Un abonne Pro qui racheterait l Essentiel garderait son Pro, periode
+   * inchangee — son compteur ne repartirait pas et son argent serait perdu.
+   */
+  const [offreActuelle, setOffreActuelle] = useState<{ cle: string; libelle: string; prixXof: number } | null>(null);
+  /** Vrai quand la notice de rechargement est ouverte. */
+  const [noticeRecharge, setNoticeRecharge] = useState(false);
+  const [rechargeEnCours, setRechargeEnCours] = useState(false);
+  /**
+   * Le pays de l acheteur, demande au serveur SEULEMENT quand la notice
+   * s ouvre. L interroger a chaque chargement de la page d analyse — la plus
+   * visitee du site — couterait un appel pour la quasi-totalite des visiteurs
+   * qui ne rechargeront jamais.
+   */
+  const paysRecharge = usePaysAcheteur(noticeRecharge);
   // Consommation d'analyses telle que renvoyée par le serveur.
   const [quota, setQuota] = useState<{
     used: number; limit: number | null; remaining: number | null;
@@ -621,12 +656,64 @@ export default function AnalyzePage({
         const data = await res.json();
         setIsPremium(!!data.premium);
         if (data.analyses) setQuota(data.analyses);
+        setOffreActuelle(data.offreActuelle ?? null);
       } catch {
         setIsPremium(false);
       }
     };
     checkPremium();
   }, []);
+
+  /**
+   * ── LE RACHAT EN UN CLIC, DEPUIS L'ÉCRAN DE COMPTEUR ÉPUISÉ ──────────────
+   *
+   * Mesuré le 24 août 2026 : un abonné qui a fini ses vingt analyses repaye
+   * 18,8 % du temps, contre 0,7 % pour celui à qui il en reste. Tomber à zéro
+   * multiplie par vingt-sept la chance qu'il revienne — et c'est à cet instant
+   * précis, pas trois jours plus tard, qu'il faut lui tendre le bouton.
+   *
+   * L'écran renvoyait vers la page des tarifs : une marche de plus, où il
+   * fallait relire trois offres pour recliquer sur celle qu'on avait déjà.
+   *
+   * Rien du paiement n'est réécrit : c'est le même appel, la même notice et
+   * les mêmes étapes de mesure que sur le paywall et la page des tarifs.
+   */
+  const rechargerAcces = async (paysChoisi: string | null) => {
+    if (!offreActuelle) return;
+    setNoticeRecharge(false);
+    setRechargeEnCours(true);
+    try {
+      const res = await fetch('/api/payments/chariow/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan: offreActuelle.cle,
+          fuseau: fuseauDuNavigateur(),
+          ...(paysChoisi ? { pays: paysChoisi } : {}),
+        }),
+      });
+
+      // Session expirée : reconnexion plutôt qu'un message d'erreur trompeur.
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const data = await res.json();
+      if (data.checkoutUrl) {
+        signalerEtape('depart-caisse', offreActuelle.cle);
+        window.location.href = data.checkoutUrl;
+      } else {
+        // Un échec ici veut dire que personne n'atteindra la caisse : à ne pas
+        // confondre avec un abandon volontaire.
+        signalerEtape('echec-lien', offreActuelle.cle);
+        setRechargeEnCours(false);
+      }
+    } catch {
+      signalerEtape('echec-lien', offreActuelle.cle);
+      setRechargeEnCours(false);
+    }
+  };
 
   const handleTeam1Select = async (id: string) => {
     setTeam1(id);
@@ -726,16 +813,39 @@ export default function AnalyzePage({
     setResult(null);
     setAnalyzeError(null);
     setAnalyzingStep(0);
-    
+    setAvancementLent(0);
+
     const startTime = Date.now();
     let currentStep = 0;
 
+    // ── LA BARRE NE RESTE PLUS FIGÉE À 80 % ──────────────────────────────
+    //
+    // Elle montait de vingt en vingt toutes les 1,2 seconde, puis s'arrêtait
+    // net à la quatrième étape — 80 % — et n'affichait plus rien jusqu'au
+    // retour du serveur. Le propriétaire l'a décrit ainsi : « ça se cale sur
+    // 80 % pendant une à deux minutes ».
+    //
+    // Trois secondes six de mouvement, puis une minute et demie d'immobilité :
+    // une barre immobile ne dit pas « je travaille », elle dit « je suis
+    // plantée ». Et devant une barre plantée, on recharge la page — ce qui
+    // annule une analyse qui allait aboutir, et la fait recommencer.
+    //
+    // Elle continue donc d'avancer, très lentement, jusqu'à 97 % au plus.
+    // Jamais 100 % : les cent pour cent sont le retour du serveur, et les
+    // afficher avant serait un deuxième mensonge.
     const interval = setInterval(() => {
       currentStep++;
       if (currentStep < steps.length - 1) {
         setAnalyzingStep(currentStep);
       }
     }, 1200);
+
+    // Une fois les étapes nommées épuisées, on continue à la fraction de
+    // pour-cent : assez pour qu'on voie que ça bouge, assez lent pour ne
+    // jamais atteindre le bout avant le serveur.
+    const rampe = setInterval(() => {
+      setAvancementLent((v) => Math.min(17, v + 0.4));
+    }, 900);
 
     try {
       const res = await fetch("/api/analyze", {
@@ -755,7 +865,7 @@ export default function AnalyzePage({
         // erreur technique à un visiteur non abonné le laisse croire que le
         // service est cassé alors qu'il doit simplement souscrire.
         if (res.status === 403) {
-          clearInterval(interval);
+          clearInterval(interval); clearInterval(rampe);
           setAnalyzing(false);
           setAnalyzeError("PREMIUM_REQUIRED");
           return;
@@ -765,7 +875,7 @@ export default function AnalyzePage({
         // à un abonné qui a juste cliqué trop vite.
         if (res.status === 429) {
           const info = await res.json().catch(() => ({}));
-          clearInterval(interval);
+          clearInterval(interval); clearInterval(rampe);
           setAnalyzing(false);
           if (info?.code === 'ANALYSIS_LIMIT_REACHED') {
             if (info.quota) {
@@ -805,7 +915,7 @@ export default function AnalyzePage({
         });
       }
 
-      clearInterval(interval);
+      clearInterval(interval); clearInterval(rampe);
       setAnalyzingStep(steps.length - 1);
       
       const elapsedTime = Date.now() - startTime;
@@ -870,7 +980,7 @@ export default function AnalyzePage({
       }, remainingTime + 300);
 
     } catch (error: any) {
-      clearInterval(interval);
+      clearInterval(interval); clearInterval(rampe);
 
       // ── LA REPRISE, AVANT D'ANNONCER UN ÉCHEC ─────────────────────────
       //
@@ -939,7 +1049,12 @@ export default function AnalyzePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const progressPercent = Math.round(((analyzingStep + 1) / steps.length) * 100);
+  // 80 % au plus par les etapes nommees, plus la rampe lente, plafonne a 97 :
+  // les 100 % appartiennent au retour du serveur.
+  const progressPercent = Math.min(
+    97,
+    Math.round(((analyzingStep + 1) / steps.length) * 100 + avancementLent)
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#101c24] via-[#031b25] to-[#041f1a]">
@@ -1021,6 +1136,23 @@ export default function AnalyzePage({
             Basé sur stats réelles + actualités foot 2026
           </span>
 
+          {/* ── LA NOTICE DE RECHARGEMENT ────────────────────────────────
+              La même que sur le paywall et la page des tarifs : mêmes moyens
+              de paiement par pays, même rappel du solde, mêmes étapes de
+              mesure. Elle n'existe que pendant le clic — sa table des 243 pays
+              pèse quarante-huit kilo-octets, et la page d'analyse est la plus
+              visitée du site. */}
+          {noticeRecharge && offreActuelle && (
+            <NoticePaiement
+              paysDetecte={paysRecharge}
+              libelleOffre={`${offreActuelle.libelle} — ${offreActuelle.prixXof.toLocaleString('fr-FR')} FCFA`}
+              cleOffre={offreActuelle.cle}
+              montantXof={offreActuelle.prixXof}
+              onContinuer={(paysRetenu) => rechargerAcces(paysRetenu)}
+              onFermer={() => setNoticeRecharge(false)}
+            />
+          )}
+
           {/* Compteur d'analyses — valeurs fournies par le serveur, jamais
               calculées ici. Masqué pour les comptes gratuits, qui relèvent du
               paywall et non d'un quota. */}
@@ -1077,12 +1209,61 @@ export default function AnalyzePage({
                 </p>
               </div>
 
-              <Link
-                href="/pricing"
-                className="mt-3 bg-warning hover:bg-warning/90 active:scale-95 text-black font-bold py-2.5 px-6 rounded-full transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest"
-              >
-                Voir les offres <ArrowRight className="w-4 h-4" />
-              </Link>
+              {/* ── LE RACHAT, ICI ET MAINTENANT ───────────────────────────
+                  Celui qui est à sec repaye vingt-sept fois plus que celui à
+                  qui il reste du crédit — 18,8 % contre 0,7 %, mesuré le
+                  24 août 2026. L'écran renvoyait vers la page des tarifs :
+                  une marche de plus, pour relire trois offres et recliquer sur
+                  celle qu'on avait déjà.
+
+                  Le bouton propose SON niveau, jamais l'offre d'entrée : un
+                  abonné Pro qui rachèterait l'Essentiel garderait son Pro,
+                  période inchangée, et perdrait son argent. */}
+              {offreActuelle ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      signalerEtape('offre-cliquee', offreActuelle.cle);
+                      setNoticeRecharge(true);
+                    }}
+                    disabled={rechargeEnCours}
+                    className="mt-3 w-full max-w-[300px] bg-warning hover:bg-warning/90 active:scale-95 text-black font-bold py-3.5 px-6 rounded-full transition-all flex items-center justify-center gap-2 text-[12px] uppercase tracking-widest disabled:opacity-60 disabled:cursor-wait min-h-[52px]"
+                  >
+                    {rechargeEnCours ? (
+                      <>
+                        <Loader className="w-4 h-4 animate-spin" />
+                        Ouverture du paiement…
+                      </>
+                    ) : (
+                      <>
+                        Recharger — {offreActuelle.prixXof.toLocaleString('fr-FR')} FCFA
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-[10.5px] text-white/35 mt-1 leading-relaxed">
+                    Vos {quota?.limit ?? ''} analyses repartent immédiatement.
+                  </p>
+
+                  {/* Celui qui veut comparer garde son chemin, en second. */}
+                  <Link
+                    href="/pricing"
+                    onClick={() => signalerEtape('vers-tarifs')}
+                    className="text-[11px] text-white/40 hover:text-white/70 underline underline-offset-2 transition-colors"
+                  >
+                    Voir toutes les offres
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href="/pricing"
+                  className="mt-3 bg-warning hover:bg-warning/90 active:scale-95 text-black font-bold py-2.5 px-6 rounded-full transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-widest"
+                >
+                  Voir les offres <ArrowRight className="w-4 h-4" />
+                </Link>
+              )}
             </div>
             ) : analyzeError === "PREMIUM_REQUIRED" ? (
             <div className="w-full max-w-md mx-auto mt-4 bg-gradient-to-b from-[#16242e] to-[#16242e] border border-primary/25 rounded-[20px] p-6 flex flex-col items-center text-center gap-3 animate-fade-in shadow-[0_0_40px_rgba(16,185,129,0.10)] relative overflow-hidden">

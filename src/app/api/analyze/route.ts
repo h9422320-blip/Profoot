@@ -312,7 +312,7 @@ import { clientIp, setBounded } from "@/lib/rateLimit";
 // au-delà des 10 s accordées par défaut à une fonction serverless. Sans cette
 // déclaration, l'hébergeur interrompt la requête et le client voit une
 // « erreur de connexion au modèle IA ».
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * Budget de temps de la requête.
@@ -324,7 +324,23 @@ export const maxDuration = 60;
  * Sans cette réserve, un modèle qui répond à la dernière seconde produit
  * quand même un échec.
  */
-const LIMITE_PLATEFORME_MS = 55000;
+/**
+ * ── PORTÉE DE 55 À 100 SECONDES LE 25 AOÛT 2026 ──────────────────────────
+ *
+ * Le compte est passé au plan Pro ce jour-là. Le couperet de la plateforme
+ * est monté de 60 à 300 secondes : le budget n'a plus à tenir dans une minute.
+ *
+ * Ce que le propriétaire décrivait : « l'analyse se cale sur 80 % pendant une
+ * à deux minutes ». Ce n'était pas une lenteur, c'était un ÉCHEC SUIVI D'UNE
+ * REPRISE. Le modèle était coupé à 51 secondes, le navigateur relançait tout
+ * seul, et la seconde tentative repartait pour autant — d'où les deux minutes,
+ * pour un résultat qui n'arrivait parfois jamais.
+ *
+ * Cent secondes en une seule tentative valent mieux que deux tentatives de
+ * cinquante : c'est la même attente pour la personne, mais le modèle a le
+ * temps de finir sa rédaction au lieu d'être coupé en plein milieu.
+ */
+const LIMITE_PLATEFORME_MS = 100000;
 // Ramenée de six à quatre secondes : la mise en forme mesurée prend moins
 // d'une seconde, et chaque seconde rendue au modèle est une seconde de plus
 // pour qu'il termine sa rédaction plutôt que d'être coupé.

@@ -52,6 +52,35 @@ export async function GET(req: Request) {
       matchDebloque: matchDebloqueDemande,
       vip: entitlements.vip,
       plan: entitlements.plan,
+      // ── L'OFFRE QUE L'ABONNÉ A DÉJÀ, POUR POUVOIR LA RECHARGER ──────────
+      //
+      // Un abonné à sec doit pouvoir racheter EN UN CLIC, sans repasser par la
+      // page des tarifs. Mesuré le 24 août 2026 : celui qui a fini ses vingt
+      // analyses repaye vingt-sept fois plus que celui à qui il en reste —
+      // 18,8 % contre 0,7 %. C'est le compteur à zéro qui fait revenir, et
+      // c'est à cet instant précis qu'il faut lui tendre le bouton.
+      //
+      // ── ET C'EST SON PROPRE NIVEAU, JAMAIS L'OFFRE D'ENTRÉE ────────────
+      //
+      // Les droits retiennent l'abonnement le plus élevé, et un niveau égal ou
+      // inférieur ne remplace jamais celui en cours. Un abonné Pro qui
+      // rachèterait l'Essentiel garderait donc son abonnement Pro, période
+      // inchangée : son compteur ne repartirait pas, et ses deux mille francs
+      // seraient perdus. Le rachat doit porter sur le MÊME plan.
+      offreActuelle: (() => {
+        const cleCourante = (Object.keys(PLANS) as (keyof typeof PLANS)[]).find(
+          (k) => PLANS[k].tier === entitlements.plan
+        );
+        if (!cleCourante || !entitlements.premium) return null;
+        const reglee = offres?.[cleCourante];
+        return {
+          cle: cleCourante,
+          libelle: PLANS[cleCourante].label,
+          // Le prix RÉELLEMENT réglé dans l'administration, jamais celui écrit
+          // dans le code : ils divergent dès le premier changement de tarif.
+          prixXof: reglee?.prixXof ?? PLANS[cleCourante].amountXof,
+        };
+      })(),
       planLabel:
         entitlements.plan === 'FREE'
           ? 'Gratuit'
