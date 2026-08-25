@@ -388,7 +388,7 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
       titre: "L'analyseur se sous-estime",
       constat: `Il annonce ${d.confianceMoyenne} % de confiance et réussit ${d.reussiteVainqueur} %.`,
       correction:
-        "L'analyseur est plus fiable qu'il ne le dit. Relever ses indices de confiance rendrait ses verdicts plus utiles pour un abonné qui parie.",
+        "L'analyseur est plus fiable qu'il ne le dit. Relever ses indices de confiance rendrait ses verdicts plus utiles pour un abonné qui suit le match.",
     });
   }
 
@@ -401,8 +401,8 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
   if (trancheFautive) {
     reco.push({
       gravite: 'important',
-      titre: `Les pronostics annoncés à ${trancheFautive.libelle.toLowerCase()} ne tiennent pas`,
-      constat: `${trancheFautive.nombre} pronostics dans cette tranche : ${trancheFautive.confianceMoyenne} % annoncés, ${trancheFautive.reussite} % réussis.`,
+      titre: `Les analyses annoncées à ${trancheFautive.libelle.toLowerCase()} ne tiennent pas`,
+      constat: `${trancheFautive.nombre} analyses dans cette tranche : ${trancheFautive.confianceMoyenne} % annoncés, ${trancheFautive.reussite} % réussis.`,
       correction:
         "C'est la tranche la plus trompeuse pour un abonné : il y voit une quasi-certitude. Interdire à l'analyseur d'y recourir sans une raison chiffrée explicite dans son raisonnement.",
     });
@@ -501,7 +501,7 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
       titre: 'Le score exact est rarement trouvé',
       constat: `${d.reussiteScoreExact} % de scores exacts sur ${echantillon} matchs.`,
       correction:
-        "C'est normal — personne ne prédit un score exact de façon fiable. Le présenter comme une estimation plutôt que comme une prédiction éviterait de décevoir un abonné qui le prendrait au pied de la lettre.",
+        "C'est normal — personne n'annonce un score exact de façon fiable. Le présenter comme une estimation plutôt que comme une certitude éviterait de décevoir un abonné qui le prendrait au pied de la lettre.",
     });
   }
 

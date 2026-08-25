@@ -20,7 +20,7 @@ export default async function ControleMarche() {
       <div className="flex items-center gap-2 mb-2.5">
         <Scale className="w-3.5 h-3.5 text-amber-400" />
         <h4 className="text-[11px] font-bold uppercase tracking-wider text-white/45">
-          Le moteur contre les bookmakers
+          Le moteur contre le marché
         </h4>
         {!c.vide && (
           <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-white/30">

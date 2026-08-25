@@ -278,8 +278,13 @@ test('le code ne publie jamais une preuve dont l\'issue est fausse', () => {
       "Si cette ligne change, un raté peut réapparaître sur le mur public."
   );
 
+  // Le message de refus est vérifié sur son SENS, pas sur sa formulation
+  // exacte : il a été réécrit le 25 août 2026 quand « pronostic » a quitté
+  // l'application, et figer la phrase faisait échouer ce test alors que le
+  // garde-fou n'avait pas bougé d'une ligne. Ce qui doit rester, c'est le
+  // refus de publier — pas les mots employés pour le dire.
   assert.ok(
-    /issue_correcte/.test(source) && /Un pronostic raté ne peut pas être publié/.test(source),
+    /issue_correcte/.test(source) && /ne peut pas être publi/.test(source),
     'Le garde-fou de publication manuelle a disparu.'
   );
 });

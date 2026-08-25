@@ -36,12 +36,39 @@ const lire = (p: string) => fs.readFileSync(path.join(racine, p), 'utf8');
 /**
  * Les mots interdits, tels qu'ils apparaîtraient dans une phrase française.
  *
- * « cote » n'est jamais cherché seul : « Côte d'Ivoire » est un pays et « la
- * côte adverse » est du français normal. On exige un déterminant, ce qui ne
- * laisse passer que l'usage « cote de pari ».
+ * « cote » n'est jamais cherché seul : « Côte d'Ivoire » est un pays. La
+ * graphie accentuée « côte » et le mot « côté » ne sont pas visés du tout —
+ * ils s'écrivent avec d'autres lettres.
+ *
+ * « mise » nu n'y figure pas : « mise en page », « mise à jour », « mise en
+ * réserve » sont du français courant et truffent l'application. Seules les
+ * formes verbales du jeu — miser, misez, misons — sont retenues.
+ *
+ * « gain », « garanti », « revenus » : voir GAINS_ET_GARANTIES plus bas, qui
+ * a ses propres exceptions.
  */
 const INTERDITS =
-  /\b(?:pari|paris\s+sportifs?|pari(?:er|ez|ons|[eé]e?s?)|parieur(?:s|se|ses)?|pronostics?|pronostiqu\w*|mis(?:er|ez|ons|é\w*)|bookmakers?|coupons?|banco|value\s*bets?)\b|\bcotes?\b(?!\s*d['’\s]?\s*ivoire)|\bprédi(?:ction|ctions|ctif|ctifs|ctive|ctives|re|t|ts|te|tes)\b/i;
+  /\b(?:pari|paris\s+sportifs?|pari(?:er|ez|ons|[eé]e?s?)|parieur(?:s|se|ses)?|pronostics?|pronostiqu\w*|pronos?\b|tipsters?|tips\b|mis(?:er|ez|ons|é\w*)|bookmakers?|coupons?|banco|value\s*bets?|jeux?\s+de\s+hasard|casinos?|loteries?|roulettes?|machines?\s+à\s+sous)\b|\bcotes?\b(?!\s*d['’\s]?\s*ivoire)|\bodds\b|\bprédi(?:ction|ctions|ctif|ctifs|ctive|ctives|re|t|ts|te|tes)\b/i;
+
+/**
+ * L'ARGENT ET LA CERTITUDE — LES DEUX PROMESSES D'UN SITE DE JEU.
+ *
+ * Séparés d'INTERDITS parce qu'ils demandent des exceptions que les autres
+ * n'ont pas :
+ *
+ *   — « revenus » est le mot juste du tableau de bord financier. Il y désigne
+ *     le chiffre d'affaires de l'entreprise, pas des gains de joueur. Le
+ *     bannir rendrait l'administration illisible sans rien protéger : elle est
+ *     derrière authentification, aucun visiteur ne la voit ;
+ *
+ *   — « garantir » a le droit d'exister dans une phrase qui NIE la garantie.
+ *     « aucun outil ne peut garantir un résultat » nous protège ; l'interdire
+ *     nous désarmerait. On ne retient donc que la promesse affirmative.
+ *
+ * Ces exceptions sont volontairement étroites : tout le reste est refusé.
+ */
+const GAINS_ET_GARANTIES =
+  /\b(?:jackpots?|gagner\s+de\s+l['’]argent|mettre\s+son\s+argent|gains?\s+(?:assur|garanti|facile))\w*|\b(?:100\s*%\s*s[ûu]rs?|victoires?\s+garanties?|matchs?\s+s[ûu]rs?|sans\s+risque|coup\s+s[ûu]r)\b/i;
 
 /**
  * Les noms de marchés de pari, cherchés en RESPECTANT LA CASSE.
@@ -51,8 +78,13 @@ const INTERDITS =
  * serveur et l'écran sans rien protéger, puisqu'elle n'est jamais affichée.
  * Ce qui était affiché, c'était « BTTS » en capitales, dans une phrase de
  * vente. C'est cette forme-là qu'on interdit.
+ *
+ * « Over » et « Under » ne sont PAS cherchés seuls : ce sont des mots anglais
+ * courants, et le code en est plein (`overflow`, `hover`, `underline`). Seule
+ * la paire « Over/Under », qui ne désigne qu'un marché de pari, est retenue.
  */
-const MARCHES_DE_PARI = /\bBTTS\b|Over\s*\/\s*Under|\b1X2\b/;
+const MARCHES_DE_PARI =
+  /\bBTTS\b|Over\s*\/\s*Under|\b1X2\b|both\s+teams\s+to\s+score/i;
 
 // ── LES INSTRUCTIONS DONNÉES AUX MODÈLES ───────────────────────────────────
 
@@ -159,6 +191,31 @@ test('★ ACQUIS — le teaser REJETTE un texte contenant du vocabulaire de pari
 
 // ── LES ÉCRANS VUS PAR UN VISITEUR ─────────────────────────────────────────
 
+/**
+ * ── CE QUE CE TEST NE SURVEILLE PAS, ET POURQUOI ──────────────────────────
+ *
+ * Deux zones de l'application contiennent les mots interdits en toute
+ * légitimité. Les ajouter ici ferait échouer le test sur ce qui nous protège.
+ *
+ *   1. LES CONSIGNES ENVOYÉES AUX MODÈLES — `agent-vip.ts`, `apercu-ia.ts`.
+ *      Elles contiennent la LISTE des mots interdits (« pari, parier,
+ *      bookmaker, cote… ne doivent JAMAIS apparaître ») et le filtre qui
+ *      rejette les textes du modèle. Ces mots y sont l'interdiction
+ *      elle-même : les retirer désarmerait la protection. Ils ne sortent
+ *      jamais à l'écran — ce sont des instructions, pas des réponses. Des
+ *      tests dédiés vérifient plus haut que ces listes sont bien présentes.
+ *
+ *   2. LES JOURNAUX SERVEUR ET LES IDENTIFIANTS INTERNES — `cotes-marche.ts`,
+ *      `controle-marche.ts`, les tâches planifiées, `verifierPronostics()`,
+ *      la clé `cotes:${jour}` en base, l'URL `/odds?league=`. Rien n'est
+ *      affiché. Les renommer toucherait la logique et les données déjà
+ *      écrites — et l'a déjà prouvé : un renommage de `cote` avait cassé
+ *      l'affichage des buteurs en direct, parce que le serveur envoie un
+ *      champ `cote` pour dire de quel camp est un buteur.
+ *
+ * La règle est donc constante : on surveille ce qu'un être humain peut LIRE,
+ * jamais ce qu'une machine manipule.
+ */
 test('★ ACQUIS — aucune page publique n emploie le vocabulaire de pari', () => {
   const PAGES = [
     'src/app/LandingClient.tsx',
@@ -177,6 +234,20 @@ test('★ ACQUIS — aucune page publique n emploie le vocabulaire de pari', () 
     'src/app/mentions-legales/page.tsx',
     'src/components/preuves/SectionPreuves.tsx',
     'src/dictionaries/fr.ts',
+    // L'administration est derrière authentification, mais son vocabulaire
+    // finit par déteindre : c'est là qu'on écrit les libellés qu'on recopie
+    // ensuite côté visiteur. « Revenus » y reste autorisé (voir plus haut).
+    'src/app/admin/system/page.tsx',
+    'src/app/admin/users/[id]/page.tsx',
+    'src/app/admin/preuves/page.tsx',
+    'src/app/admin/preuves/PreuvesClient.tsx',
+    'src/app/admin/diagnostic/page.tsx',
+    'src/app/admin/_components/ControleMarche.tsx',
+    'src/app/admin/_components/SuiviPrecision.tsx',
+    // Textes générés côté serveur puis affichés tels quels.
+    'src/lib/preuves.ts',
+    'src/lib/diagnostic-ia.ts',
+    'src/lib/courriel.ts',
   ];
 
   for (const page of PAGES) {
@@ -259,6 +330,10 @@ test('★ ACQUIS — aucune page publique n emploie le vocabulaire de pari', () 
         assert.ok(
           !MARCHES_DE_PARI.test(affichable),
           `${page}:${i + 1} nomme un marché de pari :\n    ${nue.slice(0, 120)}`
+        );
+        assert.ok(
+          !GAINS_ET_GARANTIES.test(affichable),
+          `${page}:${i + 1} promet un gain ou une certitude :\n    ${nue.slice(0, 120)}`
         );
       }
     });

@@ -137,7 +137,7 @@ function LignePreuve({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
         <span className="text-white/35 truncate max-w-[200px]">{p.competition || "—"}</span>
         <span className="text-white/50">
-          Prono <strong className="text-white tabular-nums">{p.pronoScore ?? "—"}</strong>
+          Annoncé <strong className="text-white tabular-nums">{p.pronoScore ?? "—"}</strong>
         </span>
         <span className="text-white/50">
           Réel{" "}
@@ -230,7 +230,7 @@ function LignePreuve({
         <button
           type="button"
           disabled={enCours || !p.issueCorrecte}
-          title={!p.issueCorrecte ? "Un pronostic raté ne peut pas être publié" : undefined}
+          title={!p.issueCorrecte ? "Une analyse ratée ne peut pas être publiée" : undefined}
           onClick={() =>
             agir(
               () => changerPublication(p.id, !p.publiee),

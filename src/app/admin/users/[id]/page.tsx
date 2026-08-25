@@ -47,7 +47,7 @@ export default async function FicheCompte({ params }: { params: Promise<{ id: st
           { libelle: "Analyses", valeur: String(f.analyses.length) },
           { libelle: "Total payé", valeur: f.totalPaye > 0 ? montant(f.totalPaye) : "—" },
           {
-            libelle: "Pronostics justes",
+            libelle: "Analyses justes",
             valeur: tauxReussite === null ? "—" : `${tauxReussite} %`,
             accent: (tauxReussite ?? 0) >= 50,
           },
@@ -79,7 +79,7 @@ export default async function FicheCompte({ params }: { params: Promise<{ id: st
           delai={0.05}
         />
         <Indicateur
-          libelle="Pronostics vérifiés"
+          libelle="Analyses vérifiées"
           valeur={f.analysesVerifiees}
           teinte="violet"
           icone={<Target className="w-4 h-4" />}
@@ -173,7 +173,7 @@ export default async function FicheCompte({ params }: { params: Promise<{ id: st
                 valeur={`${f.analysesReussies} / ${f.analysesVerifiees}`}
                 pourcentage={tauxReussite}
                 teinte={tauxReussite >= 50 ? "#10b981" : "#fb7185"}
-                detail={`${tauxReussite} % des pronostics vérifiés de ce compte ont donné le bon vainqueur`}
+                detail={`${tauxReussite} % des analyses vérifiées de ce compte ont donné le bon vainqueur`}
               />
               <p className="text-[11px] text-white/30 mt-3 leading-relaxed">
                 Sur {f.analyses.length} analyse{f.analyses.length > 1 ? "s" : ""},{" "}
@@ -188,7 +188,7 @@ export default async function FicheCompte({ params }: { params: Promise<{ id: st
         <div className="lg:col-span-2 space-y-6">
           <Panneau
             titre={`Ses analyses (${f.analyses.length})`}
-            sousTitre="Le pronostic donné, et le résultat réel quand le match est joué"
+            sousTitre="L'analyse donnée, et le résultat réel quand le match est joué"
             icone={<BarChart3 className="w-4 h-4" />}
             teinte="cyan"
           >

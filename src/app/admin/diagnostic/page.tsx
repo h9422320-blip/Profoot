@@ -91,7 +91,7 @@ export default async function DiagnosticPage() {
               valeur={`${d.reussiteScoreExact} %`}
               teinte="cyan"
               icone={<Crosshair className="w-4 h-4" />}
-              aide="Prédire un score au but près reste rare pour tout le monde"
+              aide="Estimer un score au but près reste rare pour tout le monde"
               delai={0.1}
             />
             <Indicateur
@@ -190,7 +190,7 @@ export default async function DiagnosticPage() {
                         valeur={`${t.reussite} %`}
                         pourcentage={t.reussite ?? 0}
                         teinte={(t.ecart ?? 0) >= 15 ? "#fbbf24" : "#a78bfa"}
-                        detail={`${t.nombre} pronostic${t.nombre > 1 ? "s" : ""} • ${t.confianceMoyenne} % annoncés, ${t.reussite} % réussis${(t.ecart ?? 0) >= 15 ? ` — ${t.ecart} points de trop` : ""}`}
+                        detail={`${t.nombre} analyse${t.nombre > 1 ? "s" : ""} • ${t.confianceMoyenne} % annoncés, ${t.reussite} % réussis${(t.ecart ?? 0) >= 15 ? ` — ${t.ecart} points de trop` : ""}`}
                       />
                     ))
                 )}

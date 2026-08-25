@@ -1783,7 +1783,7 @@ ${estApercu ? `{
     { "title": "Effectifs & Évaluation des Joueurs", "icon": "Award", "content": "Analyse des joueurs de l'effectif. Qui est en forme ? Qui est sur le banc ? Évalue et note les joueurs clés." },
     { "title": "Absents & Blessés", "icon": "Shield", "content": "Impact des blessés." },
     { "title": "Historique des Confrontations", "icon": "History", "content": "Analyse du H2H." },
-    { "title": "Contexte & Enjeux du Match", "icon": "Trophy", "content": "Importance du match." },
+    { "title": "Contexte & Importance du Match", "icon": "Trophy", "content": "Importance du match." },
     { "title": "Justification du Score Final", "icon": "Brain", "content": "Pourquoi ce score final, en combinant les joueurs clés et la tactique." }
   ]
 }`}`;
@@ -2034,7 +2034,7 @@ ${estApercu ? `{
         { title: "Dynamique & Forme Récente", icon: "Activity", content: `Les statistiques récentes indiquent que ${team1.name} a enregistré ${baseGoalsFor1} buts marqués, tandis que ${team2.name} totalise ${baseGoalsFor2} buts. Une dynamique qui reflète l'état de forme des deux équipes.` },
         { title: "Bataille Offensive & Défensive", icon: "Target", content: `L'équilibre des forces montre une légère domination attendue de ${t1Goals > t2Goals ? team1.name : team2.name}, avec une projection de possession de ${t1Goals > t2Goals ? baseAvgPossession1 || 55 : baseAvgPossession2 || 55}%. La défense adverse devra se montrer particulièrement vigilante.` },
         { title: "Effectifs & Joueurs Clés", icon: "Award", content: "Les internationaux des deux équipes devront faire preuve de créativité. Les qualités individuelles au milieu de terrain pourraient être le véritable facteur X de la rencontre." },
-        { title: "Contexte & Enjeux du Match", icon: "Trophy", content: "Chaque équipe cherchera à imposer son rythme dès le début du match pour asseoir sa domination et prendre une option sur la victoire." }
+        { title: "Contexte & Importance du Match", icon: "Trophy", content: "Chaque équipe cherchera à imposer son rythme dès le début du match pour asseoir sa domination et prendre une option sur la victoire." }
       ],
       globalForm: {
         team1: { recentMatches: recent1, goalsScored: baseGoalsFor1, goalsConceded: baseGoalsAgainst1, cleanSheets: s1r.clean_sheet?.total || 0, avgPossession: baseAvgPossession1, winStreak: winStreak1, played: played1, name: team1.name },

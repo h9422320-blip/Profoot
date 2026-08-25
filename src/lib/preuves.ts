@@ -790,7 +790,7 @@ export async function basculerPublication(
   if (publiee) {
     const { data } = await sb.from('preuves').select('issue_correcte').eq('id', id).maybeSingle();
     if (!(data as any)?.issue_correcte)
-      return { ok: false, erreur: "Un pronostic raté ne peut pas être publié." };
+      return { ok: false, erreur: "Une analyse ratée ne peut pas être publiée." };
   }
 
   const { error } = await sb

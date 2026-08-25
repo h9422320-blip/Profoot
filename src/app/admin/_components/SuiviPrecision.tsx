@@ -35,7 +35,7 @@ export default async function SuiviPrecision() {
         icone={<Target className="w-4 h-4" />}
         teinte="cyan"
       >
-        <Vide message="Aucun pronostic vérifié pour l'instant." />
+        <Vide message="Aucune analyse vérifiée pour l'instant." />
       </Panneau>
     );
   }

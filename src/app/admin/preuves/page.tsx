@@ -29,7 +29,7 @@ export default async function AdminPreuves() {
   return (
     <div className="space-y-6">
       <EnTete
-        titre="Toutes les prédictions vérifiées"
+        titre="Toutes les analyses vérifiées"
         sousTitre="Chaque match joué, ce qui était annoncé et ce qui s'est passé — réussites comme ratés"
         icone={<ShieldCheck className="w-6 h-6" />}
         teinte="vert"

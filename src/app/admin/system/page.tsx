@@ -36,7 +36,7 @@ export default async function AdminSystem({
             valeur: m.liens.precisionReelle === null ? "—" : `${m.liens.precisionReelle} %`,
             accent: true,
           },
-          { libelle: "Pronostics vérifiés", valeur: String(m.liens.pronosticsVerifies) },
+          { libelle: "Analyses vérifiées", valeur: String(m.liens.pronosticsVerifies) },
         ]}
       />
 
@@ -73,7 +73,7 @@ export default async function AdminSystem({
           icone={<Target className="w-4 h-4" />}
           aide={
             m.liens.precisionReelle === null
-              ? `${m.liens.pronosticsVerifies} pronostic${m.liens.pronosticsVerifies > 1 ? "s" : ""} vérifié${m.liens.pronosticsVerifies > 1 ? "s" : ""} — pas encore assez pour un taux fiable`
+              ? `${m.liens.pronosticsVerifies} analyse${m.liens.pronosticsVerifies > 1 ? "s" : ""} vérifiée${m.liens.pronosticsVerifies > 1 ? "s" : ""} — pas encore assez pour un taux fiable`
               : `Mesurée sur ${m.liens.pronosticsVerifies} matchs réellement joués`
           }
           delai={0.2}
@@ -99,8 +99,8 @@ export default async function AdminSystem({
                 </span>
                 . Impossible de dire pour l&apos;instant si elle est justifiée :{" "}
                 {m.liens.pronosticsVerifies === 0
-                  ? "aucun pronostic n'a encore été confronté à un résultat."
-                  : `seulement ${m.liens.pronosticsVerifies} pronostic${m.liens.pronosticsVerifies > 1 ? "s ont" : " a"} été vérifié${m.liens.pronosticsVerifies > 1 ? "s" : ""}.`}
+                  ? "aucune analyse n'a encore été confrontée à un résultat."
+                  : `seulement ${m.liens.pronosticsVerifies} analyse${m.liens.pronosticsVerifies > 1 ? "s ont" : " a"} été vérifiée${m.liens.pronosticsVerifies > 1 ? "s" : ""}.`}
               </p>
               <p className="text-[11px] text-white/30 mt-2">
                 Les matchs analysés se jouent dans les jours qui viennent. La comparaison apparaîtra d&apos;elle-même.
