@@ -77,8 +77,8 @@ const OFFRES = [
       bordure: 'border-sky-400/30 hover:border-sky-400/60',
       halo: 'from-sky-400/40 to-cyan-400/40',
       pastille: 'bg-sky-400/10 text-sky-400 border-sky-400/30',
-      coche: 'bg-sky-400/15 text-sky-400',
-      bouton: 'bg-sky-500/15 border border-sky-400/40 text-sky-300 hover:bg-sky-500/25',
+      coche: 'bg-primary/15 text-primary',
+      bouton: 'bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-400 text-[#04262b] shadow-lg shadow-emerald-400/30 hover:brightness-110',
       accentTexte: 'text-sky-400',
     },
   },
@@ -104,7 +104,7 @@ const OFFRES = [
       halo: 'from-primary to-info',
       pastille: 'bg-primary/15 text-primary border-primary/40',
       coche: 'bg-primary/20 text-primary',
-      bouton: 'bg-primary hover:bg-primary-hover text-white shadow-lg shadow-primary/30',
+      bouton: 'bg-primary/10 border-2 border-primary/70 text-primary hover:bg-primary/20 hover:border-primary',
       accentTexte: 'text-primary',
     },
   },
@@ -139,7 +139,7 @@ const OFFRES = [
       bordure: 'border-warning/40 hover:border-warning/70',
       halo: 'from-warning/40 to-amber-500/40',
       pastille: 'bg-warning/10 text-warning border-warning/30',
-      coche: 'bg-warning/15 text-warning',
+      coche: 'bg-primary/15 text-primary',
       bouton: 'bg-warning hover:bg-warning/90 text-black shadow-lg shadow-warning/25',
       accentTexte: 'text-warning',
     },
@@ -330,20 +330,49 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
               key={offre.cle}
               className={`relative group md:h-full ${offre.vedette ? 'md:-mt-3 md:mb-3' : ''}`}
             >
-              {/* Halo coloré : donne du relief à la carte sans masquer le texte */}
+              {/* ── LE HALO ────────────────────────────────────────────────
+                  Il vit DERRIÈRE la carte et flou : il ne peut donc jamais
+                  passer devant un prix ou un avantage. Porté de 30 à 45 % sur
+                  la vedette, avec un rayon plus large — assez pour qu'on la
+                  repère du coin de l'œil, pas assez pour éclaircir le fond de
+                  la carte, qui reste opaque au-dessus. */}
               <div
-                className={`absolute -inset-[2px] bg-gradient-to-br ${offre.style.halo} rounded-[26px] blur-md transition-opacity duration-500 ${
-                  offre.vedette ? 'opacity-30 group-hover:opacity-60' : 'opacity-0 group-hover:opacity-35'
+                className={`absolute -inset-[3px] bg-gradient-to-br ${offre.style.halo} rounded-[27px] blur-lg transition-opacity duration-500 ${
+                  offre.vedette ? 'opacity-45 group-hover:opacity-70' : 'opacity-0 group-hover:opacity-30'
                 }`}
               />
 
+              {/* ── LA BORDURE DÉGRADÉE DE LA VEDETTE ──────────────────────
+                  Un dégradé cyan → vert ne peut pas s'écrire dans `border`.
+                  On enveloppe donc la carte dans un cadre d'un pixel et demi
+                  rempli du dégradé : ce qui dépasse forme la bordure. Aucune
+                  image, aucun pseudo-élément, aucun masque — juste un fond.
+                  Les deux autres cartes n'ont pas d'enveloppe et gardent leur
+                  bordure d'origine. */}
               <div
-                className={`relative md:h-full bg-card/80 backdrop-blur-md border ${offre.style.bordure} rounded-[24px] px-5 py-5 flex flex-col gap-4 transition-colors duration-200 ${
-                  offre.vedette ? 'border-2 shadow-xl shadow-primary/15' : ''
+                className={`relative md:h-full ${
+                  offre.vedette
+                    ? 'rounded-[25.5px] p-[1.5px] bg-gradient-to-br from-sky-400/90 via-cyan-300/70 to-emerald-400/90 shadow-xl shadow-emerald-500/15'
+                    : ''
                 }`}
               >
+              <div
+                className={`relative md:h-full bg-card/70 backdrop-blur-xl rounded-[24px] px-5 py-5 flex flex-col gap-4 transition-colors duration-200 ${
+                  offre.vedette ? 'border-0' : `border ${offre.style.bordure}`
+                }`}
+              >
+                {/* ── LE REFLET QUI FAIT LE VERRE ──────────────────────────
+                    Un dégradé blanc à 6 % sur les quarante premiers pixels.
+                    C'est ce détail, et pas le flou seul, qui donne l'illusion
+                    d'une surface vitrée. `pointer-events-none` : il ne doit
+                    jamais intercepter un appui destiné au bouton. */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-0 h-10 rounded-t-[24px] bg-gradient-to-b from-white/[0.07] to-transparent"
+                />
+
                 {offre.badge && (
-                  <div className={`absolute -top-2.5 right-4 px-2.5 py-1 text-[9.5px] font-black rounded-full uppercase tracking-widest shadow-lg ${offre.badge.style}`}>
+                  <div className={`absolute -top-2.5 right-4 z-10 px-2.5 py-1 text-[9.5px] font-black rounded-full uppercase tracking-widest shadow-lg ${offre.badge.style}`}>
                     {offre.badge.texte}
                   </div>
                 )}
@@ -374,9 +403,15 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
                     laquelle regarder en premier. */}
                 <div>
                   <div className="flex items-baseline gap-1.5 flex-wrap">
+                    {/* Le prix de la vedette porte un dégradé TRÈS clair —
+                        blanc vers cyan pâle. Assez pour qu'il vibre, pas assez
+                        pour perdre du contraste : le point le plus sombre du
+                        dégradé reste plus clair que du blanc à 80 %. */}
                     <span
                       className={`font-black tracking-tight leading-none ${
-                        offre.vedette ? 'text-[2.75rem]' : 'text-[2rem]'
+                        offre.vedette
+                          ? 'text-[2.75rem] bg-gradient-to-br from-white via-white to-cyan-100 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(56,189,248,0.25)]'
+                          : 'text-[2rem] text-foreground'
                       }`}
                     >
                       {reglee?.prix ?? offre.prix}
@@ -470,6 +505,7 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
                     </>
                   )}
                 </button>
+              </div>
               </div>
             </div>
           );
