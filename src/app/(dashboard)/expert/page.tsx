@@ -228,140 +228,114 @@ export default function ExpertAgentPage() {
 
   if (!hasAccess) {
     return (
-      <div className="flex items-center justify-center min-h-[75vh] animate-fade-in px-4">
-        <div className="max-w-2xl w-full relative">
-          {/* ── LE HALO NE CLIGNOTE PLUS ──────────────────────────────────
-              Il portait `animate-pulse` sur une surface de 120 % floutée à
-              cent pixels. Une grande zone floue repeinte en boucle est ce qui
-              coûte le plus cher sur un téléphone d'entrée de gamme, et 96 %
-              du trafic en est un. Le halo reste — il cesse de se rafraîchir. */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-[#10B981]/20 to-blue-500/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="flex items-center justify-center min-h-[calc(100vh-190px)] animate-fade-in px-4 pb-6">
+        {/* ── UNE CARTE ÉTROITE, PAS UN PANNEAU ─────────────────────────────
+            Elle faisait `max-w-2xl` et remplissait l'écran de haut en bas ;
+            le bouton passait sous la barre de navigation. Un écran qui déborde
+            ne se lit pas, il s'endure.
 
-          <div className="bg-[#16242e]/70 backdrop-blur-3xl border border-white/[0.08] rounded-[32px] p-6 sm:p-9 md:p-11 text-center shadow-[0_0_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
-            {/* Liseré lumineux en haut de carte : c'est lui qui donne l'arête
-                de verre. */}
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#10B981]/60 to-transparent" />
+            Ramenée à 360 pixels de large et calée au centre, elle redevient un
+            objet — c'est ce qui distingue une composition d'un empilement. */}
+        <div className="w-full max-w-[360px] relative">
+          {/* Halo doux, immobile. Il vit derrière la carte, dont le fond est
+              opaque : il ne peut donc jamais délaver le texte. */}
+          <div
+            aria-hidden
+            className="absolute inset-0 -m-8 rounded-full bg-gradient-to-br from-sky-500/15 via-emerald-500/15 to-transparent blur-3xl pointer-events-none"
+          />
 
-            {/* ── LE BADGE ───────────────────────────────────────────────── */}
-            <div className="relative z-10 inline-flex items-center gap-1.5 px-3 py-1 mb-5 rounded-full bg-[#10B981]/10 border border-[#10B981]/25 text-[#34D399] text-[9.5px] font-black uppercase tracking-[0.15em]">
-              <Sparkles className="w-3 h-3" />
-              Premium
-            </div>
-
-            {/* ── L'EMBLÈME ──────────────────────────────────────────────────
-                L'anneau est un dégradé, pas une bordure : un `border` ne sait
-                pas dégrader. On enveloppe donc le disque dans un cercle d'un
-                pixel et demi rempli du dégradé — même technique que le cadre
-                des cartes de prix. Le halo derrière donne la profondeur. */}
-            <div className="relative z-10 mx-auto mb-6 w-fit">
+          {/* Le cadre dégradé des cartes de prix, repris à l'identique : un
+              cercle d'un pixel et demi rempli du dégradé, la carte opaque
+              par-dessus. Le dégradé ne se voit QUE sur le liseré. */}
+          <div className="relative rounded-[25.5px] p-[1.5px] bg-gradient-to-br from-sky-400 via-cyan-300 to-emerald-400 shadow-xl shadow-emerald-500/15">
+            <div className="relative bg-card rounded-[24px] px-6 py-7 text-center">
+              {/* Le reflet qui fait le verre. */}
               <div
                 aria-hidden
-                className="absolute inset-0 -m-3 rounded-full bg-[#10B981]/25 blur-2xl"
+                className="pointer-events-none absolute inset-x-0 top-0 h-12 rounded-t-[24px] bg-gradient-to-b from-white/[0.07] to-transparent"
               />
-              <div className="relative rounded-full p-[1.5px] bg-gradient-to-br from-sky-400 via-cyan-300 to-emerald-400 shadow-lg shadow-emerald-500/25">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#16242e] flex items-center justify-center bg-gradient-to-b from-white/[0.06] to-transparent">
-                  <Lock
-                    className="w-8 h-8 sm:w-10 sm:h-10 text-[#34D399] drop-shadow-[0_0_14px_rgba(52,211,153,0.7)]"
-                    strokeWidth={1.75}
-                  />
+
+              <div className="relative z-10">
+                {/* ── L'EMBLÈME ────────────────────────────────────────────
+                    Soixante-quatre pixels au lieu de quatre-vingt-seize : sur
+                    un écran de téléphone, un emblème plus grand ne dit pas
+                    « premium », il dit « il n'y avait rien d'autre à mettre ». */}
+                <div className="relative mx-auto mb-4 w-fit">
+                  <div aria-hidden className="absolute inset-0 -m-2.5 rounded-full bg-emerald-400/25 blur-xl" />
+                  <div className="relative rounded-full p-[1.5px] bg-gradient-to-br from-sky-400 via-cyan-300 to-emerald-400">
+                    <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center bg-gradient-to-b from-white/[0.07] to-transparent">
+                      <Lock className="w-6 h-6 text-[#34D399]" strokeWidth={2} />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <h1 className="text-[28px] sm:text-4xl md:text-5xl font-black mb-3 tracking-tight relative z-10 bg-gradient-to-b from-white to-white/55 bg-clip-text text-transparent" style={{fontFamily: "var(--police-marque), sans-serif"}}>
-              Accès Réservé VIP
-            </h1>
-
-            {/* ── LE PAVÉ EST DEVENU UNE PHRASE ────────────────────────────
-                Les sept bénéfices étaient empilés en prose sur cinq lignes.
-                Personne ne lit ça sur un téléphone : ils descendent dans la
-                liste ci-dessous, où l'œil les parcourt en deux secondes. */}
-            <p className="text-[13.5px] sm:text-base text-white/55 font-medium leading-relaxed mb-6 max-w-sm mx-auto relative z-10">
-              <strong className="text-white font-bold">ProFoot Expert</strong> est votre analyste
-              football personnel, réservé aux abonnés.
-            </p>
-
-            {/* ── CE QU'ON OBTIENT, EN UN COUP D'ŒIL ─────────────────────── */}
-            <ul className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2 mb-7 text-left max-w-md mx-auto">
-              {[
-                'Analyste disponible 24h/24',
-                "Connecté à l'actualité en temps réel",
-                'Statistiques détaillées',
-                'Analyses tactiques',
-                'Projections de rencontres',
-                'Transferts et mercato',
-                'Aucune limite de questions',
-              ].map((avantage) => (
-                <li key={avantage} className="flex items-center gap-2.5">
-                  <span className="w-4 h-4 rounded-full bg-[#10B981]/15 text-[#34D399] flex items-center justify-center shrink-0">
-                    <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
-                  </span>
-                  <span className="text-[12.5px] font-semibold text-white/80 leading-tight">{avantage}</span>
-                </li>
-              ))}
-            </ul>
-
-            {/* ── L'APERÇU VERROUILLÉ ────────────────────────────────────────
-                Montrer ce qu'on n'a pas donne davantage envie que le décrire.
-                Ces trois bulles sont DÉCORATIVES : `aria-hidden` les retire
-                des lecteurs d'écran, qui ne doivent pas lire une conversation
-                qui n'a jamais eu lieu. Leur texte respecte le vocabulaire de
-                l'analyse et ne promet aucun résultat.
-                Le flou est appliqué au texte lui-même, pas à un calque
-                par-dessus : on ne peut donc pas le retirer en inspectant la
-                page — il n'y a rien à révéler, ce contenu est faux. */}
-            <div aria-hidden className="relative z-10 mb-7 rounded-[20px] overflow-hidden border border-white/[0.07] bg-black/25">
-              <div className="p-4 space-y-2.5 blur-[3px] select-none pointer-events-none">
-                <div className="flex justify-end">
-                  <span className="max-w-[75%] rounded-2xl rounded-br-md bg-[#10B981]/80 px-3 py-2 text-[11.5px] font-semibold text-black text-left">
-                    Comment se présente Manchester City ce week-end ?
-                  </span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2.5 rounded-full bg-emerald-400/10 border border-emerald-400/25 text-[#34D399] text-[9px] font-black uppercase tracking-[0.16em]">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Premium
                 </div>
-                <div className="flex justify-start">
-                  <span className="max-w-[85%] rounded-2xl rounded-bl-md bg-white/[0.07] px-3 py-2 text-[11.5px] text-white/85 text-left">
-                    City reste sur cinq victoires de rang, quinze buts marqués et trois encaissés.
-                    Haaland a retrouvé son rythme après sa gêne musculaire.
-                  </span>
-                </div>
-                <div className="flex justify-start">
-                  <span className="max-w-[70%] rounded-2xl rounded-bl-md bg-white/[0.07] px-3 py-2 text-[11.5px] text-white/85 text-left">
-                    Rodri a repris une place de titulaire, ce qui change tout au milieu.
-                  </span>
-                </div>
-              </div>
 
-              {/* Le voile de verre et son cadenas */}
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-[#16242e]/40 via-[#16242e]/60 to-[#16242e]/85 backdrop-blur-[2px]">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/45 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/75">
-                  <Lock className="w-3 h-3 text-[#34D399]" strokeWidth={2.5} />
-                  Aperçu verrouillé
-                </span>
-              </div>
-            </div>
+                <h1
+                  className="text-[26px] font-black tracking-tight leading-none mb-2 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent"
+                  style={{ fontFamily: 'var(--police-marque), sans-serif' }}
+                >
+                  Accès Réservé VIP
+                </h1>
 
-            <div className="relative z-10 w-full sm:w-auto mx-auto mt-4 group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-[#10B981] to-[#047857] rounded-full blur opacity-40 group-hover:opacity-75 transition duration-500" />
+                <p className="text-[12.5px] text-white/50 font-medium leading-snug mb-5 mx-auto max-w-[260px]">
+                  <strong className="text-white/90 font-bold">ProFoot Expert</strong> est votre
+                  analyste football personnel.
+                </p>
+
+                {/* ── CINQ LIGNES, PAS SEPT ────────────────────────────────
+                    Une liste qu'on ne finit pas de lire ne vend rien. On garde
+                    ce qui distingue vraiment l'offre ; le reste se découvre à
+                    l'usage. L'aperçu flouté de la conversation a disparu : il
+                    occupait un tiers de la carte pour un rectangle gris qui
+                    ressemblait à du contenu cassé, pas à une promesse. */}
+                <ul className="space-y-2 text-left mb-6">
+                  {[
+                    'Analyste disponible 24h/24',
+                    "Connecté à l'actualité en temps réel",
+                    'Statistiques et analyses tactiques',
+                    'Projections de rencontres',
+                    'Aucune limite de questions',
+                  ].map((avantage) => (
+                    <li key={avantage} className="flex items-center gap-2.5">
+                      <span className="w-4 h-4 rounded-full bg-emerald-400/15 text-[#34D399] flex items-center justify-center shrink-0">
+                        <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
+                      </span>
+                      <span className="text-[12.5px] font-semibold text-white/80 leading-tight">
+                        {avantage}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="relative w-full group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-sky-400 to-emerald-400 rounded-[18px] blur opacity-35 group-hover:opacity-60 transition duration-500 pointer-events-none" />
               <button 
                 onClick={handleSubscribe} 
                 disabled={loadingCheckout}
-                className="relative w-full bg-gradient-to-r from-[#10B981] to-[#059669] text-black font-black px-6 sm:px-10 py-4 sm:py-5 rounded-full flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3 transition-transform duration-300 group-hover:scale-[1.02] border border-[#34D399]/50 shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
+                className="relative w-full min-h-[50px] bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-400 text-[#04262b] font-black px-4 py-3 rounded-[16px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:brightness-110 shadow-lg shadow-emerald-400/30 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loadingCheckout ? (
                    <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                 ) : (
                   <>
-                    <span className="text-base sm:text-lg">Débloquer l'Accès VIP</span>
+                    <span className="text-[13.5px]">Débloquer l'Accès VIP</span>
                     <div className="flex items-center">
-                      <span className="bg-black/10 px-3 py-1 rounded-full text-xs sm:text-sm font-bold">
+                      <span className="bg-black/15 px-2 py-0.5 rounded-full text-[11px] font-bold">
                         {offreVip
                           ? `dès ${offreVip.prixXof.toLocaleString("fr-FR")} FCFA${offreVip.dureeJours >= 365 ? "/an" : "/mois"}`
                           : "Voir les offres"}
                       </span>
-                      <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-1.5" />
+                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
                     </div>
                   </>
                 )}
               </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
