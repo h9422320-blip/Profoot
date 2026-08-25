@@ -108,7 +108,7 @@ const OFFRES = [
       halo: 'from-primary to-info',
       pastille: 'bg-primary/15 text-primary border-primary/40',
       coche: 'bg-primary/20 text-primary',
-      bouton: 'bg-primary/10 border-2 border-primary/70 text-primary hover:bg-primary/20 hover:border-primary',
+      bouton: 'border-2 border-transparent [background:linear-gradient(#1d2f3a,#1d2f3a)_padding-box,linear-gradient(90deg,#34d399,#5eead4,#34d399)_border-box] text-primary hover:brightness-125',
       accentTexte: 'text-primary',
     },
   },
@@ -343,7 +343,7 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
                   la carte, qui reste opaque au-dessus. */}
               <div
                 className={`absolute -inset-[3px] bg-gradient-to-br ${offre.style.halo} rounded-[27px] blur-lg transition-opacity duration-500 ${
-                  offre.vedette ? 'opacity-45 group-hover:opacity-70' : 'opacity-0 group-hover:opacity-30'
+                  offre.vedette ? 'opacity-45 group-hover:opacity-70' : 'opacity-[0.18] group-hover:opacity-40'
                 }`}
               />
 
