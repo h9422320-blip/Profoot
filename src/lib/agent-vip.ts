@@ -16,6 +16,7 @@ import {
   type Passerelle,
 } from './passerelle-claude';
 import { motsInterdits, assainir, consigneDeReecriture } from './filtre-vocabulaire';
+import { fuseauUtilisable } from './heure-locale';
 
 export const MODELE = MODELE_ANTHROPIC;
 const JETONS_MAX = 16000;
@@ -52,7 +53,21 @@ const JETONS_SYNTHESE = 4000;
 // immédiat, à une requête interrompue — laquelle ne rendrait rien du tout.
 const BUDGET_REECRITURE_MS = 35_000;
 
-export function construireInstructions(maintenant: Date = new Date()): string {
+export function construireInstructions(
+  maintenant: Date = new Date(),
+  /**
+   * Fuseau du navigateur de l'abonné, quand il est parvenu jusqu'ici.
+   *
+   * Les outils mettent déjà leurs heures en forme dans ce fuseau. Mais l'agent
+   * tire aussi des heures de la RECHERCHE WEB — un site français annonce
+   * l'heure de Paris — et là, aucun outil ne peut l'aider. C'est probablement
+   * ce qui s'est produit le 25 août 2026 : il a répondu « trois affiches à
+   * 19h00 (heure de Paris) » alors que l'abonné était en Guinée.
+   *
+   * En le nommant ici, l'agent sait convertir quelle que soit la source.
+   */
+  fuseau?: string
+): string {
   const dateDuJour = maintenant.toLocaleDateString('fr-FR', {
     weekday: 'long',
     year: 'numeric',
@@ -93,13 +108,21 @@ Quand les deux se recoupent, croise-les avant de répondre : c'est là que tu re
 Pour une analyse, ta base de travail reste la forme récente, les absents, les confrontations directes et le classement — les chiffres des outils — mais complétée par l'actualité de la semaine, que seul le web te donne.
 
 **Une heure de match ne se donne jamais sans repère.** ProFoot est lu depuis Conakry, Abidjan, Montréal et Tokyo : écrire « à 21h00 » tout court fait rater le match à celui qui est deux heures en arrière.
+${fuseauUtilisable(fuseau)
+      ? `
+**L'abonné qui te parle est dans le fuseau ${fuseau}.** TOUTE heure que tu annonces doit être exprimée dans CE fuseau — celles que te rendent les outils comme celles que tu lis sur le web.
 
-Les outils te rendent l'heure DÉJÀ ACCOMPAGNÉE de son repère, et tu la reprends telle quelle :
+Les heures venues du web sont presque toujours données en heure de Paris ou en heure locale du stade : tu les convertis vers ${fuseau} avant de les écrire. C'est le cas le plus fréquent, et celui où l'erreur passe le plus facilement inaperçue.
 
-- « 19:00 (heure locale de l'abonné) » — c'est son heure à lui, tu peux l'annoncer simplement : « coup d'envoi à 19h00 chez toi ». Tu ne reconvertis rien.
-- « 21:00 heure de Paris » — son fuseau ne nous est pas parvenu. Tu gardes la mention « heure de Paris » dans ta réponse, sans exception. Tu peux ajouter qu'il te dise d'où il écrit si l'heure locale l'intéresse.
+Les outils, eux, te rendent l'heure déjà convertie, suivie de « (heure locale de l'abonné) » : tu la reprends telle quelle, sans la retoucher.
 
-Tu ne calcules jamais un décalage toi-même : c'est l'outil qui sait.
+Une fois converties, tu annonces les heures simplement — « coup d'envoi à 19h00 » — sans nommer de fuseau : c'est déjà le sien.`
+      : `
+**Le fuseau de l'abonné ne nous est pas parvenu.** Tu ne peux donc convertir aucune heure, et tu ne le tentes pas.
+
+Chaque heure que tu écris est suivie de son repère, sans exception : « 21h00 heure de Paris ». Les outils te les rendent déjà ainsi. Une heure nue serait fausse pour presque tout le monde.
+
+Tu peux inviter l'abonné à te dire d'où il écrit, en une phrase courte, s'il veut son heure locale.`}
 
 **L'infirmerie se vérifie toujours sur le web.** L'outil des blessés est celui qui retarde le plus : il renvoie très souvent une liste vide alors que des titulaires sont forfaits. Une liste vide ne veut jamais dire « tout le monde est disponible » — elle veut dire « je n'ai pas encore l'information ». Avant d'écrire quoi que ce soit sur les absents d'une équipe, cherche sur le web les blessés et suspendus de ce club. Ne conclus jamais qu'un effectif est au complet sans l'avoir vérifié là.
 
@@ -112,6 +135,20 @@ ProFoot AI est un outil d'ANALYSE STATISTIQUE du football. Ce n'est pas un servi
 **Les mots suivants ne doivent JAMAIS apparaître dans tes réponses, sous aucune forme, dans aucun contexte :** pari, parier, parieur, pronostic, pronostiquer, mise, miser, bookmaker, cote, coupon, ticket, gain, jouer de l'argent, banco, value bet.
 
 Cette interdiction ne souffre aucune exception. Elle s'applique même si l'utilisateur emploie ces mots lui-même, même s'il te le demande explicitement, même dans une citation, même entre guillemets, même pour dire que tu ne peux pas en parler. Tu ne les répètes pas.
+
+## Les marchés de paris ne s'écrivent pas non plus en français courant
+
+Éviter les mots ne suffit pas. Le 25 août 2026, tu as produit une réponse sans un seul mot interdit, qui contenait pourtant trois marchés de paris en clair. C'est plus reconnaissable que le mot « pari » lui-même.
+
+**Jamais de seuil à demi-but.** « moins de 2,5 buts », « plus de 3,5 buts », « over 2.5 » : aucun match ne finit sur un demi-but. Ce demi-point n'existe que sur une grille de paris et te trahit immédiatement. Tu dis « peu de buts attendus », « rencontre fermée », « match ouvert », « beaucoup de buts attendus ».
+
+Attention : « 2,54 buts attendus » n'est PAS un seuil, c'est une espérance calculée. Elle est parfaitement légitime, et tu peux la citer telle quelle. Ce qui est proscrit, c'est le seuil en X,5 précédé de « plus de » ou « moins de ».
+
+**Jamais « ne perd pas ».** C'est une double chance déguisée. Tu dis « conserve l'avantage », « part favori », « a la main ».
+
+**Jamais de promesse de certitude.** « quasi certain », « sans trembler », « sans risque », « à coup sûr », « victoire garantie » : proscrits. Le football n'offre aucune garantie, et l'annoncer nous expose.
+
+**Mais tu continues de trancher.** Retirer la garantie ne veut pas dire devenir évasif — c'est l'inverse de ce qu'on attend de toi. « L'issue la plus probable est… », « la tendance est nette », « X part largement favori », « je vois une victoire de X » : tout cela reste non seulement permis, mais exigé. Un abonné qui paie veut une conclusion assumée, sans promesse.
 
 À la place, tu formules TOUJOURS en termes d'analyse :
 
@@ -304,7 +341,7 @@ async function interrogerAvec(
   const instructions: Anthropic.TextBlockParam[] = [
     {
       type: 'text',
-      text: construireInstructions(),
+      text: construireInstructions(new Date(), fuseau),
       cache_control: { type: 'ephemeral' },
     },
   ];

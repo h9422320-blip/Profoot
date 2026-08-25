@@ -47,7 +47,8 @@
  * Chaque entrée porte son remplacement de dernier recours. L'ordre compte :
  * les formes longues d'abord, sinon « pari » consommerait « parier ».
  */
-const REMPLACEMENTS: [RegExp, string][] = [
+type Remplacement = string | ((...args: any[]) => string);
+const REMPLACEMENTS: [RegExp, Remplacement][] = [
   // ── Pronostic ────────────────────────────────────────────────────────────
   [/\bpronostiqueur(s)?\b/gi, 'analyste$1'],
   [/\bpronostiquer\b/gi, 'analyser'],
@@ -88,6 +89,9 @@ const REMPLACEMENTS: [RegExp, string][] = [
   // passer le mot et mutiler le nom d'un club.
   [/(\b(?:les|des|aux|de|du|nos|vos|leurs|ces|sur)\s+)paris\b/g, '$1analyses'],
   [/\bparis\b/g, 'analyses'],
+  // « un pari » deviendrait « un analyse ». On garde le genre en passant par
+  // « choix », qui est neutre et se substitue sans accroc.
+  [/\b(un|le|ce|mon|ton|son)\s+pari\b/gi, '$1 choix'],
   [/\bpari\b/gi, 'analyse'],
 
   // ── Mise et argent ───────────────────────────────────────────────────────
@@ -105,6 +109,53 @@ const REMPLACEMENTS: [RegExp, string][] = [
   //
   // « la côte » accentuée et « côté » ne s'écrivent pas ainsi : ils ne sont
   // pas atteints. « Cote d'Ivoire » est protégé par la négative.
+  // ── LES MARCHÉS ÉCRITS EN FRANÇAIS COURANT ─────────────────────────────
+  //
+  // Le 25 août 2026, l'agent a produit une réponse SANS aucun mot interdit —
+  // et qui contenait trois marchés de paris en clair :
+  //
+  //     « Betis ne perd pas, et moins de 2,5 buts au total »
+  //     « Bodo se qualifie sans trembler, quasi certain »
+  //
+  // Un contrôleur reconnaît « moins de 2,5 buts » plus vite que le mot
+  // « pari » : aucun match ne finit sur un demi-but. Ce demi-point n'existe
+  // que sur une grille de paris. Traquer des mots ne suffisait pas — il faut
+  // traquer les FORMES.
+  //
+  // ── CE QUI EST ÉPARGNÉ, ET C'EST ESSENTIEL ─────────────────────────────
+  //
+  // « 2,54 buts attendus » est une espérance calculée (xG), le cœur du
+  // moteur. « Probabilités sur le nombre de buts » est un intitulé d'écran.
+  // Ni l'un ni l'autre n'est un seuil. Le motif exige donc les DEUX marques
+  // du pari réunies : « plus de » ou « moins de », ET un seuil en X,5 non
+  // suivi d'un autre chiffre. « 2,54 » ne peut pas correspondre.
+  // Le SENS vient de « plus » ou « moins », jamais du seuil : « plus de 3,5 »
+  // annonce beaucoup de buts, pas peu. Une première version lisait le nombre
+  // et inversait la phrase.
+  [/\b(plus|moins)\s+d[eu]\s+\d+[.,]5(?!\d)\s*buts?\b/gi, (_m: string, sens: string) =>
+    sens.toLowerCase() === 'moins' ? 'peu de buts' : 'beaucoup de buts'],
+  [/\b(?:over|under)\s*\d+[.,]5(?!\d)\b/gi, 'nombre de buts'],
+
+  // Double chance dite en clair. « ne perd pas souvent », « ne perd jamais »
+  // sont des constats statistiques : la négative les épargne.
+  [/\bne\s+perd\s+pas\b(?!\s+(?:souvent|jamais|beaucoup|toujours|en|de|depuis))/gi, "conserve l'avantage"],
+  [/\bne\s+perdra\s+pas\b/gi, "conservera l'avantage"],
+
+  // Promesses de certitude. On retire la GARANTIE, jamais la conclusion :
+  // « très probable » et « largement favori » restent permis et encouragés.
+  [/\bquasi\s+certain(e|s|es)?\b/gi, 'très probable'],
+  [/\bsans\s+trembler\b/gi, 'avec autorité'],
+  [/\bsans\s+risque\b/gi, 'avec une marge confortable'],
+  // Pas de `\b` devant « à » : en JavaScript, `\w` ne connaît que l'ASCII, et
+  // il n'y a donc aucune frontière de mot entre une espace et un « à ». Le
+  // motif ne se déclenchait jamais.
+  [/(?:à\s+)?\bcoup\s+s[ûu]r\b/gi, 'selon toute probabilité'],
+  // « garanti » n'est visé QUE dans une promesse de résultat. Une phrase qui
+  // NIE la garantie — « aucun résultat n'est garanti » — nous protège : la
+  // remplacer inverserait son sens.
+  [/\b(victoire|succès|résultat|qualification|gain)s?\s+garantie?s?\b/gi, '$1 très probable'],
+  [/\bc'est\s+garanti\b/gi, "c'est très probable"],
+
   [/\bbookmaker(s)?\b/gi, 'marché'],
   [/\bodds\b/gi, 'probabilités'],
   [/\bcotes\b(?!\s*d['’\s]?\s*ivoire)/gi, 'probabilités'],
@@ -165,7 +216,7 @@ export function retirerPhrasesFautives(texte: string): string | null {
 export function remplacerVocabulaire(texte: string): string {
   let sortie = String(texte ?? '');
   for (const [motif, par] of REMPLACEMENTS) {
-    sortie = sortie.replace(new RegExp(motif.source, motif.flags), par);
+    sortie = sortie.replace(new RegExp(motif.source, motif.flags), par as any);
   }
   return sortie;
 }

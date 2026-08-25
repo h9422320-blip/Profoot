@@ -222,3 +222,146 @@ test('★ ACQUIS — le filtre tourne sur la sortie réelle de l Agent VIP', () 
     "Le filet mécanique n'est plus atteignable : la garantie repose sur le modèle seul."
   );
 });
+
+// ── LES MARCHÉS ÉCRITS EN FRANÇAIS COURANT ─────────────────────────────────
+//
+// Le 25 août 2026, l'agent a produit une réponse SANS aucun mot interdit — et
+// qui contenait trois marchés de paris en clair. Traquer des mots ne suffit
+// pas : un contrôleur reconnaît « moins de 2,5 buts » plus vite que « pari ».
+
+test('★ ACQUIS — les seuils à demi-but sont proscrits, les statistiques épargnées', () => {
+  // Le tell d'un pari : « plus de » ou « moins de » ET un seuil en X,5.
+  const marches = [
+    ['Betis ne perd pas, et moins de 2,5 buts au total.', /peu de buts/],
+    ['Je vois plus de 3,5 buts dans cette rencontre.', /beaucoup de buts/],
+    ['Under 2.5 sur ce match.', /nombre de buts/],
+  ] as const;
+
+  for (const [sale, attendu] of marches) {
+    assert.ok(contientVocabulaireInterdit(sale), `Marché non détecté : « ${sale} »`);
+    const { texte } = assainir(sale);
+    assert.match(texte, attendu, `Remplacement inattendu : « ${texte} »`);
+  }
+
+  // « plus de 3,5 » annonce BEAUCOUP de buts. Une première version lisait le
+  // seuil au lieu du sens et inversait la phrase.
+  assert.match(assainir('plus de 3,5 buts').texte, /beaucoup/);
+  assert.match(assainir('moins de 1,5 but').texte, /peu/);
+
+  // Ce qui doit rester intact : l'espérance calculée, cœur du moteur.
+  for (const statistique of [
+    '2,54 buts attendus pour cette rencontre.',
+    'Buts attendus : 1,82 contre 1,15.',
+    'Probabilités sur le nombre de buts',
+    'Une moyenne de 2,5 buts par match sur la saison.',
+  ]) {
+    assert.deepEqual(
+      motsInterdits(statistique),
+      [],
+      `Une statistique légitime est prise pour un pari : « ${statistique} »`
+    );
+  }
+});
+
+test('★ ACQUIS — la double chance déguisée est reformulée, le constat épargné', () => {
+  const { texte } = assainir('Betis ne perd pas à Mestalla.');
+  assert.match(texte, /conserve l'avantage/, `Reformulation manquée : « ${texte} »`);
+
+  // « ne perd pas souvent » et « ne perd jamais » sont des constats
+  // statistiques, pas des verdicts : ils restent tels quels.
+  for (const constat of [
+    'Liverpool ne perd pas souvent à domicile.',
+    "Cette équipe ne perd jamais à Anfield.",
+    "Le Real ne perd pas beaucoup de ballons.",
+  ]) {
+    assert.deepEqual(motsInterdits(constat), [], `Constat statistique dénaturé : « ${constat} »`);
+  }
+});
+
+test('★ ACQUIS — la promesse de certitude tombe, la conclusion reste', () => {
+  const promesses = [
+    ['Bodo se qualifie sans trembler, quasi certain.', /avec autorité/],
+    ['Une victoire garantie pour le Real.', /victoire très probable/],
+    ["C'est un pari sans risque.", /marge confortable/],
+    ['Le Celtic passe à coup sûr.', /selon toute probabilité/],
+  ] as const;
+
+  for (const [sale, attendu] of promesses) {
+    assert.ok(contientVocabulaireInterdit(sale), `Promesse non détectée : « ${sale} »`);
+    assert.match(assainir(sale).texte, attendu);
+  }
+
+  // ── LE PIÈGE INVERSE ────────────────────────────────────────────────────
+  //
+  // Un agent devenu évasif serait un échec aussi net qu'un agent qui promet.
+  // Ces tournures TRANCHENT sans rien garantir : elles doivent passer intactes.
+  for (const conclusion of [
+    "L'issue la plus probable est une victoire de City.",
+    'City part largement favori, la tendance est nette.',
+    'Je vois une victoire de Bodo, avec une forte tendance.',
+    "Aucun résultat n'est garanti.",
+  ]) {
+    assert.deepEqual(
+      motsInterdits(conclusion),
+      [],
+      `Une conclusion légitime est bloquée : « ${conclusion} »`
+    );
+  }
+});
+
+test('★ ACQUIS — la réponse réelle du 25 août serait désormais nettoyée', () => {
+  // Textuellement les phrases produites en production. Le filtre d'alors les
+  // laissait passer en entier.
+  const reelle = [
+    'Le plus probable selon les tendances : Betis ne perd pas, et moins de 2,5 buts au total.',
+    'Bodo/Glimt se qualifie sans trembler, quasi certain.',
+  ].join(' ');
+
+  assert.ok(contientVocabulaireInterdit(reelle), "La réponse réelle n'est toujours pas détectée.");
+  const { texte } = assainir(reelle);
+  assert.ok(!contientVocabulaireInterdit(texte), `Il reste un marché : « ${texte} »`);
+  assert.ok(!/\d[.,]5\s*buts?/i.test(texte), `Un seuil à demi-but subsiste : « ${texte} »`);
+  // Et la conclusion survit : l'abonné garde ce qu'il paie.
+  assert.match(texte, /Betis/);
+  assert.match(texte, /Bodo/);
+});
+
+test('★ ACQUIS — le fuseau de l abonné entre dans le prompt de l agent', () => {
+  const agent = lireSource('src/lib/agent-vip.ts');
+
+  // Sans cela, l'agent ne peut pas convertir les heures qu'il lit sur le WEB —
+  // et c'est de là que venait « trois affiches à 19h00 (heure de Paris) ».
+  assert.match(
+    agent,
+    /construireInstructions\(\s*\n?\s*maintenant[\s\S]{0,600}fuseau\?: string/,
+    "Le prompt n'accepte plus le fuseau de l'abonné."
+  );
+  assert.match(
+    agent,
+    /construireInstructions\(new Date\(\), fuseau\)/,
+    "Le fuseau n'est plus transmis au prompt."
+  );
+  assert.match(
+    agent,
+    /est dans le fuseau \$\{fuseau\}/,
+    "Le prompt ne nomme plus le fuseau de l'abonné."
+  );
+  assert.match(
+    agent,
+    /tu les convertis vers \$\{fuseau\}/,
+    "Le prompt n'ordonne plus la conversion des heures venues du web."
+  );
+});
+
+test('★ ACQUIS — le prompt proscrit les marchés écrits en clair', () => {
+  const agent = lireSource('src/lib/agent-vip.ts');
+  assert.match(agent, /Jamais de seuil à demi-but/i, 'La règle des seuils a disparu du prompt.');
+  assert.match(agent, /Jamais « ne perd pas »/i, 'La règle de la double chance a disparu.');
+  assert.match(agent, /Jamais de promesse de certitude/i, 'La règle de la certitude a disparu.');
+  // Et le garde-fou inverse : l'agent doit continuer de trancher.
+  assert.match(
+    agent,
+    /Mais tu continues de trancher/i,
+    "Rien ne protège plus l'agent de devenir évasif."
+  );
+});
