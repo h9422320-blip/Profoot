@@ -15,9 +15,33 @@ import {
   Target, Megaphone, Activity, TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * ── LA PAGE S AFFICHE D ABORD, LES CHIFFRES ARRIVENT ENSUITE ─────────────
+ *
+ * Elle attendait que TOUT soit calcule avant d afficher quoi que ce soit.
+ * Chronometre le 25 aout 2026, bloc par bloc :
+ *
+ *   Indicateurs (boutique Chariow) .... 37 s
+ *   Suivi de precision ................ 26 s
+ *   Echecs d analyse .................. 13 s
+ *   Controle du marche ................ 12 s
+ *   Mesure maison ..................... 10 s
+ *   Fidelisation ....................... 5 s
+ *                                     ──────
+ *                                      104 s
+ *
+ * Cent quatre secondes d ecran inchange apres un clic. Le proprietaire le
+ * decrivait ainsi : « on est oblige de cliquer deux a trois fois, voire cinq,
+ * avant que ca ne passe ». Il ne cliquait pas trop : rien ne lui repondait.
+ *
+ * Chaque bloc est desormais isole dans son propre `Suspense`. La coquille part
+ * immediatement — un clic repond dans la seconde — et chaque panneau se
+ * remplit des qu il est pret, sans retenir les autres.
+ */
 export default async function AdminOverview({
   searchParams,
 }: {
@@ -25,6 +49,54 @@ export default async function AdminOverview({
 }) {
   const params = await searchParams;
   const periode = resoudrePeriode(params);
+
+  return (
+    <div className="space-y-6">
+      <Suspense fallback={<Patience titre="Vue d ensemble" lignes={4} />}>
+        <BlocIndicateurs periode={periode} />
+      </Suspense>
+
+      <Suspense fallback={<Patience titre="Precision du moteur" />}>
+        <SuiviPrecision />
+      </Suspense>
+
+      <Suspense fallback={<Patience titre="Analyses en echec" />}>
+        <EchecsAnalyse />
+      </Suspense>
+
+      <Suspense fallback={<Patience titre="Fidelisation" />}>
+        <Fidelisation />
+      </Suspense>
+
+      <Suspense fallback={<Patience titre="Audience" />}>
+        <Audience />
+      </Suspense>
+    </div>
+  );
+}
+
+/**
+ * Ce qui s affiche pendant qu un bloc se calcule.
+ *
+ * Un espace vide laisse croire que rien ne se passe — et fait recliquer. Une
+ * forme grise qui pulse dit « ca arrive » sans mentir sur le contenu.
+ */
+function Patience({ titre, lignes = 2 }: { titre: string; lignes?: number }) {
+  return (
+    <div className="rounded-[20px] border border-[#2e4757] bg-[#16242e] p-5 animate-pulse">
+      <div className="h-3 w-40 rounded bg-white/10 mb-4" />
+      <div className="space-y-2.5">
+        {Array.from({ length: lignes }).map((_, i) => (
+          <div key={i} className="h-2.5 rounded bg-white/[0.06]" style={{ width: `${90 - i * 12}%` }} />
+        ))}
+      </div>
+      <span className="sr-only">{titre} — calcul en cours</span>
+    </div>
+  );
+}
+
+/** Tout ce qui depend des indicateurs de la boutique, isole pour ne rien retenir. */
+async function BlocIndicateurs({ periode }: { periode: ReturnType<typeof resoudrePeriode> }) {
   const m = await getAdminMetrics(periode);
 
   return (
@@ -328,27 +400,11 @@ export default async function AdminOverview({
         Dernière lecture : {dateCourte(new Date().toISOString())} — les chiffres sont recalculés à chaque ouverture de la page.
       </p>
 
-      {/* Les analyses en échec, juste avant l'audience.
-          Elles étaient calculées depuis longtemps et affichées nulle part :
-          chaque panne se découvrait en lançant une analyse et en voyant
-          « ANALYSE INTERROMPUE ». Trois fois dans la seule journée du 21 août.
-          Un chiffre que personne ne regarde ne sert à rien. */}
-      {/* La precision du moteur, avant les echecs : elle dit si le produit
-          tient sa promesse, ce qui passe avant de savoir s il a plante. */}
-      <SuiviPrecision />
-
-      <EchecsAnalyse />
-
-      {/* La fidélisation, après les échecs et avant l'audience.
-          L'audience dit combien de gens arrivent ; celle-ci dit combien
-          restent. Les deux se lisent ensemble : un tableau d'arrivées sans
-          taux de retour laisse croire que la croissance suffit. */}
-      <Fidelisation />
-
-      {/* En bas : le chiffre d'affaires et les comptes passent devant.
-          C'est ce qu'on vient voir en ouvrant l'administration. */}
-      <Audience />
-
+      {/* Les quatre panneaux qui suivaient ici — precision, echecs,
+          fidelisation, audience — sont remontes dans la coquille, chacun dans
+          son propre `Suspense`. Ils y attendaient les trente-sept secondes des
+          indicateurs de la boutique AVANT de commencer leur propre calcul.
+          Leur place dans l affichage est inchangee. */}
     </div>
   );
 }
