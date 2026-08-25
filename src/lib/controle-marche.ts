@@ -239,7 +239,16 @@ export async function lireControleMarche(): Promise<ControleMarche> {
     analyses = tout;
 
     const fin = new Date();
-    const debut = new Date(fin.getTime() - 120 * 86400000);
+    // ── QUARANTE-CINQ JOURS, ET NON CENT VINGT ──────────────────────────
+    //
+    // Chaque journee est une lecture separee en reserve. Cent vingt journees
+    // demandaient donc cent vingt lectures — dont la quasi-totalite ne
+    // rendaient rien, le releve des cotes n ayant commence que le 17 aout
+    // 2026. Mesure : 9,4 secondes pour ce seul panneau.
+    //
+    // Quarante-cinq jours couvrent largement les mille rencontres visees, et
+    // divisent le cout par trois.
+    const debut = new Date(fin.getTime() - 45 * 86400000);
     cotes = await lireCotesEntre(debut, fin);
   } catch (e: any) {
     console.error('[CONTROLE-MARCHE] Lecture impossible :', e?.message);

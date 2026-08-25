@@ -423,6 +423,36 @@ export async function listRecentSales(
    */
   jusquA?: string
 ): Promise<ChariowSale[]> {
+  // ── UNE MINUTE DE RÉSERVE, ET POURQUOI ELLE EST DEVENUE NÉCESSAIRE ──────
+  //
+  // Cette lecture n'était volontairement pas mise en réserve : les recettes
+  // affichées devaient coller à la boutique à la seconde près.
+  //
+  // Ce choix était tenable à trois cents ventes. Chronométré le 25 août 2026 :
+  // 2 067 ventes, cent par page, VINGT ET UN allers-retours enchaînés —
+  // 16,3 secondes. Et le coût grandit à chaque vente encaissée.
+  //
+  // Or l'exigence n'était déjà plus tenue : au bout de seize secondes de
+  // lecture, le chiffre affiché a seize secondes de retard. La réserve ne fait
+  // donc pas perdre de fraîcheur, elle la rend simplement constante — et rend
+  // la page utilisable.
+  //
+  // Soixante secondes : assez court pour qu'une vente encaissée apparaisse
+  // dans la minute, assez long pour qu'ouvrir trois pages d'administration de
+  // suite ne relise pas trois fois la boutique entière.
+  const cleReserve = `chariow:ventes:${pagesMax}:${jusquA ?? 'tout'}`;
+  const DUREE_RESERVE_MS = 60_000;
+
+  try {
+    const { lireReserve } = await import('./api-football');
+    const enReserve = await lireReserve<ChariowSale[]>(cleReserve);
+    if (enReserve?.contenu && !enReserve.expiree && Array.isArray(enReserve.contenu)) {
+      return enReserve.contenu;
+    }
+  } catch {
+    // Réserve illisible : on relit la boutique. Jamais d'échec pour ça.
+  }
+
   const ventes: ChariowSale[] = [];
   let url: string | null = `${CHARIOW_API_URL}/sales?per_page=100`;
 
@@ -441,7 +471,7 @@ export async function listRecentSales(
     // Les ventes descendent de la plus récente à la plus ancienne : dès qu'une
     // page entière est antérieure à la borne, tout ce qui suit l'est aussi.
     if (jusquA && lot.length && lot.every((v) => String(v.created_at ?? '').slice(0, 10) < jusquA))
-      return ventes;
+      return await rangerEnReserve(cleReserve, ventes, DUREE_RESERVE_MS);
 
     // ── `per_page` NE SURVIT PAS AU LIEN DE PAGE SUIVANTE ──────────────────
     //
@@ -466,6 +496,27 @@ export async function listRecentSales(
         url = suivante;
       }
     } else url = null;
+  }
+
+  return await rangerEnReserve(cleReserve, ventes, DUREE_RESERVE_MS);
+}
+
+/**
+ * Range une lecture de la boutique en reserve, puis la rend telle quelle.
+ *
+ * Un echec d ecriture ne doit jamais faire echouer la lecture : au pire, la
+ * prochaine ouverture relira la boutique.
+ */
+async function rangerEnReserve(
+  cle: string,
+  ventes: ChariowSale[],
+  dureeMs: number
+): Promise<ChariowSale[]> {
+  try {
+    const { ecrireReserve } = await import('./api-football');
+    await ecrireReserve(cle, ventes, dureeMs);
+  } catch {
+    /* la lecture prime sur la mise en reserve */
   }
   return ventes;
 }
