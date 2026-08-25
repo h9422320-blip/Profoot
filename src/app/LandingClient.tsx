@@ -291,16 +291,16 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
               
               {/* Floating Logos (from screenshot) */}
               <div className="floating-logo psg-logo">
-                <img src="https://media.api-sports.io/football/teams/85.png" alt="PSG" />
+                <img src="https://media.api-sports.io/football/teams/85.png" alt="PSG" fetchPriority="high" decoding="async" width={48} height={48} />
               </div>
               <div className="floating-logo real-logo">
-                <img src="https://media.api-sports.io/football/teams/541.png" alt="Real Madrid" />
+                <img src="https://media.api-sports.io/football/teams/541.png" alt="Real Madrid" fetchPriority="high" decoding="async" width={48} height={48} />
               </div>
               <div className="floating-logo barca-logo">
-                <img src="https://media.api-sports.io/football/teams/529.png" alt="Barcelona" />
+                <img src="https://media.api-sports.io/football/teams/529.png" alt="Barcelona" fetchPriority="high" decoding="async" width={48} height={48} />
               </div>
               <div className="floating-logo chelsea-logo">
-                <img src="https://media.api-sports.io/football/teams/49.png" alt="Chelsea" />
+                <img src="https://media.api-sports.io/football/teams/49.png" alt="Chelsea" fetchPriority="high" decoding="async" width={48} height={48} />
               </div>
 
               <div className="hero-app-mockup-inner">
@@ -824,7 +824,7 @@ function AppMockupContent() {
         <div className="flex flex-col items-center mb-2">
           <div className="relative group cursor-pointer">
             <div className="absolute inset-0 bg-[#10b981] blur-md opacity-0 group-hover:opacity-40 transition-opacity"></div>
-            <img src="https://media.api-sports.io/football/teams/85.png" alt="PSG" className="relative w-12 h-12 mb-3 transform group-hover:scale-110 transition-transform" />
+            <img src="https://media.api-sports.io/football/teams/85.png" alt="PSG" loading="lazy" decoding="async" width={48} height={48} className="relative w-12 h-12 mb-3 transform group-hover:scale-110 transition-transform" />
           </div>
           <div className="w-full bg-[#16242e] border border-[#10b981] rounded-lg p-2.5 text-center text-white text-sm font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]">
             Paris Saint Germain
@@ -854,7 +854,7 @@ function AppMockupContent() {
             <div className="text-[9px] text-white/40 leading-tight group-hover:text-white/60 transition-colors">03/04<br/>20:45</div>
             <div className="flex items-center gap-1.5 text-[10px] font-bold">
               <span className="text-[#10b981]">Paris Saint G...</span>
-              <img src="https://media.api-sports.io/football/teams/85.png" className="w-3 h-3 group-hover:scale-110 transition-transform" />
+              <img src="https://media.api-sports.io/football/teams/85.png" alt="" loading="lazy" decoding="async" width={12} height={12} className="w-3 h-3 group-hover:scale-110 transition-transform" />
               <span className="text-white/30 text-[8px]">VS</span>
               <img src="https://media.api-sports.io/football/teams/96.png" className="w-3 h-3 group-hover:scale-110 transition-transform" />
               <span className="text-white">Toulouse</span>
@@ -865,7 +865,7 @@ function AppMockupContent() {
             <div className="text-[9px] text-white/40 leading-tight group-hover:text-white/60 transition-colors">08/04<br/>21:00</div>
             <div className="flex items-center gap-1.5 text-[10px] font-bold">
               <span className="text-[#10b981]">Paris Saint G...</span>
-              <img src="https://media.api-sports.io/football/teams/85.png" className="w-3 h-3 group-hover:scale-110 transition-transform" />
+              <img src="https://media.api-sports.io/football/teams/85.png" alt="" loading="lazy" decoding="async" width={12} height={12} className="w-3 h-3 group-hover:scale-110 transition-transform" />
               <span className="text-white/30 text-[8px]">VS</span>
               <img src="https://media.api-sports.io/football/teams/40.png" className="w-3 h-3 group-hover:scale-110 transition-transform" />
               <span className="text-white">Liverpool</span>

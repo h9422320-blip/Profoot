@@ -140,14 +140,39 @@ export async function maintenanceActive(
     return { active: cache.valeur.maintenance, message: cache.valeur.maintenanceMessage };
   }
 
-  // Le middleware passe son propre client, déjà construit : la table est en
-  // lecture publique, inutile d'ouvrir une seconde connexion à privilèges.
+  // ── CETTE LECTURE ÉCHOUAIT DEPUIS LE DÉBUT, EN SILENCE ──────────────────
+  //
+  // Le commentaire d'origine affirmait ici que « la table est en lecture
+  // publique ». C'était faux. Vérifié le 25 août 2026 avec la clé anonyme —
+  // celle qu'emploie le middleware :
+  //
+  //     HTTP 401 — 42501
+  //     "Grant the required privileges to the current role with: GRANT SELECT"
+  //
+  // Deux conséquences, cachées par le `catch` juste en dessous :
+  //
+  //   — chaque requête du site produisait une erreur en base. Sur 352 entrées
+  //     Postgres relevées cette nuit-là, 332 étaient celle-ci ;
+  //   — le MODE MAINTENANCE ne fonctionnait pas. La lecture échouant toujours,
+  //     on retombait sur les réglages par défaut, maintenance désactivée. Le
+  //     bouton de l'administration n'aurait rien produit.
+  //
+  // ── POURQUOI `updated_by` A QUITTÉ CETTE REQUÊTE ────────────────────────
+  //
+  // Ouvrir la table au rôle anonyme y donnait accès, et cette colonne contient
+  // l'adresse de l'administrateur — exactement le compte qu'on ne doit pas
+  // exposer. Or `maintenanceActive` ne renvoie que l'état et le message : elle
+  // n'en a aucun besoin. On ne demande donc que ce qu'on lit, et le droit
+  // accordé en base peut exclure cette colonne.
+  //
+  // `lireReglages()` plus haut la conserve : elle passe par la clé de service,
+  // pour l'administration, et a besoin de savoir qui a modifié quoi.
   let valeur = REGLAGES_PAR_DEFAUT;
   try {
     if (client) {
       const { data } = await client
         .from('app_settings')
-        .select('app_name, contact_email, maintenance, maintenance_message, grands_clubs, updated_at, updated_by')
+        .select('app_name, contact_email, maintenance, maintenance_message, grands_clubs, updated_at')
         .eq('id', 1)
         .maybeSingle();
       if (data) valeur = versReglages(data);

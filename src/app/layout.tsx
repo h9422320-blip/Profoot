@@ -191,6 +191,29 @@ export default function RootLayout({
         {/* La liaison au serveur de Clarity est ouverte pendant que la page se
             charge : la mesure ne coûte plus une négociation complète ensuite. */}
         <link rel="preconnect" href="https://www.clarity.ms" crossOrigin="anonymous" />
+
+        {/* ── LA PRIORITÉ ÉTAIT EXACTEMENT INVERSÉE ─────────────────────────
+            Le script de mesure avait droit à un `preconnect` ; les images qui
+            décident de la vitesse perçue, non.
+
+            Mesuré le 25 août 2026 sur profootai.com : les quatre logos de
+            clubs du premier écran viennent de `media.api-sports.io` et
+            mettent 1,2 à 1,8 seconde chacun. Avant même de les télécharger,
+            le navigateur doit résoudre ce nom de domaine puis négocier le
+            chiffrement — plusieurs centaines de millisecondes perdues avant
+            le premier octet, et personne ne les avait annoncées.
+
+            Vercel mesure sur les vrais visiteurs un affichage du contenu
+            principal à 5,47 s, là où Google considère mauvais au-delà de 4.
+            Sur la page où 307 personnes sur 474 repartent sans choisir, une
+            seconde gagnée vaut plus que n'importe quel effet visuel.
+
+            `preconnect` ouvre la connexion à l'avance. `dns-prefetch` sert de
+            repli aux navigateurs qui l'ignorent. Deux lignes, aucun risque :
+            si l'hôte ne répond pas, la page se charge comme avant. */}
+        <link rel="preconnect" href="https://media.api-sports.io" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://media.api-sports.io" />
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
         {/* ── LES POLICES NE VIENNENT PLUS DE GOOGLE ──────────────────────
 
             Deux feuilles de style distantes vivaient ici : une balise <link>
