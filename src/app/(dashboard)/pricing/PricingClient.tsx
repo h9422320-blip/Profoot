@@ -52,7 +52,7 @@ const OFFRES = [
     nom: 'Essentiel',
     prix: '2.000',
     periode: 'FCFA / mois',
-    accroche: "Pour découvrir l'analyse IA à votre rythme.",
+    accroche: "Pour analyser à ton rythme",
     icone: Zap,
     cta: "Choisir l'Essentiel",
     // ── LE BADGE A CHANGE DE CARTE LE 24 AOUT 2026 ────────────────────────
@@ -88,7 +88,7 @@ const OFFRES = [
     nom: 'Pro',
     prix: '5.000',
     periode: 'FCFA / mois',
-    accroche: 'Le meilleur équilibre pour analyser sérieusement.',
+    accroche: 'Pour les vrais passionnés',
     icone: Flame,
     cta: 'Choisir le Pro',
     avantages: [
@@ -119,7 +119,7 @@ const OFFRES = [
     // pratiqués — voir `economieAnnuelle` plus bas. Écrite en dur, elle
     // deviendrait fausse au premier changement de tarif, et une économie
     // annoncée qui ne se vérifie pas est un mensonge.
-    accroche: "L'offre la plus complète, sans aucune limite.",
+    accroche: "L'accès complet, sans limite",
     icone: Crown,
     cta: 'Devenir VIP',
     badge: { texte: 'Tout illimité', style: 'bg-warning text-black' },
@@ -285,96 +285,118 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
   const couvertPar = (tier: PlanTier) => RANK[plan] >= RANK[tier];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12 pb-20">
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="text-center space-y-4"
-      >
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-warning/10 border border-warning/20 text-warning text-[10px] font-black uppercase tracking-widest">
-          <Star className="w-3 h-3 fill-warning" /> Expérience Elite
-        </div>
-        <h1 className="text-4xl md:text-6xl font-black text-foreground tracking-tighter">
+    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 pb-20">
+      {/* ── L'EN-TÊTE COÛTAIT UN DEMI-ÉCRAN ────────────────────────────────
+          Mesuré sur un téléphone de 375 × 812 : 401 pixels de titre et
+          d'accroche AVANT le premier prix. Sur les 474 personnes qui arrivent
+          ici, 307 repartent sans choisir — et beaucoup n'ont vu aucun tarif.
+          Le badge « Expérience Elite » ne disait rien de l'offre ; le titre
+          occupait deux lignes en `text-4xl` ; l'accroche en faisait trois.
+          Tout cela est ramené à l'essentiel : ce qu'on vend, et comment on
+          paie — la mention des moyens de paiement rassure et reste. */}
+      <div className="text-center space-y-1.5 pt-1">
+        <h1 className="text-2xl md:text-4xl font-black text-foreground tracking-tight">
           Choisissez votre <span className="text-primary italic">offre</span>
         </h1>
-        <p className="text-foreground/50 text-lg max-w-2xl mx-auto">
-          Débloquez la pleine puissance de l'IA ProFoot et accédez à des analyses de niveau professionnel. Payez facilement via Orange Money, MTN, Wave, etc.
+        <p className="text-[13px] md:text-sm text-foreground/45 max-w-lg mx-auto leading-snug">
+          Orange Money, MTN, Wave ou carte bancaire. Sans engagement.
         </p>
-      </motion.div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+      {/* ── LA HAUTEUR NE SE TRAITE PAS PAREIL SELON L'ÉCRAN ───────────────
+          Sur téléphone, les cartes s'empilent : on n'en voit jamais deux
+          entières à la fois, et les étirer à la même hauteur n'aiderait
+          personne à comparer — cela ne ferait qu'allonger la page, qui est
+          justement le défaut qu'on corrige. Chaque carte y fait donc sa
+          hauteur naturelle.
+          Sur ordinateur, elles sont côte à côte : là, une hauteur commune
+          aligne les boutons et rend la comparaison immédiate. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-start md:items-stretch">
         {OFFRES.map((offre, i) => {
           const reglee = offres[offre.cle];
           const Icone = offre.icone;
           const couvert = couvertPar(offre.tier);
           const enCours = loadingPlan === offre.cle;
 
+          // ── PLUS D'ENTRÉE ANIMÉE SUR TÉLÉPHONE ────────────────────────────
+          //
+          // Les cartes arrivaient l'une après l'autre, décalées de 100 ms. Sur
+          // une 4G lente, cela retarde l'affichage du prix de trois dixièmes de
+          // seconde sur la carte la plus importante — pour un effet que
+          // personne ne remarque. Le `div` remplace `motion.div`.
+          // Ce qui reste : la pression au doigt, et la bordure au survol.
           return (
-            <motion.div
+            <div
               key={offre.cle}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
-              className={`relative group ${offre.vedette ? 'md:-mt-4 md:mb-4' : ''}`}
+              className={`relative group md:h-full ${offre.vedette ? 'md:-mt-3 md:mb-3' : ''}`}
             >
               {/* Halo coloré : donne du relief à la carte sans masquer le texte */}
               <div
-                className={`absolute -inset-[3px] bg-gradient-to-br ${offre.style.halo} rounded-[32px] blur-lg transition-opacity duration-700 ${
+                className={`absolute -inset-[2px] bg-gradient-to-br ${offre.style.halo} rounded-[26px] blur-md transition-opacity duration-500 ${
                   offre.vedette ? 'opacity-30 group-hover:opacity-60' : 'opacity-0 group-hover:opacity-35'
                 }`}
               />
 
               <div
-                className={`relative h-full bg-card border-2 ${offre.style.bordure} rounded-[28px] p-8 pt-9 flex flex-col gap-7 transition-colors duration-300 ${
-                  offre.vedette ? 'shadow-2xl shadow-primary/20' : ''
+                className={`relative md:h-full bg-card/80 backdrop-blur-md border ${offre.style.bordure} rounded-[24px] px-5 py-5 flex flex-col gap-4 transition-colors duration-200 ${
+                  offre.vedette ? 'border-2 shadow-xl shadow-primary/15' : ''
                 }`}
               >
                 {offre.badge && (
-                  <div className={`absolute -top-3 right-6 px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-widest shadow-lg ${offre.badge.style}`}>
+                  <div className={`absolute -top-2.5 right-4 px-2.5 py-1 text-[9.5px] font-black rounded-full uppercase tracking-widest shadow-lg ${offre.badge.style}`}>
                     {offre.badge.texte}
                   </div>
                 )}
 
-                {/* En-tête : icône, nom, prix */}
-                <div className="space-y-3">
-                  <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center ${offre.style.pastille}`}>
-                    <Icone className="w-5 h-5" />
+                {/* ── ICÔNE, NOM ET POSITIONNEMENT SUR UNE SEULE LIGNE ──────
+                    L'icône occupait 44 pixels de haut à elle seule, sur sa
+                    propre ligne, suivie du nom sur une autre. Trois lignes pour
+                    dire « Essentiel ». Elles n'en font plus qu'une. */}
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${offre.style.pastille}`}>
+                    <Icone className="w-4 h-4" />
                   </div>
+                  <div className="min-w-0">
+                    <h3 className="text-[15px] font-black leading-none">{offre.nom}</h3>
+                    {/* Trois ou quatre mots : à qui s'adresse cette offre. Un
+                        paragraphe entier répétait ce que les avantages disent
+                        déjà juste en dessous. */}
+                    <p className="text-[11px] text-foreground/45 leading-tight mt-1 truncate">
+                      {offre.accroche}
+                    </p>
+                  </div>
+                </div>
 
-                  <h3 className="text-xl font-bold">{offre.nom}</h3>
-
-                  {/* ── LE PRIX DE L'OFFRE MISE EN AVANT EST PLUS GROS ─────
-                      Quatre-vingt-douze pour cent du trafic est sur téléphone,
-                      où les trois cartes s'empilent l'une sous l'autre. La
-                      position ne suffit donc pas à distinguer : c'est la taille
-                      qui dit laquelle regarder en premier. */}
-                  <div className="flex items-baseline gap-1.5">
+                {/* ── LE PRIX DE L'OFFRE MISE EN AVANT EST PLUS GROS ─────────
+                    Quatre-vingt-seize pour cent du trafic est sur téléphone, où
+                    les trois cartes s'empilent l'une sous l'autre. La position
+                    ne suffit donc pas à distinguer : c'est la taille qui dit
+                    laquelle regarder en premier. */}
+                <div>
+                  <div className="flex items-baseline gap-1.5 flex-wrap">
                     <span
-                      className={`font-black tracking-tight ${
-                        offre.vedette ? 'text-5xl sm:text-[3.25rem]' : 'text-3xl'
+                      className={`font-black tracking-tight leading-none ${
+                        offre.vedette ? 'text-[2.75rem]' : 'text-[2rem]'
                       }`}
                     >
                       {reglee?.prix ?? offre.prix}
                     </span>
-                    <span className="text-foreground/40 text-sm font-semibold">{offre.periode}</span>
+                    <span className="text-foreground/45 text-[12.5px] font-bold">{offre.periode}</span>
                   </div>
 
                   {offre.mention && (
-                    <p className="text-xs text-foreground/40">{offre.mention}</p>
+                    <p className="text-[10.5px] text-foreground/35 mt-1">{offre.mention}</p>
                   )}
 
                   {economieAnnuelle(offre.cle, offres) && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success/10 border border-success/25">
-                      <Sparkles className="w-3 h-3 text-success" />
-                      <span className="text-[11px] font-black text-success">{economieAnnuelle(offre.cle, offres)}</span>
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-1.5 rounded-full bg-success/10 border border-success/25">
+                      <Sparkles className="w-2.5 h-2.5 text-success shrink-0" />
+                      <span className="text-[10px] font-black text-success">{economieAnnuelle(offre.cle, offres)}</span>
                     </div>
                   )}
                 </div>
 
-                <p className="text-sm text-foreground/50 leading-relaxed">{offre.accroche}</p>
-
-                <ul className="space-y-3.5 flex-1">
+                <ul className="space-y-2 md:flex-1">
                   {offre.avantages
                     // Le quota et l'Agent VIP sont modifiables depuis
                     // l'administration : ils ne peuvent pas être écrits en dur
@@ -395,34 +417,37 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
                     .map((label) => {
                     const phare = label === offre.avantagePhare;
                     return (
-                      <li key={label} className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${offre.style.coche}`}>
-                          <Check className="w-3 h-3" strokeWidth={3} />
+                      <li key={label} className="flex items-center gap-2.5">
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${offre.style.coche}`}>
+                          <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
                         </div>
-                        <span className={`text-sm font-bold ${phare ? offre.style.accentTexte : 'text-foreground'}`}>
+                        <span className={`text-[12.5px] font-semibold leading-tight ${phare ? offre.style.accentTexte : 'text-foreground/85'}`}>
                           {label}
                         </span>
                         {phare && (
-                          <Crown className="w-3.5 h-3.5 text-warning shrink-0" />
+                          <Crown className="w-3 h-3 text-warning shrink-0" />
                         )}
                       </li>
                     );
                   })}
 
                   {offre.exclus.map((label) => (
-                    <li key={label} className="flex items-center gap-3 opacity-50">
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 bg-sidebar">
-                        <X className="w-3 h-3 text-foreground/40" />
+                    <li key={label} className="flex items-center gap-2.5 opacity-50">
+                      <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 bg-sidebar">
+                        <X className="w-2.5 h-2.5 text-foreground/40" />
                       </div>
-                      <span className="text-sm text-foreground/40">{label}</span>
+                      <span className="text-[12.5px] text-foreground/40 leading-tight">{label}</span>
                     </li>
                   ))}
                 </ul>
 
+                {/* Zone tactile de 48 px : en dessous, un pouce rate la cible.
+                    Le prix reste DANS le bouton — c'est la dernière chose lue
+                    avant le clic, et l'y répéter lève le dernier doute. */}
                 <button
                   onClick={() => handleSubscribe(offre.cle)}
                   disabled={loadingPlan !== null || checkingStatus || couvert}
-                  className={`w-full py-4 rounded-[20px] font-black text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
+                  className={`w-full min-h-[48px] py-3 rounded-[16px] font-black text-[13.5px] transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
                     couvert
                       ? 'bg-success/15 text-success cursor-not-allowed'
                       : offre.style.bouton
@@ -446,16 +471,27 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
                   )}
                 </button>
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>
 
-      {/* Pro Features Showcase */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12">
-        <ProBadge icon={Brain} title="IA Neuronale" desc="Modèles d'analyse entraînés sur 10 ans de données réelles." />
-        <ProBadge icon={Shield} title="Data Vérifiée" desc="Source directe des ligues officielles pour une précision totale." />
-        <ProBadge icon={TrendingUp} title="Smart Insights" desc="Détection automatique des baisses de forme et opportunités." />
+      {/* ── TROIS ARGUMENTS, UNE SEULE LIGNE ───────────────────────────────
+          Ces trois cartes occupaient près de trois cents pixels sous les
+          offres — plus qu'une carte d'abonnement entière — pour un contenu que
+          personne ne lit à ce moment-là : la décision se prend au-dessus. Les
+          arguments restent, réduits à ce qu'ils disent vraiment. */}
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-1">
+        {[
+          { icone: Brain, texte: 'Modèles entraînés sur 10 ans de données' },
+          { icone: Shield, texte: 'Données des ligues officielles' },
+          { icone: TrendingUp, texte: 'Détection des baisses de forme' },
+        ].map(({ icone: Icone, texte }) => (
+          <span key={texte} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-foreground/40">
+            <Icone className="w-3.5 h-3.5 text-primary/60 shrink-0" />
+            {texte}
+          </span>
+        ))}
       </div>
 
       {/* ── CE QUE L ABONNEMENT ACHETE, ET CE QU IL N ACHETE PAS ──────────

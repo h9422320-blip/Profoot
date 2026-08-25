@@ -87,11 +87,50 @@ test('★ ACQUIS — aucun badge ne ment sur ce que les gens choisissent', () =>
 test('★ ACQUIS — le prix de l offre mise en avant est plus gros que les autres', () => {
   const src = lire(TARIFS);
 
+  // ── ON VÉRIFIE LA TAILLE, PAS LA FAÇON DE L'ÉCRIRE ────────────────────
+  //
+  // Ce test figeait les classes exactes — `text-5xl` et `text-3xl`. La refonte
+  // du 25 août 2026 est passée à `text-[2.75rem]` et `text-[2rem]` : le prix
+  // vedette reste nettement plus gros (44 px contre 32), mais le test criait
+  // à la régression. Un test qui interdit de changer une classe empêche de
+  // travailler sans rien protéger de plus.
+  //
+  // On lit donc les deux tailles et on les COMPARE, quelle que soit leur
+  // notation.
+  const ternaire = src.match(
+    /offre\.vedette\s*\?\s*'([^']+)'\s*:\s*'([^']+)'/g
+  )?.find((t) => /text-/.test(t));
+
+  assert.ok(ternaire, "Le prix ne distingue plus l'offre mise en avant des autres.");
+
+  const [, vedette, autres] = ternaire!.match(
+    /offre\.vedette\s*\?\s*'([^']+)'\s*:\s*'([^']+)'/
+  )!;
+
+  /** Taille en pixels d'une classe Tailwind, nommée ou entre crochets. */
+  const enPixels = (classe: string): number => {
+    const arbitraire = classe.match(/text-\[([\d.]+)(rem|px)\]/);
+    if (arbitraire) {
+      return arbitraire[2] === 'rem' ? parseFloat(arbitraire[1]) * 16 : parseFloat(arbitraire[1]);
+    }
+    const nommees: Record<string, number> = {
+      'text-xl': 20, 'text-2xl': 24, 'text-3xl': 30, 'text-4xl': 36,
+      'text-5xl': 48, 'text-6xl': 60, 'text-7xl': 72,
+    };
+    for (const [nom, px] of Object.entries(nommees)) if (classe.includes(nom)) return px;
+    return 0;
+  };
+
+  const tailleVedette = enPixels(vedette);
+  const tailleAutres = enPixels(autres);
+
+  assert.ok(tailleVedette > 0 && tailleAutres > 0, `Tailles illisibles : « ${vedette} » / « ${autres} »`);
   assert.ok(
-    src.includes("offre.vedette ? 'text-5xl") && src.includes("'text-3xl'"),
-    'Les trois prix sont revenus à la même taille. Sur téléphone — 92 % du ' +
-      'trafic — les cartes s’empilent : la position ne suffit pas à distinguer, ' +
-      'c’est la taille qui dit laquelle regarder.'
+    tailleVedette > tailleAutres,
+    `Le prix de l'offre mise en avant (${tailleVedette} px) n'est plus plus gros que ` +
+      `celui des autres (${tailleAutres} px). Sur téléphone — 96 % du trafic — les ` +
+      `cartes s'empilent : la position ne suffit pas à distinguer, c'est la taille ` +
+      `qui dit laquelle regarder.`
   );
 });
 
