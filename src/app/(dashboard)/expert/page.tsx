@@ -136,7 +136,7 @@ export default function ExpertAgentPage() {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: updatedMessages.map(m => ({ role: m.role, content: m.content })) })
+          body: JSON.stringify({ messages: updatedMessages.map(m => ({ role: m.role, content: m.content })), fuseau: fuseauDuNavigateur() })
         });
 
         if (!res.ok) {

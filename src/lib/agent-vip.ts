@@ -86,7 +86,14 @@ Quand les deux se recoupent, croise-les avant de répondre : c'est là que tu re
 
 Pour une analyse, ta base de travail reste la forme récente, les absents, les confrontations directes et le classement — les chiffres des outils — mais complétée par l'actualité de la semaine, que seul le web te donne.
 
-**Une heure de match ne se donne jamais sans son fuseau.** Les outils te rendent l'heure suivie de « heure de Paris ». Tu la reprends TELLE QUELLE, fuseau compris. Tu ne convertis pas : tu ne sais pas d'où l'abonné t'écrit, et ProFoot est lu depuis Conakry, Abidjan, Montréal et Tokyo. Écrire « à 21h00 » tout court fait rater le match à celui qui est deux heures en arrière. Si l'abonné te dit où il se trouve, alors seulement tu peux lui donner l'heure chez lui, en plus de celle de Paris.
+**Une heure de match ne se donne jamais sans repère.** ProFoot est lu depuis Conakry, Abidjan, Montréal et Tokyo : écrire « à 21h00 » tout court fait rater le match à celui qui est deux heures en arrière.
+
+Les outils te rendent l'heure DÉJÀ ACCOMPAGNÉE de son repère, et tu la reprends telle quelle :
+
+- « 19:00 (heure locale de l'abonné) » — c'est son heure à lui, tu peux l'annoncer simplement : « coup d'envoi à 19h00 chez toi ». Tu ne reconvertis rien.
+- « 21:00 heure de Paris » — son fuseau ne nous est pas parvenu. Tu gardes la mention « heure de Paris » dans ta réponse, sans exception. Tu peux ajouter qu'il te dise d'où il écrit si l'heure locale l'intéresse.
+
+Tu ne calcules jamais un décalage toi-même : c'est l'outil qui sait.
 
 **L'infirmerie se vérifie toujours sur le web.** L'outil des blessés est celui qui retarde le plus : il renvoie très souvent une liste vide alors que des titulaires sont forfaits. Une liste vide ne veut jamais dire « tout le monde est disponible » — elle veut dire « je n'ai pas encore l'information ». Avant d'écrire quoi que ce soit sur les absents d'une équipe, cherche sur le web les blessés et suspendus de ce club. Ne conclus jamais qu'un effectif est au complet sans l'avoir vérifié là.
 
@@ -269,7 +276,9 @@ export interface ResultatAgent {
  */
 async function interrogerAvec(
   messages: any[],
-  passerelle: Passerelle
+  passerelle: Passerelle,
+  /** Fuseau du navigateur de l abonne, pour les heures de match. */
+  fuseau?: string
 ): Promise<ResultatAgent> {
   const historique = preparerHistorique(messages);
   if (!historique.length) throw new Error('Aucune question reçue.');
@@ -420,7 +429,7 @@ async function interrogerAvec(
         return {
           type: 'tool_result' as const,
           tool_use_id: d.id,
-          content: await executerOutil(d.name, d.input as Record<string, any>),
+          content: await executerOutil(d.name, d.input as Record<string, any>, fuseau),
         };
       })
     );
@@ -501,7 +510,7 @@ async function interrogerAvec(
  * limite de débit, panne. Une question mal formée échouerait de la même façon
  * partout ; réessayer ne ferait que payer trois fois la même erreur.
  */
-export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent> {
+export async function interrogerAgentVip(messages: any[], fuseau?: string): Promise<ResultatAgent> {
   const passerelles = passerellesDisponibles();
 
   if (!passerelles.length)
@@ -513,7 +522,7 @@ export async function interrogerAgentVip(messages: any[]): Promise<ResultatAgent
 
   for (const passerelle of passerelles) {
     try {
-      const resultat = await interrogerAvec(messages, passerelle);
+      const resultat = await interrogerAvec(messages, passerelle, fuseau);
       // Une réponse vide n'est pas une réponse : on laisse sa chance à la
       // passerelle suivante plutôt que de servir du blanc à un abonné.
       if (!resultat.texte && passerelle !== passerelles[passerelles.length - 1]) {

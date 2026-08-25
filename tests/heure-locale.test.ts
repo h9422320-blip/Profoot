@@ -34,6 +34,7 @@ import {
   dateCourteLocale,
   dateLongueLocale,
   jourEtMoisLocaux,
+  fuseauUtilisable,
 } from '../src/lib/heure-locale';
 
 const lire = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8');
@@ -138,4 +139,82 @@ test('★ ACQUIS — un horodatage en millisecondes est accepté comme une date 
   // La liste des prochains matchs n'a parfois que `timestamp`.
   const iso = '2026-08-25T19:00:00Z';
   assert.equal(heureLocale(new Date(iso).getTime()), heureLocale(iso));
+});
+
+// ── L'AGENT VIP : LA MÊME EXIGENCE, PAR UN AUTRE CHEMIN ────────────────────
+//
+// L'agent répond depuis le serveur : il ne peut pas mettre en forme dans le
+// navigateur comme les écrans. Le fuseau du navigateur remonte donc jusqu'à
+// lui, de la page à l'outil. Ces tests suivent ce fil, maillon par maillon —
+// un seul maillon coupé et l'agent recommence à annoncer l'heure de Paris à
+// un abonné de Conakry.
+
+test('★ ACQUIS — le fuseau du navigateur remonte jusqu aux outils de l agent', () => {
+  // 1. la page l'envoie — DANS L'APPEL À L'AGENT, et pas ailleurs.
+  //
+  // Cette page envoie déjà le fuseau au tunnel de paiement. Chercher le motif
+  // n'importe où dans le fichier laissait donc passer la coupure du maillon :
+  // le test restait vert alors que l'agent ne recevait plus rien. On isole
+  // l'appel à `/api/chat` avant de regarder.
+  const page = lire('src/app/(dashboard)/expert/page.tsx');
+  const debut = page.indexOf("fetch('/api/chat'");
+  assert.ok(debut >= 0, "L'appel à /api/chat a disparu de la page de l'Agent VIP.");
+  const appelChat = page.slice(debut, debut + 600);
+  assert.match(
+    appelChat,
+    /fuseau:\s*fuseauDuNavigateur\(\)/,
+    "L'appel à /api/chat n'envoie plus le fuseau du navigateur."
+  );
+
+  // 2. la route le lit et le transmet
+  const route = lire('src/app/api/chat/route.ts');
+  assert.match(route, /const \{ messages, fuseau \} = await req\.json\(\)/, 'La route ne lit plus le fuseau.');
+  assert.match(
+    route,
+    /interrogerAgentVip\([\s\S]{0,160}fuseau/,
+    "La route ne transmet plus le fuseau à l'agent."
+  );
+
+  // 3. l'agent le passe aux outils
+  const agent = lire('src/lib/agent-vip.ts');
+  assert.match(
+    agent,
+    /executerOutil\([^)]*fuseau\)/,
+    "L'agent ne transmet plus le fuseau à ses outils."
+  );
+
+  // 4. l'outil s'en sert
+  const outils = lire('src/lib/outils-football.ts');
+  assert.match(outils, /heureDuMatch\(f\.fixture\.date, fuseau\)/, "L'outil n'emploie plus le fuseau.");
+});
+
+test('★ ACQUIS — l agent ne reçoit jamais une heure sans repère', () => {
+  const outils = lire('src/lib/outils-football.ts');
+
+  // Avec le fuseau de l'abonné : son heure, annoncée comme telle.
+  assert.match(outils, /heure locale de l'abonné/, "L'heure locale n'est plus nommée.");
+  // Sans lui : Paris, mais NOMMÉ. C'est l'absence de ce repère qui faisait
+  // rater des matchs — « à 21h00 » ne veut rien dire pour qui est ailleurs.
+  assert.match(outils, /heure de Paris/, "Le repli n'annonce plus le fuseau employé.");
+
+  // Et la consigne de l'agent doit décrire les DEUX cas, sans quoi il
+  // reprendrait l'heure nue.
+  const prompt = lire('src/lib/agent-vip.ts');
+  assert.match(prompt, /ne se donne jamais sans repère/i, "La consigne sur l'heure a disparu.");
+  assert.match(prompt, /heure locale de l'abonné/, "La consigne ignore le cas du fuseau connu.");
+});
+
+test('★ ACQUIS — un fuseau fantaisiste ne fait pas tomber la réponse', () => {
+  // `Intl` LÈVE une exception sur un fuseau inconnu. Comme il arrive d'une
+  // requête, une chaîne inventée ferait tomber la réponse entière de l'agent.
+  for (const mauvais of ['Mars/Olympus', '', '   ', null, undefined, 42, {}, []]) {
+    assert.equal(
+      fuseauUtilisable(mauvais as any),
+      undefined,
+      `Un fuseau invalide est accepté : ${JSON.stringify(mauvais)}`
+    );
+  }
+  for (const bon of ['Africa/Conakry', 'Asia/Tokyo', 'America/Toronto', 'UTC']) {
+    assert.equal(fuseauUtilisable(bon), bon, `Un fuseau valide est refusé : ${bon}`);
+  }
 });

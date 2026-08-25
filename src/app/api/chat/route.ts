@@ -43,8 +43,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { messages } = await req.json();
-    const resultat = await interrogerAgentVip(Array.isArray(messages) ? messages : []);
+    const { messages, fuseau } = await req.json();
+    // Le fuseau du navigateur, pour que les heures de match annoncées soient
+    // celles de l abonne et non celles de Paris. Il est verifie plus bas dans
+    // la chaine : une valeur fantaisie ne fait pas tomber la reponse.
+    const resultat = await interrogerAgentVip(
+      Array.isArray(messages) ? messages : [],
+      typeof fuseau === 'string' ? fuseau : undefined
+    );
 
     if (resultat.motifArret === 'refusal') {
       return Response.json(

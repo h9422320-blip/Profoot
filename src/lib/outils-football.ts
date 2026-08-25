@@ -13,6 +13,7 @@
  */
 
 import { apiFootball, CACHE_TTL, LEAGUE_IDS, getSeason, getClubSeason } from './api-football';
+import { fuseauUtilisable } from './heure-locale';
 
 // ---------------------------------------------------------------------------
 // Déclarations transmises au modèle
@@ -172,7 +173,44 @@ function dateCourte(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function resumerMatch(f: any) {
+/**
+ * L'heure d'un coup d'envoi, telle qu'on peut la dire sans se tromper.
+ *
+ * Avec le fuseau de l'abonné : son heure à lui, annoncée comme telle.
+ * Sans lui : l'heure de Paris, NOMMÉE. Jamais une heure nue — c'est ce qui
+ * faisait rater des matchs.
+ */
+function heureDuMatch(iso: string, fuseau?: string): string {
+  const quand = new Date(iso);
+  if (Number.isNaN(quand.getTime())) return 'heure inconnue';
+
+  const zone = fuseauUtilisable(fuseau);
+  if (zone) {
+    const h = quand.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: zone,
+    });
+    return `${h} (heure locale de l'abonné)`;
+  }
+
+  const h = quand.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Paris',
+  });
+  return `${h} heure de Paris`;
+}
+
+/**
+ * `fuseau` est passé EXPLICITEMENT, jamais deviné.
+ *
+ * Ces résumés sont produits par `.map(...)`, qui fournit l'index du tableau en
+ * deuxième argument. Un paramètre optionnel ajouté naïvement recevrait donc
+ * `0`, `1`, `2`… au lieu d'un fuseau. Chaque appel passe donc par une fonction
+ * fléchée qui ne transmet que ce qu'on veut.
+ */
+function resumerMatch(f: any, fuseau?: string) {
   const termine = ['FT', 'AET', 'PEN'].includes(f.fixture?.status?.short);
   const enCours = ['1H', '2H', 'HT', 'ET', 'BT', 'P'].includes(f.fixture?.status?.short);
   return {
@@ -182,23 +220,20 @@ function resumerMatch(f: any) {
     exterieur: f.teams?.away?.name,
     score: termine || enCours ? `${f.goals?.home ?? 0}-${f.goals?.away ?? 0}` : null,
     statut: enCours ? `EN DIRECT (${f.fixture.status.elapsed}')` : termine ? 'terminé' : 'à venir',
-    // ── L'HEURE EST DITE, ET SON FUSEAU AVEC ────────────────────────────────
+    // ── L'HEURE DU MATCH, DANS LE FUSEAU DE CELUI QUI POSE LA QUESTION ──────
     //
     // Cette heure était calculée en « Europe/Paris » et donnée à l'agent SANS
     // le préciser. L'agent annonçait donc « le match est à 21h00 » à un abonné
     // de Conakry dont le coup d'envoi tombe à 19h00 : il ratait le match.
     //
-    // Les écrans, eux, mettent désormais l'instant en forme dans le fuseau du
-    // lecteur. L'agent ne le peut pas : il répond depuis le serveur et ne
-    // connaît pas le fuseau de son interlocuteur. Tant qu'il ne le connaît
-    // pas, il doit NOMMER celui qu'il emploie — une heure sans fuseau est une
-    // heure fausse pour presque tout le monde.
+    // Le navigateur transmet désormais son fuseau jusqu'ici. Quand il est
+    // connu, l'heure est celle de l'abonné et on le lui dit. Quand il ne l'est
+    // pas — un appel sans fuseau, une valeur illisible — on retombe sur Paris
+    // mais on le NOMME : une heure sans repère est une heure fausse pour
+    // presque tout le monde, et l'agent doit pouvoir la citer honnêtement.
     //
-    // `heureISO` porte l'instant exact : c'est ce qui permettra de convertir
-    // le jour où le fuseau du navigateur remontera jusqu'ici.
-    heure: termine
-      ? undefined
-      : `${new Date(f.fixture.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })} heure de Paris`,
+    // `heureISO` porte l'instant exact, pour tout usage ultérieur.
+    heure: termine ? undefined : heureDuMatch(f.fixture.date, fuseau),
     heureISO: termine ? undefined : f.fixture.date,
   };
 }
@@ -348,7 +383,7 @@ async function transfertsClub({ equipe_id, limite }: Entrees) {
   };
 }
 
-async function matchsClub({ equipe_id, type, nombre }: Entrees) {
+async function matchsClub({ equipe_id, type, nombre, __fuseau }: Entrees) {
   const n = Math.min(Math.max(Number(nombre) || 8, 1), 20);
   const parametre = type === 'prochains' ? `next=${n}` : `last=${n}`;
   // Volontairement sans filtre de saison : en début de saison, filtrer ne
@@ -359,7 +394,7 @@ async function matchsClub({ equipe_id, type, nombre }: Entrees) {
   );
   const matchs = data?.response ?? [];
   if (!matchs.length) return vide("Aucun match trouvé pour ce club.");
-  return { matchs: matchs.map(resumerMatch) };
+  return { matchs: matchs.map((m: any) => resumerMatch(m, __fuseau)) };
 }
 
 async function statistiquesClub({ equipe_id, competition }: Entrees) {
@@ -412,14 +447,14 @@ async function statistiquesClub({ equipe_id, competition }: Entrees) {
   };
 }
 
-async function confrontations({ equipe1_id, equipe2_id }: Entrees) {
+async function confrontations({ equipe1_id, equipe2_id, __fuseau }: Entrees) {
   const data = await apiFootball<any>(
     `/fixtures/headtohead?h2h=${equipe1_id}-${equipe2_id}&last=10`,
     CACHE_TTL.STANDINGS
   );
   const matchs = data?.response ?? [];
   if (!matchs.length) return vide("Aucune confrontation directe enregistrée entre ces deux clubs.");
-  return { confrontations: matchs.map(resumerMatch) };
+  return { confrontations: matchs.map((m: any) => resumerMatch(m, __fuseau)) };
 }
 
 async function classement({ competition }: Entrees) {
@@ -460,12 +495,12 @@ async function classement({ competition }: Entrees) {
   };
 }
 
-async function matchsDuJour({ date, en_direct_uniquement }: Entrees) {
+async function matchsDuJour({ date, en_direct_uniquement, __fuseau }: Entrees) {
   if (en_direct_uniquement) {
     const live = await apiFootball<any>(`/fixtures?live=all`, CACHE_TTL.FIXTURES_LIVE);
     const matchs = live?.response ?? [];
     if (!matchs.length) return { matchs: [], note: 'Aucun match en cours en ce moment.' };
-    return { matchs: matchs.slice(0, 40).map(resumerMatch) };
+    return { matchs: matchs.slice(0, 40).map((m: any) => resumerMatch(m, __fuseau)) };
   }
 
   const jour = String(date || new Date().toISOString().split('T')[0]);
@@ -483,7 +518,7 @@ async function matchsDuJour({ date, en_direct_uniquement }: Entrees) {
   return {
     date: jour,
     total_toutes_competitions: matchs.length,
-    matchs: retenus.slice(0, 40).map(resumerMatch),
+    matchs: retenus.slice(0, 40).map((m: any) => resumerMatch(m, __fuseau)),
   };
 }
 
@@ -570,13 +605,24 @@ const EXECUTEURS: Record<string, (e: Entrees) => Promise<any>> = {
  * honnêtement, plutôt que de laisser remonter une exception qui couperait
  * la réponse entière.
  */
-export async function executerOutil(nom: string, entrees: Entrees): Promise<string> {
+export async function executerOutil(
+  nom: string,
+  entrees: Entrees,
+  /**
+   * Fuseau du navigateur de l'abonné, quand il est connu.
+   *
+   * Il voyage sous la clé réservée `__fuseau`, que le modèle ne produit jamais
+   * — elle ne figure dans aucun `input_schema`. C'était le seul moyen de le
+   * faire descendre jusqu'aux résumés sans changer la forme des exécuteurs.
+   */
+  fuseau?: string
+): Promise<string> {
   const executeur = EXECUTEURS[nom];
   if (!executeur) {
     return JSON.stringify({ erreur: `Outil inconnu : ${nom}` });
   }
   try {
-    const resultat = await executeur(entrees ?? {});
+    const resultat = await executeur({ ...(entrees ?? {}), __fuseau: fuseau });
     return JSON.stringify(resultat);
   } catch (erreur: any) {
     console.error(`[OUTIL ${nom}] échec :`, erreur?.message);
