@@ -29,12 +29,55 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
+  // ── UN APPEL D'AUTHENTIFICATION PAR REQUÊTE A FAIT TOMBER LA BASE ────────
+  //
+  // Le 25 août 2026 à 21 h, le projet Supabase est passé en « Malsain » :
+  // 23 946 requêtes en une heure, 0,0 % de réussite. Plus personne ne pouvait
+  // se connecter. Le tableau de bord annonçait « dépassement des limites
+  // d'utilisation » sur un serveur NANO en plan gratuit.
+  //
+  // La cause était ici. Ce fichier s'exécute sur CHAQUE requête — chaque page,
+  // chaque navigation, chaque préchargement — et appelait `getUser()`, qui est
+  // un appel réseau à Supabase. À lui seul, il produisait 23 127 des requêtes
+  // d'authentification de cette heure-là.
+  //
+  // ── POURQUOI ON PEUT S'EN PASSER SUR LES PAGES PUBLIQUES ────────────────
+  //
+  // Cet appel ne sert qu'à trois choses : fermer les pages protégées, vérifier
+  // le droit d'administrer, et rafraîchir le jeton de session. Sur une page
+  // publique — l'accueil, les tarifs, les preuves, les matchs — aucune des
+  // trois n'est nécessaire :
+  //
+  //   — la page ne protège rien ;
+  //   — son composant serveur n'interroge pas l'authentification. Vérifié un
+  //     par un : ni la mise en page du tableau de bord, ni /pricing, ni
+  //     /preuves, ni /matches. La barre latérale lit un simple cookie, sans
+  //     appel réseau ;
+  //   — le jeton se rafraîchira à la première page protégée, où ce fichier
+  //     s'exécute toujours. Le jeton de rafraîchissement, lui, vit bien plus
+  //     longtemps : personne n'est déconnecté pour autant.
+  //
+  // Les routes /api gardent leur propre vérification et savent, elles, écrire
+  // les cookies — ce qu'un composant serveur ne peut pas faire.
+  //
+  // ── CE QUI CHANGE POUR UN ADMINISTRATEUR ────────────────────────────────
+  //
+  // Pendant une maintenance, un administrateur qui ouvre une page publique
+  // n'est plus reconnu et voit l'écran de maintenance comme tout le monde.
+  // /admin, /login et /a/ restent ouverts en toutes circonstances : il garde
+  // le moyen de la désactiver.
+  const chemin = request.nextUrl.pathname;
+  const protectedPaths = ['/dashboard', '/analyze', '/settings', '/history', '/search', '/expert', '/payment-success', '/payment-failed', '/admin'];
+  const isProtectedPath = protectedPaths.some(
+    (path) => chemin === path || chemin.startsWith(path + '/')
+  );
+
+  const besoinDIdentite = isProtectedPath || chemin.startsWith('/api/');
+
   // Do not run code between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with cross-site tracking (CORS).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = besoinDIdentite ? (await supabase.auth.getUser()).data.user : null
 
   // --- SESSION LIMITÉE À 24H ---
   // Au-delà de 24h après la dernière connexion, la session est invalidée :
@@ -79,18 +122,15 @@ export async function updateSession(request: NextRequest) {
   // confiance affichée et la précision constatée. Elle portait par ailleurs
   // des promesses jamais tenues : « plus de 50 sources », « 200 variables »,
   // « conditions météo », qui décrivaient un moteur qui n'existe pas.
-  const protectedPaths = ['/dashboard', '/analyze', '/settings', '/history', '/search', '/expert', '/payment-success', '/payment-failed', '/admin'];
-
-  // Comparaison sur le SEGMENT complet, et non sur le simple début du chemin.
+  // `protectedPaths`, `chemin` et `isProtectedPath` sont désormais calculés
+  // PLUS HAUT : il faut savoir si la page est protégée avant de décider s'il
+  // vaut la peine d'interroger l'authentification.
   //
-  // « /match » est un préfixe de « /matches » : une comparaison par début de
-  // chaîne fermait la page publique des matchs en même temps que les fiches de
-  // rencontre. La page répondait « connectez-vous » sans qu'aucune règle ne la
-  // désigne — introuvable à la lecture du code.
-  const chemin = request.nextUrl.pathname;
-  const isProtectedPath = protectedPaths.some(
-    (path) => chemin === path || chemin.startsWith(path + '/')
-  );
+  // La comparaison porte sur le SEGMENT complet, et non sur le simple début du
+  // chemin. « /match » est un préfixe de « /matches » : une comparaison par
+  // début de chaîne fermait la page publique des matchs en même temps que les
+  // fiches de rencontre. La page répondait « connectez-vous » sans qu'aucune
+  // règle ne la désigne — introuvable à la lecture du code.
 
   if (!activeUser && isProtectedPath) {
     // Non connecté (ou session expirée) sur une page protégée : redirection vers /login,
