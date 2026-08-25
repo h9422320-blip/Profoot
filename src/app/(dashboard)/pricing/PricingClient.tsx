@@ -75,6 +75,9 @@ const OFFRES = [
     // volée ne produirait aucun style.
     style: {
       bordure: 'border-sky-400/30 hover:border-sky-400/60',
+      // Le cadre dégradé de la carte. Celui de la vedette est le plus vif et
+      // le plus épais — c'est lui qui doit accrocher l'œil en premier.
+      cadre: 'from-sky-400 via-cyan-300 to-emerald-400',
       halo: 'from-sky-400/40 to-cyan-400/40',
       pastille: 'bg-sky-400/10 text-sky-400 border-sky-400/30',
       coche: 'bg-primary/15 text-primary',
@@ -101,6 +104,7 @@ const OFFRES = [
     exclus: [],
     style: {
       bordure: 'border-primary',
+      cadre: 'from-emerald-400/55 via-teal-300/35 to-emerald-500/55',
       halo: 'from-primary to-info',
       pastille: 'bg-primary/15 text-primary border-primary/40',
       coche: 'bg-primary/20 text-primary',
@@ -137,6 +141,7 @@ const OFFRES = [
     avantagePhare: 'Agent IA VIP',
     style: {
       bordure: 'border-warning/40 hover:border-warning/70',
+      cadre: 'from-amber-300/65 via-yellow-200/40 to-amber-500/65',
       halo: 'from-warning/40 to-amber-500/40',
       pastille: 'bg-warning/10 text-warning border-warning/30',
       coche: 'bg-primary/15 text-primary',
@@ -350,16 +355,22 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
                   Les deux autres cartes n'ont pas d'enveloppe et gardent leur
                   bordure d'origine. */}
               <div
-                className={`relative md:h-full ${
-                  offre.vedette
-                    ? 'rounded-[25.5px] p-[1.5px] bg-gradient-to-br from-sky-400/90 via-cyan-300/70 to-emerald-400/90 shadow-xl shadow-emerald-500/15'
-                    : ''
+                className={`relative md:h-full rounded-[25.5px] bg-gradient-to-br ${offre.style.cadre} ${
+                  offre.vedette ? 'p-[1.5px] shadow-xl shadow-emerald-500/15' : 'p-[1px]'
                 }`}
               >
+              {/* ── LE FOND DE LA CARTE DOIT ÊTRE OPAQUE ────────────────────
+                  Première version : `bg-card/70`. Le cadre dégradé vif situé
+                  DERRIÈRE transparaissait alors à travers les trente pour cent
+                  manquants, et lavait toute la carte de l'Essentiel en vert
+                  d'eau — au lieu de rester une bordure d'un pixel et demi.
+                  Le dégradé ne doit se voir QUE sur le liseré. Même à 95 %, les
+                  cinq pour cent restants teintaient encore la surface : le
+                  fond est donc OPAQUE. L'effet verre vient désormais du
+                  reflet en haut de carte et du liseré, pas de la
+                  transparence — et il est plus net ainsi. */}
               <div
-                className={`relative md:h-full bg-card/70 backdrop-blur-xl rounded-[24px] px-5 py-5 flex flex-col gap-4 transition-colors duration-200 ${
-                  offre.vedette ? 'border-0' : `border ${offre.style.bordure}`
-                }`}
+                className="relative md:h-full bg-card rounded-[24px] px-5 py-5 flex flex-col gap-4 transition-colors duration-200"
               >
                 {/* ── LE REFLET QUI FAIT LE VERRE ──────────────────────────
                     Un dégradé blanc à 6 % sur les quarante premiers pixels.
