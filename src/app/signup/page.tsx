@@ -61,7 +61,7 @@ export default function SignupPage() {
             Analysez les matchs avec l'intelligence artificielle.
           </h1>
           <p className="text-lg text-zinc-400 font-medium mb-12 leading-relaxed">
-            Rejoignez des milliers de parieurs et de passionnés qui utilisent ProFoot pour prédire les résultats avec une précision inégalée.
+            Rejoignez des milliers de passionnés de football qui utilisent ProFoot pour analyser les rencontres avec une précision inégalée.
           </p>
 
           <div className="space-y-6">

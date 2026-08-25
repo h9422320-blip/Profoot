@@ -37,7 +37,7 @@ const fr = {
     darkTheme: 'Sombre (ProFoot Elite)',
     lightTheme: 'Clair (Lumineux)',
     notifPreferences: 'Préférences de notifications',
-    notifNewPredictions: 'Alertes de nouveaux pronostics',
+    notifNewPredictions: 'Alertes de nouvelles analyses',
     notifNewPredictionsDesc: 'Recevoir un email quand une nouvelle analyse IA majeure est disponible.',
     notifMatchResults: 'Résultats de matchs suivis',
     notifMatchResultsDesc: 'Notification push sur votre appareil quand un match suivi se termine.',

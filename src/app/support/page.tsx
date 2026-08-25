@@ -63,7 +63,7 @@ export default function SupportPage() {
       faqs: [
         {
           q: "Comment fonctionne l'analyse IA des matchs ?",
-          a: "Notre moteur d'intelligence artificielle analyse des millions de données en temps réel : forme des équipes, historique des confrontations (H2H), statistiques avancées (Expected Goals, possession, tirs cadrés), compositions probables et cotes des bookmakers. Il génère ensuite des probabilités et scénarios pour chaque match."
+          a: "Notre moteur d'intelligence artificielle analyse des millions de données en temps réel : forme des équipes, historique des confrontations (H2H), statistiques avancées (Expected Goals, possession, tirs cadrés), compositions probables et niveau relatif des championnats. Il génère ensuite des probabilités et scénarios pour chaque match."
         },
         {
           q: "Les prédictions de l'IA sont-elles garanties à 100% ?",

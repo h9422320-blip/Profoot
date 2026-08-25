@@ -114,7 +114,7 @@ export default function CGVPage() {
               </p>
               <p>
                 <strong className="text-amber-300">ProFoot AI n'est pas un conseiller financier et ne saurait être tenu responsable</strong> de 
-                toute perte financière ou dommage subi par l'utilisateur dans le cadre de paris sportifs, de pronostics ou de toute autre 
+                toute perte financière ou dommage subi par l'utilisateur dans le cadre de toute
                 décision prise sur la base des analyses fournies par la plateforme.
               </p>
               <p>

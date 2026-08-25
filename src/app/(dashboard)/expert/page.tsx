@@ -73,7 +73,7 @@ export default function ExpertAgentPage() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Bienvenue dans votre espace VIP 👋\n\nJe suis **ProFoot Expert**, votre analyste football IA personnel. Je suis connecté en temps réel à l'actualité du football.\n\nPosez-moi n'importe quelle question : statistiques d'un joueur, analyse tactique, pronostic de match, transferts, résultats en direct...\n\n⚽ Par quoi voulez-vous commencer ?"
+      content: "Bienvenue dans votre espace VIP 👋\n\nJe suis **ProFoot Expert**, votre analyste football IA personnel. Je suis connecté en temps réel à l'actualité du football.\n\nPosez-moi n'importe quelle question : statistiques d'un joueur, analyse tactique, projection de match, transferts, résultats en direct...\n\n⚽ Par quoi voulez-vous commencer ?"
     }
   ]);
   const [input, setInput] = useState("");
@@ -248,7 +248,7 @@ export default function ExpertAgentPage() {
             </h1>
             
             <p className="text-base md:text-lg text-white/60 font-medium leading-relaxed mb-12 max-w-md mx-auto relative z-10">
-              L'Agent IA <strong className="text-white font-bold">ProFoot Expert</strong> est réservé aux <strong className="text-white font-bold">abonnés ProFoot</strong> : un analyste football personnel disponible 24h/24, connecté à l'actualité en temps réel — statistiques, tactiques, pronostics, transferts, sans aucune limite.
+              L'Agent IA <strong className="text-white font-bold">ProFoot Expert</strong> est réservé aux <strong className="text-white font-bold">abonnés ProFoot</strong> : un analyste football personnel disponible 24h/24, connecté à l'actualité en temps réel — statistiques, tactiques, projections, transferts, sans aucune limite.
             </p>
             
             <div className="relative z-10 w-full sm:w-auto mx-auto mt-4 group">

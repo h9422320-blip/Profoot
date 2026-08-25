@@ -56,7 +56,7 @@ export const OUTILS_FOOTBALL = [
   {
     name: 'blessures_club',
     description:
-      "Les joueurs blessés ou suspendus d'un club, avec le motif. À appeler systématiquement avant tout pronostic ou analyse d'un match à venir : une absence majeure change la lecture d'une rencontre.",
+      "Les joueurs blessés ou suspendus d'un club, avec le motif. À appeler systématiquement avant toute analyse d'un match à venir : une absence majeure change la lecture d'une rencontre.",
     input_schema: {
       type: 'object' as const,
       properties: { equipe_id: { type: 'number' } },
@@ -109,7 +109,7 @@ export const OUTILS_FOOTBALL = [
   {
     name: 'confrontations',
     description:
-      "L'historique des confrontations directes entre deux clubs, avec les scores. À appeler avant tout pronostic sur une affiche : certaines équipes ont une emprise historique sur une autre.",
+      "L'historique des confrontations directes entre deux clubs, avec les scores. À appeler avant toute analyse d'une affiche : certaines équipes ont une emprise historique sur une autre.",
     input_schema: {
       type: 'object' as const,
       properties: {

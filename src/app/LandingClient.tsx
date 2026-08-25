@@ -142,7 +142,7 @@ const faqItems = [
 const testimonials = [
   { name: "Karim B.", role: "Analyste Football", text: "ProFoot a complètement changé ma façon d'analyser les matchs. Les prédictions sont incroyablement précises.", rating: 5 },
   { name: "Lucas M.", role: "Passionné de foot", text: "L'interface est magnifique et les analyses IA sont bluffantes. Je ne regarde plus un match sans consulter ProFoot.", rating: 5 },
-  { name: "Sofiane A.", role: "Parieur sportif", text: "Les statistiques avancées (xG, forme récente) m'ont permis de mieux comprendre chaque rencontre. Indispensable !", rating: 5 },
+  { name: "Sofiane A.", role: "Passionné de football", text: "Les statistiques avancées (xG, forme récente) m'ont permis de mieux comprendre chaque rencontre. Indispensable !", rating: 5 },
   { name: "Thomas R.", role: "Coach amateur", text: "J'utilise ProFoot pour préparer mes analyses tactiques avant chaque match. Le moteur IA est impressionnant.", rating: 4 },
   { name: "Moussa D.", role: "Journaliste sportif", text: "Une plateforme qui rivalise avec les outils pros. Les scénarios tactiques sont un vrai plus pour mes articles.", rating: 5 },
   { name: "Antoine L.", role: "Data Analyst", text: "En tant que data analyst, je suis impressionné par la profondeur des données. ProFoot est un bijou technologique.", rating: 5 },
@@ -248,7 +248,7 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
             <div className="live-badge-wrapper">
               <div className="live-badge">
                 <div className="live-badge-dot" />
-                Pronostics vérifiés après chaque match
+                Analyses vérifiées après chaque match
               </div>
             </div>
 
@@ -506,7 +506,19 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
             </div>
           </div>
         </div>
-        <div className="footer-bottom">
+        {/* ── CE QUE NOUS SOMMES, ÉCRIT NOIR SUR BLANC ────────────────────
+            Un lecteur pressé — ou un contrôleur de plateforme de paiement —
+            juge un site de football sur son vocabulaire. Le nôtre est celui
+            de l'analyse, mais l'absence de mots de pari ne se remarque pas :
+            seule une phrase qui dit ce que l'outil EST se remarque. Elle vit
+            au pied de chaque page, là où on cherche l'identité d'un site. */}
+        <div className="footer-bottom" style={{ flexDirection: "column", gap: "10px", textAlign: "center" }}>
+          <span style={{ opacity: 0.55, fontSize: "11.5px", lineHeight: 1.6, maxWidth: "620px" }}>
+            ProFoot AI est un outil d&apos;analyse statistique et de modélisation du football.
+            Nous ne sommes ni un opérateur de jeux, ni un intermédiaire de paris, et nous
+            n&apos;acceptons aucun enjeu. Les analyses publiées sont fournies à titre informatif
+            et ne constituent pas un conseil financier.
+          </span>
           <span>© 2026 ProFoot AI. Tous droits réservés.</span>
         </div>
       </footer>
@@ -586,7 +598,7 @@ function ShowcaseContent() {
         UNE ARCHITECTURE IA<br/><span className="text-gradient">SANS PRÉCÉDENT</span>
       </h2>
       <p className="showcase-desc">
-        Nous ne nous contentons pas de lire les cotes. Notre moteur ingère la forme récente, les xG, les compositions probables et l'historique H2H pour générer un modèle mathématique complet.
+        Nous ne nous contentons pas de résumer un classement. Notre moteur ingère la forme récente, les xG, les compositions probables et l'historique H2H pour générer un modèle mathématique complet.
       </p>
       
       <div className="flex flex-wrap justify-center gap-4 mt-8 mb-10">
@@ -801,7 +813,7 @@ function AppMockupContent() {
       <div className="text-center mb-6">
         <h3 className="text-white text-xl font-bold mb-1">Analyse de match</h3>
         <p className="text-[10px] text-white/60">Entre les équipes que tu veux analyser</p>
-        <p className="text-[8px] text-white/40 mt-1">Notre IA est connectée à l'actualité foot et croise des millions de données pour chaque pronostic.</p>
+        <p className="text-[8px] text-white/40 mt-1">Notre IA est connectée à l'actualité foot et croise des millions de données pour chaque analyse.</p>
       </div>
 
       {/* Match Search Card */}

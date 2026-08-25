@@ -1073,7 +1073,7 @@ export default function AnalyzePage({
           Entre les équipes que tu veux analyser
         </p>
         <p className="text-[11px] md:text-xs text-[#10B981] font-bold max-w-sm mx-auto leading-relaxed">
-          Notre IA est connectée à l'actualité foot et croise des millions de données pour chaque pronostic.
+          Notre IA est connectée à l'actualité foot et croise des millions de données pour chaque analyse.
         </p>
       </div>
 
@@ -2033,13 +2033,13 @@ export default function AnalyzePage({
                       <div className="flex items-center gap-3 mb-2">
                         <Trophy className="w-5 h-5 text-[#10B981]" />
                         <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>
-                          {result.live ? "Pronostic d'avant-match" : "Score prédit par l'IA"}
+                          {result.live ? "Analyse d'avant-match" : "Score prédit par l'IA"}
                         </h4>
                       </div>
                       {result.live && (
                         <p className="text-[11px] text-white/40 leading-relaxed mb-5">
-                          Annoncé avant le coup d&apos;envoi, et inchangé depuis. C&apos;est ce
-                          pronostic qui sera jugé à la fin du match.
+                          Annoncé avant le coup d&apos;envoi, et inchangé depuis. C&apos;est cette
+                          analyse qui sera jugée à la fin du match.
                         </p>
                       )}
 
@@ -2063,6 +2063,16 @@ export default function AnalyzePage({
                     <h5 className="text-xs font-black uppercase tracking-wider text-white/40 mb-2">Explication stratégique</h5>
                     <p className="text-xs text-white/70 leading-relaxed font-semibold">{result.predictedScore.reasoning}</p>
                   </div>
+
+                  {/* ── LA MENTION EST ICI, PAS EN BAS DE PAGE ────────────────
+                      Elle suit immédiatement la conclusion du moteur, parce
+                      que c'est la seule ligne que tout le monde lit. Placée
+                      sous le pied de page, elle serait vraie et invisible. */}
+                  <p className="mt-4 text-[10.5px] text-white/30 leading-relaxed">
+                    Projection statistique produite par un modèle mathématique, fournie à titre
+                    informatif. Elle décrit une probabilité, jamais une certitude : aucun résultat
+                    n&apos;est garanti.
+                  </p>
                 </div>
               )}
 

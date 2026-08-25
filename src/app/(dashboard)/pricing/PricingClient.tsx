@@ -458,6 +458,17 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
         <ProBadge icon={TrendingUp} title="Smart Insights" desc="Détection automatique des baisses de forme et opportunités." />
       </div>
 
+      {/* ── CE QUE L ABONNEMENT ACHETE, ET CE QU IL N ACHETE PAS ──────────
+          C est la page ou l on sort sa carte, donc celle ou la nature du
+          produit doit etre la moins ambigue. On dit ce qui est vendu : un
+          acces a des analyses. Pas un enjeu, pas une promesse de gain. */}
+      <p className="text-[11px] text-foreground/40 leading-relaxed text-center max-w-2xl mx-auto pt-2">
+        ProFoot AI vend un accès à un outil d&apos;analyse statistique du football.
+        L&apos;abonnement ne constitue pas un enjeu et ne donne droit à aucun gain :
+        il ouvre l&apos;accès aux analyses et aux statistiques de la plateforme.
+        Aucune analyse ne garantit un résultat.
+      </p>
+
       {/* La notice n existe QUE pendant le clic sur une offre. Hors de ce
           moment, elle n est pas montee : aucun encombrement ailleurs sur la
           page, et rien a charger pour les visiteurs qui n achetent pas. */}

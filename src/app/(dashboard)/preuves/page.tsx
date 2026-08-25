@@ -25,19 +25,19 @@ export const metadata: Metadata = {
   // LE TITRE D'ONGLET NE BOUGE PAS, ET C'EST VOLONTAIRE.
   //
   // C'est lui que Google affiche dans ses résultats, et il porte les mots que
-  // les gens tapent — « pronostics vérifiés ». Le titre accrocheur vit dans la
+  // les gens tapent — « analyses vérifiées ». Le titre accrocheur vit dans la
   // page ; celui-ci reste celui qui la fait trouver.
-  title: "Nos pronostics vérifiés — ProFoot AI",
+  title: "Nos analyses vérifiées — ProFoot AI",
   description:
-    "Les pronostics de ProFoot AI annoncés avant le match et confirmés par le résultat réel.",
+    "Les analyses de ProFoot AI annoncées avant le match et confirmées par le résultat réel.",
   // L'adresse de référence manquait. Sans elle, la même page atteinte avec un
   // paramètre de suivi — un lien partagé sur WhatsApp, une campagne — compte
   // comme une page distincte, et le peu de crédit qu'elle a se divise.
   alternates: { canonical: `${SITE}/preuves` },
   openGraph: {
-    title: "Nos pronostics vérifiés — ProFoot AI",
+    title: "Nos analyses vérifiées — ProFoot AI",
     description:
-      "Chaque pronostic est publié avant le coup d'envoi, puis confronté au résultat réel du match.",
+      "Chaque analyse est publiée avant le coup d'envoi, puis confrontée au résultat réel du match.",
     url: `${SITE}/preuves`,
     type: "website",
   },
@@ -123,14 +123,14 @@ export default async function PagePreuves() {
           {
             "@type": "ListItem",
             position: 2,
-            name: "Pronostics vérifiés",
+            name: "Analyses vérifiées",
             item: `${SITE}/preuves`,
           },
         ],
       },
       {
         "@type": "ItemList",
-        name: "Pronostics ProFoot AI vérifiés après le match",
+        name: "Analyses ProFoot AI vérifiées après le match",
         numberOfItems: preuves.length,
         itemListElement: preuves.map((p, i) => {
           const competition = libelleCompetition(p.competition);
@@ -175,7 +175,7 @@ export default async function PagePreuves() {
         </h1>
 
         <p className="text-[12.5px] text-white/50 leading-relaxed max-w-prose">
-          Chaque pronostic ci-dessous a été produit par ProFoot AI{" "}
+          Chaque analyse ci-dessous a été produite par ProFoot AI{" "}
           <span className="text-white/75 font-semibold">avant le coup d&apos;envoi</span>, puis
           confronté au résultat réel de la rencontre.
         </p>

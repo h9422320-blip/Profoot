@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 
 const RACCOURCIS = [
   { href: "/", libelle: "Accueil", icone: Home },
-  { href: "/preuves", libelle: "Nos pronostics vérifiés", icone: ShieldCheck },
+  { href: "/preuves", libelle: "Nos analyses vérifiées", icone: ShieldCheck },
   { href: "/matches", libelle: "Matchs du jour", icone: CalendarDays },
   { href: "/standings", libelle: "Classements", icone: Trophy },
 ];

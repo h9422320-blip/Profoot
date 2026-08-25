@@ -77,6 +77,12 @@ RÈGLES ABSOLUES — leur violation rend le texte inutilisable :
 - Ne dis JAMAIS laquelle des deux équipes prendra le dessus, ni qui est favori. Pas de "devrait l'emporter", "la pression finira par payer", "logiquement", "sur le papier supérieur".
 - Les deux équipes reçoivent un traitement ÉQUILIBRÉ : le lecteur ne doit pas pouvoir deviner l'issue.
 
+VOCABULAIRE INTERDIT — RÈGLE NON NÉGOCIABLE :
+ProFoot AI est un outil d'ANALYSE STATISTIQUE du football, pas un service de paris.
+Les mots suivants ne doivent JAMAIS apparaître, sous aucune forme, dans aucun contexte, même entre guillemets : pari, parier, parieur, pronostic, pronostiquer, mise, miser, bookmaker, cote, coupon, ticket, gain, banco.
+Tu formules TOUJOURS en termes d'analyse : « la tendance », « l'issue la plus probable », « la probabilité », « les statistiques indiquent ».
+Un seul de ces mots et le texte est rejeté en entier.
+
 CE QUE TU DOIS FAIRE :
 - Appuie-toi UNIQUEMENT sur les chiffres fournis. N'invente rien.
 - Raconte les chiffres, ne les recopie pas bruts.
@@ -92,6 +98,24 @@ export function trahitLeVerdict(texte: string): string | null {
   const t = String(texte ?? '');
 
   const CONTROLES: [string, RegExp][] = [
+    // ── LE VOCABULAIRE DU PARI, REFUSÉ ET NON PAS SEULEMENT DÉCONSEILLÉ ──
+    //
+    // La consigne interdit déjà ces mots. Mais une consigne se néglige : le
+    // modèle économique en écrit un de temps en temps, et il suffit d'une
+    // seule bande-annonce publique contenant « pari » pour qu'une plateforme
+    // de paiement classe le site en site de jeu. On ne se fie donc pas à
+    // l'obéissance du modèle — on relit sa sortie et on la jette.
+    //
+    // Le gabarit prend alors le relais : un texte mécanique est sans risque,
+    // un texte qui parle de paris ne l'est pas.
+    //
+    // « cote » est piégeux : « Côte d'Ivoire » et « la côte adverse » sont
+    // légitimes. On exige donc l'absence d'accent ET un contexte de pari
+    // (« la cote de », « une cote à »), jamais le mot isolé.
+    [
+      'vocabulaire de pari',
+      /\b(?:pari|paris\s+sportifs?|pari(?:er|ez|ons|[eé]e?s?)|parieur(?:s|se|ses)?|pronostics?|pronostiqu\w*|mis(?:er|ez|ons|é\w*)|bookmakers?|coupons?|banco|value\s*bets?)\b|\b(?:la|une|les|des|sa|leur)\s+cotes?\b|\bmise\s+(?:de|à)\s+\d/i,
+    ],
     // ── CE QUI BASCULE LE RÉCIT EN PRONOSTIC ────────────────────────────
     //
     // Le récit a le droit de décrire les intentions des deux camps. Il n'a
