@@ -11,7 +11,7 @@ import { lireAmbassadeurs } from "@/lib/ambassadeurs";
  * chargement qui les ferait apparaître après coup sur une connexion mobile
  * lente. C'est aussi ce qui les rend visibles des moteurs de recherche.
  */
-export const revalidate = 300;
+export const revalidate = 900;
 
 export default async function Accueil() {
   const ambassadeurs = await lireAmbassadeurs();

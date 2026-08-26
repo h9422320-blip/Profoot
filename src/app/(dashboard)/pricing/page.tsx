@@ -21,7 +21,7 @@ import PricingClient, { type OffresAffichees } from "./PricingClient";
  * Les cinq minutes ne sont qu'un filet, pour le cas où un prix serait changé
  * autrement que par le formulaire d'administration.
  */
-export const revalidate = 300;
+export const revalidate = 900;
 
 /**
  * Page des offres.

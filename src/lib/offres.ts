@@ -20,6 +20,7 @@
  */
 
 import { createAdminClient } from './supabase-admin';
+import { avecDelai, DELAIS } from './delai-securite';
 import { PLANS, PlanKey, UNLIMITED } from './subscription';
 
 export interface OffreEditable {
@@ -84,7 +85,25 @@ export async function lireOffres(): Promise<Record<PlanKey, OffreEditable>> {
   ) as Record<PlanKey, OffreEditable>;
 
   try {
-    const { data, error } = await createAdminClient().from('offres').select('*');
+    // ── DEUX SECONDES ET DEMIE, PAS PLUS ────────────────────────────────
+    //
+    // Le 25 août 2026, cette lecture n'avait aucune limite de temps : quand
+    // la base a saturé, /pricing a dépassé trente secondes et le navigateur
+    // a abandonné. La page n'était pas cassée, elle attendait — et pendant
+    // ce temps, chaque visiteur occupait un serveur, ce qui aggravait la
+    // saturation.
+    //
+    // Le repli est le tarif écrit dans le code, déjà préparé juste au-dessus.
+    // Un visiteur voit alors les prix d'origine au lieu d'un écran blanc. Si
+    // un prix avait été modifié depuis l'administration, il verrait l'ancien
+    // pendant quelques secondes — infiniment moins grave que de ne rien voir
+    // du tout sur LA page où se décide un achat.
+    const { data, error } = await avecDelai<any>(
+      createAdminClient().from('offres').select('*'),
+      DELAIS.page,
+      { data: null, error: null },
+      'tarifs'
+    );
     if (error) throw new Error(error.message);
 
     for (const ligne of data ?? []) {

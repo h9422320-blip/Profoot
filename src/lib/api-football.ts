@@ -57,11 +57,32 @@ function setCache<T>(key: string, data: T, ttlMs: number): void {
 export async function lireReserve<T>(cle: string): Promise<{ contenu: T; expiree: boolean } | null> {
   try {
     const { createAdminClient } = await import('./supabase-admin');
-    const { data, error } = await createAdminClient()
-      .from('cache_api')
-      .select('contenu, expire_le')
-      .eq('cle', cle)
-      .maybeSingle();
+    const { avecDelai, DELAIS } = await import('./delai-securite');
+
+    // ── LA RÉSERVE EST PARTAGÉE PAR SEIZE FICHIERS ──────────────────────────
+    //
+    // Matchs, preuves, classements, fiches de club, analyses : tous passent par
+    // ici. Une seule limite de temps posée à cet endroit protège donc toutes
+    // ces pages d'un coup.
+    //
+    // Le 25 août 2026, quand la base a saturé, cette lecture attendait sans
+    // limite. /matches et /preuves dépassaient trente secondes — non parce
+    // qu'elles étaient cassées, mais parce qu'elles attendaient un cache qui ne
+    // répondait plus.
+    //
+    // Renvoyer `null` passé le délai est exactement ce que fait déjà le `catch`
+    // en bas : l'appelant considère alors qu'il n'y a rien en réserve et va
+    // chercher la donnée à la source. Aucun appelant n'a besoin d'être modifié.
+    const { data, error } = await avecDelai<any>(
+      createAdminClient()
+        .from('cache_api')
+        .select('contenu, expire_le')
+        .eq('cle', cle)
+        .maybeSingle(),
+      DELAIS.secondaire,
+      { data: null, error: null },
+      `réserve ${cle.slice(0, 30)}`
+    );
 
     if (error || !data) return null;
     return {

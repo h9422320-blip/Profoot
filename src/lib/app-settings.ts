@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase-admin';
+import { avecDelai, DELAIS } from './delai-securite';
 
 /**
  * Clubs qu un amateur de football reconnait sans reflechir.
@@ -170,11 +171,27 @@ export async function maintenanceActive(
   let valeur = REGLAGES_PAR_DEFAUT;
   try {
     if (client) {
-      const { data } = await client
-        .from('app_settings')
-        .select('app_name, contact_email, maintenance, maintenance_message, grands_clubs, updated_at')
-        .eq('id', 1)
-        .maybeSingle();
+      // ── UN DÉLAI, PARCE QUE CETTE LECTURE EST SUR LE CHEMIN DE TOUT ──────
+      //
+      // Le middleware appelle cette fonction à CHAQUE requête. Sans limite de
+      // temps, une base lente y bloquait toutes les pages du site : mesuré le
+      // 25 août 2026, /pricing et /matches dépassaient trente secondes alors
+      // que le site n'était pas en panne — il attendait.
+      //
+      // Passé une seconde et demie, on renonce et on sert les réglages par
+      // défaut : maintenance désactivée, ce qui laisse le site OUVERT. C'est
+      // le bon choix par défaut — mieux vaut un site accessible pendant une
+      // maintenance oubliée qu'un site fermé parce que la base tarde.
+      const { data } = await avecDelai(
+        client
+          .from('app_settings')
+          .select('app_name, contact_email, maintenance, maintenance_message, grands_clubs, updated_at')
+          .eq('id', 1)
+          .maybeSingle(),
+        DELAIS.middleware,
+        { data: null },
+        'réglages (middleware)'
+      );
       if (data) valeur = versReglages(data);
     } else {
       valeur = await lireReglages();
