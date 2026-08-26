@@ -131,25 +131,37 @@ function CartePreuve({ p }: { p: Preuve }) {
           ))}
         </div>
 
-        {/* LE CŒUR DE LA PREUVE.
-            Avant : « pronostic » puis « résultat », deux lignes empilées qu'il
-            fallait lire l'une après l'autre pour constater qu'elles disaient la
-            même chose. Face à face, la coïncidence se voit d'un seul coup d'œil.
+        {/* LE CŒUR DE LA PREUVE — CE QUE LE MOTEUR SAIT VRAIMENT FAIRE.
+            ────────────────────────────────────────────────────────────────
+            Les deux scores se faisaient face en gros caractères, et le nom du
+            vainqueur annoncé tenait dans une ligne grise en bas de carte.
+            L'ordre était exactement inverse de la vérité du moteur :
 
-            Le signe du milieu est une COCHE, jamais un signe égal : un pronostic
+              • l'ISSUE annoncée tombe juste 50 à 60 % du temps ;
+              • le SCORE EXACT ne tombe juste qu'environ 15 % du temps, et
+                c'est irréductible — c'est du hasard, pas un réglage manquant.
+
+            Mettre le score en titre promettait donc ce que le moteur ne
+            prétend pas tenir. Et comme le score le plus probable d'une issue
+            gagnante est presque toujours 2-1 ou 1-0, le mur donnait en prime
+            l'impression de répondre la même chose à tout le monde — mesuré le
+            26 août 2026 : 2-1 sur 31 % des affiches.
+
+            La carte annonce donc maintenant ce qui a été affirmé — « Victoire
+            de X » — et garde les deux scores dessous, en petit, comme pièce
+            justificative. Rien n'est retiré du contenu : c'est la hiérarchie
+            qui change. La seule ligne disparue est le doublon, puisque le nom
+            du vainqueur figurait déjà en bas.
+
+            Le signe reste une COCHE, jamais un signe égal : un pronostic
             réussi sans être exact (2-1 annoncé, 3-1 joué) reste une réussite,
             et écrire « = » entre deux scores différents serait faux. */}
         <div className="rounded-[18px] border border-white/[0.07] bg-black/25 p-3">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0 text-center">
-              <span className="block text-[8.5px] font-black uppercase tracking-[0.12em] text-white/35 leading-tight">
-                Annoncé avant
-              </span>
-              <span className="block mt-1.5 text-[20px] font-black text-white tabular-nums leading-none">
-                {p.pronoScore ?? "—"}
-              </span>
-            </div>
+          <span className="block text-[8.5px] font-black uppercase tracking-[0.12em] text-white/35 leading-tight">
+            Annoncé avant le match
+          </span>
 
+          <div className="mt-2 flex items-center gap-2.5">
             <span
               className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center border ${
                 or
@@ -159,15 +171,21 @@ function CartePreuve({ p }: { p: Preuve }) {
             >
               {or ? <Crosshair className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" strokeWidth={3} />}
             </span>
+            <span className="text-[15px] font-black text-white leading-tight min-w-0">
+              {libelleIssue(p.pronoIssue, p.equipe1, p.equipe2)}
+            </span>
+          </div>
 
-            <div className="flex-1 min-w-0 text-center">
-              <span className="block text-[8.5px] font-black uppercase tracking-[0.12em] text-[#34D399]/70 leading-tight">
-                Résultat réel
-              </span>
-              <span className="block mt-1.5 text-[20px] font-black text-[#34D399] tabular-nums leading-none">
-                {p.scoreReel ?? "—"}
-              </span>
-            </div>
+          {/* La pièce justificative. Discrète, mais présente : une preuve dont
+              on ne peut pas vérifier les chiffres n'est pas une preuve. */}
+          <div className="mt-2.5 pt-2.5 border-t border-white/[0.06] flex items-center gap-2 text-[11px] font-bold tabular-nums">
+            <span className="text-white/45">
+              annoncé <span className="text-white/70">{p.pronoScore ?? "—"}</span>
+            </span>
+            <span className="text-white/20">·</span>
+            <span className="text-[#34D399]/70">
+              réel <span className="text-[#34D399]">{p.scoreReel ?? "—"}</span>
+            </span>
           </div>
         </div>
 
@@ -182,9 +200,6 @@ function CartePreuve({ p }: { p: Preuve }) {
               Score exact
             </Badge>
           )}
-          <span className="text-[10px] font-semibold text-white/35 leading-tight">
-            {libelleIssue(p.pronoIssue, p.equipe1, p.equipe2)}
-          </span>
         </div>
       </div>
     </article>

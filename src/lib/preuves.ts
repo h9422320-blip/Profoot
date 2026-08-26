@@ -101,7 +101,10 @@ async function masquageDisponible(sb: ReturnType<typeof createAdminClient>): Pro
   return colonneMasquageDisponible;
 }
 
-const produiteParUneVersionDefectueuse = (creeeLe: string | null | undefined) => {
+// Exportée pour l'outil de relevé (`scripts/preuves-du-24.mjs`) : il doit juger
+// EXACTEMENT comme le mur, sinon son total et celui du site diffèrent — ce qui
+// est déjà arrivé le 24 août 2026, avec un « 11 » annoncé pour un « 12 » réel.
+export const produiteParUneVersionDefectueuse = (creeeLe: string | null | undefined) => {
   if (!creeeLe) return false;
   const t = new Date(creeeLe).getTime();
   return PERIODES_DEFECTUEUSES.some(
@@ -140,7 +143,7 @@ async function ficheDuMatch(
  * dans un ordre, tantôt dans l'autre. Sans cela, deux scores identiques en
  * apparence désignent des vainqueurs opposés.
  */
-function inverserScore(score: string | null | undefined): string | null {
+export function inverserScore(score: string | null | undefined): string | null {
   const lu = lireScore(score);
   return lu ? `${lu[1]} - ${lu[0]}` : null;
 }
@@ -153,15 +156,16 @@ function inverserScore(score: string | null | undefined): string | null {
  * seul rapprochement possible ici — le mur ne manipule pas les identifiants du
  * fournisseur.
  */
-function pronoDansLeSensDeLaCarte(
+export function memeEquipe(a: string | null | undefined, b: string | null | undefined): boolean {
+  const n = (s: string) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const x = n(a as string), y = n(b as string);
+  return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+}
+
+export function pronoDansLeSensDeLaCarte(
   figee: { domicileNom: string; butsDomicile: number; butsExterieur: number },
   equipe1DeLaCarte: string | null | undefined
 ): string | null {
-  const memeEquipe = (a: string, b: string) => {
-    const n = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const x = n(a), y = n(b);
-    return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
-  };
   if (!equipe1DeLaCarte) return null;
   return memeEquipe(equipe1DeLaCarte, figee.domicileNom)
     ? `${figee.butsDomicile} - ${figee.butsExterieur}`
@@ -169,14 +173,14 @@ function pronoDansLeSensDeLaCarte(
 }
 
 /** Issue d'un match à partir de deux buts. */
-function issue(buts1: number, buts2: number): 'team1' | 'draw' | 'team2' {
+export function issue(buts1: number, buts2: number): 'team1' | 'draw' | 'team2' {
   if (buts1 > buts2) return 'team1';
   if (buts2 > buts1) return 'team2';
   return 'draw';
 }
 
 /** Lit un score stocké (« 2 - 1 ») ; `null` si le format est inexploitable. */
-function lireScore(score: string | null | undefined): [number, number] | null {
+export function lireScore(score: string | null | undefined): [number, number] | null {
   const m = String(score ?? '').match(/(\d+)\s*[-–]\s*(\d+)/);
   return m ? [Number(m[1]), Number(m[2])] : null;
 }
@@ -393,16 +397,46 @@ export async function construirePreuves(): Promise<{
     // dispose de l'avantage du terrain —, c'est elle qui fait foi. Le vote ne
     // sert plus que de repli pour les matchs antérieurs à ce mécanisme.
     const figee = await lirePredictionBrute(l.fixture_id);
-    const pronoDeReference = figee ? pronoDansLeSensDeLaCarte(figee, l.team1_name) : null;
 
-    const pronoScore =
-      pronoDeReference ??
-      [...m.scores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      l.score ??
-      null;
+    // ── LA CARTE MONTRE LE MATCH DANS LE SENS OÙ IL S'EST JOUÉ ────────────
+    //
+    // La carte reprenait l'ordre de la première analyse enregistrée, qui est
+    // celui tapé par un utilisateur. On a donc publié « Real Betis — Valencia
+    // CF » pour une rencontre disputée À VALENCE, le 25 août 2026.
+    //
+    // La carte n'était pas fausse — pronostic et résultat étaient bien dans le
+    // même sens, le verdict était juste. Mais elle inversait le terrain, et
+    // c'est le genre de détail qu'un amateur de football repère tout de suite.
+    // Sur un mur dont le seul travail est d'inspirer confiance, se tromper de
+    // stade coûte autant que se tromper de score.
+    //
+    // Le sens officiel est déjà connu, sans un appel de plus au fournisseur :
+    // la prédiction de référence est stockée avec l'équipe qui REÇOIT en
+    // premier. Quand elle manque — matchs antérieurs à ce mécanisme — on garde
+    // l'ordre enregistré plutôt que d'inventer.
+    const aRetourner = !!figee && !memeEquipe(l.team1_name, figee.domicileNom);
+
+    const equipe1 = aRetourner ? l.team2_name : l.team1_name;
+    const equipe2 = aRetourner ? l.team1_name : l.team2_name;
+    const logo1 = aRetourner ? l.team2_logo : l.team1_logo;
+    const logo2 = aRetourner ? l.team1_logo : l.team2_logo;
+
+    // Le pronostic majoritaire et le score réel sont exprimés dans l'ordre de
+    // `m.ligne` : les retourner AVEC la carte, sinon on recrée exactement la
+    // contradiction que ce fichier passe son temps à corriger.
+    const majoritaireDansLOrdreLu =
+      [...m.scores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? l.score ?? null;
+    const majoritaire = aRetourner
+      ? inverserScore(majoritaireDansLOrdreLu)
+      : majoritaireDansLOrdreLu;
+    const scoreReel = aRetourner ? inverserScore(l.real_score) : (l.real_score ?? null);
+
+    const pronoDeReference = figee ? pronoDansLeSensDeLaCarte(figee, equipe1) : null;
+
+    const pronoScore = pronoDeReference ?? majoritaire ?? null;
 
     const buts = lireScore(pronoScore);
-    const reels = lireScore(l.real_score);
+    const reels = lireScore(scoreReel);
 
     // ── LA CARTE SE JUGE SUR CE QU'ELLE MONTRE ────────────────────────────
     //
@@ -460,10 +494,12 @@ export async function construirePreuves(): Promise<{
 
     const valeurs: Record<string, any> = {
       fixture_id: l.fixture_id ?? null,
-      team1_name: l.team1_name ?? '',
-      team1_logo: l.team1_logo ?? null,
-      team2_name: l.team2_name ?? '',
-      team2_logo: l.team2_logo ?? null,
+      // Orientés sur le vrai domicile — voir « LA CARTE MONTRE LE MATCH DANS
+      // LE SENS OÙ IL S'EST JOUÉ » plus haut.
+      team1_name: equipe1 ?? '',
+      team1_logo: logo1 ?? null,
+      team2_name: equipe2 ?? '',
+      team2_logo: logo2 ?? null,
       // La fiche du match fait foi ; le libellé enregistré à l'analyse ne sert
       // que de repli quand le fournisseur ne répond pas.
       competition: fiche.competition ?? l.competition ?? null,
@@ -472,7 +508,7 @@ export async function construirePreuves(): Promise<{
       date_match: fiche.date ?? m.dateMatch,
       prono_issue: buts ? issue(buts[0], buts[1]) : null,
       prono_score: pronoScore,
-      score_reel: l.real_score ?? null,
+      score_reel: scoreReel,
       issue_reelle: reels ? issue(reels[0], reels[1]) : null,
       issue_correcte: issueCorrecte,
       score_exact: scoreExact,
