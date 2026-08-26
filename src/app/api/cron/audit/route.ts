@@ -59,8 +59,30 @@ export async function GET(request: Request) {
 
     // Le sort des demandes de paiement se releve aussi ici : sans lui, on voit
     // que l argent ne rentre pas sans jamais savoir pourquoi.
+    // ── UN RENONCEMENT SILENCIEUX N'EN EST PAS UN ─────────────────────────
+    //
+    // `rafraichirStatutsPaiement` rend `{ releves: 0, erreur: … }` — sans lever
+    // d'exception — quand la clé de la boutique manque sur le serveur. La
+    // valeur de retour était jetée : la fonction pouvait donc ne rien faire
+    // tous les jours sans qu'une seule ligne ne l'indique.
+    //
+    // Constaté le 26 août 2026 : les 2 106 intentions de paiement avaient
+    // TOUTES leurs colonnes de diagnostic vides. Quand un client écrivait
+    // « je n'arrive pas à payer », il n'y avait rien à regarder. Le relevé
+    // lancé à la main a rendu la réponse en une minute — première cause
+    // d'échec : un portefeuille pas assez approvisionné.
+    //
+    // Même principe que `garde-cron.ts` : ce qui ne se fait pas doit se dire.
     try {
-      await rafraichirStatutsPaiement(40);
+      const r = await rafraichirStatutsPaiement(40);
+      if (r.erreur) {
+        console.error(
+          `[AUDIT] Relevé des paiements NON EFFECTUÉ : ${r.erreur} ` +
+            `Tant que ce message revient, aucune cause d'échec de paiement n'est enregistrée.`
+        );
+      } else {
+        console.log(`[AUDIT] Paiements relevés : ${r.releves}, dont ${r.echecs} en échec.`);
+      }
     } catch (e: any) {
       console.warn('[AUDIT] Releve des paiements impossible :', e?.message);
     }

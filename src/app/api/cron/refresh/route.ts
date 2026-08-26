@@ -31,22 +31,48 @@ export async function GET(request: Request) {
   }
 
   const debut = Date.now();
+
+  // ── L'ORDRE DE CETTE TÂCHE EST SA PROTECTION ────────────────────────────
+  //
+  // La plateforme coupe la fonction à `maxDuration`. Ce qui s'exécute en
+  // dernier est donc ce qu'on accepte de perdre — et l'ordre d'origine plaçait
+  // le plus cher en tête et le plus précieux derrière.
+  //
+  // Mesuré le 26 août 2026 sur `precision_quotidienne`, écrite près de la fin :
+  // sur douze jours, la tâche n'est allée au bout que CINQ fois. Le 25 août est
+  // le cas parlant — la vérification a bien tourné (1 214 écritures à minuit)
+  // et l'enregistrement final manque. La tâche démarre, travaille, se fait
+  // couper.
+  //
+  // Un seul défaut expliquait trois symptômes qu'on croyait distincts :
+  // des journées sans vérification, les 2 106 ventes sans diagnostic de
+  // paiement, et les trous du journal quotidien.
+  //
+  // L'ordre suit désormais la valeur divisée par le coût :
+  //
+  //   1. vérifier les pronostics ....... 6,6 s, et tout le reste en dépend
+  //   2. mur de preuves + journal ...... ce que le public voit
+  //   3. ventes et accès ............... quelqu'un a payé et n'a rien reçu
+  //   4. hiérarchie des championnats ... améliore le moteur, peut attendre
+  //   5. relevé des cotes .............. matière pour dans trois semaines
+  //   6. compétitions et effectifs ..... le plus lourd, et le moins urgent :
+  //                                      les caches le refont d'eux-mêmes à
+  //                                      la première visite.
+  //
+  // Et le budget ci-dessous s'arrête AVANT la coupure, en disant ce qu'il
+  // renonce à faire. Une tâche tuée en plein vol ne laisse aucune trace ; une
+  // tâche qui s'arrête d'elle-même écrit ce qu'elle n'a pas fait.
+  const BUDGET_MS = 240_000; // 300 s accordées, on garde une marge de sécurité.
+  const ecoule = () => Date.now() - debut;
+  const ignores: string[] = [];
+  const encoreLeTemps = (etape: string, coutMs: number) => {
+    if (ecoule() + coutMs <= BUDGET_MS) return true;
+    ignores.push(etape);
+    console.warn(`[CRON] ${etape} ignoré : ${Math.round(ecoule() / 1000)} s déjà écoulées.`);
+    return false;
+  };
+
   try {
-    // `force` ignore les caches : c'est tout l'intérêt d'une tâche planifiée.
-    const [statuses, teams] = await Promise.all([
-      getAllCompetitionStatuses(Object.keys(LEAGUE_IDS), true),
-      // `true` : on relit chez le fournisseur au lieu de servir la réserve.
-      // C'est ce passage qui la rafraîchit — sans lui, elle vieillirait jusqu'à
-      // expiration et le premier visiteur du jour paierait l'attente.
-      getLiveTeams(true),
-    ]);
-
-    const resume = Object.values(statuses).map((s) => ({
-      competition: s.id,
-      etat: s.status,
-      joues: `${s.played}/${s.total}`,
-    }));
-
     // Confronte les pronostics passés aux résultats réels. C'est ce passage
     // quotidien qui alimente la précision affichée : sans lui, aucun taux ne
     // pourrait être mesuré et il faudrait en inventer un.
@@ -73,62 +99,6 @@ export async function GET(request: Request) {
     // analyses examinées en 6,6 secondes, sur les 300 que la plateforme
     // accorde.
     const precision = await verifierPronostics(10000);
-
-    // ── LA HIÉRARCHIE DES CHAMPIONNATS SE REFAIT ICI ──────────────────────
-    //
-    // Elle sert à comparer une équipe belge et une équipe kazakhe, dont les
-    // notes sont calculées dans deux championnats différents et ne veulent
-    // rien dire l'une contre l'autre. Mesuré : les rencontres entre
-    // championnats passent de 42,5 % à 50,1 % de réussite, les coupes
-    // européennes de 48,6 % à 55,9 %.
-    //
-    // Elle bouge lentement — un championnat ne change pas de niveau en une
-    // nuit — et la réserve la garde huit jours. Le recalcul quotidien coûte
-    // donc surtout des lectures en réserve, et se refait proprement quand
-    // elle expire.
-    //
-    // Un échec ne fait rien tomber : sans hiérarchie, le rapport vaut 1 et le
-    // moteur se comporte exactement comme avant qu'elle existe.
-    let championnats: { compétitions: number; confrontations: number } | null = null;
-    try {
-      const forces = await recalculerForcesChampionnats();
-      if (forces) {
-        championnats = {
-          compétitions: Object.keys(forces.coefficients).length,
-          confrontations: forces.confrontations,
-        };
-        console.log(
-          `[CRON] Hiérarchie des championnats refaite : ${championnats.compétitions} compétitions, ` +
-            `${forces.confrontations} confrontations, ${forces.matchsUtilises} matchs lus.`
-        );
-      }
-    } catch (e: any) {
-      console.warn('[CRON] Hiérarchie des championnats non refaite :', e?.message);
-    }
-
-    // ── LE RELEVÉ DES COTES DU MARCHÉ ─────────────────────────────────────
-    //
-    // Il ne sert à RIEN aujourd'hui, et c'est assumé : il constitue la matière
-    // qui manquera dans trois semaines.
-    //
-    // Les cotes des bookmakers sont le meilleur prédicteur public du football.
-    // Le 24 août 2026, elles ont dû être écartées de la mise au point du
-    // moteur parce que le fournisseur ne les garde pas : celles du 23 août
-    // rendaient dix matchs, celles du 16 août plus rien. Rien n'était donc
-    // validable sur l'historique.
-    //
-    // Chaque jour sans relevé est un jour de mesure perdu pour toujours.
-    let cotes: { jours: number; matchs: number } | null = null;
-    try {
-      const r = await releverCotes();
-      cotes = { jours: r.jours, matchs: r.matchs };
-      console.log(
-        `[CRON] Cotes relevées : ${r.matchs} rencontres sur ${r.jours} journées — ` +
-          r.detail.map((d) => `${d.jour.slice(5)} ${d.matchs}`).join(', ')
-      );
-    } catch (e: any) {
-      console.warn('[CRON] Relevé des cotes impossible :', e?.message);
-    }
 
     // ── LE MUR SE RECONSTRUIT ICI AUSSI ───────────────────────────────────────
     //
@@ -208,15 +178,111 @@ export async function GET(request: Request) {
       console.warn('[CRON] Rattrapage des accès impossible :', e?.message);
     }
 
+    // ── LA HIÉRARCHIE DES CHAMPIONNATS SE REFAIT ICI ──────────────────────
+    //
+    // Elle sert à comparer une équipe belge et une équipe kazakhe, dont les
+    // notes sont calculées dans deux championnats différents et ne veulent
+    // rien dire l'une contre l'autre. Mesuré : les rencontres entre
+    // championnats passent de 42,5 % à 50,1 % de réussite, les coupes
+    // européennes de 48,6 % à 55,9 %.
+    //
+    // Elle bouge lentement — un championnat ne change pas de niveau en une
+    // nuit — et la réserve la garde huit jours. Le recalcul quotidien coûte
+    // donc surtout des lectures en réserve, et se refait proprement quand
+    // elle expire.
+    //
+    // Un échec ne fait rien tomber : sans hiérarchie, le rapport vaut 1 et le
+    // moteur se comporte exactement comme avant qu'elle existe.
+    let championnats: { compétitions: number; confrontations: number } | null = null;
+    try {
+      const forces = encoreLeTemps('hiérarchie des championnats', 45_000)
+        ? await recalculerForcesChampionnats()
+        : null;
+      if (forces) {
+        championnats = {
+          compétitions: Object.keys(forces.coefficients).length,
+          confrontations: forces.confrontations,
+        };
+        console.log(
+          `[CRON] Hiérarchie des championnats refaite : ${championnats.compétitions} compétitions, ` +
+            `${forces.confrontations} confrontations, ${forces.matchsUtilises} matchs lus.`
+        );
+      }
+    } catch (e: any) {
+      console.warn('[CRON] Hiérarchie des championnats non refaite :', e?.message);
+    }
+
+    // ── LE RELEVÉ DES COTES DU MARCHÉ ─────────────────────────────────────
+    //
+    // Il ne sert à RIEN aujourd'hui, et c'est assumé : il constitue la matière
+    // qui manquera dans trois semaines.
+    //
+    // Les cotes des bookmakers sont le meilleur prédicteur public du football.
+    // Le 24 août 2026, elles ont dû être écartées de la mise au point du
+    // moteur parce que le fournisseur ne les garde pas : celles du 23 août
+    // rendaient dix matchs, celles du 16 août plus rien. Rien n'était donc
+    // validable sur l'historique.
+    //
+    // Chaque jour sans relevé est un jour de mesure perdu pour toujours.
+    let cotes: { jours: number; matchs: number } | null = null;
+    try {
+      if (!encoreLeTemps('relevé des cotes', 45_000)) throw new Error('budget épuisé');
+      const r = await releverCotes();
+      cotes = { jours: r.jours, matchs: r.matchs };
+      console.log(
+        `[CRON] Cotes relevées : ${r.matchs} rencontres sur ${r.jours} journées — ` +
+          r.detail.map((d) => `${d.jour.slice(5)} ${d.matchs}`).join(', ')
+      );
+    } catch (e: any) {
+      console.warn('[CRON] Relevé des cotes impossible :', e?.message);
+    }
+
+    // ── ET SEULEMENT MAINTENANT, LE PLUS LOURD ────────────────────────────
+    //
+    // Recharger toutes les compétitions et tous les effectifs chez le
+    // fournisseur est de loin le passage le plus coûteux de cette tâche. Il
+    // ouvrait le travail ; il le referme désormais.
+    //
+    // C'est aussi le moins urgent : ces données ont leur propre réserve, qui
+    // se refait toute seule à la première visite du jour. Les sauter coûte une
+    // attente à un visiteur ; les faire passer devant coûtait la vérification
+    // des pronostics, le mur, et les accès de ceux qui avaient payé.
+    let statuses: Record<string, any> = {};
+    let teams: any[] = [];
+    if (encoreLeTemps('rafraîchissement des compétitions et effectifs', 60_000)) {
+      try {
+        [statuses, teams] = await Promise.all([
+          getAllCompetitionStatuses(Object.keys(LEAGUE_IDS), true),
+          getLiveTeams(true),
+        ]);
+      } catch (e: any) {
+        console.warn('[CRON] Rafraîchissement des compétitions impossible :', e?.message);
+      }
+    }
+
+    const resume = Object.values(statuses).map((s: any) => ({
+      competition: s.id,
+      etat: s.status,
+      joues: `${s.played}/${s.total}`,
+    }));
+    // ── CE QU'ON N'A PAS FAIT SE DIT ────────────────────────────────────
+    //
+    // Une tâche coupée par la plateforme ne laisse rien derrière elle : c'est
+    // ce qui a permis à huit journées de disparaître sans que personne ne
+    // s'en aperçoive. Une tâche qui renonce d'elle-même l'écrit, et le rend
+    // dans sa réponse.
     console.log(
       `[CRON] Rafraîchissement terminé en ${Date.now() - debut}ms — ` +
       `${Object.keys(statuses).length} compétitions, ${teams.length} équipes, ` +
-      `${precision.verifiees} pronostic(s) vérifié(s).`
+      `${precision.verifiees} pronostic(s) vérifié(s).` +
+      (ignores.length ? ` ÉTAPES IGNORÉES faute de temps : ${ignores.join(', ')}.` : '')
     );
 
     return NextResponse.json({
       ok: true,
       dureeMs: Date.now() - debut,
+      /** Les étapes abandonnées faute de temps — vide quand tout est passé. */
+      ignores,
       competitions: Object.keys(statuses).length,
       equipes: teams.length,
       pronostics: precision,
