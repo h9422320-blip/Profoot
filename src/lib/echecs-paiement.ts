@@ -127,8 +127,26 @@ export async function rafraichirStatutsPaiement(limite = 40): Promise<{
           statut_boutique: v.status ?? null,
           cause_echec: erreur?.code ?? null,
           message_echec: erreur?.customer_message ?? erreur?.message ?? null,
+          // ── LA BOUTIQUE ÉCRIT `name`, PAS `label` NI `value` ────────────
+          //
+          // Relevé le 26 août 2026 sur des ventes togolaises réelles, la
+          // boutique renvoie :
+          //
+          //     "method": { "name": "Mixx by Yas", "icon_url": "…" }
+          //
+          // On ne lisait que `label` et `value`, qui n'existent pas : le moyen
+          // de paiement restait donc vide sur TOUTES les ventes, y compris
+          // celles qui avaient parfaitement abouti. On ne pouvait pas répondre
+          // à la question la plus simple qui soit — « par quel moyen les gens
+          // paient-ils, et lequel échoue ? » — alors que la réponse arrivait
+          // dans la réponse à chaque appel.
+          //
+          // `label` et `value` sont conservés : ils ne coûtent rien et
+          // couvriraient un changement de format côté boutique.
           moyen_paiement:
-            typeof moyen === 'string' ? moyen : moyen?.label ?? moyen?.value ?? null,
+            typeof moyen === 'string'
+              ? moyen
+              : moyen?.name ?? moyen?.label ?? moyen?.value ?? null,
           releve_le: new Date().toISOString(),
         })
         .eq('sale_id', intention.sale_id);

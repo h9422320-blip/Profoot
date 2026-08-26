@@ -98,7 +98,19 @@ const REMPLACEMENTS: [RegExp, Remplacement][] = [
   //
   // `mise` seul n'est PAS visé : « mise en page », « mise à jour », « mise en
   // avant » sont du français courant et abondent dans l'application.
-  [/\bmis(er|ez|ons|erai|erais|era|eront)\b/gi, 'compter'],
+  // ── LA CONJUGAISON DOIT SURVIVRE AU REMPLACEMENT ───────────────────────
+  //
+  // Le remplacement était le mot nu « compter », quelle que soit la forme
+  // rencontrée. Mesuré le 26 août 2026 sur des analyses réellement servies :
+  //
+  //     « Real Madrid misera sur son volume »  →  « Real Madrid compter sur »
+  //     « Les Eagles miseront sur des transitions » → « Les Eagles compter »
+  //
+  // Une phrase au verbe non conjugué se remarque plus vite qu'un mot de pari.
+  // On reprend donc la terminaison capturée : `mis(era)` devient `compt` +
+  // `era`. Les sept formes visées se reconstruisent toutes correctement, et
+  // « compter sur » est la tournure exacte que le football emploie déjà.
+  [/\bmis(er|ez|ons|erai|erais|era|eront)\b/gi, 'compt$1'],
   [/\bcoupon(s)?\b/gi, 'sélection$1'],
   [/\bticket(s)?\s+de\s+jeu\b/gi, 'sélection$1'],
   [/\bbanco\b/gi, 'certitude'],
@@ -158,6 +170,24 @@ const REMPLACEMENTS: [RegExp, Remplacement][] = [
 
   [/\bbookmaker(s)?\b/gi, 'marché'],
   [/\bodds\b/gi, 'probabilités'],
+  // ── « COTÉ » L'ADJECTIF, ÉCRIT SANS SON ACCENT ─────────────────────────
+  //
+  // Le modèle écrit parfois sans accents. Relevé le 26 août 2026 dans une
+  // analyse servie :
+  //
+  //     « Malgré son statut cote, Tottenham est en pleine crise »
+  //
+  // Il voulait « coté » — bien classé, réputé. La règle qui suit y voyait le
+  // mot du marché et rendait « son statut probabilité », une phrase que
+  // personne ne peut lire. La faute de conformité était imaginaire ; le
+  // charabia, lui, était réel et servi à un abonné payant.
+  //
+  // On répare donc l'accent manquant AVANT d'appliquer la règle du marché.
+  // « coté » accentué ne correspond plus au motif suivant, et la phrase
+  // retrouve son sens au lieu de le perdre. Corriger vaut mieux que censurer.
+  [/(\b(?:statut|bien|mal|mieux|tr[eè]s|haut|hautement|peu|plus|moins|si|assez|aussi)\s+)cote\b/gi,
+    '$1coté'],
+
   [/\bcotes\b(?!\s*d['’\s]?\s*ivoire)/gi, 'probabilités'],
   [/\bcote\b(?!\s*d['’\s]?\s*ivoire)/gi, 'probabilité'],
 ];
@@ -289,6 +319,133 @@ export function assainir(texte: string): { texte: string; methode: 'intact' | 'p
   if (contientVocabulaireInterdit(parMot)) parMot = remplacerVocabulaire(parMot);
   return { texte: parMot, methode: 'mot' };
 }
+
+/**
+ * LES SEULS CHAMPS D'UNE ANALYSE QUI CONTIENNENT DE LA PROSE.
+ *
+ * Relevé le 26 août 2026 sur cent vingt analyses réelles, en classant chaque
+ * chemin par la longueur du texte qu'il porte. Sept chemins dépassent la
+ * centaine de caractères ; tout le reste est de la donnée courte — noms de
+ * clubs, stades, dates ISO, noms d'icônes, scores — qu'il ne faut surtout pas
+ * toucher.
+ *
+ * La liste est explicite, et c'est délibéré. Parcourir l'objet entier en
+ * remplaçant toutes les chaînes rencontrées atteindrait « Paris Saint-Germain »
+ * dans `globalForm.team1.name`, un nom de stade ou un identifiant. On préfère
+ * un filet nommé, qu'on relit, à un filet automatique qu'on ne contrôle plus.
+ */
+const CHAMPS_DE_PROSE = [
+  'quickSummary',
+  'sections[].title',
+  'sections[].content',
+  'scenarios[].title',
+  'scenarios[].content',
+  'predictedScore.reasoning',
+  'keyStrengths.team1[]',
+  'keyStrengths.team2[]',
+] as const;
+
+/** Applique `transformer` à la valeur désignée par un chemin, si elle existe. */
+function surLeChemin(racine: any, chemin: string, transformer: (s: string) => string): number {
+  const segments = chemin.split('.');
+  let touches = 0;
+
+  const descendre = (noeud: any, i: number): void => {
+    if (noeud == null || i >= segments.length) return;
+    const brut = segments[i];
+    const estListe = brut.endsWith('[]');
+    const cle = estListe ? brut.slice(0, -2) : brut;
+    const dernier = i === segments.length - 1;
+    const cible = noeud[cle];
+    if (cible == null) return;
+
+    if (estListe) {
+      if (!Array.isArray(cible)) return;
+      cible.forEach((element: any, index: number) => {
+        if (dernier) {
+          if (typeof element === 'string') {
+            const propre = transformer(element);
+            if (propre !== element) touches++;
+            cible[index] = propre;
+          }
+        } else {
+          descendre(element, i + 1);
+        }
+      });
+      return;
+    }
+
+    if (dernier) {
+      if (typeof cible !== 'string') return;
+      const propre = transformer(cible);
+      if (propre !== cible) touches++;
+      noeud[cle] = propre;
+      return;
+    }
+    descendre(cible, i + 1);
+  };
+
+  descendre(racine, 0);
+  return touches;
+}
+
+/**
+ * ASSAINIT UNE ANALYSE AVANT QU'ELLE NE PARTE.
+ *
+ * ── POURQUOI CETTE FONCTION EXISTE À CÔTÉ DE `assainir` ───────────────────
+ *
+ * Le filtre a été construit pour l'Agent VIP, et n'a jamais protégé que lui.
+ * Mesuré le 26 août 2026 sur les quatre cents dernières analyses servies :
+ * CINQUANTE contenaient du vocabulaire à risque — « miser sur un contre »
+ * (28 fois), « sans trembler » (22), « les faveurs des pronostics » (3).
+ *
+ * L'analyse est le produit principal, généré des milliers de fois par jour, et
+ * c'est le premier texte qu'un contrôle de conformité lirait. Le protéger
+ * comptait davantage que de protéger l'agent, et il ne l'était pas du tout.
+ *
+ * ── POURQUOI ON REMPLACE AU LIEU DE SUPPRIMER ─────────────────────────────
+ *
+ * `assainir` retire d'abord la phrase fautive, et ne remplace qu'en dernier
+ * recours. C'est le bon ordre pour une réponse conversationnelle, où une
+ * phrase en moins ne se voit pas.
+ *
+ * Dans une analyse, ce serait un trou au milieu d'une section achetée. Et les
+ * tournures relevées ne le méritent pas : « Le Havre devra miser sur un
+ * contre » est du commentaire de football ordinaire, qui devient « devra
+ * compter sur un contre » sans rien perdre. On remplace donc toujours, et on
+ * ne supprime jamais — l'abonné garde le texte entier qu'il a payé.
+ *
+ * L'objet est modifié sur place : le remplacement est idempotent, et l'analyse
+ * mise en réserve doit être propre elle aussi, sans quoi la visite suivante
+ * ressortirait le texte d'origine.
+ */
+export function assainirAnalyse(donnees: any): { champsNettoyes: number; motsRetires: string[] } {
+  if (!donnees || typeof donnees !== 'object') return { champsNettoyes: 0, motsRetires: [] };
+
+  const motsRetires = new Set<string>();
+  let champsNettoyes = 0;
+
+  const nettoyer = (texte: string): string => {
+    if (!contientVocabulaireInterdit(texte)) return texte;
+    for (const m of motsInterdits(texte)) motsRetires.add(m);
+    // Deux passes : un remplacement peut, très rarement, en révéler un autre.
+    let propre = remplacerVocabulaire(texte);
+    if (contientVocabulaireInterdit(propre)) propre = remplacerVocabulaire(propre);
+    return propre;
+  };
+
+  for (const chemin of CHAMPS_DE_PROSE) champsNettoyes += surLeChemin(donnees, chemin, nettoyer);
+
+  if (champsNettoyes) {
+    console.log(
+      `[VOCABULAIRE] Analyse assainie : ${champsNettoyes} champ(s) — ${[...motsRetires].join(', ')}`
+    );
+  }
+  return { champsNettoyes, motsRetires: [...motsRetires] };
+}
+
+/** Les chemins surveillés, exposés pour que les tests les vérifient. */
+export const CHEMINS_DE_PROSE: readonly string[] = CHAMPS_DE_PROSE;
 
 /**
  * La consigne de réécriture envoyée au modèle — ÉTAGE 1.

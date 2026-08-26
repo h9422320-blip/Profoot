@@ -21,6 +21,7 @@ import { lirePredictionFigee, figerPrediction } from "@/lib/prediction-figee";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
+import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 
 // ============================================================================
 // ProFoot ANALYSE ENGINE v6.0 — FULL AI DELEGATION
@@ -671,6 +672,22 @@ async function analyser(req: Request, billet: BilletQuota) {
   let fixtureIdResolu: number | null = null;
 
   const respond = async (data: Record<string, any>, dejaEnregistre = false) => {
+    // ── LE VOCABULAIRE EST NETTOYÉ ICI, ET NULLE PART AILLEURS ────────────
+    //
+    // `respond` est le seul passage obligé : les quatre sorties de cette route
+    // — analyse fraîche, analyse en réserve, match déjà joué, repli — y
+    // convergent toutes. Le nettoyage y précède l'enregistrement ET la
+    // réponse, donc rien ne peut partir ni être conservé sans être passé
+    // dessus.
+    //
+    // C'est exactement la leçon du mur de preuves : une règle juste, branchée
+    // à un seul endroit trop tard, laisse passer tout ce qui emprunte un autre
+    // chemin. Ici il n'y a qu'un chemin.
+    //
+    // Le filtre ne touche que les champs de prose, jamais les noms de clubs ni
+    // les chiffres — voir `CHAMPS_DE_PROSE` dans `filtre-vocabulaire.ts`.
+    assainirAnalyse(data);
+
     // Le billet est honoré : quelque chose part vers l'abonné — une analyse
     // complète, un match déjà joué ou un repli, peu importe. Le décompte est
     // alors mérité, et l'enveloppe extérieure ne le remboursera pas.
