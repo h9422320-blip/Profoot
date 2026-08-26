@@ -124,23 +124,82 @@ export async function ecrireReglages(
 // ── Lecture allégée pour le middleware ──
 
 let cache: { valeur: AppSettings; expire: number } | null = null;
-const DUREE_CACHE_MS = 30_000;
+let rafraichissement: Promise<AppSettings> | null = null;
+const DUREE_CACHE_MS = 60_000;
 
 /**
- * État de maintenance, mis en cache 30 secondes.
+ * État de maintenance — servi sans jamais faire attendre le visiteur.
  *
- * Le middleware s'exécute à chaque requête : interroger la base à chaque fois
- * ajouterait un aller-retour réseau à toutes les pages du site. Trente secondes
- * de décalage à l'activation sont sans conséquence, et l'administrateur voit
- * l'état réel dans l'administration, qui lit la base sans cache.
+ * ── CE QUE COÛTAIT L'ATTENTE, MESURÉ LE 26 AOÛT 2026 ──────────────────────
+ *
+ * Le middleware est la seule fonction qui s'exécute à chaque requête : toutes
+ * les pages du site sont prérendues et servies par le CDN. Il est donc le seul
+ * endroit où le site peut encore être lent — et il l'était.
+ *
+ * Comparaison d'une adresse qui le traverse et d'une image qui l'évite, cinq
+ * tours d'affilée :
+ *
+ *     /            1,565s  0,523s  0,363s  0,465s  1,013s
+ *     /pricing     0,585s  0,309s  0,349s  0,276s  2,517s
+ *     /logo.png    0,619s  0,461s  0,406s  0,306s  0,400s   ← sans middleware
+ *
+ * L'image reste plate ; les pages font des pointes à deux secondes et demie.
+ * L'écart, c'est cette lecture : le cache mémoire de trente secondes meurt
+ * avec l'instance, et chaque instance neuve rouvrait une connexion à la base
+ * pendant que le visiteur regardait une page blanche.
+ *
+ * ── SERVIR D'ABORD, RELIRE ENSUITE ────────────────────────────────────────
+ *
+ * Une valeur périmée est rendue IMMÉDIATEMENT, et la relecture part derrière
+ * sans qu'on l'attende. Seule la toute première requête d'une instance attend,
+ * une fois, puis plus jamais tant que l'instance vit.
+ *
+ * Le décalage que ça introduit est d'une requête : l'administrateur active la
+ * maintenance, la requête suivante passe encore, celle d'après bascule. C'était
+ * déjà le cas dans la fenêtre de trente secondes — on ne perd rien de réel, et
+ * on gagne deux secondes sur chaque page.
+ *
+ * En cas d'échec, le repli reste « site OUVERT » : mieux vaut un site
+ * accessible pendant une maintenance oubliée qu'un site fermé parce que la
+ * base tarde.
  */
 export async function maintenanceActive(
   client?: { from: (t: string) => any }
 ): Promise<{ active: boolean; message: string }> {
-  if (cache && Date.now() < cache.expire) {
-    return { active: cache.valeur.maintenance, message: cache.valeur.maintenanceMessage };
+  const rendre = (v: AppSettings) => ({ active: v.maintenance, message: v.maintenanceMessage });
+
+  if (cache && Date.now() < cache.expire) return rendre(cache.valeur);
+
+  // Une seule relecture à la fois : dix requêtes simultanées sur une instance
+  // froide ne doivent pas ouvrir dix connexions.
+  const relancer = (): Promise<AppSettings> => {
+    if (!rafraichissement) {
+      rafraichissement = lireEtatMaintenance(client)
+        .catch(() => REGLAGES_PAR_DEFAUT)
+        .then((v) => {
+          cache = { valeur: v, expire: Date.now() + DUREE_CACHE_MS };
+          rafraichissement = null;
+          return v;
+        });
+    }
+    return rafraichissement;
+  };
+
+  // Valeur périmée en mémoire : on la sert telle quelle et on relit derrière.
+  if (cache) {
+    const connu = cache.valeur;
+    void relancer();
+    return rendre(connu);
   }
 
+  // Premier passage de cette instance : on attend, une seule fois.
+  return rendre(await relancer());
+}
+
+/** La lecture elle-même. Ne lève jamais : rend les valeurs par défaut. */
+async function lireEtatMaintenance(
+  client?: { from: (t: string) => any }
+): Promise<AppSettings> {
   // ── CETTE LECTURE ÉCHOUAIT DEPUIS LE DÉBUT, EN SILENCE ──────────────────
   //
   // Le commentaire d'origine affirmait ici que « la table est en lecture
@@ -200,8 +259,9 @@ export async function maintenanceActive(
     valeur = REGLAGES_PAR_DEFAUT;
   }
 
-  cache = { valeur, expire: Date.now() + DUREE_CACHE_MS };
-  return { active: valeur.maintenance, message: valeur.maintenanceMessage };
+  // La mise en cache est faite par l'appelant : c'est lui qui sait s'il a
+  // attendu cette lecture ou s'il l'a lancée derrière une valeur périmée.
+  return valeur;
 }
 
 /** Vide le cache après un enregistrement, pour que l'effet soit immédiat. */
