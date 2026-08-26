@@ -210,12 +210,53 @@ export async function computeEntitlements(
     };
   }
 
-  const { data: subscriptions, error } = await supabase
+  const CHAMPS = 'plan, status, expires_at, created_at';
+  const { data, error } = await supabase
     .from('subscriptions')
-    .select('plan, status, expires_at, created_at')
+    .select(CHAMPS)
     .eq('user_id', user.id)
     .eq('status', 'active')
     .order('created_at', { ascending: false });
+
+  let subscriptions = data;
+
+  // ── AVANT DE DIRE « GRATUIT », VÉRIFIER QU'ELLE N'A PAS PAYÉ ───────────
+  //
+  // Le 26 août 2026, Kevine Ndembo a payé 2 000 FCFA à 12h22. La boutique a
+  // bien encaissé — statut « completed », MTN MoMo — mais sa notification ne
+  // nous est jamais parvenue. Pendant trois heures, cette ligne exactement a
+  // conclu « gratuit », et l'application lui a servi l'aperçu à 15 % de
+  // l'analyse. Il a réessayé de payer, a renoncé, puis a écrit.
+  //
+  // L'ouverture normale marche : 90 % des accès s'ouvrent en moins de deux
+  // minutes, médiane 45 secondes. Le rattrapage complet, lui, ne passe qu'une
+  // fois par nuit — et la tâche qui le porte ne s'est déclenchée que cinq
+  // jours sur douze. Deux défaillances rares, additionnées sur un seul client.
+  //
+  // On ajoute donc le seul angle qui manquait : l'instant où la personne
+  // regarde son écran. La vérification est enveloppée de deux verrous — une
+  // lecture en base d'abord, une mémoire de cinq minutes ensuite — pour que
+  // les cinq mille visiteurs gratuits ne déclenchent aucun appel externe.
+  // Voir `acces-immediat.ts`.
+  if (!error && !subscriptions?.length) {
+    const [{ ouvrirAccesPayeSiBesoin }, { createAdminClient }] = await Promise.all([
+      import('./acces-immediat'),
+      import('./supabase-admin'),
+    ]);
+    const admin = createAdminClient();
+
+    if ((await ouvrirAccesPayeSiBesoin(admin, user)).ouvert) {
+      // Relecture par le client de service : l'abonnement vient d'être écrit,
+      // et le client de session pourrait ne pas le voir immédiatement.
+      const { data: apres } = await admin
+        .from('subscriptions')
+        .select(CHAMPS)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+      subscriptions = apres as typeof data;
+    }
+  }
 
   if (error || !subscriptions?.length) return FREE_ENTITLEMENTS;
 
