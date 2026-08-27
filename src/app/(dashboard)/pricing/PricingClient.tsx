@@ -4,7 +4,7 @@ import { Check, Zap, Brain, TrendingUp, Shield, Star, Loader2, Crown, X, Flame, 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
-import { sessionProbable } from "@/lib/session-legere";
+import { sessionPresumee } from "@/lib/session-legere";
 import dynamic from "next/dynamic";
 import { usePaysAcheteur } from "@/components/usePaysAcheteur";
 import { signalerEtape } from "@/components/etapes-vente";
@@ -201,7 +201,7 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
     //
     // Ce que le serveur dit ensuite reste la seule vérité sur l'offre en cours :
     // ce raccourci décide seulement s'il vaut la peine de lui poser la question.
-    if (!sessionProbable()) {
+    if (!sessionPresumee()) {
       setCheckingStatus(false);
       return;
     }
@@ -285,7 +285,7 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
   };
 
   // Hiérarchie des offres : on ne propose pas d'acheter une offre déjà couverte
-  // par l'abonnement en cours.
+  // par l offre en cours.
   const RANK: Record<PlanTier, number> = { FREE: 0, ESSENTIAL: 1, PRO: 2, VIP: 3 };
   const couvertPar = (tier: PlanTier) => RANK[plan] >= RANK[tier];
 
@@ -503,7 +503,7 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : couvert ? (
                     <>
-                      {plan === offre.tier ? 'Abonnement Actif' : 'Déjà inclus'}
+                      {plan === offre.tier ? 'Accès Actif' : 'Déjà inclus'}
                       <Check className="w-4 h-4" />
                     </>
                   ) : enCours ? (
@@ -525,7 +525,7 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
 
       {/* ── TROIS ARGUMENTS, UNE SEULE LIGNE ───────────────────────────────
           Ces trois cartes occupaient près de trois cents pixels sous les
-          offres — plus qu'une carte d'abonnement entière — pour un contenu que
+          offres — plus qu'une carte d'offre entière — pour un contenu que
           personne ne lit à ce moment-là : la décision se prend au-dessus. Les
           arguments restent, réduits à ce qu'ils disent vraiment. */}
       <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-1">
@@ -541,13 +541,13 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
         ))}
       </div>
 
-      {/* ── CE QUE L ABONNEMENT ACHETE, ET CE QU IL N ACHETE PAS ──────────
+      {/* CE QUE L ACCES ACHETE, ET CE QU IL N ACHETE PAS
           C est la page ou l on sort sa carte, donc celle ou la nature du
           produit doit etre la moins ambigue. On dit ce qui est vendu : un
           acces a des analyses. Pas un enjeu, pas une promesse de gain. */}
       <p className="text-[11px] text-foreground/40 leading-relaxed text-center max-w-2xl mx-auto pt-2">
         ProFoot AI vend un accès à un outil d&apos;analyse statistique du football.
-        L&apos;abonnement ne constitue pas un enjeu et ne donne droit à aucun gain :
+        Cet accès ne constitue pas un enjeu et ne donne droit à aucun versement :
         il ouvre l&apos;accès aux analyses et aux statistiques de la plateforme.
         Aucune analyse ne garantit un résultat.
       </p>

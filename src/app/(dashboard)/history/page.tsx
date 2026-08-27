@@ -244,7 +244,7 @@ export default function HistoryPage() {
              <Link href="/pricing" className="w-full flex items-center justify-between p-4 bg-orange-500/10 hover:bg-orange-500/20 rounded-[20px] transition-colors border border-orange-500/20 group">
                 <div className="flex items-center gap-3">
                   <CreditCard className="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-bold text-orange-400">Abonnement Pro</span>
+                  <span className="text-sm font-bold text-orange-400">Accès Pro</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-orange-400/50" />
              </Link>
@@ -531,7 +531,7 @@ export default function HistoryPage() {
                     <Lock className="w-8 h-8 text-orange-400" />
                   </div>
                   <h3 className="text-lg font-black text-white text-center" style={{ fontFamily: "var(--police-titre), sans-serif" }}>Contenu réservé aux membres Premium</h3>
-                  <p className="text-xs text-white/50 text-center max-w-sm">Passez à l'abonnement Premium pour accéder aux analyses détaillées, scores estimés, probabilités et résumés tactiques complets.</p>
+                  <p className="text-xs text-white/50 text-center max-w-sm">Passez à l'accès Premium pour accéder aux analyses détaillées, scores estimés, tendances et résumés tactiques complets.</p>
                   <Link href="/pricing" className="bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-black font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 shadow-[0_4px_20px_rgba(245,158,11,0.3)]">
                     <CreditCard className="w-4 h-4" /> Devenir Premium
                   </Link>
@@ -566,7 +566,7 @@ export default function HistoryPage() {
                 </div>
               </div>
 
-              {/* Confidence & Probabilities (if future) */}
+              {/* Confiance et indices (si à venir) */}
               {!selectedItem.isFinished && selectedItem.data?.winProb && (
                 <div className={`grid grid-cols-3 gap-4 ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">

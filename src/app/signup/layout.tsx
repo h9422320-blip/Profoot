@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Créer un compte gratuit',
   description:
-    "Créez votre compte ProFoot AI gratuitement et lancez votre première analyse de match par intelligence artificielle : scores probables, statistiques avancées et forme des équipes.",
+    "Créez votre compte ProFoot AI gratuitement et lancez votre première analyse de match par intelligence artificielle : tendances de score, statistiques avancées et forme des équipes.",
   alternates: { canonical: '/signup' },
 };
 

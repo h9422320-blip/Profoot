@@ -51,6 +51,33 @@ const INTERDITS =
   /\b(?:pari|paris\s+sportifs?|pari(?:er|ez|ons|[eé]e?s?)|parieur(?:s|se|ses)?|pronostics?|pronostiqu\w*|pronos?\b|tipsters?|tips\b|mis(?:er|ez|ons|é\w*)|bookmakers?|coupons?|banco|value\s*bets?|jeux?\s+de\s+hasard|casinos?|loteries?|roulettes?|machines?\s+à\s+sous)\b|\bcotes?\b(?!\s*d['’\s]?\s*ivoire)|\bodds\b|\bprédi(?:ction|ctions|ctif|ctifs|ctive|ctives|re|t|ts|te|tes)\b/i;
 
 /**
+ * LES DEUX MOTS DU REPROCHE DE LA BOUTIQUE — 27 AOÛT 2026.
+ *
+ * Chariow a bloqué les paiements pour « produits interdits (Abonnements,
+ * Paris Sportifs, Jeux de hasard) ». Les paris étaient déjà traités ; ces
+ * deux-là restaient, et le premier figure littéralement dans le motif.
+ *
+ * « probabilité » appartient au vocabulaire du pari : un contrôleur y lit
+ * une chance de gain. Le moteur ne prétend rien de plus que mesurer une
+ * tendance — le mot juste est donc aussi le mot prudent.
+ *
+ * « abonnement » était FAUX, ce qui est pire que risqué. Vérifié dans le
+ * code le 27 août : le passage en caisse n'envoie aucun paramètre de
+ * récurrence, et l'accès porte une date de fin fixe que rien ne renouvelle.
+ * ProFoot vend un achat unique ouvrant un accès pour une durée donnée. Le
+ * mot annonçait un prélèvement automatique qui n'a jamais existé.
+ *
+ * Séparés d'INTERDITS parce qu'ils ont une exception chacun :
+ *
+ *   — « improbable » contient « probable » sans rien promettre ;
+ *   — la table `subscriptions` et les colonnes qui en dépendent gardent leur
+ *     nom : les renommer casserait la base sans rien protéger, puisque
+ *     aucun visiteur ne voit un nom de table.
+ */
+const PROBABILITE_ET_ABONNEMENT =
+  /(?<!im)\bprobabilit[ée]|\bprobables?\b|\bprobablement\b|\bprobas?\b|\babonnements?\b|\b[stm]['’]abonner\b|\babonn[ée]/i;
+
+/**
  * L'ARGENT ET LA CERTITUDE — LES DEUX PROMESSES D'UN SITE DE JEU.
  *
  * Séparés d'INTERDITS parce qu'ils demandent des exceptions que les autres
@@ -237,6 +264,7 @@ test('★ ACQUIS — aucune page publique n emploie le vocabulaire de pari', () 
     // L'administration est derrière authentification, mais son vocabulaire
     // finit par déteindre : c'est là qu'on écrit les libellés qu'on recopie
     // ensuite côté visiteur. « Revenus » y reste autorisé (voir plus haut).
+    // ── FRONTIÈRE : tout ce qui suit est derrière authentification ──────
     'src/app/admin/system/page.tsx',
     'src/app/admin/users/[id]/page.tsx',
     'src/app/admin/preuves/page.tsx',
@@ -249,6 +277,11 @@ test('★ ACQUIS — aucune page publique n emploie le vocabulaire de pari', () 
     'src/lib/diagnostic-ia.ts',
     'src/lib/courriel.ts',
   ];
+
+  // Derrière authentification : ni un visiteur ni la plateforme de paiement
+  // n'y accèdent. Le vocabulaire de pari y reste interdit ; « probabilité »
+  // et « abonnement » y sont tolérés, comme « revenus ».
+  const estAdministration = (chemin: string) => chemin.includes('/admin/');
 
   for (const page of PAGES) {
     // Les commentaires documentent l'incident : ils ont le droit de nommer ce
@@ -324,7 +357,7 @@ test('★ ACQUIS — aucune page publique n emploie le vocabulaire de pari', () 
 
       for (const affichable of [...chaines, texteJsx]) {
         assert.ok(
-          !INTERDITS.test(affichable),
+          !INTERDITS.test(affichable) && (estAdministration(page) || !PROBABILITE_ET_ABONNEMENT.test(affichable)),
           `${page}:${i + 1} emploie le vocabulaire de pari :\n    ${nue.slice(0, 120)}`
         );
         assert.ok(

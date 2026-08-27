@@ -17,7 +17,7 @@ import { heureLocale, dateLongueLocale, jourEtMoisLocaux } from "@/lib/heure-loc
  *
  * Elle embarque la table des moyens de paiement des 243 pays — quarante-huit
  * kilo-octets. La page d analyse est la plus visitee du site : l imposer a
- * tout le monde pour les rares abonnes qui tombent a sec l alourdirait pour
+ * tout le monde pour les rares membres qui tombent a sec l alourdirait pour
  * rien.
  */
 const NoticePaiement = chargerADemande(() => import("@/components/NoticePaiement"), { ssr: false });
@@ -188,7 +188,7 @@ function TeamPicker({ isOpen, onClose, onSelect, currentTeamId }: {
     : [];
 
   // Rien en local : on va chercher le club partout, quel que soit son
-  // championnat. C'est ce qui évite qu'un abonné cherche « Bâle » un soir de
+  // championnat. C'est ce qui évite qu'un membre cherche « Bâle » un soir de
   // Bâle–Barcelone et reparte en croyant que son match n'existe pas.
   useEffect(() => {
     const q = searchQuery.trim();
@@ -392,7 +392,7 @@ type MatchRecent = { opponent: string; score: string; result: "W" | "D" | "L" };
  *
  * L'ancien affichage prenait la forme dans un fichier de données figé, où la
  * plupart des clubs n'existent pas : Villarreal ou le Racing Santander
- * s'affichaient avec cinq tirets et un bilan 0-0-0. Un abonné payait pour voir
+ * s'affichaient avec cinq tirets et un bilan 0-0-0. Un membre payait pour voir
  * des cases vides.
  *
  * Le tableau arrive du plus récent au plus ancien.
@@ -565,11 +565,11 @@ export default function AnalyzePage({
   const [todayHistory, setTodayHistory] = useState<any[]>([]);
   const [isPremium, setIsPremium] = useState(false); // Default false to prevent data leaking before check finishes
   /**
-   * L offre que l abonne a DEJA, pour pouvoir la recharger en un clic.
+   * L offre que le membre a DEJA, pour pouvoir la recharger en un clic.
    *
-   * Jamais l offre d entree : les droits retiennent l abonnement le plus
+   * Jamais l offre d entree : les droits retiennent l acces le plus
    * eleve, et un niveau egal ou inferieur ne remplace jamais celui en cours.
-   * Un abonne Pro qui racheterait l Essentiel garderait son Pro, periode
+   * Un membre Pro qui racheterait l Essentiel garderait son Pro, periode
    * inchangee — son compteur ne repartirait pas et son argent serait perdu.
    */
   const [offreActuelle, setOffreActuelle] = useState<{ cle: string; libelle: string; prixXof: number } | null>(null);
@@ -668,7 +668,7 @@ export default function AnalyzePage({
   /**
    * ── LE RACHAT EN UN CLIC, DEPUIS L'ÉCRAN DE COMPTEUR ÉPUISÉ ──────────────
    *
-   * Mesuré le 24 août 2026 : un abonné qui a fini ses vingt analyses repaye
+   * Mesuré le 24 août 2026 : un membre qui a fini ses vingt analyses repaye
    * 18,8 % du temps, contre 0,7 % pour celui à qui il en reste. Tomber à zéro
    * multiplie par vingt-sept la chance qu'il revienne — et c'est à cet instant
    * précis, pas trois jours plus tard, qu'il faut lui tendre le bouton.
@@ -737,7 +737,7 @@ export default function AnalyzePage({
     "🔍 Recherche des statistiques en temps réel...",
     "🧠 Analyse tactique et styles de jeu...",
     "⚡ Analyse des blessures et suspensions...",
-    "📊 Calcul des probabilités et xG...",
+    "📊 Calcul des tendances et xG...",
     "🏆 Finalisation du rapport d'expert..."
   ];
 
@@ -795,7 +795,7 @@ export default function AnalyzePage({
    * main, aboutit plus souvent et coûte au pire une minute quinze.
    *
    * Le quota n'est pas touché : il se décompte par MATCH et non par tentative
-   * — vérifié dans `consumeAnalysis`. Une reprise ne coûte rien à l'abonné.
+   * — vérifié dans `consumeAnalysis`. Une reprise ne coûte rien à l'membre.
    */
   const RELANCES_MAX = 1;
 
@@ -862,8 +862,8 @@ export default function AnalyzePage({
       });
 
       if (!res.ok) {
-        // Distinguer « il faut s'abonner » d'une vraie panne : afficher une
-        // erreur technique à un visiteur non abonné le laisse croire que le
+        // Distinguer « il faut un acces payant » d une vraie panne : afficher une
+        // erreur technique à un visiteur non membre le laisse croire que le
         // service est cassé alors qu'il doit simplement souscrire.
         if (res.status === 403) {
           clearInterval(interval); clearInterval(rampe);
@@ -873,7 +873,7 @@ export default function AnalyzePage({
         }
         // 429 couvre deux cas distincts : le quota mensuel épuisé (code dédié)
         // et le simple anti-spam. Les confondre afficherait « limite atteinte »
-        // à un abonné qui a juste cliqué trop vite.
+        // à un membre qui a juste cliqué trop vite.
         if (res.status === 429) {
           const info = await res.json().catch(() => ({}));
           clearInterval(interval); clearInterval(rampe);
@@ -963,9 +963,9 @@ export default function AnalyzePage({
           //
           //    Écrit depuis le navigateur, il ne disposait que de ce que le
           //    paywall laissait passer : un compte gratuit ne reçoit ni le score
-          //    prédit ni les probabilités, et la ligne partait donc vide — ou
+          //    prédit ni les tendances, et la ligne partait donc vide — ou
           //    remplie d'un « 2-1 » de remplissage. Le serveur, lui, a l'analyse
-          //    entière quel que soit l'abonnement.
+          //    entière quel que soit l acces.
           //
           //    Le stockage local ci-dessus reste : il affiche l'historique sans
           //    attendre le réseau.
@@ -988,7 +988,7 @@ export default function AnalyzePage({
       // On ne montre rien et on ne coupe pas l'attente : l'écran d'analyse
       // reste en place, la personne ne voit pas passer l'incident.
       //
-      // Les cas déjà traités plus haut — abonnement requis, quota épuisé,
+      // Les cas déjà traités plus haut — acces requis, quota épuisé,
       // session expirée — ne passent pas par ici : ils sortent avec `return`.
       // Ce qui arrive jusqu'à ce point est une vraie panne, donc quelque chose
       // qu'une seconde tentative peut réellement rattraper.
@@ -1218,7 +1218,7 @@ export default function AnalyzePage({
                   celle qu'on avait déjà.
 
                   Le bouton propose SON niveau, jamais l'offre d'entrée : un
-                  abonné Pro qui rachèterait l'Essentiel garderait son Pro,
+                  membre Pro qui rachèterait l'Essentiel garderait son Pro,
                   période inchangée, et perdrait son argent. */}
               {offreActuelle ? (
                 <>
@@ -1276,10 +1276,10 @@ export default function AnalyzePage({
 
               <div className="space-y-2">
                 <h4 className="text-[13px] font-black text-white tracking-[0.1em] uppercase">
-                  Analyse réservée aux abonnés
+                  Analyse réservée aux accès payants
                 </h4>
                 <p className="text-xs text-white/50 font-medium leading-relaxed max-w-[280px] mx-auto">
-                  L'analyseur IA fait partie de l'offre Premium. Abonnez-vous pour lancer des analyses illimitées sur tous les grands championnats.
+                  L'analyseur IA fait partie de l'offre Premium. Obtenez l'accès pour lancer des analyses illimitées sur tous les grands championnats.
                 </p>
               </div>
 
@@ -1378,7 +1378,7 @@ export default function AnalyzePage({
           l'onglet « Historique ». Il n'avait rien à faire sur cette page : un
           visiteur qui n'a jamais rien analysé y voyait un bloc vide, et celui
           qui venait d'analyser y voyait son propre travail flouté derrière un
-          cadenas. Ni l'un ni l'autre ne donne envie de s'abonner. */}
+          cadenas. Ni l un ni l autre ne donne envie d acheter. */}
       {!analyzing && !result && (
         <>
           {/* DESKTOP ONLY: Prochains matchs */}
@@ -1542,7 +1542,7 @@ export default function AnalyzePage({
               )}
 
               {/* Projection de l'issue, recalculée sur le score acquis et le
-                  temps restant. Réservée aux abonnés : c'est une prédiction. */}
+                  temps restant. Réservée aux acces payants : c'est une prédiction. */}
               {result.finalPrediction && (
                 <div className="mt-6 bg-black/25 border border-white/5 rounded-[20px] p-4 sm:p-5">
                   <p className="text-[9.5px] sm:text-[10px] font-black text-white/35 uppercase tracking-widest mb-2.5">
@@ -1756,7 +1756,7 @@ export default function AnalyzePage({
                     <span className="flex items-center gap-1.5">
                       <span className="text-sm">📅</span>
                       {/* Date ET heure dans le fuseau du lecteur, tirées du
-                          même instant. Un abonné à Conakry lisait 21:00 pour
+                          même instant. Un membre à Conakry lisait 21:00 pour
                           un coup d'envoi à 19:00 chez lui. */}
                       {dateLongueLocale(result.kickoffISO, result.date)}
                       {heureLocale(result.kickoffISO, result.time)
@@ -1825,7 +1825,7 @@ export default function AnalyzePage({
               </div>
 
               {/* Les cinq derniers matchs réellement joués, adversaire et score à
-                  l'appui : un abonné doit pouvoir vérifier lui-même ce qu'on lui
+                  l'appui : un membre doit pouvoir vérifier lui-même ce qu'on lui
                   annonce, pas lire une suite de pastilles sans source. */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 {([
@@ -1863,7 +1863,7 @@ export default function AnalyzePage({
               </div>
 
               {/* ── CE QUE CHACUN LIT ICI ────────────────────────────────
-                  Un compte SANS abonnement ne reçoit plus `quickSummary` ni
+                  Un compte SANS acces payant ne reçoit plus `quickSummary` ni
                   `scenarios` : ces champs révélaient le favori, les buts
                   attendus et le score final. Les afficher quand même donnait
                   un « Résumé rapide » VIDE surmonté de son titre, puis un
@@ -1874,13 +1874,13 @@ export default function AnalyzePage({
 
                   Il reçoit désormais UN SEUL bloc : la bande-annonce, écrite
                   pour ces deux équipes à partir de leurs vraies données.
-                  L'affichage de l'abonné, lui, ne change pas d'un caractère. */}
+                  L'affichage de l'membre, lui, ne change pas d'un caractère. */}
               {result.locked ? (
                 /* ── L'AVANT-GOÛT : DU RÉCIT, JAMAIS DE CHIFFRE EXPLOITABLE ──
-                   Mêmes blocs que pour un abonné — Résumé rapide puis
+                   Mêmes blocs que pour un membre — Résumé rapide puis
                    Scénario #1 — mais leur contenu est écrit pour donner envie,
                    pas pour répondre. Le lecteur repart avec le contexte et les
-                   intentions des deux camps ; ni score, ni probabilité, ni
+                   intentions des deux camps ; ni score, ni tendance, ni
                    buts attendus ne quittent le serveur. */
                 <div className="space-y-6">
                   <div className="space-y-2">
@@ -1982,19 +1982,19 @@ export default function AnalyzePage({
                       equipe2Nom={result.matchUnique?.equipe2Nom ?? ''}
                       prixMatch={result.matchUnique?.prix ?? 600}
                       achatUniteDisponible={!!result.matchUnique?.disponible}
-                      prixAbonnement={offre.prixXof}
-                      quotaAbonnement={offre.analyses}
+                      prixOffreComplete={offre.prixXof}
+                      quotaOffreComplete={offre.analyses}
                     />
                   </div>
                 )}
 
                 {/*
                   Flou fort : aucun chiffre, aucun score, aucun texte ne doit
-                  être lisible — sinon l'abonnement perd sa raison d'être. Seules
+                  être lisible — sinon l acces perd sa raison d être. Seules
                   les formes et les couleurs restent perceptibles.
                 */}
                 <div className={`space-y-8 ${!isPremium ? 'pointer-events-none select-none blur-[16px] opacity-[0.8] saturate-125' : ''}`}>
-                  {/* L'abonnement se propose ICI, et pas ailleurs : la personne
+                  {/* L offre se propose ICI, et pas ailleurs : la personne
                       vient de payer pour ce match et tient la preuve entre les
                       mains. C'est le seul instant où « et si tu débloques
                       souvent ? » se pose tout seul. */}
@@ -2004,7 +2004,7 @@ export default function AnalyzePage({
                         Tu débloques souvent des matchs ?
                       </p>
                       <p className="text-[12px] text-white/60 leading-relaxed">
-                        L&apos;abonnement {offre.libelle} à {prixOffre} FCFA te donne {quotaOffre} par
+                        L&apos;accès {offre.libelle} à {prixOffre} FCFA te donne {quotaOffre} par
                         mois.
                       </p>
                       <Link
@@ -2015,7 +2015,7 @@ export default function AnalyzePage({
                           color: "#101c24",
                         }}
                       >
-                        Voir l&apos;abonnement
+                        Voir l&apos;offre
                       </Link>
                     </div>
                   )}
@@ -2081,17 +2081,17 @@ export default function AnalyzePage({
                       sous le pied de page, elle serait vraie et invisible. */}
                   <p className="mt-4 text-[10.5px] text-white/30 leading-relaxed">
                     Projection statistique produite par un modèle mathématique, fournie à titre
-                    informatif. Elle décrit une probabilité, jamais une certitude : aucun résultat
+                    informatif. Elle décrit une tendance, jamais une certitude : aucun résultat
                     n&apos;est garanti.
                   </p>
                 </div>
               )}
 
-              {/* Win probabilities */}
+              {/* Indices de performance */}
               <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-md">
                 <div className="flex items-center gap-3">
                   <span className="text-lg">📊</span>
-                  <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Probabilités exactes</h4>
+                  <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Indices de performance</h4>
                 </div>
                 <div className="space-y-4">
                   <ProbBar label={"Victoire " + getClub(team1!).name} value={result.winProb} />
@@ -2205,7 +2205,7 @@ export default function AnalyzePage({
                   </div>
 
                   <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-sm">
-                    <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-6">Probabilités sur le nombre de buts</h5>
+                    <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-6">Tendance sur le nombre de buts</h5>
                     <div className="space-y-5">
                        <DualBar label="" v1={result.predictions.overUnder.over05} v2={100 - result.predictions.overUnder.over05} suffix="%" customL1="Plus de 0.5 buts" customL2="Moins de 0.5 buts" hideTitle={true} isThin={true} />
                        <DualBar label="" v1={result.predictions.overUnder.over15} v2={100 - result.predictions.overUnder.over15} suffix="%" customL1="Plus de 1.5 buts" customL2="Moins de 1.5 buts" hideTitle={true} isThin={true} />
@@ -2409,9 +2409,9 @@ function ModernMetricBar({ label, description, val1, val2, suffix = "", invertCo
 }
 
 /**
- * Silhouette de l'analyse complète, affichée aux comptes sans abonnement.
+ * Silhouette de l analyse complète, affichée aux comptes sans acces payant.
  *
- * Le serveur ne transmet plus les probabilités, le score prédit, les métriques
+ * Le serveur ne transmet plus les tendances, le score prédit, les métriques
  * ni les sections détaillées : il n'y a donc plus rien de payant à flouter.
  * Ce bloc reproduit la STRUCTURE de l'analyse — les titres réels des rubriques
  * et des blocs vides — pour que le visiteur mesure le volume de ce qu'il
@@ -2439,12 +2439,12 @@ function LockedAnalysisPreview({ scenarios, sections }: { scenarios?: number; se
         </div>
       </div>
 
-      {/* Probabilités */}
+      {/* Tendances */}
       <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md space-y-5">
         <div className="flex items-center gap-3">
           <BarChart3 className="w-5 h-5 text-[#10B981]" />
           <h4 className="font-black text-base text-white" style={{ fontFamily: "var(--police-titre), sans-serif" }}>
-            Probabilités du match
+            Tendances du match
           </h4>
         </div>
         {[68, 42, 55].map((w, i) => (

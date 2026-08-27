@@ -65,7 +65,7 @@ test('★ ACQUIS — les noms de clubs et le français courant sont épargnés',
     "La Côte d'Ivoire affronte le Ghana à Abidjan.",
     'La mise en page a été revue, comme les mises à jour du classement.',
     'Arsenal a marqué de la côte gauche, du côté de Saka.',
-    "L'issue la plus probable est une victoire de City, probabilité 62 %.",
+    "L'issue la plus attendue est une victoire de City, indice 62 %.",
     'Les deux équipes marquent, et il garde sa cage inviolée.',
   ];
 
@@ -136,14 +136,14 @@ test('★ ACQUIS — une réponse longue ne perd que sa phrase fautive', () => {
     '',
     "Liverpool arrive plus fragile : deux nuls, une défaite, et l'absence de Van Dijk, suspendu.",
     '',
-    "L'issue la plus probable est une victoire de City, avec un écart d'un but.",
+    "L'issue la plus attendue est une victoire de City, avec un écart d'un but.",
   ].join('\n');
 
   const { texte, methode } = assainir(longue);
 
   assert.equal(methode, 'phrase', 'Le retrait de phrase aurait dû suffire.');
   assert.ok(!contientVocabulaireInterdit(texte), 'Le texte nettoyé reste sale.');
-  assert.match(texte, /issue la plus probable/, "La conclusion a disparu — l'abonné perd ce qu'il paie.");
+  assert.match(texte, /issue la plus attendue/, "La conclusion a disparu — l'abonné perd ce qu'il paie.");
   assert.match(texte, /Haaland/, 'Le corps de la réponse a été amputé.');
   assert.ok(texte.length > longue.length * 0.6, 'Plus de 40 % de la réponse a été perdu.');
 });
@@ -167,7 +167,7 @@ test('★ ACQUIS — le retrait de phrase renonce plutôt que de vider la répon
 
 test('★ ACQUIS — un texte déjà propre ressort à l identique', () => {
   const propre =
-    "City part favori. L'issue la plus probable est une victoire à domicile, avec une probabilité de 62 %.";
+    "City part favori. L'issue la plus attendue est une victoire à domicile, avec un indice de 62 %.";
   const { texte, methode } = assainir(propre);
   assert.equal(methode, 'intact');
   assert.equal(texte, propre, 'Un texte propre a été modifié sans raison.');
@@ -253,7 +253,7 @@ test('★ ACQUIS — les seuils à demi-but sont proscrits, les statistiques ép
   for (const statistique of [
     '2,54 buts attendus pour cette rencontre.',
     'Buts attendus : 1,82 contre 1,15.',
-    'Probabilités sur le nombre de buts',
+    'Tendance sur le nombre de buts',
     'Une moyenne de 2,5 buts par match sur la saison.',
   ]) {
     assert.deepEqual(
@@ -282,9 +282,9 @@ test('★ ACQUIS — la double chance déguisée est reformulée, le constat ép
 test('★ ACQUIS — la promesse de certitude tombe, la conclusion reste', () => {
   const promesses = [
     ['Bodo se qualifie sans trembler, quasi certain.', /avec autorité/],
-    ['Une victoire garantie pour le Real.', /victoire très probable/],
+    ['Une victoire garantie pour le Real.', /victoire nettement attendue/],
     ["C'est un pari sans risque.", /marge confortable/],
-    ['Le Celtic passe à coup sûr.', /selon toute probabilité/],
+    ['Le Celtic passe à coup sûr.', /selon toute vraisemblance/],
   ] as const;
 
   for (const [sale, attendu] of promesses) {
@@ -297,7 +297,7 @@ test('★ ACQUIS — la promesse de certitude tombe, la conclusion reste', () =>
   // Un agent devenu évasif serait un échec aussi net qu'un agent qui promet.
   // Ces tournures TRANCHENT sans rien garantir : elles doivent passer intactes.
   for (const conclusion of [
-    "L'issue la plus probable est une victoire de City.",
+    "L'issue la plus attendue est une victoire de City.",
     'City part largement favori, la tendance est nette.',
     'Je vois une victoire de Bodo, avec une forte tendance.',
     "Aucun résultat n'est garanti.",
@@ -314,7 +314,7 @@ test('★ ACQUIS — la réponse réelle du 25 août serait désormais nettoyée
   // Textuellement les phrases produites en production. Le filtre d'alors les
   // laissait passer en entier.
   const reelle = [
-    'Le plus probable selon les tendances : Betis ne perd pas, et moins de 2,5 buts au total.',
+    'Le plus attendu selon les tendances : Betis ne perd pas, et moins de 2,5 buts au total.',
     'Bodo/Glimt se qualifie sans trembler, quasi certain.',
   ].join(' ');
 
@@ -393,7 +393,7 @@ test('★ ACQUIS — seule la CLÔTURE est visée, jamais le corps du texte', ()
   // phrase. Ce qui pose problème, c'est de TERMINER par une offre.
   const intacts = [
     "City part favori. Si tu veux mon avis, la tendance est nette : victoire à domicile.",
-    "L'issue la plus probable est une victoire de City. Surveille Haaland, décisif sur les cinq dernières.",
+    "L'issue la plus attendue est une victoire de City. Surveille Haaland, décisif sur les cinq dernières.",
     'Match unique, sans phrase de fin.',
   ];
   for (const t of intacts) {

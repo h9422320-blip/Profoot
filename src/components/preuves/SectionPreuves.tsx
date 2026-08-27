@@ -14,7 +14,7 @@ import {
  * POURQUOI CETTE SECTION EXISTE
  *
  * Sept inscrits sur dix lancent une analyse ; moins de deux sur cent
- * s'abonnent. Ce n'est pas le prix qui bloque : rien ne prouve au visiteur que
+ * achètent un accès. Ce n'est pas le prix qui bloque : rien ne prouve au visiteur que
  * l'IA tombe juste. Il voit une analyse floutée à 85 % et doit payer pour
  * savoir si elle vaut quelque chose. Personne ne fait ça.
  *
@@ -142,7 +142,7 @@ function CartePreuve({ p }: { p: Preuve }) {
                 c'est irréductible — c'est du hasard, pas un réglage manquant.
 
             Mettre le score en titre promettait donc ce que le moteur ne
-            prétend pas tenir. Et comme le score le plus probable d'une issue
+            prétend pas tenir. Et comme le score le plus attendu d'une issue
             gagnante est presque toujours 2-1 ou 1-0, le mur donnait en prime
             l'impression de répondre la même chose à tout le monde — mesuré le
             26 août 2026 : 2-1 sur 31 % des affiches.

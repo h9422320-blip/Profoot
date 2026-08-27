@@ -22,11 +22,11 @@ const NoticePaiement = dynamic(() => import("@/components/NoticePaiement"), { ss
  *
  * POURQUOI DEUX CHEMINS
  *
- * Le plus petit achat possible était un abonnement mensuel. Pour quelqu'un qui
+ * Le plus petit achat possible était une offre mensuelle. Pour quelqu un qui
  * vient de découvrir l'application, c'est un engagement — et sept inscrits sur
  * dix lancent une analyse sans jamais payer. Débloquer CE match capte
  * l'impulsion du moment et fait passer le premier paiement, qui est la vraie
- * barrière ; l'abonnement reste affiché juste en dessous comme le meilleur
+ * barrière ; l offre mensuelle reste affichée juste en dessous comme le meilleur
  * rapport, pour ceux qui reviennent.
  *
  * CONÇU POUR UN TÉLÉPHONE
@@ -43,8 +43,8 @@ export default function PaywallDeuxChemins({
   equipe2Nom,
   prixMatch,
   achatUniteDisponible,
-  prixAbonnement,
-  quotaAbonnement,
+  prixOffreComplete,
+  quotaOffreComplete,
 }: {
   equipe1Id: string;
   equipe2Id: string;
@@ -53,9 +53,9 @@ export default function PaywallDeuxChemins({
   prixMatch: number;
   achatUniteDisponible: boolean;
   /** Prix de l'offre d'entrée, tel que réglé dans l'administration. */
-  prixAbonnement: number;
+  prixOffreComplete: number;
   /** Nombre d'analyses de cette offre — `null` si elle est illimitée. */
-  quotaAbonnement: number | null;
+  quotaOffreComplete: number | null;
 }) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -147,7 +147,7 @@ export default function PaywallDeuxChemins({
       </div>
 
       <p className="text-[13px] md:text-[14px] text-white/80 font-medium mb-6 max-w-[300px] leading-relaxed text-center">
-        L&apos;analyse complète contient les probabilités exactes, les scénarios restants et les
+        L&apos;analyse complète contient les indices de performance, les scénarios restants et les
         insights premium.
       </p>
 
@@ -219,16 +219,16 @@ export default function PaywallDeuxChemins({
         }
       >
         {achatUniteDisponible
-          ? `S'abonner — dès ${prixAbonnement.toLocaleString("fr-FR")} FCFA / mois`
+          ? `Obtenir l'accès — dès ${prixOffreComplete.toLocaleString("fr-FR")} FCFA / mois`
           : "🔒 Débloquer l'analyse complète"}
       </Link>
 
       {achatUniteDisponible && (
         <p className="text-[11px] text-[#10B981] font-bold mt-2.5 text-center">
           Meilleure valeur :{" "}
-          {quotaAbonnement === null
+          {quotaOffreComplete === null
             ? "analyses illimitées"
-            : `${quotaAbonnement} analyses complètes par mois`}
+            : `${quotaOffreComplete} analyses complètes par mois`}
         </p>
       )}
 

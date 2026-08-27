@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     // complète, lui revendre une offre inférieure n'aurait aucun sens.
     if (entitlements.plan === 'VIP' && plan === 'vip_yearly') {
       return NextResponse.json(
-        { error: 'Votre abonnement VIP Annuel est déjà actif.', code: 'ALREADY_SUBSCRIBED' },
+        { error: 'Votre accès VIP Annuel est déjà actif.', code: 'ALREADY_SUBSCRIBED' },
         { status: 409 }
       );
     }

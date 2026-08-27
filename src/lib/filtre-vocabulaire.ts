@@ -117,6 +117,43 @@ const REMPLACEMENTS: [RegExp, Remplacement][] = [
   [/\bvalue\s*bets?\b/gi, 'occasion'],
   [/\bjackpot(s)?\b/gi, 'gros lot$1'],
 
+  // ── SIGNALÉ PAR LA BOUTIQUE LE 27 AOÛT 2026 ────────────────────────────
+  //
+  // Chariow a bloqué les paiements pour « produits interdits : Abonnements,
+  // Paris Sportifs, Jeux de hasard ». Deux mots restaient, et ils sont dans
+  // le titre même du reproche.
+  //
+  // « probabilité » est le vocabulaire du pari, pas celui de l'analyse : un
+  // contrôleur y lit une chance de gain. Le moteur ne prétend rien d’autre
+  // que mesurer une tendance — c’est donc le mot juste, pas seulement le mot
+  // prudent.
+  //
+  // « abonnement » était carrément FAUX. Vérifié dans le code le 27 août : le
+  // passage en caisse n'envoie aucun paramètre de récurrence, et l'accès porte
+  // une date de fin fixe que rien ne renouvelle. Ce que vend ProFoot est un
+  // achat unique ouvrant un accès pour une durée donnée. Le mot annonçait un
+  // prélèvement automatique qui n'a jamais existé.
+  [/\bprobabilit[ée]s\b/gi, 'tendances'],
+  [/\bprobabilit[ée]/gi, 'tendance'],
+  [/\bprobablement\b/gi, 'vraisemblablement'],
+  [/\b(compositions|[ée]quipes|formations|absences)(\s+)probables\b/gi, '$1$2attendues'],
+  [/\bles plus probables\b/gi, 'les plus attendus'],
+  [/\bla plus probable\b/gi, 'la plus attendue'],
+  [/\ble plus probable\b/gi, 'le plus attendu'],
+  [/\bprobables\b/gi, 'attendus'],
+  [/\bprobable\b/gi, 'attendu'],
+  [/\bprobas\b/gi, 'tendances'],
+  [/\bproba\b/gi, 'tendance'],
+
+  [/\bd[ée]sabonnements?\b/gi, "arrêt de l'accès"],
+  [/\b(?:se|te|me|nous|vous)\s+d[ée]sabonner\b/gi, "arrêter son accès"],
+  [/\b[stm]['’]abonner\b/gi, "obtenir l'accès"],
+  [/\b(?:nous|vous)\s+abonner\b/gi, "obtenir l'accès"],
+  [/\babonnements\b/gi, 'offres'],
+  [/\babonnement\b/gi, 'offre'],
+  [/\babonn[ée]s\b/gi, 'membres'],
+  [/\babonn[ée]/gi, 'membre'],
+
   // ── Cotes et bookmakers ──────────────────────────────────────────────────
   //
   // « la côte » accentuée et « côté » ne s'écrivent pas ainsi : ils ne sont
@@ -154,22 +191,22 @@ const REMPLACEMENTS: [RegExp, Remplacement][] = [
   [/\bne\s+perdra\s+pas\b/gi, "conservera l'avantage"],
 
   // Promesses de certitude. On retire la GARANTIE, jamais la conclusion :
-  // « très probable » et « largement favori » restent permis et encouragés.
-  [/\bquasi\s+certain(e|s|es)?\b/gi, 'très probable'],
+  // « nettement attendu » et « largement favori » restent permis et encouragés.
+  [/\bquasi\s+certain(e|s|es)?\b/gi, 'nettement attendu'],
   [/\bsans\s+trembler\b/gi, 'avec autorité'],
   [/\bsans\s+risque\b/gi, 'avec une marge confortable'],
   // Pas de `\b` devant « à » : en JavaScript, `\w` ne connaît que l'ASCII, et
   // il n'y a donc aucune frontière de mot entre une espace et un « à ». Le
   // motif ne se déclenchait jamais.
-  [/(?:à\s+)?\bcoup\s+s[ûu]r\b/gi, 'selon toute probabilité'],
+  [/(?:à\s+)?\bcoup\s+s[ûu]r\b/gi, 'selon toute vraisemblance'],
   // « garanti » n'est visé QUE dans une promesse de résultat. Une phrase qui
   // NIE la garantie — « aucun résultat n'est garanti » — nous protège : la
   // remplacer inverserait son sens.
-  [/\b(victoire|succès|résultat|qualification|gain)s?\s+garantie?s?\b/gi, '$1 très probable'],
-  [/\bc'est\s+garanti\b/gi, "c'est très probable"],
+  [/\b(victoire|succès|résultat|qualification|gain)s?\s+garantie?s?\b/gi, '$1 nettement attendue'],
+  [/\bc'est\s+garanti\b/gi, "c'est nettement attendu"],
 
   [/\bbookmaker(s)?\b/gi, 'marché'],
-  [/\bodds\b/gi, 'probabilités'],
+  [/\bodds\b/gi, 'tendances'],
   // ── « COTÉ » L'ADJECTIF, ÉCRIT SANS SON ACCENT ─────────────────────────
   //
   // Le modèle écrit parfois sans accents. Relevé le 26 août 2026 dans une
@@ -188,8 +225,8 @@ const REMPLACEMENTS: [RegExp, Remplacement][] = [
   [/(\b(?:statut|bien|mal|mieux|tr[eè]s|haut|hautement|peu|plus|moins|si|assez|aussi)\s+)cote\b/gi,
     '$1coté'],
 
-  [/\bcotes\b(?!\s*d['’\s]?\s*ivoire)/gi, 'probabilités'],
-  [/\bcote\b(?!\s*d['’\s]?\s*ivoire)/gi, 'probabilité'],
+  [/\bcotes\b(?!\s*d['’\s]?\s*ivoire)/gi, 'tendances'],
+  [/\bcote\b(?!\s*d['’\s]?\s*ivoire)/gi, 'tendance'],
 ];
 
 /**

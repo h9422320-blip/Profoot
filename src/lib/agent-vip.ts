@@ -328,7 +328,7 @@ export interface ResultatAgent {
 async function interrogerAvec(
   messages: any[],
   passerelle: Passerelle,
-  /** Fuseau du navigateur de l abonne, pour les heures de match. */
+  /** Fuseau du navigateur du membre, pour les heures de match. */
   fuseau?: string
 ): Promise<ResultatAgent> {
   const historique = preparerHistorique(messages);

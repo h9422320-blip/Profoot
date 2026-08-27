@@ -48,8 +48,8 @@ export default function CGVPage() {
               <p>
                 ProFoot AI est une plateforme en ligne (disponible sur <strong className="text-white">profoot-ai.com</strong>) qui propose des analyses 
                 statistiques de matchs de football générées par intelligence artificielle. Notre moteur croise des millions de données 
-                (forme des équipes, historique des confrontations, statistiques avancées telles que les Expected Goals, compositions probables) 
-                pour produire des rapports d'analyse, des probabilités et des scénarios tactiques.
+                (forme des équipes, historique des confrontations, statistiques avancées telles que les Expected Goals, compositions attendues) 
+                pour produire des rapports d'analyse, des tendances statistiques et des scénarios tactiques.
               </p>
               <p>
                 En accédant et en utilisant ProFoot AI, l'utilisateur accepte pleinement et sans réserve les présentes Conditions Générales.
@@ -63,15 +63,15 @@ export default function CGVPage() {
               <div className="w-10 h-10 rounded-xl bg-[#10b981]/10 flex items-center justify-center">
                 <CreditCard className="w-5 h-5 text-[#10b981]" />
               </div>
-              <h2 className="text-xl font-bold">2. Abonnement et Paiement</h2>
+              <h2 className="text-xl font-bold">2. Accès et Paiement</h2>
             </div>
             <div className="space-y-4 text-white/70 leading-relaxed">
               <p>
-                ProFoot AI propose un accès <strong className="text-white">gratuit limité</strong> et des formules d'abonnement 
+                ProFoot AI propose un accès <strong className="text-white">gratuit limité</strong> et des formules d'accès payant 
                 <strong className="text-white"> Premium</strong> permettant d'accéder à l'ensemble des fonctionnalités de la plateforme.
               </p>
               <p>
-                Le paiement de l'abonnement Premium s'effectue de manière sécurisée via les moyens suivants :
+                Le paiement de l'accès Premium s'effectue de manière sécurisée via les moyens suivants :
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <div className="bg-white/5 border border-white/8 rounded-xl p-5">
@@ -104,7 +104,7 @@ export default function CGVPage() {
               </p>
               <p>
                 ProFoot AI est un <strong className="text-white">outil d'aide à l'analyse statistique du football</strong>. 
-                Les analyses, probabilités, scénarios et rapports générés par notre intelligence artificielle sont fournis 
+                Les analyses, tendances, scénarios et rapports générés par notre intelligence artificielle sont fournis 
                 <strong className="text-white"> à des fins d'information et d'analyse sportive uniquement</strong>.
               </p>
               <p>
@@ -136,7 +136,7 @@ export default function CGVPage() {
               <p>
                 En raison de la nature numérique et instantanée du service fourni par ProFoot AI (accès immédiat aux analyses IA 
                 dès la souscription), <strong className="text-white">aucun remboursement ne sera accordé</strong> après l'activation 
-                d'un abonnement Premium, conformément aux règles applicables aux biens et services numériques.
+                d'un accès Premium, conformément aux règles applicables aux biens et services numériques.
               </p>
               <p>
                 En cas de problème technique avéré de notre côté (panne de la plateforme, erreur de facturation), nous nous engageons 
@@ -161,7 +161,7 @@ export default function CGVPage() {
                   "Fournir des informations exactes lors de son inscription (adresse e-mail valide).",
                   "Ne pas partager ses identifiants de connexion avec des tiers.",
                   "Ne pas utiliser la plateforme à des fins illégales ou contraires aux présentes conditions.",
-                  "Ne pas tenter de contourner les restrictions d'accès liées à l'abonnement.",
+                  "Ne pas tenter de contourner les restrictions d'accès liées à l'offre souscrite.",
                   "Utiliser les analyses fournies dans le respect des lois en vigueur dans son pays.",
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3">

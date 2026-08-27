@@ -35,7 +35,7 @@ export default function SupportPage() {
     },
     {
       icon: CreditCard,
-      title: "Abonnement & Paiement",
+      title: "Accès & Paiement",
       color: "#6366f1",
       faqs: [
         {
@@ -51,8 +51,8 @@ export default function SupportPage() {
           a: "En raison de la nature numérique du service (accès immédiat aux analyses IA), les remboursements ne sont généralement pas accordés après utilisation. En cas de problème technique de notre côté, nous étudions chaque situation individuellement. Contacte-nous à contactprofootai@gmail.com."
         },
         {
-          q: "Comment annuler mon abonnement ?",
-          a: "Tu peux annuler ton abonnement à tout moment depuis les paramètres de ton compte, rubrique \"Abonnement\". L'annulation prend effet à la fin de ta période d'abonnement en cours."
+          q: "Mon accès se renouvelle-t-il tout seul ?",
+          a: "Non. Chaque achat est un paiement unique qui ouvre ton accès pour une durée fixe. Rien n'est prélevé automatiquement et il n'y a donc rien à annuler : à la fin de la période, l'accès s'arrête simplement. Si tu veux continuer, tu rachètes quand tu le souhaites."
         },
       ]
     },
@@ -63,7 +63,7 @@ export default function SupportPage() {
       faqs: [
         {
           q: "Comment fonctionne l'analyse IA des matchs ?",
-          a: "Notre moteur d'intelligence artificielle analyse des millions de données en temps réel : forme des équipes, historique des confrontations (H2H), statistiques avancées (Expected Goals, possession, tirs cadrés), compositions probables et niveau relatif des championnats. Il génère ensuite des probabilités et scénarios pour chaque match."
+          a: "Notre moteur d'intelligence artificielle analyse des millions de données en temps réel : forme des équipes, historique des confrontations (H2H), statistiques avancées (Expected Goals, possession, tirs cadrés), compositions attendues et niveau relatif des championnats. Il génère ensuite des tendances et des scénarios pour chaque match."
         },
         {
           q: "Quelle est la fiabilité des analyses de l'IA ?",
@@ -71,7 +71,7 @@ export default function SupportPage() {
         },
         {
           q: "Combien d'analyses puis-je faire par jour ?",
-          a: "Le nombre d'analyses dépend de ton abonnement. L'accès gratuit est limité. Avec un abonnement Premium, tu bénéficies d'analyses illimitées pour tous les matchs couverts par notre plateforme."
+          a: "Le nombre d'analyses dépend de ton offre. L'accès gratuit est limité. Avec un accès Premium, tu bénéficies d'analyses illimitées pour tous les matchs couverts par notre plateforme."
         },
         {
           q: "Quelles compétitions sont couvertes ?",

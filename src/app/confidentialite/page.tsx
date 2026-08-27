@@ -57,7 +57,7 @@ export default function ConfidentialitePage() {
               <p>Lorsque vous utilisez ProFoot AI, nous collectons uniquement les données strictement nécessaires au fonctionnement du service :</p>
               <div className="space-y-3 mt-4">
                 {[
-                  { label: "Adresse e-mail", detail: "Utilisée pour créer votre compte, vous connecter et vous envoyer des informations importantes concernant votre abonnement." },
+                  { label: "Adresse e-mail", detail: "Utilisée pour créer votre compte, vous connecter et vous envoyer des informations importantes concernant votre accès." },
                   { label: "Mot de passe", detail: "Chiffré et sécurisé. Nous n'y avons jamais accès en clair. Stocké de manière cryptée par notre infrastructure de sécurité (Supabase)." },
                   { label: "Historique d'analyses", detail: "Les analyses de matchs que vous avez effectuées sur la plateforme, conservées pour vous permettre de les retrouver dans votre historique." },
                   { label: "Données de paiement", detail: "Nous ne stockons pas vos informations bancaires. Les paiements sont traités directement et de façon sécurisée par notre prestataire de paiement." },
@@ -84,7 +84,7 @@ export default function ConfidentialitePage() {
               <ul className="space-y-2 mt-3">
                 {[
                   "Créer et gérer votre compte utilisateur sur ProFoot AI.",
-                  "Vous donner accès aux fonctionnalités de la plateforme selon votre abonnement.",
+                  "Vous donner accès aux fonctionnalités de la plateforme selon votre offre.",
                   "Vous contacter en cas de question ou de problème technique.",
                   "Améliorer les performances de notre moteur d'intelligence artificielle (de façon anonyme et agrégée).",
                 ].map((item, i) => (

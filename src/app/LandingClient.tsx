@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
-import { sessionProbable } from "@/lib/session-legere";
+import { sessionPresumee } from "@/lib/session-legere";
 import {
   ArrowRight,
   BarChart3,
@@ -85,7 +85,7 @@ function useStartHref() {
   // arrive sur `/analyze` et se voit renvoyée vers la connexion, exactement
   // comme avant quand sa session avait expiré entre deux visites.
   useEffect(() => {
-    if (sessionProbable()) setHref('/analyze');
+    if (sessionPresumee()) setHref('/analyze');
   }, []);
   return href;
 }
@@ -162,7 +162,7 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
   const [user, setUser] = useState(false);
 
   useEffect(() => {
-    setUser(sessionProbable());
+    setUser(sessionPresumee());
 
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
@@ -598,7 +598,7 @@ function ShowcaseContent() {
         UNE ARCHITECTURE IA<br/><span className="text-gradient">SANS PRÉCÉDENT</span>
       </h2>
       <p className="showcase-desc">
-        Nous ne nous contentons pas des données de surface. Notre moteur ingère la forme récente, les xG, les compositions probables et l'historique H2H pour générer un modèle mathématique complet.
+        Nous ne nous contentons pas des données de surface. Notre moteur ingère la forme récente, les xG, les compositions attendues et l'historique H2H pour générer un modèle mathématique complet.
       </p>
       
       <div className="flex flex-wrap justify-center gap-4 mt-8 mb-10">
@@ -631,8 +631,8 @@ function FeaturesContent() {
   const features = [
     { icon: Brain, title: "Analyse IA avant match", desc: "Notre algorithme génère un rapport complet analysant dynamique, forces et faiblesses des deux équipes en temps réel." },
     { icon: BarChart3, title: "Statistiques avancées (xG)", desc: "Expected Goals, possession, tirs cadrés, zones de danger — toutes les métriques avancées pour comprendre le vrai niveau." },
-    { icon: Target, title: "Scénarios tactiques", desc: "L'IA simule le déroulement probable du match et vous donne le pourcentage de chance de chaque scénario." },
-    { icon: TrendingUp, title: "Analyses précises", desc: "Score exact, nombre de buts attendus, probabilité que les deux équipes marquent, avec un indice de confiance calculé mathématiquement à partir de données réelles." },
+    { icon: Target, title: "Scénarios tactiques", desc: "L'IA simule le déroulement attendu du match et mesure le poids de chaque scénario." },
+    { icon: TrendingUp, title: "Analyses précises", desc: "Score exact, nombre de buts attendus, tendance offensive des deux équipes, avec un indice de confiance calculé mathématiquement à partir de données réelles." },
     { icon: Globe, title: "+15 compétitions", desc: "Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, CAN et bien d'autres couvertes." },
     { icon: Cpu, title: "Moteur temps réel", desc: "Données actualisées en permanence via API-Football. Pas de cache périmé, pas de données inventées." },
   ];
@@ -642,7 +642,7 @@ function FeaturesContent() {
       <h2 className="section-title" style={{ fontWeight: 600, fontSize: '28px', textTransform: 'none', letterSpacing: 'normal' }}>
         Anticiper chaque match <span className="text-emerald-gradient">avec l'IA.</span>
       </h2>
-      <p className="section-subtitle">Probabilités, statistiques avancées et scénarios tactiques pour anticiper le déroulement d'un match avant même le coup d'envoi.</p>
+      <p className="section-subtitle">Tendances, statistiques avancées et scénarios tactiques pour anticiper le déroulement d'un match avant même le coup d'envoi.</p>
       <div className="features-grid">
         {features.map((f, i) => (
           <div key={i} className="feature-card">
@@ -663,7 +663,7 @@ function HowItWorksContent() {
   const steps = [
     { num: "01", title: "Choisissez un match", desc: "Sélectionnez l'une des centaines de rencontres parmi les grands championnats.", icon: Eye },
     { num: "02", title: "L'IA analyse les données", desc: "L'IA croise la forme, l'historique et les xG en temps réel.", icon: Cpu },
-    { num: "03", title: "Consultez l’analyse", desc: "Obtenez un rapport détaillé et les scénarios probables du match.", icon: Target },
+    { num: "03", title: "Consultez l’analyse", desc: "Obtenez un rapport détaillé et les scénarios attendus du match.", icon: Target },
   ];
 
   return (

@@ -280,7 +280,7 @@ export async function computeEntitlements(
     if (!key) continue;
     const config = PLANS[key];
     // Le quota et l'acces a l'Agent VIP sont modifiables depuis
-    // l'administration : un abonne en cours suit TOUJOURS la valeur actuelle.
+    // l'administration : un acces en cours suit TOUJOURS la valeur actuelle.
     // Faire monter le quota de dix a vingt doit profiter aux abonnes existants
     // le jour meme, sans qu'ils aient a se reabonner.
     const reglee = offres?.[key];

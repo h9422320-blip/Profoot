@@ -90,10 +90,10 @@ export interface DiagnosticIA {
 export const MINIMUM_DIAGNOSTIC = 10;
 
 /**
- * Tranches de PROBABILITÉ annoncée pour l'issue retenue.
+ * Tranches de TENDANCE annoncée pour l'issue retenue.
  *
  * Elles allaient de 60 % à 90 % et plus, parce qu'elles découpaient l'indice de
- * confiance. Ce n'est pas la bonne échelle : la probabilité d'une issue de
+ * confiance. Ce n'est pas la bonne échelle : la tendance d'une issue de
  * football se situe presque toujours entre 35 % et 70 % — il y a trois issues
  * possibles, et un match reste un match. Découpées comme avant, quatre-vingt-dix
  * pour cent des rencontres tombaient dans une seule case.
@@ -169,7 +169,7 @@ export async function getDiagnosticIA(): Promise<DiagnosticIA> {
   // recommandations affichées en dessous héritaient toutes de ce biais.
   //
   // Une rencontre donne donc une ligne, dont le verdict est celui de la
-  // MAJORITÉ de ses analyses — ce que l'application a dit à ses abonnés sur ce
+  // MAJORITÉ de ses analyses — ce que l'application a dit à ses membres sur ce
   // match-là. Les valeurs continues (confiance, buts annoncés) sont moyennées.
   const brutes = (verifiees ?? []) as any[];
 
@@ -193,7 +193,7 @@ export async function getDiagnosticIA(): Promise<DiagnosticIA> {
   };
 
   /**
-   * La PROBABILITÉ de l'issue annoncée — et non l'indice de confiance.
+   * La TENDANCE de l'issue annoncée — et non l'indice de confiance.
    *
    * CE QUE CE TABLEAU COMPARAIT, ET POURQUOI C'ÉTAIT FAUX
    *
@@ -204,7 +204,7 @@ export async function getDiagnosticIA(): Promise<DiagnosticIA> {
    * l'écart. Elle peut valoir 90 % sur un match parfaitement documenté dont
    * l'issue reste indécise.
    *
-   * Ce qui doit être confronté à la réussite, c'est la probabilité de l'issue
+   * Ce qui doit être confronté à la réussite, c'est la tendance de l'issue
    * annoncée : « le PSG gagne à 47 % ». Elle, elle promet quelque chose de
    * vérifiable, et c'est elle qu'on mesure ici.
    */
@@ -254,7 +254,7 @@ export async function getDiagnosticIA(): Promise<DiagnosticIA> {
   // ── Calibration : l'assurance annoncée tient-elle ses promesses ? ──
   // C'est le diagnostic le plus utile. Un modèle peut se tromper souvent sans
   // que ce soit grave, tant qu'il annonce lui-même son incertitude. Ce qui nuit
-  // à un abonné qui parie, c'est une certitude affichée qui ne se vérifie pas.
+  // à un membre qui parie, c'est une certitude affichée qui ne se vérifie pas.
   const tranches: TrancheConfiance[] = TRANCHES.map((t) => {
     const dedans = lignes.filter(
       (l) => typeof l.confidence === 'number' && l.confidence >= t.min && l.confidence < t.max
@@ -379,8 +379,8 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
     reco.push({
       gravite: d.surconfiance >= 20 ? 'critique' : 'important',
       titre: "L'analyseur annonce plus de certitude qu'il n'en mérite",
-      constat: `Probabilité moyenne annoncée pour l'issue retenue : ${d.confianceMoyenne} %. Réussite réelle : ${d.reussiteVainqueur} %. Écart de ${d.surconfiance} points sur ${echantillon} matchs.`,
-      correction: `Ce sont les PROBABILITÉS du moteur qui sont mal calibrées, pas l'indice de confiance affiché — ce dernier mesure la solidité de l'analyse et n'a pas à égaler la réussite. Rejouer le banc d'essai (scripts/calibrage-confiance.mjs) pour vérifier la courbe annoncé/constaté, et corriger le calcul des probabilités si l'écart s'y confirme.`,
+      constat: `Tendance moyenne annoncée pour l'issue retenue : ${d.confianceMoyenne} %. Réussite réelle : ${d.reussiteVainqueur} %. Écart de ${d.surconfiance} points sur ${echantillon} matchs.`,
+      correction: `Ce sont les TENDANCES du moteur qui sont mal calibrées, pas l'indice de confiance affiché — ce dernier mesure la solidité de l'analyse et n'a pas à égaler la réussite. Rejouer le banc d'essai (scripts/calibrage-confiance.mjs) pour vérifier la courbe annoncé/constaté, et corriger le calcul des tendances si l'écart s'y confirme.`,
     });
   } else if (d.surconfiance !== null && d.surconfiance <= -10) {
     reco.push({
@@ -388,7 +388,7 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
       titre: "L'analyseur se sous-estime",
       constat: `Il annonce ${d.confianceMoyenne} % de confiance et réussit ${d.reussiteVainqueur} %.`,
       correction:
-        "L'analyseur est plus fiable qu'il ne le dit. Relever ses indices de confiance rendrait ses verdicts plus utiles pour un abonné qui suit le match.",
+        "L'analyseur est plus fiable qu'il ne le dit. Relever ses indices de confiance rendrait ses verdicts plus utiles pour un membre qui suit le match.",
     });
   }
 
@@ -404,7 +404,7 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
       titre: `Les analyses annoncées à ${trancheFautive.libelle.toLowerCase()} ne tiennent pas`,
       constat: `${trancheFautive.nombre} analyses dans cette tranche : ${trancheFautive.confianceMoyenne} % annoncés, ${trancheFautive.reussite} % réussis.`,
       correction:
-        "C'est la tranche la plus trompeuse pour un abonné : il y voit une quasi-certitude. Interdire à l'analyseur d'y recourir sans une raison chiffrée explicite dans son raisonnement.",
+        "C'est la tranche la plus trompeuse pour un membre : il y voit une quasi-certitude. Interdire à l'analyseur d'y recourir sans une raison chiffrée explicite dans son raisonnement.",
     });
   }
 
@@ -417,15 +417,15 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
   // plus de nuls fait TOMBER la justesse de 50,6 % à 49,5 %, puis 48,4 % à
   // mesure qu'on insiste — essayé sur 2 305 rencontres.
   //
-  // La raison tient en une phrase : annoncer l'issue la plus probable est déjà
+  // La raison tient en une phrase : annoncer l'issue la plus attendue est déjà
   // le meilleur choix possible. Si une victoire est à 40 % et le nul à 28 %,
   // annoncer le nul fait perdre douze points de réussite, même quand le nul
   // tombe plus souvent que le modèle ne le disait.
   //
-  // Ce qui devait être corrigé, c'est la PROBABILITÉ affichée, pas le
+  // Ce qui devait être corrigé, c'est la TENDANCE affichée, pas le
   // pronostic. C'est fait : la correction des petits scores porte la
-  // probabilité moyenne de nul de 23,4 % à 25,6 %, soit exactement le taux
-  // réel constaté. Voir src/lib/score-probable.ts.
+  // tendance moyenne de nul de 23,4 % à 25,6 %, soit exactement le taux
+  // réel constaté. Voir le module de calcul du score.
   const nulsReels = d.repartition.reel.draw;
   const nulsPredits = d.repartition.predit.draw;
   if (nulsReels >= 3 && nulsPredits < nulsReels / 2) {
@@ -434,7 +434,7 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
       titre: "L'analyseur annonce rarement le match nul",
       constat: `${nulsReels} match${nulsReels > 1 ? 's se sont' : ' s\'est'} terminé${nulsReels > 1 ? 's' : ''} sur un nul, pour ${nulsPredits} annoncé${nulsPredits > 1 ? 's' : ''}.`,
       correction:
-        "Ce n'est pas un défaut à corriger : annoncer l'issue la plus probable reste le meilleur choix, et forcer davantage de nuls a été mesuré comme faisant BAISSER la réussite (50,6 % → 48,4 % sur 2 305 rencontres). Ce qui compte est que la PROBABILITÉ de nul affichée soit juste — elle l'est désormais, à 25,6 % contre 25,8 % constatés. Vérifier ce chiffre plutôt que le nombre de nuls annoncés.",
+        "Ce n'est pas un défaut à corriger : annoncer l'issue la plus attendue reste le meilleur choix, et forcer davantage de nuls a été mesuré comme faisant BAISSER la réussite (50,6 % → 48,4 % sur 2 305 rencontres). Ce qui compte est que la TENDANCE de nul affichée soit juste — elle l'est désormais, à 25,6 % contre 25,8 % constatés. Vérifier ce chiffre plutôt que le nombre de nuls annoncés.",
     });
   }
 
@@ -501,7 +501,7 @@ function construireRecommandations(d: DiagnosticIA, echantillon: number): Recomm
       titre: 'Le score exact est rarement trouvé',
       constat: `${d.reussiteScoreExact} % de scores exacts sur ${echantillon} matchs.`,
       correction:
-        "C'est normal — personne n'annonce un score exact de façon fiable. Le présenter comme une estimation plutôt que comme une certitude éviterait de décevoir un abonné qui le prendrait au pied de la lettre.",
+        "C'est normal — personne n'annonce un score exact de façon fiable. Le présenter comme une estimation plutôt que comme une certitude éviterait de décevoir un membre qui le prendrait au pied de la lettre.",
     });
   }
 

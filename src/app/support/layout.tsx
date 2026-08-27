@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Support et aide',
   description:
-    "Une question sur votre abonnement, un paiement ou une analyse ? L'équipe ProFoot AI vous répond.",
+    "Une question sur votre accès, un paiement ou une analyse ? L'équipe ProFoot AI vous répond.",
   alternates: { canonical: '/support' },
 };
 

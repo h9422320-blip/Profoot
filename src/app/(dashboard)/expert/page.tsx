@@ -265,7 +265,7 @@ export default function ExpertAgentPage() {
                   <Lock className="w-3.5 h-3.5 text-[#34D399]" strokeWidth={2.25} />
                 </span>
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">
-                  Réservé aux abonnés
+                  Réservé aux accès VIP
                 </span>
               </div>
 
@@ -350,7 +350,7 @@ export default function ExpertAgentPage() {
             </div>
           </div>
 
-        {/* La notice n'existe QUE pendant le clic sur l'abonnement. Hors de ce
+        {/* La notice n existe QUE pendant le clic sur une offre. Hors de ce
             moment, elle n'est pas montée : rien à charger pour qui ne paie pas. */}
         {noticeOuverte && (
           <NoticePaiement

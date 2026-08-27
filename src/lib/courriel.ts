@@ -144,12 +144,12 @@ export function messageAccesRouvert(expireLe: string | null): Omit<Courriel, 'a'
     texte: [
       'Bonjour,',
       '',
-      'Votre abonnement ProFoot AI est maintenant actif. Vous pouvez vous connecter ' +
+      'Votre accès ProFoot AI est maintenant actif. Vous pouvez vous connecter ' +
         'dès maintenant sur profootai.com avec cette adresse e-mail.',
       '',
       'Votre paiement avait bien été reçu, mais l\'accès ne s\'est pas ouvert ' +
         'automatiquement de notre côté. L\'erreur venait de nous, pas de vous.' +
-        (echeance ? ` Elle est corrigée : votre abonnement court jusqu'au ${echeance}.` : ''),
+        (echeance ? ` Elle est corrigée : votre accès court jusqu'au ${echeance}.` : ''),
       '',
       'Toutes nos excuses pour l\'attente. Si vous n\'arrivez pas à vous connecter, ' +
         'répondez simplement à ce message.',

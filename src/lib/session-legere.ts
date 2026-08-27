@@ -35,7 +35,7 @@
  * Renvoie `false` côté serveur : sans `document`, il n'y a rien à lire, et
  * `/signup` est le bon défaut pour un visiteur dont on ignore tout.
  */
-export function sessionProbable(): boolean {
+export function sessionPresumee(): boolean {
   if (typeof document === 'undefined') return false;
 
   // La référence du projet est le premier morceau de l'adresse Supabase :

@@ -42,7 +42,7 @@ const CACHE_TTL = {
  * `delaiMs` existe pour les appels de RATTRAPAGE : ceux qui ameliorent l analyse
  * sans lui etre indispensables. La requete entiere doit tenir sous les 60 s de
  * l hebergeur, modele de langage compris ; un rattrapage qui attendrait quinze
- * secondes ferait tuer la requete et l abonne verrait « Analyse interrompue »
+ * secondes ferait tuer la requete et le membre verrait « Analyse interrompue »
  * pour un detail dont il se serait passe.
  */
 /**
@@ -1753,9 +1753,9 @@ DONNÉES REELLES FOURNIES :
 ${JSON.stringify(pastMatches.slice(0, 3).map((m:any)=>`${m.teams.home.name} ${m.goals.home}-${m.goals.away} ${m.teams.away.name}`))}
 
 [PROJECTION CHIFFRÉE DÉJÀ CALCULÉE — À NE PAS CONTREDIRE]
-Le score et les probabilités de ce match ont été calculés à partir des buts marqués et encaissés des deux équipes et de l'avantage du terrain. Ils sont définitifs :
+Le score et les tendances de ce match ont été calculés à partir des buts marqués et encaissés des deux équipes et de l'avantage du terrain. Ils sont définitifs :
 - Buts attendus : ${team1.name} ${scoreCalcule.butsAttendus1} — ${team2.name} ${scoreCalcule.butsAttendus2}
-- Score le plus probable : ${scoreCalcule.buts1} - ${scoreCalcule.buts2}
+- Score le plus attendu : ${scoreCalcule.buts1} - ${scoreCalcule.buts2}
 - Victoire ${team1.name} ${scoreCalcule.probaVictoire1} %, nul ${scoreCalcule.probaNul} %, victoire ${team2.name} ${scoreCalcule.probaVictoire2} %
 Ton texte doit être COHÉRENT avec ces chiffres. N'annonce jamais un autre score ni un autre vainqueur, et ne mentionne jamais qu'un calcul a été fait : tu expliques le match, pas la méthode.
 
@@ -1774,7 +1774,7 @@ RETOURNE UNIQUEMENT UN JSON VALIDE AVEC LA STRUCTURE EXACTE SUIVANTE (aucun mark
 ${estApercu ? `{
   "predictedScore": { "reasoning": "Phrase courte justifiant le score." },
   "quickSummary": "QUATRE À CINQ PHRASES, jamais moins. (1) Qui reçoit qui, dans quelle compétition. (2) L'état de forme réel de la première équipe, avec ses chiffres. (3) Celui de la seconde, avec les siens. (4) Le point sur lequel la rencontre va se jouer — le duel tactique, la faiblesse à exploiter, ce que chacun devra surveiller. Ton de journaliste sportif, français naturel, aucune liste. Une seule phrase est un travail bâclé : l'abonné a payé pour lire une analyse, pas une accroche.",
-  "scenarios": [ { "title": "Scénario principal", "content": "Le déroulé le plus probable, en trois phrases." } ]
+  "scenarios": [ { "title": "Scénario principal", "content": "Le déroulé le plus attendu, en trois phrases." } ]
 }` : `{
   "predictedScore": { "reasoning": "Phrase courte justifiant le score." },
   "quickSummary": "QUATRE À CINQ PHRASES, jamais moins. (1) Qui reçoit qui, dans quelle compétition. (2) L'état de forme réel de la première équipe, avec ses chiffres. (3) Celui de la seconde, avec les siens. (4) Le point sur lequel la rencontre va se jouer — le duel tactique, la faiblesse à exploiter, ce que chacun devra surveiller. Ton de journaliste sportif, français naturel, aucune liste. Une seule phrase est un travail bâclé : l'abonné a payé pour lire une analyse, pas une accroche.",

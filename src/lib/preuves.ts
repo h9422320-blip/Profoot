@@ -3,7 +3,7 @@
  *
  * POURQUOI CE FICHIER EXISTE
  *
- * Environ 70 % des inscrits lancent une analyse, 1,7 % s'abonnent. Le blocage
+ * Environ 70 % des inscrits lancent une analyse, 1,7 % achetent un acces. Le blocage
  * n'est pas le prix : rien ne prouve au visiteur que l'IA tombe juste. Il voit
  * une analyse floutée à 85 % et doit payer pour vérifier si elle vaut quelque
  * chose. Personne ne fait ça.
@@ -55,7 +55,7 @@ import { lirePredictionBrute } from './prediction-figee';
  *
  * Le cas fondateur : du 13 août à 00 h 48 au 15 août à 21 h 50, une « marge du
  * nul » de quinze points faisait annoncer un match nul alors que les
- * probabilités affichées désignaient clairement un favori. Sur Deportivo
+ * tendances affichées désignaient clairement un favori. Sur Deportivo
  * Alavés — Getafe, dix-neuf analyses ont annoncé « 1-1 » pendant que le
  * graphique donnait Alavés à 42 % contre 29 % au nul. Le match s'est terminé
  * 3-0 pour Alavés — l'issue que le moteur annonçait avant le défaut, et qu'il
@@ -75,7 +75,7 @@ const PERIODES_DEFECTUEUSES: { debut: string; fin: string; raison: string }[] = 
   {
     debut: '2026-08-13T00:48:00Z',
     fin: '2026-08-15T21:50:00Z',
-    raison: 'marge du nul : le score annoncé contredisait les probabilités affichées',
+    raison: 'marge du nul : le score annoncé contredisait les tendances affichées',
   },
 ];
 

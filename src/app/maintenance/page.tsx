@@ -56,7 +56,7 @@ export default async function MaintenancePage() {
         </div>
 
         <p className="text-xs text-zinc-600">
-          Vos données et votre abonnement ne sont pas affectés.
+          Vos données et votre accès ne sont pas affectés.
         </p>
       </div>
     </div>

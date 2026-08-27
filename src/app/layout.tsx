@@ -29,7 +29,7 @@ const CLARITY_ID = "y4gues5jnw";
 
 const SITE_URL = "https://profootai.com";
 const DESCRIPTION =
-  "Analyses de matchs par intelligence artificielle : scores probables, statistiques avancées, forme des équipes et tendances sur les grands championnats européens et la CAN.";
+  "Analyses de matchs par intelligence artificielle : tendances de score, statistiques avancées, forme des équipes et tendances sur les grands championnats européens et la CAN.";
 
 export const metadata: Metadata = {
   // Sans cette base, Next.js ne peut pas construire d'adresse absolue : Google

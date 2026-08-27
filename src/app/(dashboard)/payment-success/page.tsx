@@ -32,7 +32,7 @@ export default function PaymentSuccessPage() {
     const params = new URLSearchParams(window.location.search);
     // Un achat à l'unité ne rend pas « premium » : c'est le déblocage de CE
     // match qu'il faut attendre. Sans cette distinction, la page tournerait
-    // indéfiniment sur un abonnement qui ne viendra jamais.
+    // indéfiniment sur un acces qui ne viendra jamais.
     const cleMatch = params.get('match');
     const t1 = params.get('t1');
     const t2 = params.get('t2');
@@ -137,7 +137,7 @@ export default function PaymentSuccessPage() {
               <p className="text-foreground/50 leading-relaxed">
                 {achatMatch
                   ? 'Votre analyse complète est débloquée. Ouverture…'
-                  : "Félicitations, votre abonnement ProFoot AI est maintenant actif. Bienvenue dans l'élite !"}
+                  : "Félicitations, votre accès ProFoot AI est maintenant actif. Bienvenue dans l'élite !"}
               </p>
             </>
           )}
@@ -149,7 +149,7 @@ export default function PaymentSuccessPage() {
               <p className="text-foreground/50 leading-relaxed">
                 {achatMatch
                   ? "Votre paiement est bien enregistré. Le déblocage arrive d'ici quelques instants — ouvrez votre analyse, elle s'affichera complète dès que c'est prêt."
-                  : 'Votre paiement est en cours de traitement. Votre abonnement sera activé automatiquement d’ici quelques minutes — vous pouvez déjà naviguer dans l’application.'}
+                  : 'Votre paiement est en cours de traitement. Votre accès sera activé automatiquement d’ici quelques minutes — vous pouvez déjà naviguer dans l’application.'}
               </p>
             </>
           )}

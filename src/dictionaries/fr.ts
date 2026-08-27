@@ -21,7 +21,7 @@ const fr = {
     appearance: 'Apparence',
     notifications: 'Notifications',
     language: 'Langue',
-    subscription: 'Abonnement',
+    subscription: 'Accès',
     profileInfo: 'Informations du profil',
     changeAvatar: "Changer l'avatar",
     firstName: 'Prénom',
