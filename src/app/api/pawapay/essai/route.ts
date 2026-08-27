@@ -6,18 +6,29 @@
  * Le jeton vit dans les variables de Vercel. Le rapatrier sur un poste de
  * travail demande le CLI Vercel, qui demande PowerShell, qui refuse d'exécuter
  * des scripts par défaut sur Windows. Trois obstacles pour déplacer un secret
- * qui n'a aucune raison de bouger.
+ * qui n'a aucune raison de bouger. Le serveur, lui, l'a déjà.
  *
- * Le serveur, lui, l'a déjà. On fait donc tourner les essais chez lui, et on
- * ne rapatrie que le résultat.
+ * ── POURQUOI EN DEUX TEMPS ────────────────────────────────────────────────
+ *
+ * Premier essai le 27 août 2026 : erreur 524. Le domaine passe par Cloudflare,
+ * qui coupe TOUTE requête à cent secondes. Huit encaissements suivis chacun
+ * jusqu'à son statut définitif en demandaient environ cent trente.
+ *
+ * On sépare donc ce qui est long de ce qui ne l'est pas :
+ *
+ *     ?action=lancer   huit encaissements partent, on rend la main aussitôt
+ *     ?action=lire     on relit les huit statuts et on rend le verdict
+ *
+ * Entre les deux, une trentaine de secondes suffisent : PawaPay tranche vite
+ * en bac à sable. Les identifiants sont gardés dans la réserve, pas renvoyés
+ * à l'appelant — sinon il faudrait les recoller à la main.
  *
  * ── TROIS VERROUS ─────────────────────────────────────────────────────────
  *
- *   1. réservée à l'administration — le même contrôle que le reste ;
- *   2. REFUSE de tourner ailleurs que sur le bac à sable. Un banc d'essai qui
+ *   1. réservée à l'administration ;
+ *   2. REFUSE de tourner ailleurs que sur le bac à sable — un banc d'essai qui
  *      déclenche de vrais encaissements ne se rattrape pas ;
- *   3. ne touche pas à notre base : c'est la passerelle qu'on éprouve, pas le
- *      parcours d'achat. Aucun accès ne peut s'ouvrir par ce chemin.
+ *   3. ne touche pas aux abonnements : aucun accès ne peut s'ouvrir par ici.
  *
  * Le jeton n'apparaît jamais dans la réponse, ni sa longueur, ni son début.
  */
@@ -27,9 +38,13 @@ import crypto from 'node:crypto';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { estAdmin } from '@/lib/admins';
 import { baseUrl, estProduction, pawapayConfigure } from '@/lib/pawapay';
+import { lireReserve, ecrireReserve } from '@/lib/api-football';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+export const maxDuration = 60;
+
+/** Où les identifiants attendent entre le lancement et la lecture. */
+const CLE_RESERVE = 'pawapay:essai:encours';
 
 /**
  * Numéros de test officiels PawaPay. La terminaison décide de l'issue :
@@ -49,7 +64,7 @@ const ESSAIS = [
 const OPERATEUR = 'MPESA_KEN';
 const DEVISE = 'KES';
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!estAdmin(user?.email)) {
@@ -59,7 +74,7 @@ export async function GET() {
   if (!pawapayConfigure()) {
     return NextResponse.json({
       erreur: 'PAWAPAY_API_TOKEN absent du serveur.',
-      aFaire: "Ajoutez la variable dans Vercel, puis redéployez — les variables ne sont lues qu'au démarrage.",
+      aFaire: "Ajoutez la variable dans Vercel puis redéployez : les variables sont lues au démarrage.",
     }, { status: 503 });
   }
 
@@ -90,7 +105,54 @@ export async function GET() {
     return { http: r.status, json, texte: texte.slice(0, 300) };
   };
 
-  // ── 1. LA CONFIGURATION DU COMPTE ───────────────────────────────────────
+  const action = new URL(request.url).searchParams.get('action') ?? 'lancer';
+
+  // ══ LIRE ════════════════════════════════════════════════════════════════
+  if (action === 'lire') {
+    const garde = await lireReserve<any[]>(CLE_RESERVE);
+    if (!garde?.contenu?.length) {
+      return NextResponse.json({
+        erreur: 'Aucun essai en cours.',
+        aFaire: 'Ouvrez d’abord /api/pawapay/essai?action=lancer',
+      }, { status: 404 });
+    }
+
+    const resultats: any[] = [];
+    for (const e of garde.contenu) {
+      if (e.obtenu === 'REFUS_A_L_INITIATION') { resultats.push({ ...e, conforme: false }); continue; }
+      const s = await appel(`/v2/deposits/${e.depositId}`);
+      const statut = s.json?.status === 'FOUND' ? s.json.data?.status ?? null : null;
+      const code = s.json?.data?.failureReason?.failureCode ?? null;
+      const conforme =
+        e.attendu === 'PENDING'
+          ? statut !== 'COMPLETED' && statut !== 'FAILED'
+          : statut === e.attendu;
+      resultats.push({ essai: e.nom, depositId: e.depositId, attendu: e.attendu, obtenu: statut, code, conforme });
+    }
+
+    const conformes = resultats.filter((r) => r.conforme).length;
+    const aboutis = resultats.filter((r) => r.obtenu === 'COMPLETED').length;
+    const enCours = resultats.filter((r) => r.obtenu === 'ACCEPTED' || r.obtenu === 'PROCESSING').length;
+
+    return NextResponse.json({
+      environnement: 'SANDBOX',
+      essais: resultats,
+      bilan: {
+        total: resultats.length,
+        conformes,
+        encaissementsAboutis: aboutis,
+        encoreEnCours: enCours,
+        verdict:
+          conformes === resultats.length
+            ? 'TOUT EST CONFORME'
+            : enCours > 0
+              ? 'ENCORE EN COURS — rechargez dans 20 secondes'
+              : 'DES ÉCARTS À REGARDER',
+      },
+    });
+  }
+
+  // ══ LANCER ══════════════════════════════════════════════════════════════
   const conf = await appel('/v2/active-conf');
   if (conf.http !== 200) {
     return NextResponse.json({
@@ -105,10 +167,7 @@ export async function GET() {
     operateurs: (p.providers ?? []).map((x: any) => x.provider),
   }));
 
-  // ── 2. LES ENCAISSEMENTS ────────────────────────────────────────────────
-  const attendre = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  const resultats: any[] = [];
-
+  const lances: any[] = [];
   for (const e of ESSAIS) {
     const depositId = crypto.randomUUID();
     const init = await appel('/v2/deposits', 'POST', {
@@ -119,56 +178,34 @@ export async function GET() {
       clientReferenceId: `ESSAI-${depositId.slice(0, 8)}`,
       customerMessage: 'ProFoot AI',
     });
-
     const accepte = init.json?.status;
-    if (accepte !== 'ACCEPTED' && accepte !== 'DUPLICATE_IGNORED') {
-      resultats.push({
-        essai: e.nom,
-        depositId,
-        attendu: e.attendu,
-        obtenu: 'REFUS_A_L_INITIATION',
-        detail: init.json?.failureReason?.failureCode ?? `HTTP ${init.http}`,
-        conforme: false,
-      });
-      continue;
-    }
-
-    // On relit jusqu'au statut définitif, sans dépasser une vingtaine de secondes.
-    let statut: string | null = null;
-    let code: string | null = null;
-    for (let i = 0; i < 8; i++) {
-      await attendre(2000);
-      const s = await appel(`/v2/deposits/${depositId}`);
-      if (s.json?.status === 'FOUND') {
-        statut = s.json.data?.status ?? null;
-        code = s.json.data?.failureReason?.failureCode ?? null;
-        if (statut === 'COMPLETED' || statut === 'FAILED') break;
-      }
-    }
-
-    const conforme =
-      e.attendu === 'PENDING'
-        ? statut !== 'COMPLETED' && statut !== 'FAILED'
-        : statut === e.attendu;
-
-    resultats.push({ essai: e.nom, depositId, attendu: e.attendu, obtenu: statut, code, conforme });
+    lances.push({
+      nom: e.nom,
+      attendu: e.attendu,
+      depositId,
+      obtenu:
+        accepte === 'ACCEPTED' || accepte === 'DUPLICATE_IGNORED'
+          ? null
+          : 'REFUS_A_L_INITIATION',
+      detail:
+        accepte === 'ACCEPTED' || accepte === 'DUPLICATE_IGNORED'
+          ? undefined
+          : init.json?.failureReason?.failureCode ?? `HTTP ${init.http}`,
+    });
   }
 
-  const conformes = resultats.filter((r) => r.conforme).length;
-  const aboutis = resultats.filter((r) => r.obtenu === 'COMPLETED').length;
+  // Une heure suffit largement : personne ne relit un essai le lendemain.
+  await ecrireReserve(CLE_RESERVE, lances, 3600_000);
 
+  const partis = lances.filter((l) => l.obtenu === null).length;
   return NextResponse.json({
     environnement: 'SANDBOX',
     base: baseUrl(),
     societe: conf.json?.companyName ?? null,
     paysOuverts: pays.length,
     pays,
-    essais: resultats,
-    bilan: {
-      total: resultats.length,
-      conformes,
-      encaissementsAboutis: aboutis,
-      verdict: conformes === resultats.length ? 'TOUT EST CONFORME' : 'DES ÉCARTS À REGARDER',
-    },
+    encaissementsLances: partis,
+    refusesAuDepart: lances.length - partis,
+    aFaire: 'Attendez 30 secondes puis ouvrez /api/pawapay/essai?action=lire',
   });
 }
