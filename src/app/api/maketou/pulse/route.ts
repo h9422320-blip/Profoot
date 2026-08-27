@@ -1,96 +1,109 @@
 /**
  * L'ADRESSE QUE MAKETOU PRÉVIENT QUAND UNE VENTE RÉUSSIT.
  *
- * ── PREMIÈRE VERSION : ELLE ÉCOUTE, ELLE N'OUVRE RIEN ─────────────────────
+ * ── CETTE ADRESSE EST PUBLIQUE, ET MAKETOU NE SIGNE RIEN ──────────────────
  *
- * Le format des messages de MakeTou n'est pas documenté publiquement. Quels
- * champs, quel nom pour l'adresse du client, comment le produit est désigné :
- * on ne le sait pas encore.
+ * Relevé le 27 août 2026 sur un message de test réel : MakeTou n'envoie
+ * AUCUNE signature. Le seul marqueur d'origine est un `user-agent` valant
+ * « MaketouPulse/1.0 » — que n'importe qui écrit en trois secondes.
  *
- * Construire l'ouverture d'accès contre un format supposé, c'est se garantir
- * un défaut — et ici un défaut se traduit par un client qui paie sans rien
- * recevoir. C'est exactement ce qui est arrivé le 26 août 2026 : treize
- * personnes avaient payé, l'accès ne s'est jamais ouvert, et personne ne l'a
- * su avant qu'un client écrive.
+ * L'authenticité repose donc entièrement sur un SECRET partagé, placé dans
+ * l'adresse du pulse :
  *
- * Cette version enregistre donc TOUT ce que MakeTou envoie, telle quelle, et
- * n'accorde aucun droit. Une fois le message réel observé — via le bouton
- * « Envoyez un test » du tableau de bord — l'ouverture d'accès sera écrite sur
- * ce qu'on a vu, pas sur ce qu'on a deviné.
+ *     https://profootai.com/api/maketou/pulse?cle=<MAKETOU_PULSE_SECRET>
  *
- * ── CE QU'IL FAUDRA AJOUTER AVANT D'OUVRIR QUOI QUE CE SOIT ───────────────
+ * Sans ce secret, cette route enregistre le message et n'ouvre RIEN. Ce n'est
+ * pas une précaution théorique : une adresse qui ouvre un accès payant sur
+ * simple demande rend le produit entier gratuit pour qui sait envoyer une
+ * requête.
  *
- * Un secret partagé. Cette adresse est publique : sans secret, n'importe qui
- * pourrait annoncer une vente et obtenir un accès. Le webhook de l'autre
- * boutique en emploie déjà un (`CHARIOW_WEBHOOK_SECRET`), et celui-ci suivra
- * le même principe — probablement une clé dans l'adresse du pulse, puisque
- * MakeTou n'expose pas de champ dédié.
+ * ── POURQUOI ON RÉPOND TOUJOURS 200 ───────────────────────────────────────
  *
- * Tant que ce secret n'est pas en place, ce fichier ne doit RIEN ouvrir.
+ * Une erreur ferait réessayer MakeTou en boucle sans rien réparer. On accuse
+ * réception, on journalise, et le rattrapage se fait par relecture.
  */
 
 import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { ecrireReserve, lireReserve } from '@/lib/api-football';
+import { secretAttendu, secretValide, ouvrirAccesMaketou, type VenteMaketou } from '@/lib/maketou';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
-/** Les derniers messages reçus, gardés pour être lus et compris. */
+/** Les derniers messages reçus, gardés pour comprendre et diagnostiquer. */
 const CLE_JOURNAL = 'maketou:pulse:recus';
-
-/** On en garde dix : assez pour comparer, trop peu pour encombrer. */
 const MAX_GARDES = 10;
+
+async function journaliser(entree: unknown) {
+  try {
+    const journal = (await lireReserve<any[]>(CLE_JOURNAL))?.contenu ?? [];
+    const suivant = [entree, ...(Array.isArray(journal) ? journal : [])].slice(0, MAX_GARDES);
+    await ecrireReserve(CLE_JOURNAL, suivant, 7 * 24 * 3600_000);
+  } catch (e: any) {
+    console.warn('[MAKETOU] Journal impossible :', e?.message);
+  }
+}
 
 export async function POST(request: Request) {
   const brut = await request.text();
 
-  // Les en-têtes disent souvent ce que le corps ne dit pas : signature,
-  // horodatage, identifiant d'événement. On les garde tous sauf ceux qui
-  // pourraient porter un secret.
-  const entetes: Record<string, string> = {};
-  request.headers.forEach((valeur, nom) => {
-    if (/authorization|cookie/i.test(nom)) return;
-    entetes[nom] = valeur;
-  });
-
-  let corps: unknown = null;
+  let vente: VenteMaketou | null = null;
   try {
-    corps = brut ? JSON.parse(brut) : null;
+    vente = brut ? JSON.parse(brut) : null;
   } catch {
-    corps = { nonJson: brut.slice(0, 2000) };
+    console.error('[MAKETOU] Corps illisible.');
+    await journaliser({ recuLe: new Date().toISOString(), erreur: 'corps illisible', brut: brut.slice(0, 500) });
+    return NextResponse.json({ recu: true, traite: false, motif: 'corps illisible' });
   }
 
-  const recu = {
-    recuLe: new Date().toISOString(),
-    methode: 'POST',
-    url: request.url,
-    entetes,
-    corps,
-  };
+  const cle = new URL(request.url).searchParams.get('cle');
+  const identifie = secretValide(cle);
 
-  console.log('[MAKETOU] Pulse reçu :', JSON.stringify(recu).slice(0, 2000));
+  const trace = {
+    recuLe: new Date().toISOString(),
+    evenement: vente?.eventType ?? null,
+    vente: vente?.sale?.id ?? null,
+    email: vente?.customer?.email ?? null,
+    produit: vente?.products?.[0]?.name ?? null,
+    montant: vente?.sale?.amount ?? null,
+    prix: vente?.products?.[0]?.price ?? null,
+    pays: vente?.originCountry?.code ?? null,
+    moyen: vente?.paymentMethod?.name ?? null,
+    identifie,
+  };
+  console.log('[MAKETOU] Pulse reçu :', JSON.stringify(trace));
+
+  // ── SANS SECRET, ON N'OUVRE RIEN ────────────────────────────────────────
+  if (!identifie) {
+    const raison = secretAttendu()
+      ? 'clé absente ou incorrecte dans l’adresse du pulse'
+      : 'MAKETOU_PULSE_SECRET n’est pas configurée sur le serveur';
+    console.error(
+      `[MAKETOU] Message NON authentifié — aucun accès ouvert (${raison}). ` +
+        `L'adresse du pulse doit se terminer par « ?cle=<secret> ».`
+    );
+    await journaliser({ ...trace, refuse: raison, corps: vente });
+    return NextResponse.json({ recu: true, traite: false, motif: 'non authentifié' });
+  }
 
   try {
-    const journal = (await lireReserve<any[]>(CLE_JOURNAL))?.contenu ?? [];
-    const suivant = [recu, ...(Array.isArray(journal) ? journal : [])].slice(0, MAX_GARDES);
-    // Sept jours : le temps de comprendre le format et d'écrire la suite.
-    await ecrireReserve(CLE_JOURNAL, suivant, 7 * 24 * 3600_000);
-  } catch (e: any) {
-    // Ne jamais faire échouer la réponse pour un problème d'enregistrement :
-    // MakeTou réessaierait en boucle sans que ça répare quoi que ce soit.
-    console.warn('[MAKETOU] Journal impossible :', e?.message);
-  }
+    const r = await ouvrirAccesMaketou(createAdminClient(), vente ?? {});
+    await journaliser({ ...trace, resultat: r });
 
-  // On accuse réception. « recu » et non « traité » : le message est bien
-  // arrivé, mais aucun accès n'a été ouvert — et c'est volontaire à ce stade.
-  return NextResponse.json({
-    recu: true,
-    traite: false,
-    note: "Enregistré pour analyse du format. Aucun accès n'est ouvert par cette version.",
-  });
+    if (r.ouvert) {
+      return NextResponse.json({ recu: true, traite: true, ouvert: true, plan: r.plan });
+    }
+    console.warn(`[MAKETOU] Accès non ouvert : ${r.motif}`);
+    return NextResponse.json({ recu: true, traite: true, ouvert: false, motif: r.motif });
+  } catch (e: any) {
+    console.error('[MAKETOU] Traitement impossible :', e?.message);
+    await journaliser({ ...trace, erreur: e?.message });
+    return NextResponse.json({ recu: true, traite: false, motif: 'erreur interne' });
+  }
 }
 
 /** MakeTou peut sonder l'adresse avant de l'accepter. On répond présent. */
 export async function GET() {
-  return NextResponse.json({ service: 'maketou-pulse', pret: true });
+  return NextResponse.json({ service: 'maketou-pulse', pret: true, protege: !!secretAttendu() });
 }
