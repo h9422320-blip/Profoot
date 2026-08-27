@@ -132,7 +132,12 @@ export async function GET(request: Request) {
 
     const conformes = resultats.filter((r) => r.conforme).length;
     const aboutis = resultats.filter((r) => r.obtenu === 'COMPLETED').length;
-    const enCours = resultats.filter((r) => r.obtenu === 'ACCEPTED' || r.obtenu === 'PROCESSING').length;
+    // IN_RECONCILIATION est un statut INTERMÉDIAIRE : PawaPay rapproche la
+    // transaction avec l'opérateur avant de conclure. L'oublier ici faisait
+    // annoncer « des écarts à regarder » sur des essais parfaitement en cours.
+    const enCours = resultats.filter(
+      (r) => r.obtenu === 'ACCEPTED' || r.obtenu === 'PROCESSING' || r.obtenu === 'IN_RECONCILIATION'
+    ).length;
 
     return NextResponse.json({
       environnement: 'SANDBOX',
@@ -142,11 +147,13 @@ export async function GET(request: Request) {
         conformes,
         encaissementsAboutis: aboutis,
         encoreEnCours: enCours,
+        // L'attente prime sur le verdict : tant qu'un essai n'a pas de statut
+        // définitif, on ne peut RIEN conclure, ni en bien ni en mal.
         verdict:
-          conformes === resultats.length
-            ? 'TOUT EST CONFORME'
-            : enCours > 0
-              ? 'ENCORE EN COURS — rechargez dans 20 secondes'
+          enCours > 0
+            ? `ENCORE EN COURS (${enCours}/${resultats.length}) — rechargez cette page dans 20 secondes`
+            : conformes === resultats.length
+              ? 'TOUT EST CONFORME'
               : 'DES ÉCARTS À REGARDER',
       },
     });
