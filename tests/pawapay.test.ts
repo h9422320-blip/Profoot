@@ -173,3 +173,59 @@ test("★ ACQUIS — l'empreinte du corps est contrôlée quand elle est fournie
   assert.match(RAPPEL, /content-digest/i, "L'empreinte n'est plus lue.");
   assert.match(RAPPEL, /createHash\('sha256'\)/, "L'empreinte n'est plus recalculée.");
 });
+
+// ── LE BASCULEMENT SANDBOX → PRODUCTION EST UN CHANGEMENT DE RÉGLAGE ───────
+
+test('★ ACQUIS — une seule ligne du code décide de la passerelle contactée', () => {
+  // Si un second fichier lisait PAWAPAY_BASE_URL, passer en production
+  // demanderait de penser à deux endroits — et l'un des deux serait oublié.
+  const fichiers = [
+    'src/lib/pawapay.ts',
+    'src/lib/pawapay-activation.ts',
+    'src/app/api/pawapay/callback/route.ts',
+    'src/app/api/pawapay/depot/route.ts',
+    'src/app/api/pawapay/essai/route.ts',
+  ];
+  for (const f of fichiers) {
+    const src = lire(f);
+    const lectures = (src.match(/process\.env\.PAWAPAY_BASE_URL/g) ?? []).length;
+    if (f === 'src/lib/pawapay.ts') {
+      assert.equal(lectures, 1, 'pawapay.ts doit lire l’adresse exactement une fois.');
+    } else {
+      assert.equal(lectures, 0, `${f} lit l’adresse directement : le basculement se ferait à deux endroits.`);
+    }
+  }
+});
+
+test('★ ACQUIS — aucun appel ne contourne baseUrl()', () => {
+  // Un `fetch('https://api.sandbox…')` écrit en dur continuerait de parler au
+  // bac à sable après le passage en production. Silencieusement.
+  for (const f of [
+    'src/lib/pawapay.ts',
+    'src/app/api/pawapay/callback/route.ts',
+    'src/app/api/pawapay/depot/route.ts',
+    'src/app/api/pawapay/essai/route.ts',
+  ]) {
+    const src = lire(f);
+    for (const ligne of src.split(/\r?\n/)) {
+      const nue = ligne.trim();
+      if (nue.startsWith('*') || nue.startsWith('//')) continue; // commentaires
+      if (!/fetch\s*\(/.test(ligne)) continue;
+      assert.doesNotMatch(
+        ligne,
+        /https:\/\/api\.(sandbox\.)?pawapay\.io/,
+        `${f} : un appel contourne baseUrl() — ${nue.slice(0, 70)}`
+      );
+    }
+  }
+});
+
+test("★ ACQUIS — le banc d'essai refuse la production", () => {
+  // Il envoie de VRAIS encaissements avec des numéros de test. Le laisser
+  // tourner en production déclencherait des mouvements réels.
+  const src = lire('src/app/api/pawapay/essai/route.ts');
+  assert.match(src, /if \(estProduction\(\)\)/, 'Le refus de tourner en production a disparu.');
+  const i = src.indexOf('if (estProduction())');
+  const j = src.indexOf("const action =");
+  assert.ok(i > 0 && i < j, 'Le refus doit précéder toute action.');
+});

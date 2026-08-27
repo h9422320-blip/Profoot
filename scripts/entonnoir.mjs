@@ -1,46 +1,80 @@
-/** Le tunnel de vente, de bout en bout : mesure maison + caisse Chariow. */
-import fs from 'fs';
-import path from 'path';
-import { createJiti } from 'jiti';
-const env = Object.fromEntries(
-  fs.readFileSync('.env.local', 'utf8').split('\n').map((l) => l.trim())
-    .filter((l) => l && !l.startsWith('#'))
-    .map((l) => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1).replace(/^["']|["']$/g, '')]; })
-);
-for (const [k, v] of Object.entries(env)) process.env[k] = v;
-const jiti = createJiti(import.meta.url, { alias: { '@': path.resolve(process.cwd(), 'src') } });
-const { lireBilanVisites } = await jiti.import('../src/lib/mesure-visites.ts');
-const { listSalesEncaissees } = await jiti.import('../src/lib/chariow.ts');
+/** L'ENTONNOIR RÉEL, ÉTAPE PAR ÉTAPE. Lecture seule. */
+import fs from 'node:fs';
+import { createClient } from '@supabase/supabase-js';
+for (const l of fs.readFileSync('.env.local','utf8').split('\n')) {
+  const t=l.trim(); if(!t||t.startsWith('#'))continue;
+  const i=t.indexOf('='); if(i<0)continue;
+  process.env[t.slice(0,i)]=t.slice(i+1).replace(/^["']|["']$/g,'');
+}
+const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth:{persistSession:false} });
+const lireTout = async (table, champs) => {
+  const out=[];
+  for(let de=0;de<200000;de+=1000){
+    const { data, error } = await sb.from(table).select(champs).range(de,de+999);
+    if(error){ console.log(' erreur '+table+' : '+error.message); break; }
+    if(!data?.length) break; out.push(...data); if(data.length<1000) break;
+  }
+  return out;
+};
 
-const HEURES = 24;
-const b = await lireBilanVisites(HEURES);
+// Comptes
+const comptes=[];
+for(let p=1;p<=40;p++){
+  const { data } = await sb.auth.admin.listUsers({ page:p, perPage:1000 });
+  if(!data?.users?.length) break;
+  comptes.push(...data.users.map(u=>({ id:u.id, email:u.email, cree:u.created_at, vu:u.last_sign_in_at })));
+  if(data.users.length<1000) break;
+}
 
-console.log(`\n  ══ LE TUNNEL DE VENTE — ${HEURES} DERNIÈRES HEURES ══\n`);
-console.log(`  ${b.visites} visites · ${b.partMobile} % sur téléphone\n`);
+const analyses = await lireTout('analysis_history','user_id, created_at');
+const intentions = await lireTout('payment_intents','user_id, created_at, consumed_at, plan, pays');
+const abos = await lireTout('subscriptions','user_id, plan, created_at');
 
-const e = (cle) => b.entonnoir.find((x) => x.cle === cle) ?? { visites: 0, partPrecedente: null, perdues: 0 };
-const ligne = (nom, x, retrait = false) =>
-  console.log(
-    `  ${retrait ? '   ' : ''}${String(x.visites).padStart(retrait ? 5 : 8)}  ${nom.padEnd(retrait ? 33 : 36)}` +
-    (x.partPrecedente !== null ? `${String(x.partPrecedente).padStart(5)} %` : '')
-  );
+const aAnalyse = new Map();
+for(const a of analyses) aAnalyse.set(a.user_id,(aAnalyse.get(a.user_id)??0)+1);
+const aClique = new Set(intentions.map(i=>i.user_id).filter(Boolean));
+const aPaye  = new Set(abos.map(a=>a.user_id).filter(Boolean));
 
-ligne('ont vu les tarifs', e('tarifs'));
-ligne('ont cliqué sur une offre', e('offre-cliquee'));
-console.log('');
-ligne('ont cliqué « Continuer »', e('notice-continuer'), true);
-ligne('sont partis après 20 s, sans agir', e('notice-auto'), true);
-ligne('ont fermé la notice', e('notice-fermee'), true);
-ligne('lien de paiement en échec', e('echec-lien'), true);
-console.log('');
-ligne('sont partis vers la caisse', e('depart-caisse'));
+const n = comptes.length;
+const pct = (x)=> Math.round(x/n*1000)/10;
+console.log(`\n══ ENTONNOIR — ${n} comptes ══\n`);
+const etapes = [
+  ['comptes créés', n],
+  ['se sont connectés au moins une fois', comptes.filter(c=>c.vu).length],
+  ['ont fait au moins UNE analyse', aAnalyse.size],
+  ['ont cliqué sur payer', aClique.size],
+  ['ONT PAYÉ', aPaye.size],
+];
+let prec=null;
+for(const [nom,v] of etapes){
+  const chute = prec===null ? '' : `   (−${Math.round((1-v/prec)*1000)/10} % depuis l étape précédente)`;
+  console.log(`  ${String(v).padStart(6)}  ${String(pct(v)+' %').padStart(7)}  ${nom}${chute}`);
+  prec=v;
+}
 
-// ── Ce que dit la caisse, sur la même journée ────────────────────────────
-const V = await listSalesEncaissees();
-const jour = (v) => String(v.completed_at ?? v.created_at).slice(0, 10);
-const auj = new Date().toISOString().slice(0, 10);
-const payes = V.filter((v) => jour(v) === auj);
-const somme = payes.reduce((s, v) => s + Number(v.amount?.value ?? 0), 0);
-console.log(`  ${String(payes.length).padStart(8)}  ont payé${' '.repeat(28)}` +
-  (e('depart-caisse').visites > 0 ? `${String(Math.round(payes.length / e('depart-caisse').visites * 100)).padStart(5)} %` : ''));
-console.log(`\n  Recette du jour : ${somme.toLocaleString('fr-FR')} FCFA\n`);
+// Combien d analyses avant d acheter ?
+const premierAbo = new Map();
+for(const a of abos){ const t=Date.parse(a.created_at); if(!premierAbo.has(a.user_id)||t<premierAbo.get(a.user_id)) premierAbo.set(a.user_id,t); }
+const avant = [];
+for(const [uid,quand] of premierAbo){
+  const n = analyses.filter(x=>x.user_id===uid && Date.parse(x.created_at) < quand).length;
+  avant.push(n);
+}
+avant.sort((a,b)=>a-b);
+const med = avant[Math.floor(avant.length/2)];
+console.log(`\n══ ANALYSES FAITES AVANT D ACHETER (${avant.length} acheteurs) ══`);
+console.log(`  médiane : ${med}   moyenne : ${Math.round(avant.reduce((a,b)=>a+b,0)/avant.length*10)/10}`);
+const tranches=[[0,0],[1,1],[2,3],[4,6],[7,10],[11,999]];
+for(const [min,max] of tranches){
+  const c = avant.filter(v=>v>=min&&v<=max).length;
+  console.log(`     ${String(min===max?min:min+'–'+(max===999?'+':max)).padStart(5)} analyse(s) : ${String(c).padStart(4)}  ${'█'.repeat(Math.round(c/avant.length*50))}`);
+}
+
+// Taux d achat selon le nombre d analyses faites
+console.log(`\n══ PROBABILITÉ D ACHETER SELON LE NOMBRE D ANALYSES FAITES ══`);
+for(const [min,max] of tranches){
+  const groupe = comptes.filter(c=>{ const v=aAnalyse.get(c.id)??0; return v>=min&&v<=max; });
+  if(!groupe.length) continue;
+  const acheteurs = groupe.filter(c=>aPaye.has(c.id)).length;
+  console.log(`     ${String(min===max?min:min+'–'+(max===999?'+':max)).padStart(5)} analyse(s) : ${String(groupe.length).padStart(5)} comptes → ${String(acheteurs).padStart(4)} acheteurs  (${Math.round(acheteurs/groupe.length*1000)/10} %)`);
+}
