@@ -107,6 +107,45 @@ export async function GET(request: Request) {
 
   const action = new URL(request.url).searchParams.get('action') ?? 'lancer';
 
+  // ══ ÉTAT ════════════════════════════════════════════════════════════════
+  //
+  // Les huit essais du 27 août sont restés vingt minutes en IN_RECONCILIATION
+  // alors que la documentation annonce un dénouement « plus rapide qu'en
+  // production ». Avant d'écrire au support, on regarde l'évidence : un
+  // opérateur marqué CLOSED ou DELAYED expliquerait tout, et la liste des
+  // opérateurs ne dit rien de leur état.
+  if (action === 'etat') {
+    const conf = await appel('/v2/active-conf');
+    if (conf.http !== 200) {
+      return NextResponse.json({ erreur: `La passerelle a répondu ${conf.http}.`, detail: conf.texte }, { status: 502 });
+    }
+    const detail = (conf.json?.countries ?? []).map((pays: any) => ({
+      pays: pays.country,
+      operateurs: (pays.providers ?? []).map((p: any) => {
+        const devises = (p.currencies ?? []).map((c: any) => ({
+          devise: c.currency,
+          depot: (c.operationTypes ?? [])
+            .filter((o: any) => o.operationType === 'DEPOSIT')
+            .map((o: any) => ({ etat: o.status, min: o.minAmount, max: o.maxAmount })),
+        }));
+        return { operateur: p.provider, devises };
+      }),
+    }));
+    const fermes = detail.flatMap((c: any) =>
+      c.operateurs
+        .flatMap((o: any) => o.devises.flatMap((d: any) => d.depot.map((x: any) => ({ pays: c.pays, operateur: o.operateur, etat: x.etat }))))
+        .filter((x: any) => x.etat && x.etat !== 'OPERATIONAL')
+    );
+    return NextResponse.json({
+      environnement: 'SANDBOX',
+      societe: conf.json?.companyName ?? null,
+      signatures: conf.json?.signatureConfiguration ?? null,
+      operateursNonOperationnels: fermes,
+      detail,
+    });
+  }
+
+
   // ══ LIRE ════════════════════════════════════════════════════════════════
   if (action === 'lire') {
     const garde = await lireReserve<any[]>(CLE_RESERVE);
