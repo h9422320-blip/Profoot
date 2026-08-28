@@ -115,6 +115,45 @@ export function ajusterLienPaiement(
   }
 }
 
+/**
+ * CETTE BOUTIQUE EST FERMÉE, ET L'APPLICATION NE LUI PARLE PLUS.
+ *
+ * ── CE QUI S'EST PASSÉ ────────────────────────────────────────────────────
+ *
+ * Chariow a bloqué la boutique le 27 août 2026. Vérifié le lendemain : son
+ * catalogue répond « 200, data: [] » et le produit Essentiel rend un 404. La
+ * vente est passée à MakeTou le 28 août.
+ *
+ * ── POURQUOI COUPER, ET PAS SEULEMENT CESSER D'UTILISER ───────────────────
+ *
+ * Six chemins l'appelaient encore, dont un sur la route de CHAQUE page :
+ * `acces-immediat` interrogeait la boutique pour toute personne ayant une
+ * intention de paiement en attente. Un service mort ne répond pas vite — il
+ * fait attendre, puis échoue. Ces appels ne pouvaient plus rien rapporter et
+ * coûtaient du temps à chaque visiteur concerné.
+ *
+ * Couper ICI plutôt que chez chaque appelant tient en une raison : un seul
+ * endroit à vérifier pour savoir si l'application parle encore à Chariow. Les
+ * appelants continuent de compiler, reçoivent une liste vide, et poursuivent
+ * leur chemin — c'est exactement ce qu'ils font déjà quand la boutique ne
+ * répond pas.
+ *
+ * ── CE QUI RESTE, ET POURQUOI ─────────────────────────────────────────────
+ *
+ * Les types et la colonne `chariow_sale_id` demeurent : 354 abonnements
+ * ACTIFS s'y rattachent, et c'est cette colonne qui porte l'unicité empêchant
+ * de créditer deux fois. La renommer sans précaution couperait l'accès de
+ * clients qui ont payé.
+ */
+const BOUTIQUE_FERMEE = true;
+
+function refusPoli(quoi: string): void {
+  console.warn(
+    `[CHARIOW] ${quoi} — appel non effectué : la boutique est fermée depuis le ` +
+      `27 août 2026 et la vente passe par MakeTou.`
+  );
+}
+
 function apiKey(): string {
   const key = process.env.CHARIOW_API_KEY;
   if (!key) throw new Error('CHARIOW_API_KEY manquante.');
@@ -260,6 +299,16 @@ export async function initCheckout(params: {
   ipAcheteur?: string;
   redirectUrl: string;
 }): Promise<ChariowCheckoutSession> {
+  // Une caisse ne peut pas s'ouvrir dans une boutique fermée. Échouer ici,
+  // franchement et tout de suite, vaut mieux qu'attendre le refus d'un
+  // service mort puis afficher une erreur technique à l'acheteur.
+  if (BOUTIQUE_FERMEE) {
+    refusPoli("Ouverture d'une caisse");
+    throw new Error(
+      "Cette offre n'est pas encore disponible sur la nouvelle boutique. " +
+        "Écrivez-nous à contactprofootai@gmail.com et nous vous l'ouvrons."
+    );
+  }
   const devise = deviseDuPays(params.paysAcheteur);
   const body: Record<string, unknown> = {
     product_id: params.plan ? productIdForPlan(params.plan) : params.produitDirect,
@@ -436,6 +485,7 @@ export async function listRecentSales(
    */
   jusquA?: string
 ): Promise<ChariowSale[]> {
+  if (BOUTIQUE_FERMEE) { refusPoli("Ventes récentes de la boutique"); return []; }
   // ── UNE MINUTE DE RÉSERVE, ET POURQUOI ELLE EST DEVENUE NÉCESSAIRE ──────
   //
   // Cette lecture n'était volontairement pas mise en réserve : les recettes
@@ -557,6 +607,7 @@ export const STATUTS_ENCAISSES = ['completed', 'settled'];
  * une vente sous les deux statuts, elle ne serait pas comptée deux fois.
  */
 export async function listSalesEncaissees(): Promise<ChariowSale[]> {
+  if (BOUTIQUE_FERMEE) { refusPoli("Recettes de la boutique"); return []; }
   const parStatut = await Promise.all(
     STATUTS_ENCAISSES.map(async (statut) => {
       const ventes: ChariowSale[] = [];
@@ -603,6 +654,7 @@ export async function listSalesEncaissees(): Promise<ChariowSale[]> {
  * Utilisé en réconciliation si un webhook a été manqué.
  */
 export async function listCompletedSalesByEmail(email: string): Promise<ChariowSale[]> {
+  if (BOUTIQUE_FERMEE) { refusPoli("Ventes encaissées d’un acheteur"); return []; }
   const url = new URL(`${CHARIOW_API_URL}/sales`);
   url.searchParams.set('search', email);
   url.searchParams.set('status', 'completed');
