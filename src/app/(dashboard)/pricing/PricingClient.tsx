@@ -259,7 +259,7 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
     const onglet = reserverOngletPaiement();
     try {
       setLoadingPlan(selectedPlan);
-      const res = await fetch('/api/payments/chariow/checkout', {
+      const res = await fetch('/api/paiement/caisse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Le fuseau ne sert qu'en secours, si l'hébergeur ne transmet pas le

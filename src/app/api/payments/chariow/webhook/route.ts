@@ -32,9 +32,36 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
   return crypto.timingSafeEqual(a, b);
 }
 
+/**
+ * CETTE PORTE NE S'OUVRE PLUS.
+ *
+ * ── POURQUOI ELLE N'EST PAS SIMPLEMENT SUPPRIMÉE ──────────────────────────
+ *
+ * C'est l'adresse que l'ancienne boutique prévenait quand une vente
+ * aboutissait. Elle est fermée depuis le 27 août 2026 et la vente passe par
+ * MakeTou : plus aucun message légitime ne peut arriver ici.
+ *
+ * Or une adresse qui ouvre des accès et que plus personne de confiance
+ * n'utilise est un risque pur : elle ne peut plus rien apporter, et n'importe
+ * qui peut encore y frapper. On la garde — rien ne se supprime — mais elle
+ * n'ouvre plus rien.
+ *
+ * Elle répond 200 : un refus franc apprendrait à un curieux que l'adresse
+ * existe et qu'elle a compté.
+ */
+const PORTE_FERMEE = true;
+
 export async function POST(req: Request) {
   try {
     const rawBody = await req.text();
+
+    if (PORTE_FERMEE) {
+      console.warn(
+        `[CHARIOW] Message reçu sur le webhook fermé (${rawBody.length} octets) — ignoré. ` +
+          `La vente passe par MakeTou depuis le 28 août 2026.`
+      );
+      return NextResponse.json({ received: true });
+    }
 
     if (!verifySignature(rawBody, req.headers.get('x-chariow-signature'))) {
       return NextResponse.json({ error: 'Signature invalide.' }, { status: 401 });

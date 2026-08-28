@@ -688,7 +688,7 @@ export default function AnalyzePage({
     // serait bloqué par le navigateur.
     const onglet = reserverOngletPaiement();
     try {
-      const res = await fetch('/api/payments/chariow/checkout', {
+      const res = await fetch('/api/paiement/caisse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

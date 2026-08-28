@@ -202,7 +202,7 @@ export default function ExpertAgentPage() {
     const onglet = reserverOngletPaiement();
     try {
       setLoadingCheckout(true);
-      const res = await fetch('/api/payments/chariow/checkout', {
+      const res = await fetch('/api/paiement/caisse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // On envoie vers l'offre la moins chère qui ouvre l'Agent VIP, telle

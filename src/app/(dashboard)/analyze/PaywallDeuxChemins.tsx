@@ -84,7 +84,7 @@ export default function PaywallDeuxChemins({
     setEnCours(true);
     setErreur(null);
     try {
-      const r = await fetch("/api/payments/chariow/checkout", {
+      const r = await fetch("/api/paiement/caisse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

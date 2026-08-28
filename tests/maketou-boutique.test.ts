@@ -20,7 +20,7 @@ import path from 'node:path';
 import { lienMaketou, offreEnVente } from '../src/lib/maketou-boutique';
 
 const lire = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8');
-const CHECKOUT = lire('src/app/api/payments/chariow/checkout/route.ts');
+const CHECKOUT = lire('src/app/api/paiement/caisse/route.ts');
 const ATTENTE = lire('src/app/(dashboard)/payment-success/page.tsx');
 const DEPART = lire('src/lib/depart-paiement.ts');
 
@@ -113,7 +113,7 @@ test('★ ACQUIS — l’onglet de paiement se réserve pendant le clic', () => 
   ]) {
     const source = lire(page);
     const iReserve = source.indexOf('reserverOngletPaiement()');
-    const iAppel = source.indexOf("fetch('/api/payments/chariow/checkout'");
+    const iAppel = source.indexOf("fetch('/api/paiement/caisse'");
     assert.ok(iReserve > 0, `${page} ne réserve plus d’onglet.`);
     assert.ok(iReserve < iAppel, `${page} ouvre l’onglet après l’appel réseau : il sera bloqué.`);
   }

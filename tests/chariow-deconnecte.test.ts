@@ -54,6 +54,68 @@ test('★ ACQUIS — aucune fonction ne peut plus appeler la boutique fermée', 
   }
 });
 
+// ── LES ADRESSES ────────────────────────────────────────────────────────────
+
+test('★ ACQUIS — la caisse vit à une adresse qui ne nomme plus Chariow', () => {
+  const caisse = lire('src/app/api/paiement/caisse/route.ts');
+  assert.match(caisse, /export async function POST/, 'La caisse a quitté son adresse neutre.');
+  const verif = lire('src/app/api/paiement/verification/route.ts');
+  assert.match(verif, /export async function POST/);
+});
+
+test('★ ACQUIS — les anciennes adresses répondent encore, sans se dédoubler', () => {
+  // Une page déjà ouverte dans un navigateur, ou servie depuis un cache,
+  // continue d'appeler l'ancienne adresse pendant des heures. La retirer le
+  // jour du changement, c'est refuser de vendre à tous ceux qui n'ont pas
+  // rechargé — précisément le jour où l'on vient de réparer la vente.
+  for (const [ancienne, nouvelle] of [
+    ['src/app/api/payments/chariow/checkout/route.ts', 'paiement/caisse'],
+    ['src/app/api/payments/chariow/verify/route.ts', 'paiement/verification'],
+  ] as const) {
+    const alias = lire(ancienne);
+    assert.match(
+      alias,
+      new RegExp(`export \\{ POST \\} from '@/app/api/${nouvelle}/route'`),
+      `${ancienne} ne passe pas le relais.`
+    );
+    // Un alias qui réimplémente est un second comportement à maintenir, et
+    // les deux finiront par diverger.
+    assert.ok(
+      alias.length < 1600,
+      `${ancienne} contient du code au lieu de passer simplement le relais.`
+    );
+  }
+});
+
+test('★ ACQUIS — le navigateur n’appelle plus une adresse nommant Chariow', () => {
+  for (const page of [
+    'src/app/(dashboard)/pricing/PricingClient.tsx',
+    'src/app/(dashboard)/analyze/AnalyzeClient.tsx',
+    'src/app/(dashboard)/analyze/PaywallDeuxChemins.tsx',
+    'src/app/(dashboard)/expert/page.tsx',
+    'src/app/(dashboard)/payment-success/page.tsx',
+  ]) {
+    assert.doesNotMatch(
+      lire(page),
+      /['"`]\/api\/payments\/chariow\//,
+      `${page} appelle encore l’ancienne adresse.`
+    );
+  }
+});
+
+test('★ ACQUIS — l’ancien webhook n’ouvre plus aucun accès', () => {
+  // Une adresse qui ouvre des accès et que plus personne de confiance
+  // n'utilise est un risque pur : elle ne peut plus rien apporter, et
+  // n'importe qui peut encore y frapper.
+  const webhook = lire('src/app/api/payments/chariow/webhook/route.ts');
+  const iGarde = webhook.indexOf('if (PORTE_FERMEE)');
+  // L'appel DANS le gestionnaire, et non la définition de la fonction, qui
+  // apparaît plus haut dans le fichier.
+  const iTraitement = webhook.indexOf('if (!verifySignature(rawBody');
+  assert.ok(iGarde > 0, 'Le webhook de l’ancienne boutique traite encore les messages.');
+  assert.ok(iGarde < iTraitement, 'La garde arrive après le traitement : elle ne sert à rien.');
+});
+
 test('★ ACQUIS — la coupure se lit à un seul endroit', () => {
   // Couper chez chaque appelant obligerait à tous les relire pour savoir si
   // l'application parle encore à Chariow. Ici, une seule ligne répond.

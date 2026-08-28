@@ -121,7 +121,7 @@ export default function PaymentSuccessPage() {
         const reconcilier = () =>
           viaMaketou
             ? Promise.resolve()
-            : fetch('/api/payments/chariow/verify', { method: 'POST' }).catch(() => {});
+            : fetch('/api/paiement/verification', { method: 'POST' }).catch(() => {});
 
         await reconcilier();
 
