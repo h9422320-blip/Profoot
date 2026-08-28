@@ -220,7 +220,17 @@ export async function POST(request: Request) {
     // doit changer, c'est le délai avant qu'on l'apprenne.
     console.warn(`[MAKETOU] Accès non ouvert : ${r.motif}`);
 
-    const ignoree = /Événement ignoré/i.test(r.motif);
+    // ── CE QUI N'EST PAS UN PROBLÈME ────────────────────────────────────────
+    //
+    // « Événement ignoré » : un remboursement ou une annulation n'est pas une
+    // vente non honorée.
+    //
+    // « Vente déjà créditée » : l'accès EST ouvert. Le message arrive en double
+    // — deux pulses branchés sur le même produit, ou une boutique qui rejoue —
+    // et c'est précisément ce que la protection contre le double crédit doit
+    // absorber en silence. Alerter ici apprendrait au propriétaire à ignorer
+    // ses alertes, ce qui les rendrait toutes inutiles.
+    const ignoree = /Événement ignoré|déjà créditée/i.test(r.motif);
     // Une vente déjà signalée ne se signale pas deux fois : la boutique peut
     // rejouer un pulse en échec, et la répétition noierait l'essentiel.
     const repetee = await dejaAlertee(trace.vente);

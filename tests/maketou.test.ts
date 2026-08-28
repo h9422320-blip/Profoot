@@ -349,9 +349,23 @@ test('★ ACQUIS — l’alerte publique ne peut pas noyer la boîte', () => {
   assert.match(ROUTE, /Date\.now\(\) - derniere < 3600_000/);
 });
 
-test('★ ACQUIS — un événement ignoré n’alerte pas', () => {
-  // Un remboursement ou une annulation n'est pas une vente non honorée.
-  assert.match(ROUTE, /const ignoree = \/Événement ignoré\/i\.test\(r\.motif\)/);
+test('★ ACQUIS — ce qui n’est pas un problème n’alerte pas', () => {
+  // Un remboursement n'est pas une vente non honorée. Et « déjà créditée »
+  // signifie que l'accès EST ouvert : deux pulses sur le même produit, ou une
+  // boutique qui rejoue. Alerter là-dessus apprendrait au propriétaire à
+  // ignorer ses alertes, ce qui les rendrait toutes inutiles.
+  assert.match(ROUTE, /const ignoree = \/Événement ignoré\|déjà créditée\/i\.test\(r\.motif\)/);
+});
+
+test('★ ACQUIS — le motif du double crédit est resté celui que la route reconnaît', () => {
+  // Les deux fichiers doivent parler la même langue : si le module changeait
+  // sa phrase, la route recommencerait à alerter sur des ventes honorées, et
+  // le test précédent continuerait pourtant de passer.
+  assert.match(
+    MODULE,
+    /motif: 'Vente déjà créditée\.'/,
+    'Le motif du double crédit a changé — la route ne le reconnaîtra plus.'
+  );
 });
 
 test('★ ACQUIS — un courriel en panne ne referme jamais un accès payé', () => {
