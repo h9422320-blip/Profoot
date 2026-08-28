@@ -27,6 +27,13 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { ecrireReserve, lireReserve } from '@/lib/api-football';
 import { secretAttendu, secretValide, ouvrirAccesMaketou, type VenteMaketou } from '@/lib/maketou';
+import { envoyerCourriel, type Courriel } from '@/lib/courriel';
+import {
+  ALERTE_A,
+  messageBienvenue,
+  messageCompteAcreer,
+  messageAlerteVenteNonHonoree,
+} from '@/lib/maketou-courriels';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -34,6 +41,36 @@ export const maxDuration = 60;
 /** Les derniers messages reçus, gardés pour comprendre et diagnostiquer. */
 const CLE_JOURNAL = 'maketou:pulse:recus';
 const MAX_GARDES = 10;
+
+/**
+ * Prévenir quelqu'un, sans jamais mettre l'accès en péril pour autant.
+ *
+ * Un service de courriel injoignable ne doit pas faire échouer l'ouverture
+ * d'un accès déjà payé : l'essentiel est fait, le message est accessoire.
+ */
+async function prevenir(a: string | null | undefined, message: Omit<Courriel, 'a'>) {
+  if (!a) return;
+  try {
+    const parti = await envoyerCourriel({ a, ...message });
+    if (!parti) console.error(`[MAKETOU] Message NON parti à ${a} — « ${message.sujet} ».`);
+  } catch (e: any) {
+    console.error(`[MAKETOU] Envoi impossible à ${a} :`, e?.message);
+  }
+}
+
+/** Une alerte au plus par heure, pour que le bruit ne noie pas le signal. */
+const CLE_DERNIERE_ALERTE = 'maketou:pulse:derniere-alerte-non-authentifiee';
+
+async function alerterUneFoisParHeure(details: Parameters<typeof messageAlerteVenteNonHonoree>[0]) {
+  try {
+    const derniere = (await lireReserve<number>(CLE_DERNIERE_ALERTE))?.contenu;
+    if (typeof derniere === 'number' && Date.now() - derniere < 3600_000) return;
+    await ecrireReserve(CLE_DERNIERE_ALERTE, Date.now(), 24 * 3600_000);
+  } catch {
+    // Réserve injoignable : mieux vaut une alerte de trop qu'aucune.
+  }
+  await prevenir(ALERTE_A, messageAlerteVenteNonHonoree(details));
+}
 
 async function journaliser(entree: unknown) {
   try {
@@ -84,6 +121,30 @@ export async function POST(request: Request) {
         `L'adresse du pulse doit se terminer par « ?cle=<secret> ».`
     );
     await journaliser({ ...trace, refuse: raison, corps: vente });
+
+    // ── LE SCÉNARIO LE PLUS COÛTEUX ─────────────────────────────────────────
+    //
+    // Si l'adresse du pulse perdait sa clé — un pulse recréé sans « ?cle= »,
+    // un secret changé côté serveur —, CHAQUE vente serait refusée, en
+    // silence, exactement comme ce matin. Une vente authentique arrivant sans
+    // clé doit donc alerter.
+    //
+    // Mais l'adresse est publique : n'importe qui peut la marteler. On alerte
+    // donc au plus une fois par heure, pour qu'un inconnu ne puisse pas noyer
+    // la boîte du propriétaire — et surtout pas y noyer une vraie alerte.
+    if (vente?.eventType === 'SUCCESSFUL_SALE' && vente?.customer?.email) {
+      await alerterUneFoisParHeure({
+        email: trace.email,
+        venteId: trace.vente,
+        produit: trace.produit,
+        motif:
+          `Message NON AUTHENTIFIÉ (${raison}). Si des ventes réelles arrivent ainsi, ` +
+          `l'adresse du pulse dans MakeTou doit être corrigée : elle doit finir par « ?cle=… ». ` +
+          `Tant que ce n'est pas fait, AUCUNE vente n'ouvrira d'accès.`,
+        pays: trace.pays,
+        moyen: trace.moyen,
+      });
+    }
     return NextResponse.json({ recu: true, traite: false, motif: 'non authentifié' });
   }
 
@@ -92,13 +153,55 @@ export async function POST(request: Request) {
     await journaliser({ ...trace, resultat: r });
 
     if (r.ouvert) {
+      // Son chemin de retour. Il n'est pas forcément parti de profootai.com :
+      // la boutique est publique et son lien circule sur WhatsApp. Sans ce
+      // message, il a payé et ne sait pas où aller.
+      await prevenir(r.email, messageBienvenue(r.expireLe));
       return NextResponse.json({ recu: true, traite: true, ouvert: true, plan: r.plan });
     }
+
+    // ── UNE VENTE QUI N'OUVRE RIEN NE PEUT PLUS PASSER INAPERÇUE ──────────
+    //
+    // Le 28 août 2026, dix refus ont dormi trois heures dans le journal
+    // pendant que les clients écrivaient sur WhatsApp. Le serveur savait ;
+    // personne ne lisait. Un autre défaut viendra un jour, différent — ce qui
+    // doit changer, c'est le délai avant qu'on l'apprenne.
     console.warn(`[MAKETOU] Accès non ouvert : ${r.motif}`);
+
+    const ignoree = /Événement ignoré/i.test(r.motif);
+    if (!ignoree) {
+      if (/Aucun compte/i.test(r.motif) && r.email) {
+        await prevenir(r.email, messageCompteAcreer(r.email));
+      }
+      await prevenir(
+        ALERTE_A,
+        messageAlerteVenteNonHonoree({
+          email: r.email ?? trace.email,
+          venteId: trace.vente,
+          produit: trace.produit,
+          motif: r.motif,
+          pays: trace.pays,
+          moyen: trace.moyen,
+        })
+      );
+    }
     return NextResponse.json({ recu: true, traite: true, ouvert: false, motif: r.motif });
   } catch (e: any) {
     console.error('[MAKETOU] Traitement impossible :', e?.message);
     await journaliser({ ...trace, erreur: e?.message });
+    // Une exception est le pire des cas : on ne sait même pas où le traitement
+    // s'est arrêté. Elle doit alerter comme les autres.
+    await prevenir(
+      ALERTE_A,
+      messageAlerteVenteNonHonoree({
+        email: trace.email,
+        venteId: trace.vente,
+        produit: trace.produit,
+        motif: `Erreur interne : ${e?.message ?? 'inconnue'}`,
+        pays: trace.pays,
+        moyen: trace.moyen,
+      })
+    );
     return NextResponse.json({ recu: true, traite: false, motif: 'erreur interne' });
   }
 }

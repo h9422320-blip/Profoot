@@ -273,6 +273,62 @@ test('★ ACQUIS — une vente sans compte est enregistrée, pas perdue', () => 
   );
 });
 
+// ── PLUS AUCUNE VENTE NE RESTE SILENCIEUSE ─────────────────────────────────
+//
+// Le 28 août 2026, dix refus ont dormi trois heures dans le journal pendant
+// que les clients écrivaient sur WhatsApp. Le serveur savait ; personne ne
+// lisait. Un autre défaut viendra un jour, différent — ce qui doit changer,
+// c'est le délai avant qu'on l'apprenne.
+
+test('★ ACQUIS — une vente honorée donne au client son chemin de retour', () => {
+  // La boutique est publique : l'acheteur n'est pas forcément parti de
+  // profootai.com, et dans ce cas rien ne l'y ramène.
+  const i = ROUTE.indexOf('messageBienvenue(r.expireLe)');
+  const iOuvert = ROUTE.indexOf('if (r.ouvert) {');
+  assert.ok(i > 0, 'Le client n’est plus prévenu quand son accès s’ouvre.');
+  assert.ok(iOuvert > 0 && iOuvert < i, 'Le message de bienvenue sort du cas « accès ouvert ».');
+});
+
+test('★ ACQUIS — une vente qui n’ouvre rien alerte le propriétaire', () => {
+  assert.match(ROUTE, /messageAlerteVenteNonHonoree\(\{/);
+  assert.match(ROUTE, /ALERTE_A/);
+  // Y compris quand le traitement lève : c'est le cas où l'on sait le moins.
+  const iCatch = ROUTE.indexOf('} catch (e: any) {');
+  assert.ok(
+    ROUTE.indexOf('Erreur interne : ') > iCatch,
+    'Une exception passe sans alerter — le pire des cas est le seul muet.'
+  );
+});
+
+test('★ ACQUIS — un acheteur sans compte est guidé, pas abandonné', () => {
+  assert.match(ROUTE, /messageCompteAcreer\(r\.email\)/);
+});
+
+test('★ ACQUIS — une clé perdue déclenche une alerte', () => {
+  // Un pulse recréé sans « ?cle= » refuserait TOUTES les ventes, en silence,
+  // exactement comme le matin du 28 août.
+  const iNonAuth = ROUTE.indexOf('if (!identifie)');
+  const iAlerte = ROUTE.indexOf('alerterUneFoisParHeure({');
+  assert.ok(iAlerte > iNonAuth, 'Un message non authentifié ne prévient plus personne.');
+  assert.match(ROUTE, /vente\?\.eventType === 'SUCCESSFUL_SALE' && vente\?\.customer\?\.email/);
+});
+
+test('★ ACQUIS — l’alerte publique ne peut pas noyer la boîte', () => {
+  // L'adresse est publique : sans limite, un inconnu y noierait une vraie
+  // alerte sous des milliers de fausses.
+  assert.match(ROUTE, /Date\.now\(\) - derniere < 3600_000/);
+});
+
+test('★ ACQUIS — un événement ignoré n’alerte pas', () => {
+  // Un remboursement ou une annulation n'est pas une vente non honorée.
+  assert.match(ROUTE, /const ignoree = \/Événement ignoré\/i\.test\(r\.motif\)/);
+});
+
+test('★ ACQUIS — un courriel en panne ne referme jamais un accès payé', () => {
+  // L'essentiel est fait ; le message est accessoire.
+  assert.match(ROUTE, /async function prevenir\([\s\S]*?try \{/);
+});
+
 test('★ ACQUIS — la route accuse toujours réception', () => {
   // Une erreur ferait réessayer MakeTou en boucle sans rien réparer.
   assert.doesNotMatch(ROUTE, /status:\s*5\d\d/, 'Une 5xx déclencherait des réessais en boucle.');
