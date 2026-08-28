@@ -313,6 +313,15 @@ test('★ ACQUIS — une clé perdue déclenche une alerte', () => {
   assert.match(ROUTE, /vente\?\.eventType === 'SUCCESSFUL_SALE' && vente\?\.customer\?\.email/);
 });
 
+test('★ ACQUIS — le journal couvre plus qu’une matinée', () => {
+  // Dix ventes en trois heures le 28 août, et quelques messages de
+  // vérification ont suffi à toutes les chasser d'un journal de dix entrées.
+  // Le jour où l'on en a besoin, il ne contient déjà plus ce qu'on y cherche.
+  const m = /const MAX_GARDES = (\d+)/.exec(ROUTE);
+  assert.ok(m, 'La taille du journal n’est plus lisible.');
+  assert.ok(Number(m![1]) >= 100, `Journal de ${m![1]} entrées : trop court pour une journée.`);
+});
+
 test('★ ACQUIS — une même vente n’alerte jamais deux fois', () => {
   // Une boucle de vérification a envoyé cinq alertes identiques en une minute.
   // Une boutique qui rejoue un pulse en échec ferait pareil, et le jour où dix

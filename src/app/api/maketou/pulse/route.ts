@@ -38,9 +38,21 @@ import {
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-/** Les derniers messages reçus, gardés pour comprendre et diagnostiquer. */
+/**
+ * Les derniers messages reçus, gardés pour comprendre et diagnostiquer.
+ *
+ * ── POURQUOI CENT ET NON DIX ──────────────────────────────────────────────
+ *
+ * Le 28 août 2026, quelques messages de vérification ont suffi à chasser du
+ * journal les dix vraies ventes de la matinée — dont la première qui ait
+ * ouvert un accès toute seule, la preuve qu'on cherchait justement.
+ *
+ * Le même matin avait vu dix ventes en trois heures. Un journal de dix
+ * entrées ne couvre donc même pas une matinée ordinaire : le jour où l'on en
+ * a besoin, il ne contient déjà plus ce qu'on vient y chercher.
+ */
 const CLE_JOURNAL = 'maketou:pulse:recus';
-const MAX_GARDES = 10;
+const MAX_GARDES = 100;
 
 /**
  * Prévenir quelqu'un, sans jamais mettre l'accès en péril pour autant.
