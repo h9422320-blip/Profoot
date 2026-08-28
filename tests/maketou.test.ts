@@ -313,6 +313,27 @@ test('★ ACQUIS — une clé perdue déclenche une alerte', () => {
   assert.match(ROUTE, /vente\?\.eventType === 'SUCCESSFUL_SALE' && vente\?\.customer\?\.email/);
 });
 
+test('★ ACQUIS — une même vente n’alerte jamais deux fois', () => {
+  // Une boucle de vérification a envoyé cinq alertes identiques en une minute.
+  // Une boutique qui rejoue un pulse en échec ferait pareil, et le jour où dix
+  // ventes échouent d'un coup, l'essentiel se noierait dans les répétitions.
+  const iMemoire = ROUTE.indexOf('const repetee = await dejaAlertee(trace.vente)');
+  const iEnvoi = ROUTE.indexOf('messageAlerteVenteNonHonoree({');
+  assert.ok(iMemoire > 0, 'La mémoire des ventes déjà signalées a disparu.');
+  assert.ok(iMemoire < iEnvoi, 'L’alerte part avant d’avoir vérifié qu’elle est nouvelle.');
+  assert.match(ROUTE, /if \(!ignoree && !repetee\)/);
+});
+
+test('★ ACQUIS — une réserve injoignable ne fait pas taire les alertes', () => {
+  // Mieux vaut une alerte de trop qu'aucune : le silence est le défaut qu'on
+  // corrige, pas la répétition.
+  assert.match(
+    ROUTE,
+    /catch \{[\s\S]*?mieux vaut une alerte de trop[\s\S]*?return false;/i,
+    'Une panne de la réserve rendrait le pulse muet.'
+  );
+});
+
 test('★ ACQUIS — l’alerte publique ne peut pas noyer la boîte', () => {
   // L'adresse est publique : sans limite, un inconnu y noierait une vraie
   // alerte sous des milliers de fausses.

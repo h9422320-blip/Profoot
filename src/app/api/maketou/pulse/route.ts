@@ -63,6 +63,39 @@ async function prevenir(
   }
 }
 
+/**
+ * UNE ALERTE PAR VENTE, ET UNE SEULE.
+ *
+ * ── CE QUI A MONTRÉ LE BESOIN ─────────────────────────────────────────────
+ *
+ * Le 28 août 2026, une simple boucle de vérification a envoyé cinq alertes
+ * identiques en une minute. Une boutique qui réessaie un pulse en échec ferait
+ * exactement pareil, et le jour où dix ventes échouent d'un coup, l'essentiel
+ * se noierait dans les répétitions.
+ *
+ * Une alerte prévient d'un problème ; la répéter n'en prévient pas davantage.
+ */
+const CLE_VENTES_ALERTEES = 'maketou:pulse:ventes-alertees';
+const MAX_MEMOIRE = 200;
+
+async function dejaAlertee(venteId: string | null): Promise<boolean> {
+  if (!venteId) return false;
+  try {
+    const vues = (await lireReserve<string[]>(CLE_VENTES_ALERTEES))?.contenu ?? [];
+    const liste = Array.isArray(vues) ? vues : [];
+    if (liste.includes(venteId)) return true;
+    await ecrireReserve(
+      CLE_VENTES_ALERTEES,
+      [venteId, ...liste].slice(0, MAX_MEMOIRE),
+      7 * 24 * 3600_000
+    );
+    return false;
+  } catch {
+    // Réserve injoignable : mieux vaut une alerte de trop qu'aucune.
+    return false;
+  }
+}
+
 /** Une alerte au plus par heure, pour que le bruit ne noie pas le signal. */
 const CLE_DERNIERE_ALERTE = 'maketou:pulse:derniere-alerte-non-authentifiee';
 
@@ -176,8 +209,11 @@ export async function POST(request: Request) {
     console.warn(`[MAKETOU] Accès non ouvert : ${r.motif}`);
 
     const ignoree = /Événement ignoré/i.test(r.motif);
+    // Une vente déjà signalée ne se signale pas deux fois : la boutique peut
+    // rejouer un pulse en échec, et la répétition noierait l'essentiel.
+    const repetee = await dejaAlertee(trace.vente);
     let alerte = false;
-    if (!ignoree) {
+    if (!ignoree && !repetee) {
       if (/Aucun compte/i.test(r.motif) && r.email) {
         await prevenir(r.email, messageCompteAcreer(r.email));
       }
@@ -193,7 +229,14 @@ export async function POST(request: Request) {
         })
       );
     }
-    return NextResponse.json({ recu: true, traite: true, ouvert: false, motif: r.motif, alerte });
+    return NextResponse.json({
+      recu: true,
+      traite: true,
+      ouvert: false,
+      motif: r.motif,
+      alerte,
+      ...(repetee ? { alerteDejaEnvoyee: true } : {}),
+    });
   } catch (e: any) {
     console.error('[MAKETOU] Traitement impossible :', e?.message);
     await journaliser({ ...trace, erreur: e?.message });
