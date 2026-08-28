@@ -108,17 +108,27 @@ export async function ouvrirAccesPayeSiBesoin(
   try {
     // ── VERROU 1 — a-t-elle seulement essayé de payer ? ──────────────────
     //
-    // Une lecture indexée sur `user_id`. Pour l'immense majorité des visiteurs
-    // gratuits, la réponse est « aucune ligne » et tout s'arrête ici.
+    // UNE lecture, et une seule, pour l'immense majorité des visiteurs
+    // gratuits : la réponse est « aucune ligne » et tout s'arrête ici. C'est la
+    // condition d'existence de ce filet, et un second appel la ruinerait.
+    //
+    // Elle couvre deux cas d'un coup. Le premier est l'ancien : une intention
+    // portant déjà l'identité de la personne. Le second est né avec MakeTou —
+    // la boutique est publique, son adresse circule sur WhatsApp, et l'on peut
+    // y payer sans être jamais passé par l'application. Ces ventes-là portent
+    // une adresse e-mail et AUCUN compte : cherchées sur `user_id`, elles
+    // restaient introuvables, et le 28 août 2026 un acheteur ivoirien est resté
+    // sans rien pendant que le message lui promettait le contraire.
     const depuis = new Date(maintenant - FENETRE_JOURS * 86_400_000).toISOString();
     const { data: intentions } = await avecDelai<any>(
       admin
         .from('payment_intents')
-        .select('sale_id, created_at')
-        .eq('user_id', user.id)
+        .select('sale_id, created_at, user_id, plan')
+        .or(`user_id.eq.${user.id},and(user_id.is.null,email.eq.${email})`)
         .is('consumed_at', null)
         .gt('created_at', depuis)
-        .limit(1),
+        .order('created_at', { ascending: false })
+        .limit(5),
       DELAIS.secondaire,
       { data: null },
       'intentions de paiement'
@@ -130,6 +140,26 @@ export async function ouvrirAccesPayeSiBesoin(
     oublierLesVieux(maintenant);
 
     if (!intentions?.length) return { ouvert: false };
+
+    // ── UNE VENTE PAYÉE SANS COMPTE SE RATTACHE ICI ─────────────────────
+    //
+    // Elle est déjà lue : aucune requête de plus. Et elle n'a rien à demander
+    // à une boutique — la vente est enregistrée, l'offre est écrite dedans, il
+    // ne manquait que le compte, qui vient d'être créé.
+    const orphelines = (intentions as any[]).filter((i) => !i.user_id && i.sale_id);
+    if (orphelines.length) {
+      const { rattacherVentesOrphelines } = await import('./maketou');
+      const rattachee = await avecDelai(
+        rattacherVentesOrphelines(admin, user.id, email, orphelines),
+        DELAIS.page,
+        null,
+        'ventes payées sans compte'
+      );
+      if (rattachee?.ouvert) {
+        dejaVu.delete(user.id);
+        return { ouvert: true, plan: rattachee.plan, saleId: rattachee.saleId };
+      }
+    }
 
     // ── VERROU 2 — la boutique confirme-t-elle un encaissement ? ─────────
     const { listCompletedSalesByEmail } = await import('./chariow');

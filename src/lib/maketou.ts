@@ -313,6 +313,25 @@ export async function ouvrirAccesMaketou(
     };
   }
 
+  return crediterAcces(admin, userId, plan, venteId, email);
+}
+
+/**
+ * Créditer un accès, une fois et une seule.
+ *
+ * Séparé de la lecture du message parce que deux chemins y mènent : le pulse
+ * qui annonce une vente, et le rattrapage d'une vente payée avant que son
+ * acheteur n'ait un compte. Un second chemin d'écriture, écrit à part,
+ * finirait par diverger du premier — et c'est précisément sur l'ouverture d'un
+ * accès payé qu'une divergence coûte le plus cher.
+ */
+async function crediterAcces(
+  admin: SupabaseClient,
+  userId: string,
+  plan: PlanKey,
+  venteId: string,
+  email: string
+): Promise<ResultatPulse> {
   // ── LE TEMPS RESTANT N'EST JAMAIS PERDU ─────────────────────────────────
   const config = PLANS[plan];
   const { data: courant } = await admin
@@ -355,11 +374,60 @@ export async function ouvrirAccesMaketou(
   }
   if (!data?.length) return { ouvert: false, email, motif: 'Vente déjà créditée.' };
 
+  // La vente est consommée, et elle porte enfin le nom de son acheteur : sans
+  // ce `user_id`, une vente rattachée après coup resterait orpheline et serait
+  // reprise à chaque connexion.
   await admin
     .from('payment_intents')
-    .update({ consumed_at: new Date().toISOString() })
+    .update({ consumed_at: new Date().toISOString(), user_id: userId })
     .eq('sale_id', venteId);
 
   console.log(`[MAKETOU] Accès ${plan} ouvert pour ${email} jusqu'au ${expireLe.slice(0, 10)}.`);
   return { ouvert: true, plan, expireLe, email };
+}
+
+/**
+ * L'ACCÈS D'UNE VENTE PAYÉE AVANT QUE SON ACHETEUR N'AIT UN COMPTE.
+ *
+ * ── POURQUOI CE CAS EST DÉFINITIF, ET NON UN ACCIDENT ─────────────────────
+ *
+ * La boutique MakeTou est publique. Son adresse circule sur WhatsApp et sur
+ * TikTok, et rien n'y empêche quelqu'un de payer sans être jamais passé par
+ * l'application. Ce n'est pas un défaut qu'on corrigera : c'est la nature d'une
+ * boutique en ligne, et il faut vivre avec.
+ *
+ * Le 28 août 2026, Souleymane a payé 2 000 francs ainsi. Le message annonçait
+ * « l'accès s'ouvrira à l'inscription » — et c'était faux deux fois : la vente
+ * n'était pas enregistrée, et le filet qui devait l'ouvrir cherchait chez
+ * Chariow, dont la boutique est fermée depuis la veille.
+ *
+ * Cette fonction rend la promesse vraie. À la première connexion, une vente
+ * payée sous la même adresse e-mail ouvre l'accès, sans que personne n'ait à
+ * la réclamer.
+ */
+export async function rattacherVentesOrphelines(
+  admin: SupabaseClient,
+  userId: string,
+  emailBrut: string | null | undefined,
+  // Les ventes sont FOURNIES, jamais relues. L'appelant les a déjà entre les
+  // mains, et ce filet s'exécute sur le chemin de chaque page : une requête de
+  // plus y serait payée par les milliers de visiteurs qui n'ont rien acheté.
+  orphelines: { sale_id?: string | null; plan?: string | null }[]
+): Promise<(ResultatPulse & { saleId?: string }) | null> {
+  const email = emailBrut?.toLowerCase().trim();
+  if (!email || !orphelines?.length) return null;
+
+  for (const vente of orphelines) {
+    const plan = (Object.keys(PLANS) as PlanKey[]).find((p) => p === vente.plan);
+    if (!plan || !vente.sale_id) continue;
+    const r = await crediterAcces(admin, userId, plan, vente.sale_id, email);
+    if (r.ouvert) {
+      console.warn(
+        `[MAKETOU] ${email} : vente ${vente.sale_id} rattachée à l'inscription — ` +
+          `elle avait été payée sans compte.`
+      );
+      return { ...r, saleId: vente.sale_id ?? undefined };
+    }
+  }
+  return null;
 }

@@ -313,6 +313,47 @@ test('★ ACQUIS — une clé perdue déclenche une alerte', () => {
   assert.match(ROUTE, /vente\?\.eventType === 'SUCCESSFUL_SALE' && vente\?\.customer\?\.email/);
 });
 
+// ── PAYER SANS COMPTE NE FAIT PLUS PERDRE SON ARGENT ───────────────────────
+
+test('★ ACQUIS — une vente payée sans compte s’ouvre à l’inscription', () => {
+  // La boutique est publique : son adresse circule sur WhatsApp, et rien n'y
+  // empêche de payer sans être passé par l'application. Le 28 août 2026, le
+  // message promettait « l'accès s'ouvrira à l'inscription » — et c'était faux
+  // deux fois : la vente n'était pas enregistrée, et le filet censé l'ouvrir
+  // interrogeait une boutique fermée la veille.
+  assert.match(MODULE, /export async function rattacherVentesOrphelines\(/);
+  const FILET = lire('src/lib/acces-immediat.ts');
+  assert.match(FILET, /rattacherVentesOrphelines\(admin, user\.id, email, orphelines\)/);
+});
+
+test('★ ACQUIS — le rattachement ne coûte aucune lecture de plus', () => {
+  // Ce filet s'exécute sur le chemin de chaque page. Une requête de plus
+  // serait payée par les milliers de visiteurs qui n'ont rien acheté — et
+  // c'est exactement la condition d'existence du filet.
+  const FILET = lire('src/lib/acces-immediat.ts');
+  const lectures = FILET.match(/from\('payment_intents'\)/g) ?? [];
+  assert.equal(
+    lectures.length,
+    1,
+    `${lectures.length} lectures de payment_intents : une seule est permise.`
+  );
+  assert.match(FILET, /\.or\(`user_id\.eq\.\$\{user\.id\},and\(user_id\.is\.null,email\.eq\.\$\{email\}\)`\)/);
+});
+
+test('★ ACQUIS — la vente rattachée cesse d’être orpheline', () => {
+  // Sans ce `user_id`, la vente serait reprise à chaque connexion : la
+  // recherche des orphelines la retrouverait indéfiniment.
+  assert.match(MODULE, /update\(\{ consumed_at: new Date\(\)\.toISOString\(\), user_id: userId \}\)/);
+});
+
+test('★ ACQUIS — les deux chemins créditent par le même code', () => {
+  // Le pulse et le rattrapage mènent tous deux à `crediterAcces`. Un second
+  // chemin d'écriture finirait par diverger du premier, et c'est sur
+  // l'ouverture d'un accès payé qu'une divergence coûte le plus cher.
+  const appels = MODULE.match(/crediterAcces\(/g) ?? [];
+  assert.ok(appels.length >= 3, 'Le crédit d’accès n’est plus partagé entre les deux chemins.');
+});
+
 test('★ ACQUIS — le bouton « Envoyez un test » n’alarme personne', () => {
   // On vérifie un pulse précisément quand on doute. Le moment où l'on a le
   // plus besoin d'alertes fiables serait donc exactement celui où elles

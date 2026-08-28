@@ -232,6 +232,23 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
     // combien de personnes ont vraiment voulu payer, et laquelle des trois
     // offres retient l'attention.
     signalerEtape('offre-cliquee', selectedPlan);
+
+    // ── PAS DE COMPTE, PAS D'ACHAT ────────────────────────────────────────
+    //
+    // C'est l'ADRESSE E-MAIL qui relie un paiement à un accès. Quelqu'un qui
+    // paie sans compte oblige à un rattrapage manuel, et il attend pendant ce
+    // temps — c'est ce qui est arrivé le 28 août 2026 à un acheteur ivoirien,
+    // resté sans rien jusqu'à ce qu'on le cherche.
+    //
+    // Le compte se crée donc AVANT le paiement, et non après. Le renvoi porte
+    // l'offre choisie : au retour, la page des tarifs le sait, et il ne
+    // recommence pas à zéro.
+    if (!sessionPresumee()) {
+      signalerEtape('inscription-requise', selectedPlan);
+      window.location.href = '/signup?suite=/pricing';
+      return;
+    }
+
     setNoticePour(selectedPlan);
   };
 

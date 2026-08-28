@@ -14,6 +14,21 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
+  /**
+   * La page à rejoindre après l'inscription.
+   *
+   * Lue une seule fois, au premier rendu : `useSearchParams` imposerait une
+   * frontière de suspense sur toute la page, pour un paramètre qui ne change
+   * jamais pendant la saisie d'un formulaire.
+   */
+  const [suite] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const v = new URLSearchParams(window.location.search).get('suite') ?? ''
+    // Le serveur revalide de toute façon ; ce contrôle évite seulement
+    // d'envoyer une valeur qu'il rejettera en silence.
+    return v.startsWith('/') && !v.startsWith('//') ? v : ''
+  })
+
   async function handleSubmit(formData: FormData) {
     setIsLoading(true)
     setError(null)
@@ -112,6 +127,14 @@ export default function SignupPage() {
 
           {/* Form */}
           <form action={handleSubmit} className="space-y-5">
+            {/* ── D'OÙ VIENT LA PERSONNE, ET OÙ ELLE RETOURNE ─────────────
+                Quelqu'un qui clique sur une offre sans compte est envoyé ici.
+                Le renvoyer ensuite sur la page d'analyse lui ferait perdre son
+                offre et recommencer à zéro — au moment précis où il voulait
+                payer. Le champ est masqué et le serveur ne retient qu'un
+                chemin interne : une adresse complète permettrait d'expédier
+                quelqu'un vers un site tiers juste après son mot de passe. */}
+            <input type="hidden" name="suite" value={suite} />
             
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">

@@ -46,6 +46,11 @@ function faussebase(tables: Record<string, any[]>, compteur: { lectures: string[
       eq() { return chaine; },
       is() { return chaine; },
       gt() { return chaine; },
+      // Une seule lecture couvre désormais deux cas : l'intention qui porte
+      // déjà l'identité de la personne, et la vente payée sans compte, qui ne
+      // porte qu'une adresse e-mail. Le compteur de lectures ne bouge pas —
+      // c'est justement ce que le premier test protège.
+      or() { return chaine; },
       order() { return chaine; },
       limit() { return chaine; },
       then(resoudre: any) {

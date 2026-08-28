@@ -42,6 +42,16 @@ export type EtapeVente =
   /** L'acheteur a cliqué sur une offre : la notice s'ouvre. */
   | 'offre-cliquee'
   /**
+   * Il voulait acheter sans avoir de compte : on l'envoie s'inscrire.
+   *
+   * C'est l'ADRESSE E-MAIL qui relie un paiement à un accès. Compter cette
+   * étape à part dit ce que coûte réellement la règle : combien de personnes
+   * voulaient payer et à qui l'on demande d'abord de s'inscrire. Confondue
+   * avec un abandon, elle ferait croire à une fuite du tunnel là où il n'y a
+   * qu'un détour.
+   */
+  | 'inscription-requise'
+  /**
    * Il quitte le paywall pour aller lire la page des tarifs.
    *
    * ── POURQUOI CETTE ÉTAPE A SA PROPRE LIGNE ──────────────────────────────

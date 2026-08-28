@@ -190,7 +190,10 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/analyze')
+  // La même règle qu'à la connexion : quelqu'un envoyé ici depuis une offre y
+  // retourne, plutôt que d'atterrir sur l'analyse et de devoir recommencer son
+  // achat. `destinationApres` n'accepte qu'un chemin interne.
+  redirect(destinationApres(formData))
 }
 
 export async function logout() {
