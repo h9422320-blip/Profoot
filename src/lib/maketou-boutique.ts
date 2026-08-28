@@ -36,12 +36,16 @@ export function lienMaketou(plan: PlanKey): string | null {
     essential_monthly:
       process.env.MAKETOU_LIEN_ESSENTIEL ||
       'https://profoot.mymaketou.shop/fr/products/profoot-ai-acces-essentiel-30-jours',
-    // Les deux autres produits restent à créer sur la boutique. Tant qu'ils
-    // n'existent pas, ne PAS inventer d'adresse : un lien mort renverrait
-    // l'acheteur sur une page d'erreur, ce qui est pire qu'un bouton qui
-    // explique honnêtement que l'offre n'est pas encore disponible.
-    pro_monthly: process.env.MAKETOU_LIEN_PRO || undefined,
-    vip_yearly: process.env.MAKETOU_LIEN_VIP || undefined,
+    // Publiés le 28 août 2026, adresses vérifiées une à une : chacune répond
+    // 200, porte le bon nom de produit et le bon prix. Une adresse devinée
+    // renverrait l'acheteur sur une page d'erreur, ce qui est pire qu'un
+    // bouton qui refuse honnêtement.
+    pro_monthly:
+      process.env.MAKETOU_LIEN_PRO ||
+      'https://profoot.mymaketou.shop/fr/products/profoot-ai-acces-pro-30-jours',
+    vip_yearly:
+      process.env.MAKETOU_LIEN_VIP ||
+      'https://profoot.mymaketou.shop/fr/products/profoot-ai-acces-vip-1-an',
   };
 
   const lien = liens[plan];

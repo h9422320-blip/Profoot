@@ -18,11 +18,56 @@ const ENCRE = '#0F172A';
 const GRIS = '#64748B';
 const GRIS_CLAIR = '#E2E8F0';
 
+/**
+ * Une offre par fichier : le guide de l'Essentiel annonce vingt analyses, et
+ * le remettre à un client qui en a payé cinquante lui ferait croire qu'il a
+ * reçu la mauvaise offre.
+ *
+ *   node scripts/guide-acces-pdf.mjs           (Essentiel, par défaut)
+ *   node scripts/guide-acces-pdf.mjs pro
+ *   node scripts/guide-acces-pdf.mjs vip
+ */
+const OFFRES = {
+  essentiel: {
+    nom: 'Essentiel',
+    fichier: 'ProFoot-AI-Guide-Acces.pdf',
+    lignes: [
+      '20 analyses complètes par mois, sur plus de 15 compétitions',
+      'Statistiques avancées : forme, confrontations, buts attendus',
+      'Accès valable 30 jours à compter de votre achat',
+    ],
+  },
+  pro: {
+    nom: 'Pro',
+    fichier: 'ProFoot-AI-Guide-Acces-Pro.pdf',
+    lignes: [
+      '50 analyses complètes par mois, sur plus de 15 compétitions',
+      "Agent VIP : posez vos questions et obtenez une réponse argumentée",
+      'Accès valable 30 jours à compter de votre achat',
+    ],
+  },
+  vip: {
+    nom: 'VIP',
+    fichier: 'ProFoot-AI-Guide-Acces-VIP.pdf',
+    lignes: [
+      'Analyses illimitées, sur plus de 15 compétitions',
+      "Agent VIP : posez vos questions et obtenez une réponse argumentée",
+      'Accès valable 1 an à compter de votre achat',
+    ],
+  },
+};
+
+const OFFRE = OFFRES[(process.argv[2] || 'essentiel').toLowerCase()];
+if (!OFFRE) {
+  console.error(`Offre inconnue. Choix : ${Object.keys(OFFRES).join(', ')}`);
+  process.exit(1);
+}
+
 const doc = new PDFDocument({ size: 'A4', margin: 0, info: {
   Title: 'ProFoot AI — Comment accéder à votre analyse',
   Author: 'ProFoot AI',
 } });
-doc.pipe(fs.createWriteStream('ProFoot-AI-Guide-Acces.pdf'));
+doc.pipe(fs.createWriteStream(OFFRE.fichier));
 
 const L = doc.page.width;
 const M = 62;
@@ -80,14 +125,9 @@ const hEncadre = 104;
 doc.roundedRect(M, y, L - 2 * M, hEncadre, 8).fill(VERT_PALE);
 
 doc.fillColor(ENCRE).font('Helvetica-Bold').fontSize(11)
-   .text('Ce que comprend votre accès Essentiel', M + 20, y + 18);
+   .text(`Ce que comprend votre accès ${OFFRE.nom}`, M + 20, y + 18);
 
-const inclus = [
-  '20 analyses complètes par mois, sur plus de 15 compétitions',
-  'Statistiques avancées : forme, confrontations, buts attendus',
-  'Accès valable 30 jours à compter de votre achat',
-];
-inclus.forEach((ligne, i) => {
+OFFRE.lignes.forEach((ligne, i) => {
   const yl = y + 42 + i * 17;
   doc.fillColor(VERT).font('Helvetica-Bold').fontSize(10).text('•', M + 20, yl);
   doc.fillColor(GRIS).font('Helvetica').fontSize(10).text(ligne, M + 32, yl);
@@ -126,4 +166,4 @@ for (const ligne of [
 doc.fillColor(VERT).font('Helvetica-Bold').fontSize(9).text('profootai.com', M, yp + 6);
 
 doc.end();
-console.log('  PDF créé : ProFoot-AI-Guide-Acces.pdf');
+console.log('  PDF créé : ' + OFFRE.fichier);

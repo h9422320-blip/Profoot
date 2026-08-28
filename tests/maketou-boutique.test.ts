@@ -33,19 +33,30 @@ test('★ ACQUIS — l’offre Essentiel a une caisse, et c’est MakeTou', () =
   assert.equal(offreEnVente('essential_monthly'), true);
 });
 
-test('★ ACQUIS — une offre sans produit sur la boutique ne prétend pas en avoir un', () => {
-  // Un lien inventé enverrait l'acheteur sur une page d'erreur de la boutique,
-  // ce qui est pire qu'un refus honnête : il croirait ProFoot en panne.
-  const avant = { pro: process.env.MAKETOU_LIEN_PRO, vip: process.env.MAKETOU_LIEN_VIP };
-  delete process.env.MAKETOU_LIEN_PRO;
-  delete process.env.MAKETOU_LIEN_VIP;
-  try {
-    assert.equal(lienMaketou('pro_monthly'), null);
-    assert.equal(lienMaketou('vip_yearly'), null);
-  } finally {
-    if (avant.pro) process.env.MAKETOU_LIEN_PRO = avant.pro;
-    if (avant.vip) process.env.MAKETOU_LIEN_VIP = avant.vip;
+test('★ ACQUIS — les trois offres ont chacune leur caisse', () => {
+  // Le 28 août au matin, 26 personnes ont cliqué sur le Pro et 9 sur le VIP
+  // sans pouvoir payer : leurs produits n'existaient pas encore sur la
+  // boutique, et le bouton retombait sur une caisse fermée.
+  for (const [plan, mot] of [
+    ['essential_monthly', 'essentiel'],
+    ['pro_monthly', 'pro'],
+    ['vip_yearly', 'vip'],
+  ] as const) {
+    const lien = lienMaketou(plan);
+    assert.ok(lien, `L'offre ${plan} n'a plus de caisse : personne ne peut l'acheter.`);
+    assert.match(lien!, /^https:\/\/[a-z0-9.-]*maketou/i);
+    assert.ok(
+      lien!.toLowerCase().includes(mot),
+      `L'adresse de ${plan} ne mène pas au bon produit : « ${lien} ».`
+    );
+    assert.equal(offreEnVente(plan), true);
   }
+});
+
+test('★ ACQUIS — une offre inconnue de la boutique ne prétend pas être en vente', () => {
+  // Le repli honnête doit rester possible : un lien inventé enverrait
+  // l'acheteur sur une page d'erreur, et il croirait ProFoot en panne.
+  assert.equal(lienMaketou('offre_inexistante' as any), null);
 });
 
 test('★ ACQUIS — une adresse non chiffrée n’est jamais servie comme caisse', () => {
