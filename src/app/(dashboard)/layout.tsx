@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/layout/Sidebar";
+import AccueilEquipePreferee from "./_accueil/AccueilEquipePreferee";
 
 export default function DashboardLayout({
   children,
@@ -7,6 +8,13 @@ export default function DashboardLayout({
 }) {
   return (
     <>
+      {/* ── L'ÉTAPE D'ACCUEIL ─────────────────────────────────────────────
+          Posée dans le gabarit et non dans une page : la page d'analyse est
+          régénérée toutes les cinq minutes et servie identique à tout le
+          monde, elle ne peut donc rien porter de personnel. Le composant
+          décide lui-même de s'ouvrir — une seule fois, et seulement sur le
+          parcours d'arrivée, jamais par-dessus un paiement en cours. */}
+      <AccueilEquipePreferee />
       <Sidebar />
       {/* overflow-x-clip et non -hidden : `hidden` ferait de <main> un conteneur
           de défilement, ce qui neutralise tout élément `sticky` à l'intérieur
