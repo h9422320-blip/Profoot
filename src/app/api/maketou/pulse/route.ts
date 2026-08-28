@@ -48,13 +48,18 @@ const MAX_GARDES = 10;
  * Un service de courriel injoignable ne doit pas faire échouer l'ouverture
  * d'un accès déjà payé : l'essentiel est fait, le message est accessoire.
  */
-async function prevenir(a: string | null | undefined, message: Omit<Courriel, 'a'>) {
-  if (!a) return;
+async function prevenir(
+  a: string | null | undefined,
+  message: Omit<Courriel, 'a'>
+): Promise<boolean> {
+  if (!a) return false;
   try {
     const parti = await envoyerCourriel({ a, ...message });
     if (!parti) console.error(`[MAKETOU] Message NON parti à ${a} — « ${message.sujet} ».`);
+    return parti;
   } catch (e: any) {
     console.error(`[MAKETOU] Envoi impossible à ${a} :`, e?.message);
+    return false;
   }
 }
 
@@ -156,8 +161,10 @@ export async function POST(request: Request) {
       // Son chemin de retour. Il n'est pas forcément parti de profootai.com :
       // la boutique est publique et son lien circule sur WhatsApp. Sans ce
       // message, il a payé et ne sait pas où aller.
-      await prevenir(r.email, messageBienvenue(r.expireLe));
-      return NextResponse.json({ recu: true, traite: true, ouvert: true, plan: r.plan });
+      const prevenu = await prevenir(r.email, messageBienvenue(r.expireLe));
+      // `prevenu` figure dans la réponse à dessein : sans lui, un service de
+      // courriel muet resterait invisible jusqu'au jour où il devait servir.
+      return NextResponse.json({ recu: true, traite: true, ouvert: true, plan: r.plan, prevenu });
     }
 
     // ── UNE VENTE QUI N'OUVRE RIEN NE PEUT PLUS PASSER INAPERÇUE ──────────
@@ -169,11 +176,12 @@ export async function POST(request: Request) {
     console.warn(`[MAKETOU] Accès non ouvert : ${r.motif}`);
 
     const ignoree = /Événement ignoré/i.test(r.motif);
+    let alerte = false;
     if (!ignoree) {
       if (/Aucun compte/i.test(r.motif) && r.email) {
         await prevenir(r.email, messageCompteAcreer(r.email));
       }
-      await prevenir(
+      alerte = await prevenir(
         ALERTE_A,
         messageAlerteVenteNonHonoree({
           email: r.email ?? trace.email,
@@ -185,7 +193,7 @@ export async function POST(request: Request) {
         })
       );
     }
-    return NextResponse.json({ recu: true, traite: true, ouvert: false, motif: r.motif });
+    return NextResponse.json({ recu: true, traite: true, ouvert: false, motif: r.motif, alerte });
   } catch (e: any) {
     console.error('[MAKETOU] Traitement impossible :', e?.message);
     await journaliser({ ...trace, erreur: e?.message });
