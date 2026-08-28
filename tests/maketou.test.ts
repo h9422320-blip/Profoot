@@ -26,8 +26,11 @@ import path from 'node:path';
 import {
   secretValide,
   offreAchetee,
+  offreParNom,
   montantEnFrancs,
   montantCompatible,
+  montantComparable,
+  deviseDeLaVente,
   type VenteMaketou,
 } from '../src/lib/maketou';
 
@@ -132,6 +135,52 @@ test('★ ACQUIS — un produit inconnu ne devient pas une offre par défaut', (
 test('★ ACQUIS — le montant sert de repli quand le nom ne dit rien', () => {
   const sansNom = { ...VENTE_REELLE, products: [{ name: 'Article', price: 15000 }] };
   assert.equal(offreAchetee(sansNom), 'vip_yearly');
+});
+
+// ── LA MONNAIE DE L'ACHETEUR ───────────────────────────────────────────────
+//
+// Relevé le 28 août 2026 sur la page publique : l'offre à 2 000 FCFA s'affiche
+// « 31 242 GNF » à un visiteur guinéen. Comparer 31 242 à 2 000 refuserait une
+// vente honnête, et le client aurait payé pour rien.
+
+test('★ ACQUIS — une vente en francs CFA reste vérifiée au centime', () => {
+  assert.equal(montantComparable(VENTE_REELLE), true);
+  assert.equal(deviseDeLaVente(VENTE_REELLE), 'XOF');
+});
+
+test('★ ACQUIS — une vente en monnaie étrangère n’est pas comparée au tarif', () => {
+  const enGuinee = {
+    ...VENTE_REELLE,
+    sale: { id: 'v_gn', amount: 3124200, currency: 'GNF' },
+    products: [{ name: 'ProFoot AI — Accès Essentiel (30 jours)', price: 31242, currency: 'GNF' }],
+  };
+  assert.equal(deviseDeLaVente(enGuinee), 'GNF');
+  assert.equal(montantComparable(enGuinee), false, '31 242 GNF serait comparé à 2 000 FCFA.');
+  assert.equal(offreParNom(enGuinee), 'essential_monthly', 'Le nom du produit doit suffire.');
+});
+
+test('★ ACQUIS — sans monnaie annoncée, le contrôle du montant s’applique', () => {
+  // Ne pas relâcher la garde par défaut : c'est le cas le plus courant.
+  const sansDevise = { ...VENTE_REELLE, sale: { id: 'v', amount: 2000 }, products: [{ name: 'X', price: 2000 }] };
+  assert.equal(montantComparable(sansDevise), true);
+});
+
+test('★ ACQUIS — une monnaie étrangère n’ouvre rien sans nom d’offre reconnu', () => {
+  // Sinon un produit quelconque vendu en euros ouvrirait un accès.
+  const inconnu = {
+    ...VENTE_REELLE,
+    sale: { id: 'v_eu', amount: 100, currency: 'EUR' },
+    products: [{ name: 'Casquette ProFoot', price: 1, currency: 'EUR' }],
+  };
+  assert.equal(montantComparable(inconnu), false);
+  assert.equal(offreParNom(inconnu), null, 'Une casquette nomme une offre.');
+});
+
+test('★ ACQUIS — le relâchement du montant est borné au nom du produit', () => {
+  // La branche « monnaie étrangère » doit exiger offreParNom, jamais offreAchetee :
+  // le repli par montant y serait absurde, puisque le montant est justement
+  // celui qu'on renonce à comparer.
+  assert.match(MODULE, /\} else if \(!offreParNom\(vente\)\) \{/);
 });
 
 // ── CE QUE LA ROUTE GARANTIT ───────────────────────────────────────────────

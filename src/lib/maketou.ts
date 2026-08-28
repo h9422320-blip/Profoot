@@ -72,7 +72,7 @@ export function secretValide(fourni: string | null): boolean {
  * lisible, et il survit à un changement d'identifiant côté boutique. Le montant
  * ne sert que de repli — deux offres pourraient un jour coûter le même prix.
  */
-export function offreAchetee(vente: VenteMaketou): PlanKey | null {
+export function offreParNom(vente: VenteMaketou): PlanKey | null {
   // La marque s'écrit « ProFoot » : la chercher telle quelle ferait passer une
   // casquette ProFoot pour l'offre Pro. On retire le nom de la marque avant de
   // lire l'offre, et on exige un mot entier — « pro » et non « profoot ».
@@ -83,6 +83,12 @@ export function offreAchetee(vente: VenteMaketou): PlanKey | null {
   if (/\bessentiel\b/.test(nom)) return 'essential_monthly';
   if (/\bvip\b/.test(nom)) return 'vip_yearly';
   if (/\bpro\b/.test(nom)) return 'pro_monthly';
+  return null;
+}
+
+export function offreAchetee(vente: VenteMaketou): PlanKey | null {
+  const parNom = offreParNom(vente);
+  if (parNom) return parNom;
 
   // Repli sur le montant, en tolérant les deux écritures.
   const montant = montantEnFrancs(vente);
@@ -122,6 +128,30 @@ export function montantCompatible(paye: number, plan: PlanKey): boolean {
   return acceptes.some((a) => paye === a || paye === a * 100);
 }
 
+/**
+ * DANS QUELLE MONNAIE LA VENTE A-T-ELLE ÉTÉ RÉGLÉE.
+ *
+ * Relevé le 28 août 2026 sur la page publique de la boutique : l'offre à
+ * 2 000 FCFA s'affiche « 31 242 GNF » à un visiteur guinéen. MakeTou convertit
+ * dans la monnaie de l'acheteur, et c'est une bonne chose — un client de
+ * Conakry voit un prix qu'il comprend.
+ *
+ * Mais le montant qui remonte n'est alors plus comparable au tarif. Comparer
+ * 31 242 à 2 000 ferait refuser une vente parfaitement honnête, et le client
+ * aurait payé pour rien. C'est le même piège que « 3,14 F » chez l'autre
+ * boutique, en pire : ici il coûterait des accès, pas seulement un chiffre faux.
+ */
+export function deviseDeLaVente(vente: VenteMaketou): string | null {
+  const brute = vente.products?.[0]?.currency ?? vente.sale?.currency ?? null;
+  return brute ? String(brute).toUpperCase() : null;
+}
+
+/** Le montant est-il exprimé dans notre monnaie, donc comparable au tarif ? */
+export function montantComparable(vente: VenteMaketou): boolean {
+  const devise = deviseDeLaVente(vente);
+  return devise === null || devise === 'XOF';
+}
+
 export type ResultatPulse =
   | { ouvert: true; plan: PlanKey; expireLe: string; email: string }
   | { ouvert: false; motif: string; email?: string };
@@ -155,13 +185,38 @@ export async function ouvrirAccesMaketou(
     };
   }
 
+  // ── LE MONTANT, QUAND IL VEUT DIRE QUELQUE CHOSE ────────────────────────
+  //
+  // Le contrôle du montant est un garde-fou : il empêche qu'un règlement de
+  // cent francs ouvre l'offre annuelle. Il n'a de sens que si la vente est
+  // libellée en francs CFA.
+  //
+  // Réglée en gourdes guinéennes, en nairas ou en euros, la somme n'est plus
+  // comparable au tarif, et l'appliquer quand même refuserait des ventes
+  // honnêtes. Dans ce cas c'est le NOM du produit qui fait foi — un nom que
+  // nous avons écrit nous-mêmes, sur un produit dont nous fixons le prix :
+  // l'acheteur ne choisit pas ce qu'il paie.
   const paye = montantEnFrancs(vente);
-  if (paye == null || !montantCompatible(paye, plan)) {
+  if (montantComparable(vente)) {
+    if (paye == null || !montantCompatible(paye, plan)) {
+      return {
+        ouvert: false,
+        email,
+        motif: `Montant ${paye} incompatible avec l'offre ${plan} (${PLANS[plan].amountXof}).`,
+      };
+    }
+  } else if (!offreParNom(vente)) {
     return {
       ouvert: false,
       email,
-      motif: `Montant ${paye} incompatible avec l'offre ${plan} (${PLANS[plan].amountXof}).`,
+      motif:
+        `Vente en ${deviseDeLaVente(vente)} : le montant ${paye} n'est pas comparable au tarif, ` +
+        `et le produit « ${vente.products?.[0]?.name ?? '?'} » ne nomme aucune offre.`,
     };
+  } else {
+    console.log(
+      `[MAKETOU] Vente en ${deviseDeLaVente(vente)} (${paye}) — offre ${plan} reconnue au nom du produit.`
+    );
   }
 
   // ── QUI EST-CE ? ────────────────────────────────────────────────────────
