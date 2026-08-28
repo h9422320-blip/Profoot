@@ -143,6 +143,31 @@ export function tousLesClubsVedettes(): ClubVedette[] {
   return CHAMPIONNATS_VEDETTES.flatMap((c) => c.clubs);
 }
 
+/** Un club vedette, accompagné du championnat d'où il vient. */
+export interface ClubAvecChampionnat extends ClubVedette {
+  championnat: string;
+}
+
+/**
+ * La grille telle qu'elle s'affiche : une seule liste, sans regroupement.
+ *
+ * ── POURQUOI LES CHAMPIONNATS NE SONT PLUS DES TITRES ─────────────────────
+ *
+ * On demandait « quelle est ton équipe préférée », et on répondait par un
+ * classement administratif : cinq en-têtes, cinq sous-listes, et le regard qui
+ * doit d'abord choisir un pays avant de chercher un blason. Quatorze clubs
+ * tiennent dans une seule grille — celui qu'on aime se reconnaît à son écusson,
+ * pas à la ligue où il joue.
+ *
+ * Le championnat reste attaché à chaque club : il n'est plus montré, mais il
+ * est conservé avec le choix, et c'est gratuit.
+ */
+export function clubsVedettes(): ClubAvecChampionnat[] {
+  return CHAMPIONNATS_VEDETTES.flatMap((c) =>
+    c.clubs.map((club) => ({ ...club, championnat: c.id }))
+  );
+}
+
 /** Une équipe du référentiel, réduite à ce dont la grille a besoin. */
 export interface EquipeReferentiel {
   id?: string;

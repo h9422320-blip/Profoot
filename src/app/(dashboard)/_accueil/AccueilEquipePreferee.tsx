@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Search, Sparkles } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import {
-  CHAMPIONNATS_VEDETTES,
+  clubsVedettes,
   ecussonDe,
   normaliserNom,
   type ClubVedette,
@@ -67,6 +67,8 @@ export default function AccueilEquipePreferee() {
   const [chercheEncore, setChercheEncore] = useState(false);
   const [choisie, setChoisie] = useState<EquipePreferee | null>(null);
   const [clavier, setClavier] = useState(0);
+  /** Le club touché, le temps que sa carte s'allume avant la fête. */
+  const [enCours, setEnCours] = useState<string | null>(null);
   const enregistrement = useRef(false);
 
   // ── FAUT-IL OUVRIR ? ────────────────────────────────────────────────────
@@ -237,11 +239,22 @@ export default function AccueilEquipePreferee() {
 
   const choisir = useCallback(
     (equipe: EquipePreferee) => {
-      setChoisie(equipe);
-      setEtape("fete");
-      void celebrer();
-      // L'enregistrement part en même temps que les confettis : la personne
-      // n'attend jamais le réseau pour voir sa fête.
+      // ── LA CARTE S'ALLUME AVANT QUE L'ÉCRAN NE CHANGE ────────────────────
+      //
+      // Sans ce battement, la grille disparaissait à l'instant du contact et
+      // rien ne confirmait CE QUI avait été touché. Sur un téléphone, où le
+      // doigt cache la moitié de la carte, on n'était même pas sûr d'avoir
+      // appuyé au bon endroit. Deux dixièmes de seconde suffisent à voir sa
+      // carte s'allumer en vert avant la fête.
+      setEnCours(equipe.id);
+      setTimeout(() => {
+        setChoisie(equipe);
+        setEtape("fete");
+        void celebrer();
+      }, 200);
+
+      // L'enregistrement part tout de suite : la personne n'attend jamais le
+      // réseau pour voir sa fête.
       void clore(equipe);
     },
     [celebrer, clore]
@@ -318,19 +331,24 @@ export default function AccueilEquipePreferee() {
       role="dialog"
       aria-modal="true"
       aria-label="Choisir son équipe préférée"
-      className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-6"
       style={clavier ? { height: `calc(100% - ${clavier}px)` } : undefined}
     >
-      {/* ── LA FEUILLE, PENSÉE POUR LE POUCE ──────────────────────────────
-          Sur téléphone elle est collée au bas de l'écran : c'est la zone
-          qu'un pouce atteint sans changer la prise sur l'appareil. Elle ne
-          dépasse jamais 94 % de la hauteur, et son corps défile — un écran
-          d'accueil qui déborde et dont on ne voit pas le bas est un écran
-          dont on ne sort pas.
+      {/* ── UNE NOTICE POSÉE SUR LA PAGE, PAS UN ÉCRAN QUI LA REMPLACE ─────
+          Elle occupait toute la hauteur du téléphone : on ne voyait plus
+          l'application derrière, et une question facultative prenait l'allure
+          d'une porte fermée. Contenue et centrée, elle se lit comme ce
+          qu'elle est — un mot de bienvenue qu'on peut écarter.
 
-          `overflow-x-hidden` est la ceinture de sécurité : aucun nom de club
-          un peu long ne peut faire glisser la page de côté. */}
-      <div className="w-full sm:max-w-[580px] max-h-[94%] sm:max-h-[88%] flex flex-col overflow-hidden overflow-x-hidden rounded-t-[28px] sm:rounded-[28px] border border-white/10 bg-[#0f1a22] shadow-[0_-8px_60px_rgba(0,0,0,0.6)] sm:shadow-[0_20px_80px_rgba(0,0,0,0.6)]">
+          400 px au plus, 16 px de marge de chaque côté sur téléphone, et 85 %
+          de la hauteur au maximum : c'est L'INTÉRIEUR qui défile, jamais la
+          page. `overflow-x-hidden` est la ceinture de sécurité — aucun nom de
+          club un peu long ne peut faire glisser la page de côté. */}
+      {/* `shadow-2xl` et non une ombre sur mesure : les valeurs arbitraires de
+          `shadow-[...]` contenant des virgules ne sont pas générées par
+          Tailwind ici — vérifié dans le navigateur. Une ombre déclarée qui
+          n'existe pas est pire qu'une ombre standard. */}
+      <div className="w-full max-w-[400px] max-h-[85%] flex flex-col overflow-hidden overflow-x-hidden rounded-[22px] border border-white/[0.09] bg-[#0f1a22] shadow-2xl">
         {etape === "fete" ? (
           <Fete prenom={prenom} equipe={choisie} onContinuer={() => setEtape("sommeil")} />
         ) : (
@@ -341,6 +359,7 @@ export default function AccueilEquipePreferee() {
             setSaisie={setSaisie}
             resultats={resultats}
             chercheEncore={chercheEncore}
+            enCours={enCours}
             onChoisir={choisir}
             onPasser={passer}
           />
@@ -359,6 +378,7 @@ function Choix({
   setSaisie,
   resultats,
   chercheEncore,
+  enCours,
   onChoisir,
   onPasser,
 }: {
@@ -368,6 +388,7 @@ function Choix({
   setSaisie: (v: string) => void;
   resultats: Resultat[];
   chercheEncore: boolean;
+  enCours: string | null;
   onChoisir: (e: EquipePreferee) => void;
   onPasser: () => void;
 }) {
@@ -375,23 +396,28 @@ function Choix({
 
   return (
     <>
-      {/* En-tête : la question, et la porte de sortie. */}
-      <div className="px-5 pt-5 pb-4 sm:px-7 sm:pt-7 border-b border-white/[0.06]">
-        <div className="flex items-start justify-between gap-4">
+      {/* ── L'EN-TÊTE NE DÉFILE PAS ────────────────────────────────────────
+          La question et la porte de sortie restent sous les yeux quelle que
+          soit la position dans la liste. Un bouton « Passer » qu'il faut
+          remonter chercher n'est pas une porte de sortie.
+
+          Le voile vert très pâle en haut de la carte tient lieu de signature
+          de marque : c'est le vert de ProFoot, à peine posé, jamais crié. */}
+      <div className="relative shrink-0 border-b border-white/[0.06] bg-gradient-to-b from-[#10B981]/[0.07] to-transparent px-5 pt-5 pb-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#10B981]">
               {prenom ? `Bienvenue ${prenom}` : "Bienvenue"}
             </p>
-            <h2 className="mt-1.5 text-[21px] sm:text-[25px] font-black leading-tight text-white tracking-tight">
+            <h2 className="mt-1.5 text-[20px] font-black leading-tight tracking-tight text-white">
               Quelle est ton équipe préférée&nbsp;? ⚽
             </h2>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-white/40">
-              Juste pour le plaisir. Tu resteras libre d&apos;analyser
-              n&apos;importe quel match.
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/45">
+              Choisis ton club de cœur — juste pour le plaisir. Tu resteras
+              libre d&apos;analyser n&apos;importe quel match.
             </p>
           </div>
 
-          {/* Discret, mais toujours atteignable au pouce. */}
           {/* Discret à l'œil, mais JAMAIS discret au doigt : 44 px de haut,
               la plus petite cible qu'un pouce atteint sans rater. Un bouton
               d'abandon trop petit, c'est quelqu'un qui tape trois fois à côté
@@ -399,7 +425,7 @@ function Choix({
           <button
             type="button"
             onClick={onPasser}
-            className="shrink-0 min-h-[44px] min-w-[44px] rounded-full px-4 py-2.5 text-[13px] font-bold text-white/40 hover:text-white/80 hover:bg-white/5 active:bg-white/10 transition-colors"
+            className="shrink-0 min-h-[44px] min-w-[44px] rounded-full px-3.5 py-2.5 text-[12.5px] font-bold text-white/40 transition-colors hover:bg-white/5 hover:text-white/80 active:bg-white/10"
           >
             Passer
           </button>
@@ -439,8 +465,10 @@ function Choix({
         </div>
       </div>
 
-      {/* Corps défilant */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 custom-scrollbar">
+      {/* ── SEUL L'INTÉRIEUR DÉFILE ────────────────────────────────────────
+          La page derrière ne bouge pas, la carte garde sa taille : c'est
+          cette zone-ci, et elle seule, qui glisse sous le doigt. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 custom-scrollbar">
         {cherche ? (
           <ListeRecherche
             resultats={resultats}
@@ -448,36 +476,37 @@ function Choix({
             onChoisir={onChoisir}
           />
         ) : (
-          <div className="space-y-6">
-            {CHAMPIONNATS_VEDETTES.map((champ) => (
-              <div key={champ.id}>
-                <p className="mb-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-white/30">
-                  <span className="mr-1.5 text-[13px] align-middle">{champ.drapeau}</span>
-                  {champ.libelle}
-                </p>
-                {/* Deux colonnes sur téléphone : trois rendraient « Borussia
-                    Dortmund » illisible sur 360 px de large. L'espacement est
-                    volontairement généreux — deux cartes collées, c'est une
-                    carte sur deux touchée par erreur. */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
-                  {champ.clubs.map((club) => (
-                    <CarteClub
-                      key={club.id}
-                      club={club}
-                      ecusson={ecussonDe(club, referentiel)}
-                      championnat={champ.id}
-                      onChoisir={onChoisir}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+          <>
+            {/* ── UNE SEULE GRILLE, SANS CHAMPIONNATS ──────────────────────
+                Les clubs étaient rangés sous cinq en-têtes — La Liga, Premier
+                League, Ligue 1… On demandait « quelle est ton équipe
+                préférée » et on répondait par un classement administratif :
+                il fallait d'abord trouver le bon pays pour chercher son
+                blason. Quatorze clubs tiennent dans une seule grille, et
+                celui qu'on aime se reconnaît à son écusson.
 
-            <p className="pt-1 pb-2 text-center text-[11px] leading-relaxed text-white/25">
+                Deux colonnes sur téléphone : trois rendraient « Borussia
+                Dortmund » illisible sur 360 px. L'espacement est volontairement
+                généreux — deux cartes collées, c'est une carte sur deux
+                touchée par erreur. */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {clubsVedettes().map((club) => (
+                <CarteClub
+                  key={club.id}
+                  club={club}
+                  ecusson={ecussonDe(club, referentiel)}
+                  championnat={club.championnat}
+                  choisi={enCours === club.id}
+                  onChoisir={onChoisir}
+                />
+              ))}
+            </div>
+
+            <p className="pt-4 pb-1 text-center text-[11.5px] leading-relaxed text-white/25">
               Ton club n&apos;est pas là&nbsp;? Cherche-le en haut — tous les
               championnats et toutes les sélections y sont.
             </p>
-          </div>
+          </>
         )}
       </div>
     </>
@@ -489,20 +518,39 @@ function CarteClub({
   club,
   ecusson,
   championnat,
+  choisi,
   onChoisir,
 }: {
   club: ClubVedette;
   ecusson: string | null;
   championnat: string;
+  choisi: boolean;
   onChoisir: (e: EquipePreferee) => void;
 }) {
   return (
     <button
       type="button"
+      aria-pressed={choisi}
       onClick={() =>
         onChoisir({ id: club.id, nom: club.nom, logo: ecusson, championnat })
       }
-      className="group flex min-h-[64px] items-center gap-2.5 rounded-[16px] border border-white/[0.07] bg-white/[0.03] p-3 text-left transition-all hover:border-[#10B981]/40 hover:bg-[#10B981]/[0.07] active:scale-[0.97] active:bg-[#10B981]/10"
+      // ── L'ÉTAT CHOISI SE VOIT À LA BORDURE ET AU FOND ────────────────────
+      //
+      // Une première version ajoutait un halo `shadow-[0_0_0_3px_rgba(...)]`.
+      // Mesuré dans le navigateur : Tailwind ne générait AUCUNE règle pour
+      // cette valeur, ni pour le `ring` essayé ensuite. La classe était bien
+      // sur l'élément, et il ne se passait rien — le pire des cas, du style
+      // qui a l'air écrit et qui n'existe pas.
+      //
+      // Ne restent donc que des classes vérifiées à l'écran : bordure verte
+      // pleine, doublée d'épaisseur, et fond teinté. C'est la confirmation que
+      // le bon club a été touché, sur un écran où le doigt cache la moitié de
+      // la carte.
+      className={`group flex min-h-[64px] items-center gap-2.5 rounded-[16px] p-3 text-left transition-all active:scale-[0.97] ${
+        choisi
+          ? "border-2 border-[#10B981] bg-[#10B981]/15"
+          : "border border-white/[0.07] bg-white/[0.03] hover:border-[#10B981]/40 hover:bg-[#10B981]/[0.07] active:bg-[#10B981]/10"
+      }`}
     >
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-white/[0.06] overflow-hidden">
         {ecusson ? (
@@ -515,7 +563,11 @@ function CarteClub({
       </span>
       {/* `break-words` : « Borussia Dortmund » sur 360 px doit passer à la
           ligne, jamais élargir la carte et pousser la page de côté. */}
-      <span className="min-w-0 flex-1 break-words text-[12.5px] font-bold leading-tight text-white/85 group-hover:text-white">
+      <span
+        className={`min-w-0 flex-1 break-words text-[12.5px] font-bold leading-tight transition-colors ${
+          choisi ? "text-white" : "text-white/85 group-hover:text-white"
+        }`}
+      >
         {club.nom}
       </span>
     </button>

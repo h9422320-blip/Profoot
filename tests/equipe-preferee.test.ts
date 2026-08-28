@@ -29,9 +29,14 @@ import {
   ecussonDe,
   normaliserNom,
   tousLesClubsVedettes,
+  clubsVedettes,
 } from '../src/lib/equipes-vedettes';
 
 const lire = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8');
+
+/** Le code sans ses commentaires — ce que l'écran montre vraiment. */
+const sansCommentaires = (s: string) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const ECRAN = 'src/app/(dashboard)/_accueil/AccueilEquipePreferee.tsx';
 const ACTIONS = 'src/app/(dashboard)/_accueil/actions.ts';
@@ -272,16 +277,81 @@ test('★ ACQUIS — le champ de recherche ne fait pas zoomer iOS', () => {
   assert.match(ecran, /text-\[16px\] sm:text-\[14px\]/, 'Le champ est repassé sous 16 px sur téléphone.');
 });
 
-test('★ ACQUIS — la feuille remonte au-dessus du clavier', () => {
+test('★ ACQUIS — la carte remonte au-dessus du clavier', () => {
   // Sur Android le clavier se pose PAR-DESSUS la page sans la réduire. Une
-  // feuille collée en bas passe dessous avec ses résultats — on demande, la
+  // carte qui l'ignore passe dessous avec ses résultats — on demande, la
   // réponse arrive, et elle est cachée par le clavier qui a servi à demander.
   const ecran = lire(ECRAN);
-  assert.match(ecran, /window\.visualViewport/, 'La feuille ne suit plus le clavier.');
+  assert.match(ecran, /window\.visualViewport/, 'La carte ne suit plus le clavier.');
   assert.match(ecran, /height: `calc\(100% - \$\{clavier\}px\)`/);
   // Hauteur en pourcentage du conteneur, pas en `vh` : `vh` ignore le clavier.
-  assert.match(ecran, /max-h-\[94%\]/, 'La feuille est repassée à une hauteur en vh.');
-  assert.doesNotMatch(ecran, /max-h-\[94vh\]/);
+  assert.match(ecran, /max-h-\[85%\]/, 'La carte a perdu son plafond de hauteur.');
+  assert.doesNotMatch(ecran, /max-h-\[\d+vh\]/, 'Une hauteur en vh ignorerait le clavier.');
+});
+
+// ── UNE NOTICE POSÉE SUR LA PAGE, PAS UN ÉCRAN QUI LA REMPLACE ─────────────
+
+test('★ ACQUIS — la carte reste contenue et centrée', () => {
+  // Elle occupait toute la hauteur du téléphone : on ne voyait plus
+  // l'application derrière, et une question facultative prenait l'allure d'une
+  // porte fermée. Mesuré à 390 px : carte de 358 px de large, 16 px de marge
+  // de chaque côté, 690 px de haut sur 844 — l'overlay reste visible autour.
+  const ecran = lire(ECRAN);
+  assert.match(ecran, /max-w-\[400px\]/, 'La carte n’est plus bornée en largeur.');
+  assert.match(ecran, /rounded-\[22px\]/, 'La carte a perdu ses coins arrondis.');
+  assert.match(ecran, /items-center justify-center/, 'La carte n’est plus centrée.');
+  assert.match(ecran, /bg-black\/80/, 'Le voile sombre derrière la carte a disparu.');
+  assert.doesNotMatch(ecran, /rounded-t-\[28px\]/, 'La carte est redevenue une feuille collée en bas.');
+});
+
+test('★ ACQUIS — c’est l’intérieur de la carte qui défile, pas la page', () => {
+  // Mesuré à 390 px : 609 px de contenu dans 444 px de zone visible, et la
+  // page derrière ne défile pas d'un pixel.
+  const ecran = lire(ECRAN);
+  assert.match(ecran, /min-h-0 flex-1 overflow-y-auto/, 'Le corps de la carte ne défile plus.');
+  assert.match(ecran, /document\.body\.style\.overflow = "hidden"/, 'La page défile de nouveau derrière.');
+});
+
+test('★ ACQUIS — les clubs ne sont plus rangés par championnat', () => {
+  // On demandait « quelle est ton équipe préférée » et on répondait par un
+  // classement administratif : cinq en-têtes, et le regard qui doit trouver le
+  // bon pays avant de chercher un blason.
+  const ecran = sansCommentaires(lire(ECRAN));
+  assert.doesNotMatch(ecran, /CHAMPIONNATS_VEDETTES/, 'L’écran regroupe de nouveau par championnat.');
+  assert.doesNotMatch(ecran, /champ\.libelle|champ\.drapeau/, 'Les en-têtes de championnat sont revenus.');
+  assert.match(ecran, /clubsVedettes\(\)/, 'La grille unique a disparu.');
+  assert.match(ecran, /grid grid-cols-2 gap-2\.5/, 'La grille n’est plus à deux colonnes sur téléphone.');
+});
+
+test('★ ACQUIS — les quatorze clubs tiennent dans une seule grille', () => {
+  const clubs = clubsVedettes();
+  assert.equal(clubs.length, 14, 'Le nombre de grands clubs proposés a changé.');
+  // Le championnat n'est plus montré, mais il reste attaché au choix.
+  for (const c of clubs) {
+    assert.ok(c.championnat, `${c.nom} a perdu son championnat.`);
+  }
+});
+
+test('★ ACQUIS — le club touché s’allume avant que l’écran ne change', () => {
+  // Sans ce battement, la grille disparaissait à l'instant du contact et rien
+  // ne confirmait CE QUI avait été touché — sur un téléphone, où le doigt
+  // cache la moitié de la carte, on n'était pas sûr d'avoir visé juste.
+  //
+  // Mesuré dans le navigateur : bordure rgb(16,185,129) de 2 px et fond teinté
+  // à 15 % sur la carte choisie, contre blanc à 7 % et 1 px sur les autres.
+  const ecran = lire(ECRAN);
+  assert.match(ecran, /aria-pressed=\{choisi\}/, 'L’état choisi n’est plus annoncé.');
+  assert.match(ecran, /border-2 border-\[#10B981\] bg-\[#10B981\]\/15/, 'L’état choisi a perdu son style.');
+});
+
+test('★ ACQUIS — aucune classe Tailwind fantôme dans les styles vivants', () => {
+  // Un halo `shadow-[0_0_0_3px_rgba(...)]` et un `ring-[...]` avaient été
+  // écrits : Tailwind ne générait AUCUNE règle pour ces valeurs. Les classes
+  // étaient sur l'élément, et il ne se passait rien — le pire des cas, du
+  // style qui a l'air écrit et qui n'existe pas.
+  const ecran = sansCommentaires(lire(ECRAN));
+  assert.doesNotMatch(ecran, /shadow-\[/, 'Une ombre sur mesure est revenue : vérifier qu’elle est générée.');
+  assert.doesNotMatch(ecran, /\bring-\[/, 'Un anneau sur mesure est revenu : vérifier qu’il est généré.');
 });
 
 test('★ ACQUIS — rien ne peut pousser la page de côté', () => {
