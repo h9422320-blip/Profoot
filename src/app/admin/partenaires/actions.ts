@@ -1,9 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { estAdmin } from "@/lib/admins";
+import { poulsMaketou } from "@/lib/recettes-boutique";
 
 
 /**
@@ -106,4 +107,48 @@ export async function marquerVerse(formData: FormData) {
   revalidatePath("/admin/partenaires");
   revalidatePath(`/admin/partenaires/${partnerId}`);
   return { ok: true, message: verse ? "Forfait marqué comme versé." : "Versement annulé." };
+}
+
+/**
+ * LA BOUTIQUE, EN DIRECT.
+ *
+ * ── POURQUOI CETTE ACTION EXISTE ──────────────────────────────────────────
+ *
+ * Les ventes arrivent pendant qu'on regarde la page. Le 28 août 2026, deux
+ * sont tombées entre une capture d'écran et la vérification faite dessus —
+ * un VIP à 21 h 11, un Pro à 21 h 16 — et la page, rendue une fois pour
+ * toutes, continuait d'afficher l'état d'avant. On croyait lire la caisse ;
+ * on lisait une photographie.
+ *
+ * Ce n'est pas seulement gênant : c'est sur ces chiffres qu'on paie
+ * quelqu'un. Un montant figé qui a l'air vivant est pire qu'un montant
+ * manifestement daté.
+ *
+ * ── CE QU'ELLE FAIT, ET CE QU'ELLE ÉVITE DE FAIRE ─────────────────────────
+ *
+ * Elle ne renvoie AUCUNE donnée à l'écran. Elle relit deux nombres — combien
+ * de ventes, pour combien — et les compare à ceux que la page affiche déjà.
+ * Tant qu'ils sont identiques, elle ne fait rien du tout. Dès qu'ils
+ * diffèrent, `refresh()` fait rejouer le rendu serveur et toute la page se
+ * remet à jour d'elle-même, encadré du partage compris.
+ *
+ * Le calcul reste donc entièrement au serveur : rien de ce qui touche aux
+ * acheteurs ne descend dans le navigateur pour être rafraîchi.
+ *
+ * ── LE VERROU EST LE MÊME QUE PARTOUT ─────────────────────────────────────
+ *
+ * Une action serveur est un point d'entrée à part entière. Sans le contrôle
+ * d'administration, n'importe quel compte connecté pourrait interroger le
+ * rythme des ventes en boucle. En cas de refus, elle rend la signature reçue :
+ * pas d'erreur, pas d'indice, et aucune reconstruction déclenchée.
+ */
+export async function verifierPoulsBoutique(signatureVue: string): Promise<string> {
+  if (!(await verifierAdmin())) return signatureVue;
+
+  const { ventes, xof } = await poulsMaketou();
+  const signature = `${ventes}:${xof}`;
+
+  if (signature !== signatureVue) refresh();
+
+  return signature;
 }

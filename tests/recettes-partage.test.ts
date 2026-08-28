@@ -47,6 +47,10 @@ import {
 
 const lire = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8');
 
+/** Le code sans ses commentaires — ce que la page montre vraiment. */
+const sansCommentaires = (s: string) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 // ── L'HISTOIRE NE PEUT PLUS DISPARAÎTRE ────────────────────────────────────
 
 test('★ ACQUIS — les recettes de la boutique fermée sont figées dans le code', () => {
@@ -300,4 +304,79 @@ test('★ ACQUIS — le montant déjà retiré est déclaré, jamais deviné', (
     if (avant) process.env.MAKETOU_RETIRE_XOF = avant;
     else delete process.env.MAKETOU_RETIRE_XOF;
   }
+});
+
+// ── CE QUI EST ÉCRIT SOUS UN MONTANT DOIT LE PRODUIRE ──────────────────────
+
+test('★ ACQUIS — la carte du partenaire explique son montant par le NET', () => {
+  // Elle annonçait « 334 478 FCFA » puis « 35 % de 1 117 000 FCFA ». Les deux
+  // ne peuvent pas être vraies : 35 % du brut font 390 950. Le montant versé
+  // était juste, la ligne qui l'expliquait nommait le brut, et 56 472 francs
+  // séparaient l'affiché du recalculable — sur la carte de la personne payée.
+  assert.equal(Math.round(955650 * 0.35), 334478);
+  assert.notEqual(Math.round(1117000 * 0.35), 334478);
+
+  const page = lire('src/app/admin/partenaires/page.tsx');
+  assert.match(page, /netMoisEnCoursXof/, 'La carte n’expose plus le net.');
+  assert.doesNotMatch(
+    page,
+    /\{p\.part_ca_pct\} % de \{fcfa\(p\.recettesMoisEnCoursXof\)\}/,
+    'La carte annonce de nouveau un pourcentage du BRUT sous un montant du net.'
+  );
+
+  const source = lire('src/lib/partenaires.ts');
+  assert.match(source, /netMoisEnCoursXof: enCours\?\.netXof \?\? 0/);
+});
+
+test('★ ACQUIS — aucun panneau ne se réclame d’une caisse fermée', () => {
+  // Le contrôle comparait toujours deux chemins indépendants, et son vert
+  // était mérité. Mais il annonçait « confrontés à la caisse Chariow » alors
+  // que Chariow est fermée depuis le 27 août et que l'application ne lui parle
+  // plus. Un contrôle qui cite une source morte ne rassure plus.
+  // On lit le rendu, pas les commentaires : ceux-ci citent volontairement la
+  // phrase fautive pour expliquer pourquoi elle a disparu, et un test qui les
+  // compterait interdirait d’expliquer ses propres corrections.
+  const panneau = sansCommentaires(lire('src/app/admin/partenaires/Reconciliation.tsx'));
+  assert.doesNotMatch(panneau, /caisse Chariow/, 'Le panneau nomme encore la caisse fermée.');
+  assert.doesNotMatch(panneau, /Lu chez Chariow/);
+  assert.match(panneau, /confrontés à la caisse/, 'Le contrôle a disparu de l’écran.');
+});
+
+// ── LA PAGE SUIT LA BOUTIQUE, ELLE NE LA PHOTOGRAPHIE PAS ──────────────────
+
+test('★ ACQUIS — le pouls et l’affichage comptent la même chose', () => {
+  // C'est la seule façon dont ce mécanisme peut mal tourner : si les deux
+  // lectures ne s'accordent pas, la page se reconstruit toutes les vingt
+  // secondes pour afficher rigoureusement la même chose. Une boucle invisible
+  // à l'écran, qui ne se verrait que sur la facture.
+  const source = lire('src/lib/recettes-boutique.ts');
+  const gardes = source.match(/if \(jour <= DERNIER_JOUR_CHARIOW\) continue;/g) ?? [];
+  assert.equal(
+    gardes.length,
+    2,
+    'Le pouls et le total MakeTou n’appliquent plus la même frontière.'
+  );
+  assert.match(source, /export async function poulsMaketou/);
+});
+
+test('★ ACQUIS — le pouls est fermé aux non-administrateurs', () => {
+  // Une action serveur est un point d'entrée à part entière : elle ne traverse
+  // pas le gabarit et n'hérite d'aucune de ses protections.
+  const actions = lire('src/app/admin/partenaires/actions.ts');
+  assert.match(
+    actions,
+    /export async function verifierPoulsBoutique[\s\S]{0,200}verifierAdmin\(\)/,
+    'Le pouls répond sans vérifier qui demande.'
+  );
+  assert.match(actions, /if \(signature !== signatureVue\) refresh\(\)/);
+});
+
+test('★ ACQUIS — le direct ne fait pas descendre les ventes dans le navigateur', () => {
+  // Le composant client ne reçoit qu'une empreinte : deux nombres collés. Tout
+  // le calcul reste au serveur, et rien qui touche aux acheteurs ne transite
+  // par le navigateur pour être tenu à jour.
+  const pouls = lire('src/app/admin/partenaires/PoulsBoutique.tsx');
+  assert.match(pouls, /signature: string/);
+  assert.doesNotMatch(pouls, /email|amount|acheteur@/i);
+  assert.match(pouls, /visibilityState === "hidden"/, 'Un onglet caché continue d’interroger.');
 });

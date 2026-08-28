@@ -68,9 +68,19 @@ export default async function Reconciliation({
         )}
 
         <div className="min-w-0 flex-1">
+          {/* ── CE PANNEAU NE DOIT PAS NOMMER UNE CAISSE MORTE ─────────────
+              Il annonçait « confrontés à la caisse Chariow » alors que
+              Chariow est fermée depuis le 27 août 2026 et que l'application
+              ne lui parle plus. Le contrôle, lui, est resté juste : il compare
+              toujours deux chemins indépendants. Mais un contrôle qui cite
+              une source inexistante ne rassure plus — il fait douter de ce
+              qu'il vérifie vraiment.
+
+              La source d'aujourd'hui, ce sont les journées Chariow figées
+              dans le code plus les ventes MakeTou lues dans notre base. */}
           {juste ? (
             <p className="text-[12.5px] font-bold text-primary">
-              Chiffres confrontés à la caisse Chariow — aucun écart
+              Chiffres confrontés à la caisse — aucun écart
             </p>
           ) : (
             <p className="text-[12.5px] font-bold text-warning">
@@ -98,12 +108,14 @@ export default async function Reconciliation({
             )}
 
             <p className="text-foreground/45">
-              <span className="text-foreground/35">Lu chez Chariow à </span>
+              <span className="text-foreground/35">
+                Journées Chariow figées, ventes MakeTou lues à{' '}
+              </span>
               <span className="tabular-nums font-bold text-foreground/60">{r.luA}</span>
               <span className="text-foreground/35">
                 {' '}— sans mise en réserve. Chaque vente est comptée à la seconde où elle
-                est payée ; ce montant monte encore aujourd&apos;hui. Rechargez pour lire
-                l&apos;instant présent.
+                est payée ; ce montant monte encore aujourd&apos;hui, et la page se refait
+                d&apos;elle-même à chaque nouvelle vente.
               </span>
             </p>
           </div>

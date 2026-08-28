@@ -92,8 +92,25 @@ export interface PartenaireEnrichi extends Partenaire {
   derniereConnexion: string | null;
   /** Un poste par mois depuis le début du partenariat, du plus récent au plus ancien. */
   mois: MoisPartenaire[];
-  /** Recettes du mois en cours qui lui sont comptées. */
+  /** Recettes du mois en cours qui lui sont comptées, AVANT frais de boutique. */
   recettesMoisEnCoursXof: number;
+  /**
+   * Ce qui reste du mois en cours une fois la boutique payée.
+   *
+   * ── POURQUOI CE CHAMP A DÛ ÊTRE AJOUTÉ ──────────────────────────────────
+   *
+   * Sa fiche annonçait « 334 478 FCFA » puis, juste dessous, « 35 % de
+   * 1 117 000 FCFA ». Les deux lignes ne pouvaient pas être vraies ensemble :
+   * 35 % de 1 117 000 font 390 950. Le montant versé était juste — il porte
+   * sur le net — mais la ligne qui l'expliquait nommait le brut, et 56 472
+   * francs d'écart séparaient ce qu'on lisait de ce qu'on pouvait recalculer.
+   *
+   * C'est la carte de la personne qu'on paie : elle doit pouvoir refaire la
+   * multiplication et retomber sur son montant.
+   */
+  netMoisEnCoursXof: number;
+  /** Ce que la boutique a prélevé sur le mois en cours. */
+  fraisMoisEnCoursXof: number;
   /** Ce qu'il touche pour le mois en cours, à ce jour. */
   duMoisEnCoursXof: number;
   /** Somme de tout ce qui lui est dû depuis le début, mois clos compris. */
@@ -376,6 +393,8 @@ export async function getPartenaires(): Promise<PartenaireEnrichi[]> {
       derniereConnexion: compte?.last_sign_in_at ?? null,
       mois,
       recettesMoisEnCoursXof: enCours?.recettesXof ?? 0,
+      netMoisEnCoursXof: enCours?.netXof ?? 0,
+      fraisMoisEnCoursXof: enCours?.fraisBoutiqueXof ?? 0,
       duMoisEnCoursXof: enCours?.duXof ?? 0,
       duCumuleXof: mois.reduce((t, m) => t + m.duXof, 0),
     };

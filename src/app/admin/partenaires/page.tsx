@@ -14,6 +14,7 @@ import {
 } from "@/lib/recettes-boutique";
 import { DERNIER_JOUR_CHARIOW, TAUX_CHARIOW } from "@/lib/recettes-histoire";
 import Reconciliation from "./Reconciliation";
+import PoulsBoutique from "./PoulsBoutique";
 import { Indicateur } from "../_components/Indicateur";
 import { Panneau } from "../_components/Panneaux";
 import { EnTete } from "../_components/EnTete";
@@ -91,6 +92,17 @@ export default async function PartenairesPage() {
   const retireMaketou = retireDeMaketouXof();
   const chezMaketou = Math.max(0, netMaketou - retireMaketou);
 
+  // ── L'EMPREINTE DE L'INSTANT ────────────────────────────────────────────
+  //
+  // Deux nombres suffisent à savoir si quelque chose a bougé : le nombre de
+  // ventes et leur total. Le battement côté navigateur les redemande au
+  // serveur ; tant qu'ils sont identiques, rien n'est reconstruit.
+  //
+  // Elle se calcule ici, à partir de ce que la page AFFICHE, et pas à partir
+  // d'une seconde lecture : une empreinte prise ailleurs que sur ce qui est à
+  // l'écran finirait par diverger de lui.
+  const signaturePouls = `${mt.ventes}:${mt.xof}`;
+
   return (
     <div className="space-y-6">
       <EnTete
@@ -128,9 +140,15 @@ export default async function PartenairesPage() {
               rentre, ce qui sort, ce qui reste. C'est la seule vérification
               qu'on refait vraiment tous les mois. */}
           <div className="relative overflow-hidden rounded-[26px] border border-[#8b5cf6]/30 bg-gradient-to-br from-[#8b5cf6]/12 via-[#16242e] to-[#111d25] p-6 sm:p-7">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#a78bfa]">
-              Partage de {moisCourant}
-            </p>
+            {/* Le témoin de direct est posé au même endroit que le titre du
+                partage : c'est le chiffre du mois qu'on veut savoir vivant,
+                pas la page en général. */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#a78bfa]">
+                Partage de {moisCourant}
+              </p>
+              <PoulsBoutique signature={signaturePouls} />
+            </div>
 
             {/* ── LE PARTAGE DOIT S'ADDITIONNER SOUS LES YEUX ────────────────
                 Il ne montrait que trois nombres : encaissé, part du partenaire,
@@ -191,8 +209,10 @@ export default async function PartenairesPage() {
                 qu'un écart d'horloge. */}
             <p className="text-[11px] text-white/35 mt-5 leading-relaxed">
               Mois en cours, arrêté à aujourd'hui — ces montants montent encore à chaque vente.
-              Lu à <span className="text-white/60 font-bold tabular-nums">{heureDeLecture()}</span>,
-              au moment où cette page s'est affichée. Rechargez pour lire l'instant présent.
+              Rendu à{" "}
+              <span className="text-white/60 font-bold tabular-nums">{heureDeLecture()}</span>, puis
+              refait tout seul dès qu'une vente entre chez MakeTou : ce que vous lisez est l'instant
+              présent, pas une photographie.
             </p>
 
             {/* ── CE PARTAGE PORTE SUR DE L'ARGENT PAS ENCORE REÇU ──────────
@@ -299,8 +319,22 @@ export default async function PartenairesPage() {
                       <p className="text-[26px] leading-none font-black text-[#a78bfa] tabular-nums mt-1">
                         {fcfa(p.duMoisEnCoursXof)}
                       </p>
-                      <p className="text-[12px] text-white/35 mt-1.5">
-                        {p.part_ca_pct} % de {fcfa(p.recettesMoisEnCoursXof)}
+                      {/* ── LA MULTIPLICATION DOIT RETOMBER SUR SES PIEDS ───
+                          Cette ligne annonçait « 35 % de 1 117 000 FCFA » sous
+                          un montant de 334 478, qui est 35 % du NET. Les deux
+                          ne pouvaient pas être vraies ensemble : 35 % du brut
+                          font 390 950.
+
+                          C'est la carte de la personne qu'on paie. Un écart de
+                          56 472 francs entre le montant affiché et celui qu'on
+                          obtient en refaisant le calcul soi-même ne s'explique
+                          pas — il se soupçonne. */}
+                      <p className="text-[12px] text-white/35 mt-1.5 tabular-nums">
+                        {fcfa(p.recettesMoisEnCoursXof)} &minus;{" "}
+                        {fcfa(p.fraisMoisEnCoursXof)} de frais de boutique
+                      </p>
+                      <p className="text-[12px] text-white/55 tabular-nums">
+                        = {p.part_ca_pct} % de {fcfa(p.netMoisEnCoursXof)} nets
                       </p>
                       <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#8b5cf6] mt-2">
                         Ouvrir <ArrowRight className="w-3.5 h-3.5" />

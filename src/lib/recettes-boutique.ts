@@ -276,6 +276,45 @@ export function totalMaketou(parJour: RecettesParJour): JourneeBoutique {
   return { xof, ventes, fraisXof };
 }
 
+/**
+ * Le pouls de la boutique : combien de ventes, pour combien, à cet instant.
+ *
+ * ── POURQUOI UNE LECTURE SÉPARÉE, ET SI COURTE ────────────────────────────
+ *
+ * La page entière est chère à reconstruire : elle relit les partenaires, la
+ * liste des comptes, l'histoire jour par jour. La redemander toutes les vingt
+ * secondes pour découvrir qu'il ne s'est rien passé serait la punir de
+ * surveiller.
+ *
+ * Cette lecture-ci ne rend que deux nombres. Tant qu'ils ne bougent pas, rien
+ * n'est reconstruit ; dès qu'ils bougent, la page se refait entièrement. On
+ * paie le prix fort seulement quand il y a quelque chose à voir.
+ *
+ * ── LE MÊME FILTRE, OBLIGATOIREMENT ───────────────────────────────────────
+ *
+ * Il passe par `ventesMaketouParJour` plutôt que de refaire sa requête : les
+ * ventes de diagnostic y sont écartées. Une lecture qui en compterait 24 quand
+ * la page en affiche 23 déclencherait une reconstruction toutes les vingt
+ * secondes, indéfiniment, sans que rien ne change à l'écran.
+ */
+export async function poulsMaketou(): Promise<{ ventes: number; xof: number }> {
+  let ventes = 0;
+  let xof = 0;
+  for (const [jour, j] of Object.entries(await ventesMaketouParJour())) {
+    // ── EXACTEMENT LA MÊME FRONTIÈRE QUE `totalMaketou` ──────────────────
+    //
+    // Sans elle, une ligne MakeTou datée d'avant la fermeture de Chariow
+    // serait comptée ici et écartée là. Les deux nombres ne pourraient plus
+    // jamais coïncider, et la page se reconstruirait toutes les vingt
+    // secondes pour afficher rigoureusement la même chose — une boucle
+    // silencieuse, invisible à l'écran, qui ne se verrait que sur la facture.
+    if (jour <= DERNIER_JOUR_CHARIOW) continue;
+    ventes += j.ventes;
+    xof += j.xof;
+  }
+  return { ventes, xof };
+}
+
 /** Les ventes MakeTou de notre base, regroupées par jour. */
 async function ventesMaketouParJour(): Promise<Record<string, { xof: number; ventes: number }>> {
   const { createAdminClient } = await import('./supabase-admin');
