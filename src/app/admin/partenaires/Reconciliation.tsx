@@ -37,13 +37,13 @@ export default async function Reconciliation({
 
   if (r.indisponible) {
     return (
-      <div className="rounded-[18px] border border-border-card bg-sidebar/40 p-4 flex items-start gap-3">
-        <WifiOff className="w-4 h-4 text-foreground/40 shrink-0 mt-0.5" />
+      <div className="rounded-[20px] border border-[#2e4757] bg-[#16242e] p-4 flex items-start gap-3">
+        <WifiOff className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />
         <div>
-          <p className="text-[12.5px] font-bold text-foreground/70">
+          <p className="text-[12.5px] font-bold text-white/70">
             Contrôle impossible — la boutique n&apos;a pas répondu
           </p>
-          <p className="text-[11.5px] text-foreground/45 leading-relaxed mt-0.5">
+          <p className="text-[11.5px] text-white/45 leading-relaxed mt-0.5">
             Les montants affichés viennent de la dernière lecture réussie. Ils ne sont
             pas faux, mais ils n&apos;ont pas pu être confrontés à la caisse à l&apos;instant.
           </p>
@@ -56,15 +56,15 @@ export default async function Reconciliation({
 
   return (
     <div
-      className={`rounded-[18px] border p-4 ${
-        juste ? 'border-primary/25 bg-primary/[0.05]' : 'border-warning/40 bg-warning/[0.08]'
+      className={`rounded-[20px] border p-4 ${
+        juste ? 'border-[#10b981]/25 bg-[#10b981]/[0.06]' : 'border-amber-400/40 bg-amber-400/[0.08]'
       }`}
     >
       <div className="flex items-start gap-3">
         {juste ? (
-          <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <ShieldCheck className="w-4 h-4 text-[#10b981] shrink-0 mt-0.5" />
         ) : (
-          <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
         )}
 
         <div className="min-w-0 flex-1">
@@ -79,11 +79,11 @@ export default async function Reconciliation({
               La source d'aujourd'hui, ce sont les journées Chariow figées
               dans le code plus les ventes MakeTou lues dans notre base. */}
           {juste ? (
-            <p className="text-[12.5px] font-bold text-primary">
+            <p className="text-[12.5px] font-bold text-[#10b981]">
               Chiffres confrontés à la caisse — aucun écart
             </p>
           ) : (
-            <p className="text-[12.5px] font-bold text-warning">
+            <p className="text-[12.5px] font-bold text-amber-400">
               ÉCART DÉTECTÉ : {fcfa(Math.abs(r.ecartXof))} entre le calcul de cette page et la caisse
             </p>
           )}
@@ -91,28 +91,28 @@ export default async function Reconciliation({
           {/* Les trois lignes qui répondent aux trois questions posées le
               23 août. Elles suppriment le doute avant qu'il se forme. */}
           <div className="mt-2.5 space-y-1.5 text-[11.5px] leading-relaxed">
-            <p className="text-foreground/70">
-              <span className="text-foreground/40">Période comptée — </span>
-              depuis le <strong className="text-foreground/85">{jourEnClair(r.debut)}</strong>,
+            <p className="text-white/70">
+              <span className="text-white/40">Période comptée — </span>
+              depuis le <strong className="text-white/85">{jourEnClair(r.debut)}</strong>,
               début du partenariat. {r.ventes} vente{r.ventes > 1 ? 's' : ''} encaissée
-              {r.ventes > 1 ? 's' : ''}, <strong className="text-foreground/85">{fcfa(r.caisseXof)}</strong>.
+              {r.ventes > 1 ? 's' : ''}, <strong className="text-white/85">{fcfa(r.caisseXof)}</strong>.
             </p>
 
             {r.avantPartenariatXof > 0 && (
-              <p className="text-foreground/70">
-                <span className="text-foreground/40">Écart avec la vue d&apos;ensemble — </span>
-                elle affiche <strong className="text-foreground/85">{fcfa(r.totalBoutiqueXof)}</strong>,
+              <p className="text-white/70">
+                <span className="text-white/40">Écart avec la vue d&apos;ensemble — </span>
+                elle affiche <strong className="text-white/85">{fcfa(r.totalBoutiqueXof)}</strong>,
                 soit {fcfa(r.avantPartenariatXof)} de plus : ce sont les ventes d&apos;avant le{' '}
                 {jourEnClair(r.debut)}, qui ne reviennent pas au partenaire.
               </p>
             )}
 
-            <p className="text-foreground/45">
-              <span className="text-foreground/35">
+            <p className="text-white/45">
+              <span className="text-white/35">
                 Journées Chariow figées, ventes MakeTou lues à{' '}
               </span>
-              <span className="tabular-nums font-bold text-foreground/60">{r.luA}</span>
-              <span className="text-foreground/35">
+              <span className="tabular-nums font-bold text-white/60">{r.luA}</span>
+              <span className="text-white/35">
                 {' '}— sans mise en réserve. Chaque vente est comptée à la seconde où elle
                 est payée ; ce montant monte encore aujourd&apos;hui, et la page se refait
                 d&apos;elle-même à chaque nouvelle vente.
