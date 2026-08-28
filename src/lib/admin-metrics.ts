@@ -615,7 +615,7 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
   const boutique = await recettesParJour();
   if (!boutique)
     avertissements.push(
-      'Boutique Chariow injoignable : les revenus sont estimés depuis les abonnements ' +
+      'Recettes illisibles : les revenus sont estimés depuis les abonnements ' +
         'et peuvent être inférieurs à la réalité.'
     );
 

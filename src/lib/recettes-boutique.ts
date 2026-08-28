@@ -29,7 +29,7 @@
  * quelqu'un.
  */
 
-import { listSalesEncaissees } from './chariow';
+import { HISTOIRE_CHARIOW, TAUX_CHARIOW } from './recettes-histoire';
 import { lireReserve, ecrireReserve } from './api-football';
 
 /**
@@ -53,6 +53,20 @@ export function versXof(montant: number, devise: string): number {
 export interface JourneeBoutique {
   xof: number;
   ventes: number;
+  /**
+   * Ce que la boutique a prélevé sur la journée.
+   *
+   * ── POURQUOI LES FRAIS VIVENT AVEC LA JOURNÉE ───────────────────────────
+   *
+   * Le taux a changé en cours de route : Chariow retenait 15 %, MakeTou
+   * retient un autre pourcentage depuis le 28 août 2026. Un taux unique
+   * appliqué au total ferait payer au partenaire une commission que personne
+   * n'a jamais prélevée — ou l'inverse.
+   *
+   * Chaque journée porte donc SON prélèvement, calculé au taux de la boutique
+   * qui l'a encaissée. Le mois n'est plus qu'une addition.
+   */
+  fraisXof: number;
 }
 
 /** Journée par journée, indexée AAAA-MM-JJ. */
@@ -101,36 +115,111 @@ const SECOURS_TTL = 30 * 24 * 60 * 60 * 1000;
  * n'a jamais été enregistré. L'appelant décide alors quoi faire.
  */
 export async function recettesParJour(): Promise<RecettesParJour | null> {
-  try {
-    const parJour: RecettesParJour = {};
+  const parJour: RecettesParJour = {};
 
-    for (const v of await listSalesEncaissees()) {
-      const jour = String((v as any).completed_at ?? v.created_at ?? '').slice(0, 10);
+  // ── CE QUE CHARIOW A ENCAISSÉ : FIGÉ, DÉFINITIF ────────────────────────
+  //
+  // La boutique a fermé le 27 août 2026. Ces journées ne bougeront plus, et
+  // les interroger n'aurait aucun sens : leur source est morte. Elles sont
+  // écrites dans le code, versionnées, comparables ligne à ligne avec le
+  // tableau de bord de Chariow.
+  for (const [jour, j] of Object.entries(HISTOIRE_CHARIOW)) {
+    parJour[jour] = {
+      xof: j.xof,
+      ventes: j.ventes,
+      fraisXof: Math.round(j.xof * TAUX_CHARIOW),
+    };
+  }
+
+  // ── CE QUE MAKETOU ENCAISSE : LU DANS NOTRE PROPRE BASE ────────────────
+  //
+  // Plus jamais chez un tiers. Le 28 août 2026, toute l'administration est
+  // tombée à zéro le jour où l'on a débranché la boutique précédente : elle
+  // n'avait aucune source à elle.
+  //
+  // La source est `payment_intents` et non `subscriptions` : une vente payée
+  // par quelqu'un qui n'a pas encore de compte ProFoot n'y crée aucun
+  // abonnement, et c'est pourtant de l'argent entré. Il y en avait une dès le
+  // premier jour.
+  try {
+    for (const [jour, j] of Object.entries(await ventesMaketouParJour())) {
+      const existant = parJour[jour] ?? { xof: 0, ventes: 0, fraisXof: 0 };
+      parJour[jour] = {
+        xof: existant.xof + j.xof,
+        ventes: existant.ventes + j.ventes,
+        fraisXof: existant.fraisXof + Math.round(j.xof * tauxMaketou()),
+      };
+    }
+    void ecrireReserve(CLE_SECOURS, parJour, SECOURS_TTL);
+  } catch (e: any) {
+    // L'histoire figée reste servie : une base momentanément illisible ne doit
+    // pas faire disparaître un million de francs de l'écran.
+    console.warn('[BOUTIQUE] Ventes MakeTou illisibles :', e?.message);
+  }
+
+  return parJour;
+}
+
+/**
+ * Ce que MakeTou prélève sur chaque vente.
+ *
+ * ── CE CHIFFRE N'EST PAS ENCORE CONFIRMÉ ──────────────────────────────────
+ *
+ * MakeTou annonce 5 % sur sa page d'accueil. Mais l'acheteur, lui, règle 2 040
+ * FCFA pour un produit à 2 000 : 2 % lui sont ajoutés, ce qui n'est pas la
+ * même chose qu'un prélèvement sur le vendeur. Les deux peuvent coexister.
+ *
+ * Il vit donc dans une variable d'environnement, seul, et il est AFFICHÉ sur
+ * la page des partenaires. Le jour où le relevé des transactions donnera le
+ * taux exact, une seule valeur change et tous les mois se recalculent — sans
+ * qu'il faille relire une ligne de code.
+ *
+ * Un taux faux se voit ; un taux caché ne se voit pas. C'est un partenaire
+ * qu'on paie avec.
+ */
+export function tauxMaketou(): number {
+  const brut = Number(process.env.MAKETOU_COMMISSION_PCT);
+  if (Number.isFinite(brut) && brut >= 0 && brut <= 100) return brut / 100;
+  return 0.05;
+}
+
+/** Les ventes MakeTou de notre base, regroupées par jour. */
+async function ventesMaketouParJour(): Promise<Record<string, { xof: number; ventes: number }>> {
+  const { createAdminClient } = await import('./supabase-admin');
+  const admin = createAdminClient();
+
+  const parJour: Record<string, { xof: number; ventes: number }> = {};
+  const TAILLE = 1000;
+
+  for (let de = 0; de < 20000; de += TAILLE) {
+    const { data, error } = await admin
+      .from('payment_intents')
+      .select('sale_id, amount, created_at')
+      .eq('pays_source', 'maketou')
+      .order('created_at')
+      .range(de, de + TAILLE - 1);
+
+    if (error) throw new Error(error.message);
+    if (!data?.length) break;
+
+    for (const v of data) {
+      // Les vérifications techniques ne sont pas des recettes. Elles portent
+      // une référence reconnaissable, posée exprès pour cet instant.
+      if (/^(verif|diagnostic)/i.test(String(v.sale_id ?? ''))) continue;
+
+      const jour = String(v.created_at ?? '').slice(0, 10);
       if (!jour) continue;
 
-      const devise = v.amount?.currency ?? 'XOF';
-      if (devise !== 'XOF')
-        console.warn(`[BOUTIQUE] Vente ${v.id} en ${devise} : convertie au taux affiché.`);
-
       const poste = parJour[jour] ?? { xof: 0, ventes: 0 };
-      poste.xof += Math.round(versXof(Number(v.amount?.value ?? 0), devise));
+      poste.xof += Math.round(Number(v.amount ?? 0));
       poste.ventes += 1;
       parJour[jour] = poste;
     }
 
-    // Écrit APRÈS coup, et jamais relu tant que la boutique répond : c'est un
-    // filet, pas une source.
-    void ecrireReserve(CLE_SECOURS, parJour, SECOURS_TTL);
-    return parJour;
-  } catch (e: any) {
-    console.warn('[BOUTIQUE] Injoignable :', e?.message);
-    const secours = await lireReserve<RecettesParJour>(CLE_SECOURS);
-    if (secours && Object.keys(secours.contenu ?? {}).length) {
-      console.warn('[BOUTIQUE] Dernier chiffre connu resservi — il peut être daté.');
-      return secours.contenu;
-    }
-    return null;
+    if (data.length < TAILLE) break;
   }
+
+  return parJour;
 }
 
 /**
@@ -147,13 +236,23 @@ export function totalEntre(
 ): JourneeBoutique {
   let xof = 0;
   let ventes = 0;
+  let fraisXof = 0;
   for (const [jour, poste] of Object.entries(parJour)) {
     if (du && jour < du) continue;
     if (au && jour > au) continue;
     xof += poste.xof;
     ventes += poste.ventes;
+    // Les frais s'additionnent journée par journée, au taux de la boutique qui
+    // a encaissé chacune. Un taux moyen appliqué au total donnerait un montant
+    // que personne n'a jamais prélevé.
+    fraisXof += poste.fraisXof ?? 0;
   }
-  return { xof, ventes };
+  return { xof, ventes, fraisXof };
+}
+
+/** Ce qui reste réellement après les frais de la boutique. */
+export function netApresFrais(j: JourneeBoutique): number {
+  return Math.max(0, j.xof - (j.fraisXof ?? 0));
 }
 
 /**
@@ -191,9 +290,10 @@ export function parMois(
   for (const [jour, poste] of Object.entries(parJour)) {
     if (depuis && jour < depuis) continue;
     const cle = jour.slice(0, 7);
-    const cumul = mois.get(cle) ?? { xof: 0, ventes: 0 };
+    const cumul = mois.get(cle) ?? { xof: 0, ventes: 0, fraisXof: 0 };
     cumul.xof += poste.xof;
     cumul.ventes += poste.ventes;
+    cumul.fraisXof += poste.fraisXof ?? 0;
     mois.set(cle, cumul);
   }
   return mois;

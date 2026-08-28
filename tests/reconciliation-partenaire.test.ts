@@ -92,20 +92,35 @@ test('★ ACQUIS — aucune mise en réserve sur le chemin normal des recettes',
   const src = lire('src/lib/recettes-boutique.ts');
   const fonction = src.slice(src.indexOf('export async function recettesParJour'));
   const corps = fonction.slice(0, fonction.indexOf('\n}\n'));
-  const cheminNormal = corps.slice(0, corps.indexOf('} catch'));
 
   assert.ok(
-    !/lireReserve/.test(cheminNormal),
-    'Une lecture de réserve est réapparue sur le chemin normal. Le montant ' +
+    !/lireReserve/.test(corps),
+    'Une lecture de réserve est réapparue sur le chemin des recettes. Le chiffre ' +
       'pourrait de nouveau être servi en retard, et deux pages de la même ' +
       'administration se contrediraient.'
   );
 
+  // ── LE FILET A CHANGÉ DE NATURE, PAS DE RÔLE ──────────────────────────
+  //
+  // Il tenait dans un « catch » qui resservait le dernier chiffre connu, parce
+  // que la seule source vivait chez Chariow. Cette boutique a fermé le 27 août
+  // 2026, et ses recettes sont désormais ÉCRITES DANS LE CODE : elles ne
+  // peuvent plus manquer, ni arriver en retard, ni être servies à moitié.
+  //
+  // La promesse d'origine — la page a toujours un chiffre à montrer — est donc
+  // tenue plus solidement qu'avant. Ce qui reste à protéger, c'est qu'une
+  // lecture ratée des ventes du jour n'efface pas l'histoire.
   assert.ok(
-    /lireReserve/.test(corps.slice(corps.indexOf('} catch'))),
-    "Le filet de panne a disparu : si Chariow ne répond pas, la page n'aurait " +
-      'plus aucun chiffre à montrer.'
+    /HISTOIRE_CHARIOW/.test(corps),
+    'Les recettes figées ne sont plus servies : une panne de base ferait ' +
+      'disparaître un million de francs de l’écran.'
   );
+  const apresCatch = corps.slice(corps.indexOf('} catch'));
+  assert.ok(
+    !/return null/.test(apresCatch) && !/parJour = {}/.test(apresCatch),
+    'Une lecture ratée des ventes du jour efface les recettes déjà acquises.'
+  );
+
 });
 
 /**

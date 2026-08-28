@@ -27,7 +27,8 @@
 
 import { createAdminClient } from './supabase-admin';
 import { niveauOffert, PLANS, normalizePlan, type PlanKey } from './subscription';
-import { recettesParJour, parMois as grouperParMois } from './recettes-boutique';
+import { recettesParJour, parMois as grouperParMois, tauxMaketou } from './recettes-boutique';
+import { DERNIER_JOUR_CHARIOW, TAUX_CHARIOW } from './recettes-histoire';
 
 // Les taux vivent désormais dans `recettes-boutique.ts`, avec le calcul qui
 // s'en sert. Ils restent exportés d'ici : plusieurs modules les importent par
@@ -67,9 +68,13 @@ export interface MoisPartenaire {
   libelle: string;
   /** Recettes encaissées ce mois-là, à partir de la date de départ. */
   recettesXof: number;
+  /** Ce que la boutique a prélevé — 15 % chez Chariow, autre taux chez MakeTou. */
+  fraisBoutiqueXof: number;
+  /** Ce qui reste une fois la boutique payée. C'est là-dessus que porte la part. */
+  netXof: number;
   /** Nombre d'abonnements encaissés dans le mois. */
   ventes: number;
-  /** Part due au partenaire pour ce mois. */
+  /** Part due au partenaire pour ce mois, calculée sur le NET. */
   duXof: number;
   /** Le mois est-il terminé ? Un mois en cours peut encore monter. */
   clos: boolean;
@@ -166,7 +171,7 @@ function montantEncaisse(ligne: {
  * recopié finit toujours par diverger de la réalité, et c'est sur ce chiffre
  * qu'on paie quelqu'un.
  */
-async function recettesParMois(depuis: Date): Promise<Map<string, { xof: number; ventes: number }>> {
+async function recettesParMois(depuis: Date): Promise<Map<string, { xof: number; ventes: number; fraisXof?: number }>> {
   // ── LA BOUTIQUE D'ABORD : C'EST ELLE QUI TIENT LA CAISSE ────────────────
   //
   // La table des abonnements est un reflet de la boutique, pas la boutique.
@@ -180,7 +185,7 @@ async function recettesParMois(depuis: Date): Promise<Map<string, { xof: number;
   const boutique = await recettesParJour();
   if (boutique) return grouperParMois(boutique, depuis.toISOString().slice(0, 10));
 
-  const parMois = new Map<string, { xof: number; ventes: number }>();
+  const parMois = new Map<string, { xof: number; ventes: number; fraisXof: number }>();
   const { data, error } = await createAdminClient()
     .from('subscriptions')
     .select('plan, created_at, amount, currency, chariow_sale_id, moneroo_payment_id')
@@ -212,10 +217,23 @@ async function recettesParMois(depuis: Date): Promise<Map<string, { xof: number;
 
     const montant = montantEncaisse(ligne);
     if (!montant) continue;
-    const mois = String(ligne.created_at).slice(0, 7); // AAAA-MM
-    const poste = parMois.get(mois) ?? { xof: 0, ventes: 0 };
+    const jour = String(ligne.created_at).slice(0, 10);
+    const mois = jour.slice(0, 7); // AAAA-MM
+    const poste = parMois.get(mois) ?? { xof: 0, ventes: 0, fraisXof: 0 };
     poste.xof += montant;
     poste.ventes += 1;
+    // ── MÊME EN SECOURS, LES FRAIS NE SONT PAS OUBLIÉS ────────────────────
+    //
+    // Sans cette ligne, ce chemin rendrait un mois sans prélèvement, et la part
+    // du partenaire porterait sur le brut : 369 250 francs au lieu de 313 863
+    // sur la seule période d'août. Un secours qui se trompe en faveur de
+    // quelqu'un reste un secours qui se trompe, et personne ne le verrait —
+    // c'est justement le jour où l'on ne regarde pas que ce chemin sert.
+    //
+    // Le taux est celui de la boutique en service ce jour-là.
+    poste.fraisXof += Math.round(
+      montant * (jour <= DERNIER_JOUR_CHARIOW ? TAUX_CHARIOW : tauxMaketou())
+    );
     parMois.set(mois, poste);
   }
   return parMois;
@@ -237,9 +255,24 @@ function libelleMois(mois: string): string {
  * Les mois sans recette apparaissent quand même, à zéro : un mois creux fait
  * partie du bilan, le masquer donnerait une image flatteuse et fausse.
  */
+/**
+ * ── LA PART SE CALCULE SUR CE QUI RESTE, JAMAIS SUR CE QUI ENTRE ──────────
+ *
+ * Le contrat, tel que le propriétaire l'a énoncé le 28 août 2026 : le
+ * partenaire touche ses 35 % « quand tous les frais sont pris en compte ».
+ * Pas sur le chiffre d'affaires brut.
+ *
+ * L'écart n'est pas théorique. Sur la période du 16 au 27 août :
+ *
+ *     35 % de 1 055 000 (brut)              = 369 250 FCFA
+ *     35 % de   896 750 (après Chariow)     = 313 863 FCFA
+ *
+ * Cinquante-cinq mille francs séparent les deux lectures. Elles ne peuvent pas
+ * cohabiter : l'une des deux fait perdre quelqu'un.
+ */
 function construireMois(
   depuis: Date,
-  recettes: Map<string, { xof: number; ventes: number }>,
+  recettes: Map<string, { xof: number; ventes: number; fraisXof?: number }>,
   partPct: number
 ): MoisPartenaire[] {
   const mois: MoisPartenaire[] = [];
@@ -251,13 +284,17 @@ function construireMois(
 
   while (curseur <= fin) {
     const cle = `${curseur.getFullYear()}-${String(curseur.getMonth() + 1).padStart(2, '0')}`;
-    const poste = recettes.get(cle) ?? { xof: 0, ventes: 0 };
+    const poste = recettes.get(cle) ?? { xof: 0, ventes: 0, fraisXof: 0 };
+    const frais = poste.fraisXof ?? 0;
+    const net = Math.max(0, poste.xof - frais);
     mois.push({
       mois: cle,
       libelle: libelleMois(cle),
       recettesXof: poste.xof,
+      fraisBoutiqueXof: frais,
+      netXof: net,
       ventes: poste.ventes,
-      duXof: Math.round((poste.xof * partPct) / 100),
+      duXof: Math.round((net * partPct) / 100),
       clos: cle !== moisCourant,
     });
     curseur.setMonth(curseur.getMonth() + 1);

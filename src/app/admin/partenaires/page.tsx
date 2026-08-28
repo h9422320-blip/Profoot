@@ -3,7 +3,8 @@ import {
   ArrowRight, CalendarDays, Coins, Handshake, Percent, Users, Wallet,
 } from "lucide-react";
 import { calculerEconomie, getPartenaires } from "@/lib/partenaires";
-import { heureDeLecture } from "@/lib/recettes-boutique";
+import { heureDeLecture, recettesParJour, tauxMaketou } from "@/lib/recettes-boutique";
+import { DERNIER_JOUR_CHARIOW, TAUX_CHARIOW } from "@/lib/recettes-histoire";
 import Reconciliation from "./Reconciliation";
 import { Indicateur } from "../_components/Indicateur";
 import { Panneau } from "../_components/Panneaux";
@@ -29,6 +30,33 @@ export default async function PartenairesPage() {
   const partenaires = await getPartenaires();
   const eco = calculerEconomie(partenaires);
   const moisCourant = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+
+  // ── LE DÉTAIL JOUR PAR JOUR, DEPUIS LE DÉBUT DU CONTRAT ─────────────────
+  //
+  // Un total mensuel ne se vérifie pas. Deux personnes se partagent cet
+  // argent, et chacune doit pouvoir suivre le calcul jusqu'à la journée —
+  // sinon la seule façon de contrôler est de faire confiance.
+  //
+  // Le 28 août 2026, un écart de 2 000 francs sur la journée du 27 a été
+  // repéré ainsi, à l'œil, en comparant une ligne avec l'écran de la
+  // boutique : une vente créée le 26 au soir et réglée le 27 au matin était
+  // comptée du mauvais côté de minuit.
+  const departContrat =
+    partenaires.map((p) => p.remuneration_depuis).filter(Boolean).sort()[0] ?? null;
+  const parJour = await recettesParJour();
+  const jours = Object.entries(parJour ?? {})
+    .filter(([j]) => !departContrat || j >= String(departContrat).slice(0, 10))
+    .sort(([a], [b]) => b.localeCompare(a)); // le plus récent en haut
+  const cumul = jours.reduce(
+    (t, [, p]) => ({
+      xof: t.xof + p.xof,
+      frais: t.frais + (p.fraisXof ?? 0),
+      ventes: t.ventes + p.ventes,
+    }),
+    { xof: 0, frais: 0, ventes: 0 }
+  );
+  const partPct = partenaires[0]?.part_ca_pct ?? 0;
+  const net = Math.max(0, cumul.xof - cumul.frais);
 
   return (
     <div className="space-y-6">
@@ -107,7 +135,7 @@ export default async function PartenairesPage() {
                 qu'un écart d'horloge. */}
             <p className="text-[11px] text-white/35 mt-5 leading-relaxed">
               Mois en cours, arrêté à aujourd'hui — ces montants montent encore à chaque vente.
-              Lu chez Chariow à <span className="text-white/60 font-bold tabular-nums">{heureDeLecture()}</span>,
+              Lu à <span className="text-white/60 font-bold tabular-nums">{heureDeLecture()}</span>,
               au moment où cette page s'est affichée. Rechargez pour lire l'instant présent.
             </p>
           </div>
@@ -240,8 +268,22 @@ export default async function PartenairesPage() {
                           <p className="text-[14px] font-black text-white capitalize tracking-tight">
                             {m.libelle}
                           </p>
-                          <p className="text-[12px] text-white/35 mt-0.5">
-                            {fcfa(m.recettesXof)} · {m.ventes} vente{m.ventes > 1 ? "s" : ""}
+                          {/* ── LE CHEMIN DU CHIFFRE, ÉCRIT EN ENTIER ──────────
+                              La part porte sur ce qui RESTE après la boutique,
+                              jamais sur ce qui entre. Afficher seulement le
+                              chiffre d'affaires et le montant dû laisserait
+                              deux personnes recalculer chacune de leur côté —
+                              et l'écart entre les deux lectures dépassait
+                              cinquante mille francs sur le seul mois d'août. */}
+                          <p className="text-[12px] text-white/35 mt-0.5 tabular-nums">
+                            {fcfa(m.recettesXof)} encaissés · {m.ventes} vente
+                            {m.ventes > 1 ? "s" : ""}
+                          </p>
+                          <p className="text-[12px] text-white/35 tabular-nums">
+                            &minus; {fcfa(m.fraisBoutiqueXof)} de frais de boutique
+                          </p>
+                          <p className="text-[12px] font-bold text-white/60 tabular-nums">
+                            = {fcfa(m.netXof)} nets, dont {partenaires[0].part_ca_pct} %
                           </p>
                         </div>
                         <div className="text-right shrink-0">
@@ -259,6 +301,110 @@ export default async function PartenairesPage() {
                   </div>
                 )}
               </Panneau>
+
+              {/* ── LE DÉTAIL QUI PERMET DE VÉRIFIER ────────────────────────
+                  Chaque journée porte le taux de la boutique qui l'a
+                  encaissée : 15 % chez Chariow jusqu'au 27 août, puis MakeTou.
+                  Un taux moyen appliqué au total donnerait un prélèvement que
+                  personne n'a jamais opéré. */}
+              <div className="mt-6">
+                <Panneau
+                  titre="Jour par jour"
+                  sousTitre={`Depuis le début du contrat · frais retenus au taux de chaque boutique`}
+                  icone={<CalendarDays className="w-4 h-4" />}
+                  teinte="cyan"
+                >
+                  {jours.length === 0 ? (
+                    <Vide message="Aucune recette sur la période." />
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[12.5px] tabular-nums">
+                          <thead>
+                            <tr className="text-white/35 text-left">
+                              <th className="py-2 pr-3 font-bold">Date</th>
+                              <th className="py-2 pr-3 font-bold text-right">Ventes</th>
+                              <th className="py-2 pr-3 font-bold text-right">Encaissé</th>
+                              <th className="py-2 pr-3 font-bold text-right">Frais</th>
+                              <th className="py-2 font-bold text-right">Net</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {jours.map(([jour, p]) => (
+                              <tr key={jour} className="border-t border-[#2e4757]">
+                                <td className="py-2 pr-3 text-white/70">
+                                  {dateCourte(jour)}
+                                  <span className="text-white/25 ml-1.5 text-[11px]">
+                                    {jour <= DERNIER_JOUR_CHARIOW ? "Chariow" : "MakeTou"}
+                                  </span>
+                                </td>
+                                <td className="py-2 pr-3 text-right text-white/50">{p.ventes}</td>
+                                <td className="py-2 pr-3 text-right text-white/80">
+                                  {Math.round(p.xof).toLocaleString("fr-FR")}
+                                </td>
+                                <td className="py-2 pr-3 text-right text-white/40">
+                                  &minus;{Math.round(p.fraisXof ?? 0).toLocaleString("fr-FR")}
+                                </td>
+                                <td className="py-2 text-right font-bold text-white">
+                                  {Math.round(p.xof - (p.fraisXof ?? 0)).toLocaleString("fr-FR")}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="border-t-2 border-[#8b5cf6]/40">
+                              <td className="py-2.5 pr-3 font-black text-white">Total</td>
+                              <td className="py-2.5 pr-3 text-right font-bold text-white/60">
+                                {cumul.ventes}
+                              </td>
+                              <td className="py-2.5 pr-3 text-right font-black text-white">
+                                {cumul.xof.toLocaleString("fr-FR")}
+                              </td>
+                              <td className="py-2.5 pr-3 text-right font-bold text-white/50">
+                                &minus;{cumul.frais.toLocaleString("fr-FR")}
+                              </td>
+                              <td className="py-2.5 text-right font-black text-[#a78bfa]">
+                                {net.toLocaleString("fr-FR")}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="mt-4 rounded-[16px] border border-[#2e4757] bg-[#1a2b36] px-4 py-3.5 space-y-1.5">
+                        <p className="text-[12.5px] text-white/50">
+                          Net de la période :{" "}
+                          <span className="font-bold text-white">{fcfa(net)}</span>
+                        </p>
+                        <p className="text-[12.5px] text-white/50">
+                          Part du partenaire ({partPct} %) :{" "}
+                          <span className="font-black text-[#a78bfa]">
+                            {fcfa(Math.round((net * partPct) / 100))}
+                          </span>
+                        </p>
+                        <p className="text-[12.5px] text-white/50">
+                          Reste pour ProFoot ({100 - partPct} %) :{" "}
+                          <span className="font-black text-emerald-300">
+                            {fcfa(Math.round((net * (100 - partPct)) / 100))}
+                          </span>
+                        </p>
+                      </div>
+
+                      {/* Le taux MakeTou est AFFICHÉ, pas caché dans le code :
+                          il n'est pas encore confirmé par un relevé, et c'est
+                          avec lui qu'on paie quelqu'un. Un chiffre faux qu'on
+                          voit se corrige ; un chiffre faux qu'on ne voit pas
+                          se paie. */}
+                      <p className="mt-3 text-[11.5px] text-white/30 leading-relaxed">
+                        Frais retenus : {Math.round(TAUX_CHARIOW * 100)} % jusqu'au{" "}
+                        {dateCourte(DERNIER_JOUR_CHARIOW)} (Chariow), puis{" "}
+                        {(tauxMaketou() * 100).toFixed(tauxMaketou() * 100 % 1 ? 1 : 0)} % (MakeTou).
+                        Le taux MakeTou reste à confirmer sur un relevé de transactions ; il se
+                        règle par la variable MAKETOU_COMMISSION_PCT et tous les mois se
+                        recalculent.
+                      </p>
+                    </>
+                  )}
+                </Panneau>
+              </div>
             </div>
           </div>
         </>

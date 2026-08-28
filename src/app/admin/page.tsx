@@ -108,7 +108,7 @@ async function BlocIndicateurs({ periode }: { periode: ReturnType<typeof resoudr
         // peut être confronté à rien. Le 22 août 2026, on a cherché une erreur
         // de calcul entre 325 000 et 336 000 alors que les deux étaient justes,
         // lus à vingt minutes d'écart.
-        sousTitre={`${m.periode.libelle} — recettes lues chez Chariow à ${heureDeLecture()}`}
+        sousTitre={`${m.periode.libelle} — recettes arrêtées à ${heureDeLecture()}`}
         icone={<LayoutDashboard className="w-6 h-6" />}
         action={<SelecteurPeriode />}
         reperes={[
