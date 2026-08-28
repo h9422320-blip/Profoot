@@ -398,9 +398,26 @@ export async function getPartenaire(id: string): Promise<PartenaireEnrichi | nul
 export interface EconomiePartenaires {
   /** Recettes du mois en cours, toutes offres confondues. */
   recettesMoisXof: number;
+  /**
+   * Ce que la boutique a prélevé sur le mois.
+   *
+   * ── POURQUOI CETTE LIGNE DOIT EXISTER À L'ÉCRAN ─────────────────────────
+   *
+   * Sans elle, le partage affiché ne tombait pas juste : le projet semblait
+   * garder 765 167 FCFA en août alors qu'il en garde 605 118. Les 160 050
+   * francs de commission s'évaporaient entre deux chiffres, et rien ne
+   * permettait de s'en apercevoir — les deux montants voisins étaient
+   * pourtant exacts chacun de son côté.
+   *
+   * Un partage qui ne s'additionne pas sous les yeux fait douter des trois
+   * nombres à la fois.
+   */
+  fraisBoutiqueMoisXof: number;
+  /** Ce qui reste une fois la boutique payée. La part porte là-dessus. */
+  netMoisXof: number;
   /** Total reversé aux partenaires pour le mois en cours. */
   partPartenairesMoisXof: number;
-  /** Ce qui reste au projet ce mois-ci. */
+  /** Ce qui reste au projet ce mois-ci, une fois la boutique ET les partenaires payés. */
   resteAuProjetMoisXof: number;
   /** Somme due depuis le début des partenariats. */
   duCumuleXof: number;
@@ -422,13 +439,25 @@ export function calculerEconomie(partenaires: PartenaireEnrichi[]): EconomiePart
     ...partenaires.map((p) => p.mois.find((m) => m.mois === moisCourant)?.recettesXof ?? 0)
   );
 
+  // Les frais suivent la même règle que les recettes : ceux du projet, pas la
+  // somme par partenaire — sinon deux partenaires feraient compter deux fois
+  // la même commission.
+  const fraisBoutiqueMoisXof = Math.max(
+    0,
+    ...partenaires.map((p) => p.mois.find((m) => m.mois === moisCourant)?.fraisBoutiqueXof ?? 0)
+  );
+  const netMoisXof = Math.max(0, recettesMoisXof - fraisBoutiqueMoisXof);
+
   const partPartenairesMoisXof = partenaires.reduce((t, p) => t + p.duMoisEnCoursXof, 0);
   const partTotalePct = partenaires.reduce((t, p) => t + Number(p.part_ca_pct ?? 0), 0);
 
   return {
     recettesMoisXof,
+    fraisBoutiqueMoisXof,
+    netMoisXof,
     partPartenairesMoisXof,
-    resteAuProjetMoisXof: recettesMoisXof - partPartenairesMoisXof,
+    // Ce qui reste part du NET, jamais du brut : la boutique a déjà été payée.
+    resteAuProjetMoisXof: Math.max(0, netMoisXof - partPartenairesMoisXof),
     duCumuleXof: partenaires.reduce((t, p) => t + p.duCumuleXof, 0),
     partTotalePct,
     verseXof: partenaires.reduce(

@@ -144,6 +144,23 @@ test('★ ACQUIS — le taux MakeTou se règle sans toucher au code', () => {
   }
 });
 
+test('★ ACQUIS — le partage affiché tombe juste', () => {
+  // Il ne montrait que trois nombres, et les frais de boutique s'évaporaient
+  // entre les deux derniers : le projet semblait garder 765 167 FCFA en août
+  // quand il en garde 605 118. Les deux montants voisins étaient pourtant
+  // exacts chacun de son côté — c'est le partage qui mentait.
+  const source = lire('src/lib/partenaires.ts');
+  assert.match(
+    source,
+    /resteAuProjetMoisXof: Math\.max\(0, netMoisXof - partPartenairesMoisXof\)/,
+    'Le reste au projet repart du brut : la commission de la boutique disparaît.'
+  );
+
+  const page = lire('src/app/admin/partenaires/page.tsx');
+  assert.match(page, /Frais de boutique/, 'La commission n’a plus sa colonne à l’écran.');
+  assert.match(page, /eco\.fraisBoutiqueMoisXof/);
+});
+
 test('★ ACQUIS — le détail jour par jour reste affiché', () => {
   // Un total mensuel ne se vérifie pas. C'est en comparant une LIGNE avec
   // l'écran de la boutique que l'écart du 27 août a été trouvé.

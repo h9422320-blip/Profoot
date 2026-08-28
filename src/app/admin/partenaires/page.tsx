@@ -99,29 +99,52 @@ export default async function PartenairesPage() {
               Partage de {moisCourant}
             </p>
 
-            <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {/* ── LE PARTAGE DOIT S'ADDITIONNER SOUS LES YEUX ────────────────
+                Il ne montrait que trois nombres : encaissé, part du partenaire,
+                reste. Les frais de boutique s'évaporaient entre les deux
+                derniers — le projet semblait garder 765 167 FCFA en août quand
+                il en garde 605 118. Les deux montants voisins étaient pourtant
+                exacts chacun de son côté, et rien ne permettait de voir où
+                passaient les 160 050 francs manquants.
+
+                Un partage qui ne tombe pas juste fait douter des trois nombres
+                à la fois. La commission a donc sa colonne. */}
+            <div className="mt-5 grid grid-cols-2 xl:grid-cols-4 gap-5">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">
                   Recettes encaissées
                 </p>
-                <p className="text-[32px] sm:text-[40px] leading-none font-black text-white tabular-nums mt-2 tracking-tight">
+                <p className="text-[26px] sm:text-[32px] leading-none font-black text-white tabular-nums mt-2 tracking-tight">
                   {fcfa(eco.recettesMoisXof)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">
+                  Frais de boutique
+                </p>
+                <p className="text-[26px] sm:text-[32px] leading-none font-black text-white/50 tabular-nums mt-2 tracking-tight">
+                  −{fcfa(eco.fraisBoutiqueMoisXof)}
+                </p>
+                <p className="text-[11px] text-white/30 mt-0.5">
+                  {fcfa(eco.netMoisXof)} nets
                 </p>
               </div>
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">
                   Part des partenaires
                 </p>
-                <p className="text-[32px] sm:text-[40px] leading-none font-black text-[#a78bfa] tabular-nums mt-2 tracking-tight">
+                <p className="text-[26px] sm:text-[32px] leading-none font-black text-[#a78bfa] tabular-nums mt-2 tracking-tight">
                   −{fcfa(eco.partPartenairesMoisXof)}
                 </p>
-                <p className="text-[11px] text-white/30 mt-0.5">{eco.partTotalePct} % du mois</p>
+                <p className="text-[11px] text-white/30 mt-0.5">
+                  {eco.partTotalePct} % du net
+                </p>
               </div>
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">
                   Reste au projet
                 </p>
-                <p className="text-[32px] sm:text-[40px] leading-none font-black text-[#10b981] tabular-nums mt-2 tracking-tight">
+                <p className="text-[26px] sm:text-[32px] leading-none font-black text-[#10b981] tabular-nums mt-2 tracking-tight">
                   {fcfa(eco.resteAuProjetMoisXof)}
                 </p>
               </div>
