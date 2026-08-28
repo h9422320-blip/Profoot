@@ -59,34 +59,42 @@ export default async function FichePartenaire({
       {/* ── Identité ────────────────────────────────────────────────────── */}
       <div className="rounded-[26px] border border-[#8b5cf6]/30 bg-gradient-to-br from-[#8b5cf6]/12 via-[#16242e] to-[#111d25] p-6 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-black text-white tracking-tight">{p.name}</h1>
-              <Puce texte={`${p.part_ca_pct} % du CA`} teinte="violet" />
-              {p.accesOuvert && <Etiquette tier={p.accesOuvert} />}
-            </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[12px] text-white/40">
-              <span className="inline-flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5" /> {p.email}
-              </span>
-              {p.country && (
+          <div className="flex items-start gap-4 min-w-0">
+            {/* La même initiale que sur la liste : passer de l'une à l'autre ne
+                doit pas donner l'impression de changer de page. */}
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] border border-[#8b5cf6]/30 bg-gradient-to-br from-[#8b5cf6]/35 to-[#8b5cf6]/5 text-[22px] font-black text-[#c4b5fd]">
+              {p.name.trim().charAt(0).toUpperCase()}
+            </span>
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-black text-white tracking-tight">{p.name}</h1>
+                <Puce texte={`${p.part_ca_pct} % du CA`} teinte="violet" />
+                {p.accesOuvert && <Etiquette tier={p.accesOuvert} />}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[12px] text-white/40">
                 <span className="inline-flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5" /> {p.country}
+                  <Mail className="w-3.5 h-3.5" /> {p.email}
                 </span>
-              )}
-              {p.handle && <span>{p.handle}</span>}
+                {p.country && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5" /> {p.country}
+                  </span>
+                )}
+                {p.handle && <span>{p.handle}</span>}
+              </div>
+              <p className="text-[11px] text-white/30 mt-2">
+                {p.inscrit
+                  ? `Inscrit le ${dateCourte(p.inscritLe!)}${p.derniereConnexion ? ` · vu ${ilYA(p.derniereConnexion)}` : ""}`
+                  : "N'a pas encore créé son compte"}
+                {p.userId && (
+                  <>
+                    {" · "}
+                    <LienCompte userId={p.userId} email={p.email} />
+                  </>
+                )}
+              </p>
             </div>
-            <p className="text-[11px] text-white/30 mt-2">
-              {p.inscrit
-                ? `Inscrit le ${dateCourte(p.inscritLe!)}${p.derniereConnexion ? ` · vu ${ilYA(p.derniereConnexion)}` : ""}`
-                : "N'a pas encore créé son compte"}
-              {p.userId && (
-                <>
-                  {" · "}
-                  <LienCompte userId={p.userId} email={p.email} />
-                </>
-              )}
-            </p>
           </div>
 
           <div className="text-right shrink-0">

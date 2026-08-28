@@ -169,7 +169,12 @@ export default async function PartenairesPage() {
                   {fcfa(eco.recettesMoisXof)}
                 </p>
               </div>
-              <div>
+              {/* Un filet entre les colonnes sur grand écran : les quatre
+                  nombres se lisent alors comme une seule soustraction, de
+                  gauche à droite, au lieu de quatre chiffres posés côte à
+                  côte. Il disparaît sur petit écran, où la grille passe à deux
+                  colonnes et où un filet ne relierait plus rien. */}
+              <div className="xl:border-l xl:border-white/[0.08] xl:pl-5">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">
                   Frais de boutique
                 </p>
@@ -180,7 +185,7 @@ export default async function PartenairesPage() {
                   {fcfa(eco.netMoisXof)} nets
                 </p>
               </div>
-              <div>
+              <div className="xl:border-l xl:border-white/[0.08] xl:pl-5">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">
                   Part des partenaires
                 </p>
@@ -191,7 +196,7 @@ export default async function PartenairesPage() {
                   {eco.partTotalePct} % du net
                 </p>
               </div>
-              <div>
+              <div className="xl:border-l xl:border-[#10b981]/25 xl:pl-5">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">
                   Reste au projet
                 </p>
@@ -294,22 +299,30 @@ export default async function PartenairesPage() {
                   className="block rounded-[20px] border border-[#2e4757] bg-[#1a2b36] p-5 hover:border-[#8b5cf6]/50 hover:bg-[#1d2f3a] transition-colors"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-black text-white text-[17px] tracking-tight">
-                          {p.name}
-                        </span>
-                        <Puce texte={`${p.part_ca_pct} % du CA`} teinte="violet" />
-                        {p.accesOuvert && <Etiquette tier={p.accesOuvert} />}
-                        {!p.inscrit && <Puce texte="Pas encore inscrit" teinte="neutre" />}
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      {/* L'initiale donne un point d'accroche à la carte : sans
+                          elle, deux partenaires ne se distinguent qu'en lisant
+                          leur nom en petit, au milieu de six chiffres. */}
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[16px] border border-[#8b5cf6]/30 bg-gradient-to-br from-[#8b5cf6]/35 to-[#8b5cf6]/5 text-[16px] font-black text-[#c4b5fd]">
+                        {p.name.trim().charAt(0).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-black text-white text-[17px] tracking-tight">
+                            {p.name}
+                          </span>
+                          <Puce texte={`${p.part_ca_pct} % du CA`} teinte="violet" />
+                          {p.accesOuvert && <Etiquette tier={p.accesOuvert} />}
+                          {!p.inscrit && <Puce texte="Pas encore inscrit" teinte="neutre" />}
+                        </div>
+                        <p className="text-[13px] text-white/45 mt-1.5 truncate">{p.email}</p>
+                        <p className="text-[12px] text-white/35 mt-1">
+                          {p.remuneration_depuis
+                            ? `Rémunéré depuis le ${dateCourte(p.remuneration_depuis)}`
+                            : "Aucune date de départ — rien ne lui est compté"}
+                          {p.derniereConnexion && ` · vu ${ilYA(p.derniereConnexion)}`}
+                        </p>
                       </div>
-                      <p className="text-[13px] text-white/45 mt-1.5 truncate">{p.email}</p>
-                      <p className="text-[12px] text-white/35 mt-1">
-                        {p.remuneration_depuis
-                          ? `Rémunéré depuis le ${dateCourte(p.remuneration_depuis)}`
-                          : "Aucune date de départ — rien ne lui est compté"}
-                        {p.derniereConnexion && ` · vu ${ilYA(p.derniereConnexion)}`}
-                      </p>
                     </div>
 
                     <div className="text-right shrink-0">
