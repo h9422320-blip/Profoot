@@ -313,6 +313,25 @@ test('★ ACQUIS — une clé perdue déclenche une alerte', () => {
   assert.match(ROUTE, /vente\?\.eventType === 'SUCCESSFUL_SALE' && vente\?\.customer\?\.email/);
 });
 
+test('★ ACQUIS — le bouton « Envoyez un test » n’alarme personne', () => {
+  // On vérifie un pulse précisément quand on doute. Le moment où l'on a le
+  // plus besoin d'alertes fiables serait donc exactement celui où elles
+  // mentiraient.
+  assert.match(ROUTE, /function estMessageDeTest\(/);
+  assert.match(ROUTE, /vente\?\.sale\?\.id === 'sale_123'/);
+  assert.match(ROUTE, /john\.doe@example\.com/);
+  assert.match(ROUTE, /\|\| estMessageDeTest\(vente\)/);
+});
+
+test('★ ACQUIS — une écriture perdue ne se déguise pas en vente enregistrée', () => {
+  // Le 28 août, la vente d'un client sans compte s'est perdue : la colonne
+  // `user_id` refuse le vide, l'écriture a échoué sans être vérifiée, et le
+  // message annonçait pourtant « la vente est enregistrée ». Le pire des
+  // messages est celui qui rassure à tort.
+  assert.match(MODULE, /const \{ error: erreurTrace \} = await admin\.from\('payment_intents'\)/);
+  assert.match(MODULE, /n'a PAS PU être enregistrée/);
+});
+
 test('★ ACQUIS — le journal couvre plus qu’une matinée', () => {
   // Dix ventes en trois heures le 28 août, et quelques messages de
   // vérification ont suffi à toutes les chasser d'un journal de dix entrées.

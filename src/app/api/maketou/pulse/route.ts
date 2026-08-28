@@ -76,6 +76,28 @@ async function prevenir(
 }
 
 /**
+ * LE BOUTON « ENVOYEZ UN TEST » N'EST PAS UNE VENTE.
+ *
+ * MakeTou envoie toujours le même faux message : un tee-shirt à 29,99 dollars
+ * vendu à john.doe@example.com sous la référence « sale_123 ». Il est refusé,
+ * et c'est normal — mais alerter là-dessus ferait croire à une vente perdue à
+ * chaque fois qu'on vérifie qu'un pulse fonctionne.
+ *
+ * Or on vérifie un pulse précisément quand on doute. Le moment où l'on a le
+ * plus besoin d'alertes fiables est donc exactement celui où celles-ci
+ * mentiraient. Une fausse alerte de plus, et l'on apprend à toutes les ignorer.
+ *
+ * Reconnaître ce message n'ouvre aucune porte : il est refusé de toute façon,
+ * on choisit seulement de ne pas s'en alarmer.
+ */
+function estMessageDeTest(vente: VenteMaketou | null): boolean {
+  return (
+    vente?.sale?.id === 'sale_123' &&
+    vente?.customer?.email?.toLowerCase() === 'john.doe@example.com'
+  );
+}
+
+/**
  * UNE ALERTE PAR VENTE, ET UNE SEULE.
  *
  * ── CE QUI A MONTRÉ LE BESOIN ─────────────────────────────────────────────
@@ -230,7 +252,7 @@ export async function POST(request: Request) {
     // et c'est précisément ce que la protection contre le double crédit doit
     // absorber en silence. Alerter ici apprendrait au propriétaire à ignorer
     // ses alertes, ce qui les rendrait toutes inutiles.
-    const ignoree = /Événement ignoré|déjà créditée/i.test(r.motif);
+    const ignoree = /Événement ignoré|déjà créditée/i.test(r.motif) || estMessageDeTest(vente);
     // Une vente déjà signalée ne se signale pas deux fois : la boutique peut
     // rejouer un pulse en échec, et la répétition noierait l'essentiel.
     const repetee = await dejaAlertee(trace.vente);

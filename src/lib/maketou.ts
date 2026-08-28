@@ -276,7 +276,7 @@ export async function ouvrirAccesMaketou(
     if (data.users.length < 1000) break;
   }
 
-  await admin.from('payment_intents').upsert(
+  const { error: erreurTrace } = await admin.from('payment_intents').upsert(
     {
       sale_id: venteId,
       user_id: userId,
@@ -292,11 +292,24 @@ export async function ouvrirAccesMaketou(
     { onConflict: 'sale_id' }
   );
 
+  // ── UNE ÉCRITURE QUI ÉCHOUE DOIT SE VOIR ────────────────────────────────
+  //
+  // Cette écriture n'était pas vérifiée. Le 28 août 2026, la vente d'un client
+  // sans compte s'est perdue en silence : la colonne `user_id` refuse le vide,
+  // l'écriture a échoué, et le message annonçait pourtant « la vente est
+  // enregistrée ». Le pire des messages : celui qui rassure à tort.
+  if (erreurTrace) {
+    console.error(`[MAKETOU] Vente ${venteId} NON enregistrée : ${erreurTrace.message}`);
+  }
+
   if (!userId) {
     return {
       ouvert: false,
       email,
-      motif: `Aucun compte ProFoot à cette adresse. La vente est enregistrée ; l'accès s'ouvrira à l'inscription.`,
+      motif: erreurTrace
+        ? `Aucun compte ProFoot à cette adresse, ET la vente n'a PAS PU être enregistrée ` +
+          `(${erreurTrace.message}). Elle est donc perdue : à rattraper à la main.`
+        : `Aucun compte ProFoot à cette adresse. La vente est enregistrée ; l'accès s'ouvrira à l'inscription.`,
     };
   }
 
