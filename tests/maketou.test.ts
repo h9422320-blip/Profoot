@@ -30,6 +30,7 @@ import {
   montantEnFrancs,
   montantCompatible,
   montantComparable,
+  montantLisible,
   deviseDeLaVente,
   type VenteMaketou,
 } from '../src/lib/maketou';
@@ -181,6 +182,64 @@ test('★ ACQUIS — le relâchement du montant est borné au nom du produit', (
   // le repli par montant y serait absurde, puisque le montant est justement
   // celui qu'on renonce à comparer.
   assert.match(MODULE, /\} else if \(!offreParNom\(vente\)\) \{/);
+});
+
+// ── LA VRAIE VENTE, ET NON PLUS LE MESSAGE DE TEST ─────────────────────────
+//
+// Le 28 août 2026 au matin, neuf personnes ont payé et aucune n'a reçu son
+// accès. Elles ont écrit sur WhatsApp. Cause : le message de TEST de MakeTou
+// porte de vrais nombres (`"price": 29.99`), les VRAIES ventes portent du
+// texte (`"price": "2000"`). Le montant était jugé introuvable, et chaque
+// vente refusée avec « Montant null incompatible ».
+//
+// Le message ci-dessous est celui d'une vente réelle, recopié du journal.
+
+const VENTE_MALI: VenteMaketou = {
+  eventType: 'SUCCESSFUL_SALE',
+  sale: { id: '28a1adff-bcdb-4341-8df4-696e9e13f4ee', amount: '2040' as any },
+  customer: { email: 'client@example.com' },
+  products: [{ name: 'ProFoot AI — Accès Essentiel (30 jours)', price: '2000' as any }],
+  originCountry: { code: 'ML' },
+  paymentMethod: { name: 'Orange Money Mali' },
+};
+
+test('★ ACQUIS — un montant écrit en texte reste un montant', () => {
+  assert.equal(montantEnFrancs(VENTE_MALI), 2000, 'Le montant textuel est jugé introuvable.');
+  assert.equal(montantCompatible(2000, 'essential_monthly'), true);
+});
+
+test('★ ACQUIS — les frais de la boutique ne font pas refuser la vente', () => {
+  // `sale.amount` vaut 2040 quand le produit coûte 2 000 : MakeTou ajoute ses
+  // frais. Le prix du produit doit primer, sinon aucune vente ne passe.
+  assert.equal(montantEnFrancs(VENTE_MALI), 2000, 'Les frais sont comptés dans le prix.');
+});
+
+test('★ ACQUIS — une somme écrite avec des espaces reste lisible', () => {
+  const espace = { ...VENTE_MALI, products: [{ name: 'Accès Essentiel', price: '2 000' as any }] };
+  assert.equal(montantEnFrancs(espace), 2000);
+});
+
+test('★ ACQUIS — un montant ABSENT n’est pas un montant FAUX', () => {
+  // Refuser sur un champ que la boutique n'a pas rempli revient à punir le
+  // client. L'offre est reconnue au nom ; l'accès doit s'ouvrir.
+  const sansMontant: VenteMaketou = {
+    eventType: 'SUCCESSFUL_SALE',
+    sale: { id: 'v1' },
+    customer: { email: 'client@example.com' },
+    products: [{ name: 'ProFoot AI — Accès Essentiel (30 jours)' }],
+  };
+  assert.equal(montantLisible(sansMontant), false);
+  assert.equal(offreParNom(sansMontant), 'essential_monthly');
+  // Le garde-fou ne se déclenche que si le montant est LISIBLE.
+  assert.match(MODULE, /if \(montantComparable\(vente\) && montantLisible\(vente\)\)/);
+});
+
+test('★ ACQUIS — un montant lisible et faux fait toujours barrage', () => {
+  // Le relâchement ne doit pas ouvrir la porte : cent francs n'achètent pas
+  // l'offre annuelle.
+  const centFrancs = { ...VENTE_MALI, products: [{ name: 'Accès VIP', price: '100' as any }] };
+  assert.equal(montantLisible(centFrancs), true);
+  assert.equal(montantCompatible(100, 'vip_yearly'), false);
 });
 
 // ── CE QUE LA ROUTE GARANTIT ───────────────────────────────────────────────

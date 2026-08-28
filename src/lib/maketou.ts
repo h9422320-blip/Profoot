@@ -109,16 +109,46 @@ export function offreAchetee(vente: VenteMaketou): PlanKey | null {
  * On rend la valeur en unités, et l'appelant vérifie qu'elle correspond.
  */
 export function montantEnFrancs(vente: VenteMaketou): number | null {
-  const prixProduit = vente.products?.[0]?.price;
-  if (typeof prixProduit === 'number' && Number.isFinite(prixProduit)) {
-    return Math.round(prixProduit);
-  }
-  const brut = vente.sale?.amount;
-  if (typeof brut !== 'number' || !Number.isFinite(brut)) return null;
+  // Le prix du produit d'abord, et pour DEUX raisons désormais.
+  //
+  // La première tenait aux centimes. La seconde s'est vue le 28 août 2026 sur
+  // les premières vraies ventes : `sale.amount` valait « 2040 » là où le produit
+  // coûte 2 000. MakeTou ajoute ses frais au montant de la vente. Comparer
+  // celui-là au tarif refuserait toutes les ventes, sans exception.
+  const prixProduit = nombreEventuel(vente.products?.[0]?.price);
+  if (prixProduit !== null) return Math.round(prixProduit);
+
+  const brut = nombreEventuel(vente.sale?.amount);
+  if (brut === null) return null;
   // Sans prix de produit, on ne peut pas trancher entre unités et centimes.
   // On rend la valeur brute : l'appelant l'acceptera si elle correspond à
   // l'offre, telle quelle ou divisée par cent.
   return Math.round(brut);
+}
+
+/**
+ * Un nombre, qu'il arrive en nombre ou en texte.
+ *
+ * ── L'ERREUR QUI A COÛTÉ NEUF ACCÈS ───────────────────────────────────────
+ *
+ * Le message de TEST de MakeTou porte de vrais nombres : `"price": 29.99`. Les
+ * VRAIES ventes portent du texte : `"price": "2000"`. Le code n'acceptait que
+ * des nombres, jugeait le montant introuvable, et refusait chaque vente en
+ * annonçant « Montant null incompatible ».
+ *
+ * Le 28 août 2026 au matin, neuf personnes avaient payé et aucune n'avait reçu
+ * son accès. Elles ont écrit sur WhatsApp. C'est le pire défaut possible : le
+ * client a payé, la boutique a encaissé, et l'application dit non.
+ */
+function nombreEventuel(valeur: unknown): number | null {
+  if (typeof valeur === 'number') return Number.isFinite(valeur) ? valeur : null;
+  if (typeof valeur === 'string') {
+    // Espaces fines, espaces insécables et séparateurs de milliers : une somme
+    // écrite « 2 000 » ou « 2,000 » reste une somme.
+    const n = Number(valeur.replace(/[\s  ,]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
 }
 
 /** Le montant est-il compatible avec l'offre, dans l'une ou l'autre écriture ? */
@@ -144,6 +174,17 @@ export function montantCompatible(paye: number, plan: PlanKey): boolean {
 export function deviseDeLaVente(vente: VenteMaketou): string | null {
   const brute = vente.products?.[0]?.currency ?? vente.sale?.currency ?? null;
   return brute ? String(brute).toUpperCase() : null;
+}
+
+/**
+ * Le montant est-il seulement lisible ?
+ *
+ * Une somme absente ou illisible n'est PAS une somme fausse. Refuser sur cette
+ * base revient à punir le client d'un champ que la boutique n'a pas rempli —
+ * exactement ce qui s'est produit le 28 août 2026 au matin.
+ */
+export function montantLisible(vente: VenteMaketou): boolean {
+  return montantEnFrancs(vente) !== null;
 }
 
 /** Le montant est-il exprimé dans notre monnaie, donc comparable au tarif ? */
@@ -197,7 +238,7 @@ export async function ouvrirAccesMaketou(
   // nous avons écrit nous-mêmes, sur un produit dont nous fixons le prix :
   // l'acheteur ne choisit pas ce qu'il paie.
   const paye = montantEnFrancs(vente);
-  if (montantComparable(vente)) {
+  if (montantComparable(vente) && montantLisible(vente)) {
     if (paye == null || !montantCompatible(paye, plan)) {
       return {
         ouvert: false,
@@ -210,12 +251,13 @@ export async function ouvrirAccesMaketou(
       ouvert: false,
       email,
       motif:
-        `Vente en ${deviseDeLaVente(vente)} : le montant ${paye} n'est pas comparable au tarif, ` +
+        `Montant ${paye} invérifiable (devise ${deviseDeLaVente(vente) ?? 'inconnue'}), ` +
         `et le produit « ${vente.products?.[0]?.name ?? '?'} » ne nomme aucune offre.`,
     };
   } else {
     console.log(
-      `[MAKETOU] Vente en ${deviseDeLaVente(vente)} (${paye}) — offre ${plan} reconnue au nom du produit.`
+      `[MAKETOU] Montant invérifiable (${paye}, ${deviseDeLaVente(vente) ?? 'sans devise'}) — ` +
+        `offre ${plan} reconnue au nom du produit, accès ouvert.`
     );
   }
 
