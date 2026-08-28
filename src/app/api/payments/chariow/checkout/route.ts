@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireUser, PLANS, PlanKey, normalizePlan } from '@/lib/subscription';
 import { lireOffre } from '@/lib/offres';
 import { initCheckout } from '@/lib/chariow';
+import { lienMaketou } from '@/lib/maketou-boutique';
 import { ipAcheteur } from '@/lib/pays-acheteur';
 import { paysRetenu } from '@/lib/pays-paiement';
 import { createAdminClient } from '@/lib/supabase-admin';
@@ -50,6 +51,26 @@ export async function POST(req: Request) {
     // code. Il doit correspondre au produit Chariow, sinon l'acheteur voit un
     // prix et en paie un autre.
     const prixOffre = (await lireOffre(plan)).prixXof;
+
+    // ── LA VENTE PASSE PAR MAKETOU ──────────────────────────────────────────
+    //
+    // Chariow a fermé la boutique le 27 août 2026 : vérifié le lendemain, son
+    // catalogue est vide et le produit Essentiel rend un 404. Appeler sa caisse
+    // ne peut plus rien produire d'autre qu'une erreur affichée à l'acheteur.
+    //
+    // MakeTou n'a pas de caisse à créer : la page produit est publique et fixe.
+    // On la rend telle quelle, et le rattachement se fait au retour, par
+    // l'adresse e-mail, quand le pulse arrive.
+    const lienBoutique = lienMaketou(plan);
+    if (lienBoutique) {
+      console.log(`[PAIEMENT] Offre ${plan} — départ vers MakeTou.`);
+      return NextResponse.json({
+        checkoutUrl: lienBoutique,
+        passerelle: 'maketou',
+        plan,
+        amount: prixOffre,
+      });
+    }
 
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';

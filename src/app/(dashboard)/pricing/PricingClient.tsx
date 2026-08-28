@@ -8,6 +8,7 @@ import { sessionPresumee } from "@/lib/session-legere";
 import dynamic from "next/dynamic";
 import { usePaysAcheteur } from "@/components/usePaysAcheteur";
 import { signalerEtape } from "@/components/etapes-vente";
+import { reserverOngletPaiement, partirPayer, libererOnglet } from "@/lib/depart-paiement";
 
 /**
  * La notice est chargee A LA DEMANDE, et c est deliberé.
@@ -236,6 +237,9 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
 
   const lancerPaiement = async (selectedPlan: PlanKey, paysChoisi: string | null) => {
     setNoticePour(null);
+    // L'onglet se réserve ICI, dans la foulée du clic : ouvert après l'appel
+    // réseau, le navigateur le prendrait pour une publicité et le bloquerait.
+    const onglet = reserverOngletPaiement();
     try {
       setLoadingPlan(selectedPlan);
       const res = await fetch('/api/payments/chariow/checkout', {
@@ -256,6 +260,7 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
 
       // Session expirée : reconnexion plutôt qu'un message d'erreur trompeur.
       if (res.status === 401) {
+        libererOnglet(onglet);
         window.location.href = '/login';
         return;
       }
@@ -266,18 +271,33 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
         // ── LE DERNIER POINT DE MESURE AVANT DE QUITTER LE SITE ────────────
         //
         // C'est ici que se referme le trou du 23 août : on savait combien de
-        // gens voyaient les tarifs, et combien arrivaient en caisse chez
-        // Chariow, sans rien de ce qui se passait entre les deux.
+        // gens voyaient les tarifs, et combien arrivaient en caisse, sans rien
+        // de ce qui se passait entre les deux.
         signalerEtape('depart-caisse', selectedPlan);
-        window.location.href = data.checkoutUrl;
+
+        // La boutique MakeTou ne sait pas renvoyer l'acheteur chez nous : on
+        // garde donc ProFoot ouvert sur la page d'attente, qui l'emmènera sur
+        // son analyse dès que l'accès sera ouvert.
+        if (data.passerelle === 'maketou') {
+          partirPayer(
+            onglet,
+            data.checkoutUrl,
+            `/payment-success?plan=${encodeURIComponent(selectedPlan)}&via=maketou`
+          );
+        } else {
+          libererOnglet(onglet);
+          window.location.href = data.checkoutUrl;
+        }
       } else {
         // Une erreur ici veut dire que personne n'atteindra jamais la caisse :
         // ces cas-là ne doivent pas se confondre avec un abandon volontaire.
+        libererOnglet(onglet);
         signalerEtape('echec-lien', selectedPlan);
         alert(data.error || "Une erreur est survenue lors de l'initialisation du paiement.");
         setLoadingPlan(null);
       }
     } catch (err) {
+      libererOnglet(onglet);
       console.error(err);
       alert("Erreur de connexion au serveur de paiement.");
       setLoadingPlan(null);

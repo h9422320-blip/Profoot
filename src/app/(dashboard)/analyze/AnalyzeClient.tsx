@@ -10,6 +10,7 @@ import chargerADemande from "next/dynamic";
 import { signalerEtape } from "@/components/etapes-vente";
 import { usePaysAcheteur } from "@/components/usePaysAcheteur";
 import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
+import { reserverOngletPaiement, partirPayer, libererOnglet } from "@/lib/depart-paiement";
 import { heureLocale, dateLongueLocale, jourEtMoisLocaux } from "@/lib/heure-locale";
 
 /**
@@ -683,6 +684,9 @@ export default function AnalyzePage({
     if (!offreActuelle) return;
     setNoticeRecharge(false);
     setRechargeEnCours(true);
+    // Réservé dans la foulée du clic : un onglet ouvert après l'appel réseau
+    // serait bloqué par le navigateur.
+    const onglet = reserverOngletPaiement();
     try {
       const res = await fetch('/api/payments/chariow/checkout', {
         method: 'POST',
@@ -696,6 +700,7 @@ export default function AnalyzePage({
 
       // Session expirée : reconnexion plutôt qu'un message d'erreur trompeur.
       if (res.status === 401) {
+        libererOnglet(onglet);
         window.location.href = '/login';
         return;
       }
@@ -703,14 +708,25 @@ export default function AnalyzePage({
       const data = await res.json();
       if (data.checkoutUrl) {
         signalerEtape('depart-caisse', offreActuelle.cle);
-        window.location.href = data.checkoutUrl;
+        if (data.passerelle === 'maketou') {
+          partirPayer(
+            onglet,
+            data.checkoutUrl,
+            `/payment-success?plan=${encodeURIComponent(offreActuelle.cle)}&via=maketou`
+          );
+        } else {
+          libererOnglet(onglet);
+          window.location.href = data.checkoutUrl;
+        }
       } else {
+        libererOnglet(onglet);
         // Un échec ici veut dire que personne n'atteindra la caisse : à ne pas
         // confondre avec un abandon volontaire.
         signalerEtape('echec-lien', offreActuelle.cle);
         setRechargeEnCours(false);
       }
     } catch {
+      libererOnglet(onglet);
       signalerEtape('echec-lien', offreActuelle.cle);
       setRechargeEnCours(false);
     }

@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
+import { reserverOngletPaiement, partirPayer, libererOnglet } from "@/lib/depart-paiement";
 import dynamic from "next/dynamic";
 import { usePaysAcheteur } from "@/components/usePaysAcheteur";
 
@@ -196,6 +197,9 @@ export default function ExpertAgentPage() {
 
   const lancerPaiement = async (paysChoisi: string | null) => {
     setNoticeOuverte(false);
+    // Réservé dans la foulée du clic : après l'appel réseau, le navigateur
+    // bloquerait l'onglet.
+    const onglet = reserverOngletPaiement();
     try {
       setLoadingCheckout(true);
       const res = await fetch('/api/payments/chariow/checkout', {
@@ -214,12 +218,24 @@ export default function ExpertAgentPage() {
       const data = await res.json();
       
       if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+        if (data.passerelle === 'maketou') {
+          const cle = offreVip?.cle ?? 'yearly';
+          partirPayer(
+            onglet,
+            data.checkoutUrl,
+            `/payment-success?plan=${encodeURIComponent(cle)}&via=maketou`
+          );
+        } else {
+          libererOnglet(onglet);
+          window.location.href = data.checkoutUrl;
+        }
       } else {
+        libererOnglet(onglet);
         alert(data.error || "Une erreur est survenue lors de l'initialisation du paiement.");
         setLoadingCheckout(false);
       }
     } catch (err) {
+      libererOnglet(onglet);
       console.error(err);
       alert("Erreur de connexion au serveur de paiement.");
       setLoadingCheckout(false);

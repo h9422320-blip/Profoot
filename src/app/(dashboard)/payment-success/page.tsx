@@ -28,6 +28,7 @@ export default function PaymentSuccessPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const nettoyages: (() => void)[] = [];
 
     const params = new URLSearchParams(window.location.search);
     // Un achat à l'unité ne rend pas « premium » : c'est le déblocage de CE
@@ -56,6 +57,45 @@ export default function PaymentSuccessPage() {
       return cleMatch ? !!data.matchDebloque : !!data.premium;
     };
 
+    // ── L'ATTENTE N'EST PLUS LA MÊME DEPUIS MAKETOU ─────────────────────────
+    //
+    // Chariow renvoyait l'acheteur ici DÈS que le paiement était accepté : la
+    // page s'ouvrait à la fin du paiement, et trente secondes suffisaient.
+    //
+    // MakeTou n'a aucun réglage de redirection — vérifié dans l'éditeur du
+    // produit le 28 août 2026. La boutique s'ouvre donc dans un second onglet
+    // et cette page attend AVANT le paiement, pas après. Trente secondes se
+    // seraient écoulées pendant que l'acheteur compose encore son code Orange
+    // Money, et il serait revenu sur une page ayant renoncé.
+    const viaMaketou = params.get('via') === 'maketou';
+    const maxTentatives = viaMaketou ? 450 : 15; // 15 minutes, ou 30 secondes.
+
+    let abouti = false;
+    const reussir = () => {
+      if (abouti || cancelled) return;
+      abouti = true;
+      setState('active');
+      setTimeout(() => window.location.replace(destination), cleMatch ? 0 : 1200);
+    };
+
+    // ── LE RETOUR SUR L'ONGLET EST LE VRAI SIGNAL ───────────────────────────
+    //
+    // Pendant que l'acheteur paie sur la boutique, cet onglet-ci est en
+    // arrière-plan, et les navigateurs y ralentissent les minuteries jusqu'à
+    // une fois par minute. Sans cette écoute, quelqu'un qui revient aurait pu
+    // attendre encore une minute devant « Activation en cours » alors que son
+    // accès était déjà ouvert.
+    const auRetour = async () => {
+      if (document.visibilityState !== 'visible' || abouti || cancelled) return;
+      try {
+        if (await checkStatus()) reussir();
+      } catch {
+        /* Un aller-retour raté ne doit pas interrompre l'attente. */
+      }
+    };
+    document.addEventListener('visibilitychange', auRetour);
+    nettoyages.push(() => document.removeEventListener('visibilitychange', auRetour));
+
     (async () => {
       try {
         // ── LA RÉCONCILIATION SE REFAIT PENDANT TOUTE L'ATTENTE ──────────────
@@ -73,8 +113,15 @@ export default function PaymentSuccessPage() {
         // On la retente donc toutes les quatre tentatives, soit environ toutes
         // les huit secondes : dès que la boutique marque la vente encaissée, le
         // passage suivant l'attrape.
+        //
+        // Elle n'a de sens que pour l'ancienne boutique : elle interroge
+        // Chariow. Une vente MakeTou est ouverte par son pulse, et l'appeler
+        // ici ne ferait qu'ajouter des requêtes inutiles pendant un quart
+        // d'heure.
         const reconcilier = () =>
-          fetch('/api/payments/chariow/verify', { method: 'POST' }).catch(() => {});
+          viaMaketou
+            ? Promise.resolve()
+            : fetch('/api/payments/chariow/verify', { method: 'POST' }).catch(() => {});
 
         await reconcilier();
 
@@ -83,27 +130,32 @@ export default function PaymentSuccessPage() {
         // retard : abandonner trop tôt renverrait l'acheteur sur un contenu
         // encore verrouillé, ce qui est exactement ce qu'il vient de payer
         // pour éviter.
-        for (let attempt = 0; attempt < 15 && !cancelled; attempt++) {
+        for (let attempt = 0; attempt < maxTentatives && !cancelled; attempt++) {
           if (attempt > 0 && attempt % 4 === 0) await reconcilier();
+          if (abouti) return;
           if (await checkStatus()) {
-            if (cancelled) return;
-            setState('active');
             // Retour immédiat sur l'analyse payée. `replace` et non `push` :
             // le bouton « précédent » ne doit pas ramener sur une page de
             // paiement déjà consommée.
-            if (cleMatch) window.location.replace(destination);
+            //
+            // L'abonné aussi part sur l'analyse, et plus seulement l'acheteur
+            // d'un match. Il venait de payer et se retrouvait devant un bouton
+            // à cliquer : un pas de plus, juste après celui qu'il avait déjà
+            // fallu franchir pour payer.
+            reussir();
             return;
           }
           await new Promise((r) => setTimeout(r, 2000));
         }
-        if (!cancelled) setState('pending');
+        if (!cancelled && !abouti) setState('pending');
       } catch {
-        if (!cancelled) setState('pending');
+        if (!cancelled && !abouti) setState('pending');
       }
     })();
 
     return () => {
       cancelled = true;
+      nettoyages.forEach((f) => f());
     };
   }, []);
 
@@ -122,12 +174,17 @@ export default function PaymentSuccessPage() {
           {state === 'checking' && (
             <>
               <h1 className="text-2xl sm:text-3xl font-black text-foreground">
-                {achatMatch ? 'Paiement confirmé' : 'Activation en cours…'}
+                {achatMatch ? 'Paiement confirmé' : 'En attente de votre paiement…'}
               </h1>
+              {/* ── CETTE PAGE S'OUVRE AVANT LE PAIEMENT, PAS APRÈS ──────────
+                  La boutique s'affiche dans l'autre onglet ; celui-ci attend.
+                  Écrire « nous confirmons votre paiement » ferait croire à
+                  quelqu'un qui n'a pas encore payé que c'est fait, et il
+                  fermerait tout. */}
               <p className="text-foreground/50 leading-relaxed">
                 {achatMatch
                   ? 'Déblocage de votre analyse en cours. Vous y serez ramené automatiquement dans un instant.'
-                  : 'Nous confirmons votre paiement auprès de Chariow. Cela ne prend que quelques secondes.'}
+                  : 'Terminez votre paiement dans l’onglet de la boutique. Dès qu’il est validé, votre accès s’ouvre ici tout seul et votre analyse démarre — laissez cette page ouverte.'}
               </p>
             </>
           )}
@@ -149,7 +206,7 @@ export default function PaymentSuccessPage() {
               <p className="text-foreground/50 leading-relaxed">
                 {achatMatch
                   ? "Votre paiement est bien enregistré. Le déblocage arrive d'ici quelques instants — ouvrez votre analyse, elle s'affichera complète dès que c'est prêt."
-                  : 'Votre paiement est en cours de traitement. Votre accès sera activé automatiquement d’ici quelques minutes — vous pouvez déjà naviguer dans l’application.'}
+                  : 'Si vous avez payé, votre accès s’ouvrira automatiquement d’ici quelques minutes — vous pouvez déjà naviguer dans l’application. Pensez à avoir payé avec l’adresse e-mail de votre compte : c’est elle qui relie votre paiement à votre accès. Un souci ? Écrivez à contactprofootai@gmail.com.'}
               </p>
             </>
           )}
