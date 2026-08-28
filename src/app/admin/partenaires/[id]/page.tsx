@@ -8,6 +8,8 @@ import { Panneau } from "../../_components/Panneaux";
 import { Etiquette, Puce, dateCourte, ilYA, LienCompte } from "../../_components/Ui";
 import { Indicateur } from "../../_components/Indicateur";
 import ReglagePart from "../ReglagePart";
+import PoulsBoutique from "../PoulsBoutique";
+import { recettesParJour, totalMaketou } from "@/lib/recettes-boutique";
 
 export const dynamic = "force-dynamic";
 
@@ -32,14 +34,27 @@ export default async function FichePartenaire({
 
   const moisCourant = new Date().toISOString().slice(0, 7);
 
+  // ── LA FICHE SUIT LA BOUTIQUE, ELLE AUSSI ───────────────────────────────
+  //
+  // C'est ici que le montant dû est le plus gros à l'écran, et il bouge à
+  // chaque vente. L'empreinte se construit avec `totalMaketou`, exactement
+  // comme sur la liste : une signature calculée autrement ne coïnciderait
+  // jamais avec celle que l'action serveur recalcule, et la page se
+  // reconstruirait en boucle.
+  const mt = totalMaketou((await recettesParJour()) ?? {});
+  const signaturePouls = `${mt.ventes}:${mt.xof}`;
+
   return (
     <div className="space-y-6">
-      <Link
-        href="/admin/partenaires"
-        className="inline-flex items-center gap-1.5 text-[12px] font-bold text-white/40 hover:text-white transition-colors"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" /> Tous les partenaires
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href="/admin/partenaires"
+          className="inline-flex items-center gap-1.5 text-[12px] font-bold text-white/40 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Tous les partenaires
+        </Link>
+        <PoulsBoutique signature={signaturePouls} />
+      </div>
 
       {/* ── Identité ────────────────────────────────────────────────────── */}
       <div className="rounded-[26px] border border-[#8b5cf6]/30 bg-gradient-to-br from-[#8b5cf6]/12 via-[#16242e] to-[#111d25] p-6 sm:p-7">
@@ -81,8 +96,16 @@ export default async function FichePartenaire({
             <p className="text-3xl font-black text-[#a78bfa] tabular-nums">
               {fcfa(p.duMoisEnCoursXof)}
             </p>
-            <p className="text-[11px] text-white/30 mt-0.5">
-              {p.part_ca_pct} % de {fcfa(p.recettesMoisEnCoursXof)}
+            {/* ── LE MÊME DÉFAUT QUE SUR LA LISTE, AU MÊME ENDROIT ────────
+                « 35 % de 1 117 000 FCFA » sous un montant qui est 35 % du NET.
+                35 % du brut font 390 950 : les deux lignes ne pouvaient pas
+                être vraies ensemble, et c'est la fiche que le partenaire
+                consulte. */}
+            <p className="text-[11px] text-white/30 mt-1 tabular-nums">
+              {fcfa(p.recettesMoisEnCoursXof)} &minus; {fcfa(p.fraisMoisEnCoursXof)} de frais
+            </p>
+            <p className="text-[11px] text-white/45 tabular-nums">
+              = {p.part_ca_pct} % de {fcfa(p.netMoisEnCoursXof)} nets
             </p>
           </div>
         </div>
@@ -101,7 +124,7 @@ export default async function FichePartenaire({
           valeur={fcfa(p.recettesMoisEnCoursXof)}
           teinte="cyan"
           icone={<Coins className="w-4 h-4" />}
-          aide="encaissées à ce jour"
+          aide={`encaissées à ce jour · ${fcfa(p.netMoisEnCoursXof)} nets`}
         />
         <Indicateur
           libelle="Dû ce mois-ci"
@@ -164,13 +187,23 @@ export default async function FichePartenaire({
                       </span>
                     )}
                   </p>
-                  <p className="text-[11px] text-white/35 mt-0.5">
+                  {/* Le chemin complet, comme sur la liste : sans la ligne des
+                      frais, « 35 % du mois » posé à côté de recettes brutes
+                      invite à une multiplication qui ne retombe pas sur le
+                      montant affiché. */}
+                  <p className="text-[11px] text-white/35 mt-0.5 tabular-nums">
                     {fcfa(m.recettesXof)} encaissés · {m.ventes} vente{m.ventes > 1 ? "s" : ""}
+                  </p>
+                  <p className="text-[11px] text-white/35 tabular-nums">
+                    &minus; {fcfa(m.fraisBoutiqueXof)} de frais de boutique
+                  </p>
+                  <p className="text-[11px] font-bold text-white/55 tabular-nums">
+                    = {fcfa(m.netXof)} nets
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-black text-[#a78bfa] tabular-nums">{fcfa(m.duXof)}</p>
-                  <p className="text-[10px] text-white/30">{p.part_ca_pct} % du mois</p>
+                  <p className="text-[10px] text-white/30">{p.part_ca_pct} % du net</p>
                 </div>
               </div>
             ))}

@@ -380,3 +380,33 @@ test('★ ACQUIS — le direct ne fait pas descendre les ventes dans le navigate
   assert.doesNotMatch(pouls, /email|amount|acheteur@/i);
   assert.match(pouls, /visibilityState === "hidden"/, 'Un onglet caché continue d’interroger.');
 });
+
+test('★ ACQUIS — la fiche du partenaire explique elle aussi son montant par le net', () => {
+  // Le même défaut y vivait deux fois : sous le gros montant de l'en-tête, et
+  // sous chaque mois. C'est la page qu'on ouvre pour vérifier ce qu'on doit à
+  // quelqu'un — celle où une multiplication qui ne retombe pas juste coûte le
+  // plus cher en confiance.
+  const fiche = sansCommentaires(lire('src/app/admin/partenaires/[id]/page.tsx'));
+  assert.doesNotMatch(
+    fiche,
+    /\{p\.part_ca_pct\} % de \{fcfa\(p\.recettesMoisEnCoursXof\)\}/,
+    'L’en-tête annonce de nouveau un pourcentage du brut sous un montant du net.'
+  );
+  assert.doesNotMatch(fiche, /% du mois</, 'Les mois annoncent un pourcentage du brut.');
+  assert.match(fiche, /netMoisEnCoursXof/);
+  assert.match(fiche, /m\.fraisBoutiqueXof/, 'La ligne des frais a disparu du détail mensuel.');
+});
+
+test('★ ACQUIS — les deux pages construisent la MÊME empreinte', () => {
+  // Une empreinte calculée autrement sur l'une des deux pages ne coïnciderait
+  // jamais avec celle que l'action serveur recalcule : cette page-là se
+  // reconstruirait toutes les vingt secondes sans que rien ne change.
+  for (const chemin of [
+    'src/app/admin/partenaires/page.tsx',
+    'src/app/admin/partenaires/[id]/page.tsx',
+  ]) {
+    const source = sansCommentaires(lire(chemin));
+    assert.match(source, /totalMaketou\(/, `${chemin} calcule son empreinte autrement.`);
+    assert.match(source, /`\$\{mt\.ventes\}:\$\{mt\.xof\}`/, `${chemin} : empreinte différente.`);
+  }
+});
