@@ -3,7 +3,15 @@ import {
   ArrowRight, CalendarDays, Coins, Handshake, Percent, Users, Wallet,
 } from "lucide-react";
 import { calculerEconomie, getPartenaires } from "@/lib/partenaires";
-import { heureDeLecture, recettesParJour, tauxMaketou } from "@/lib/recettes-boutique";
+import {
+  heureDeLecture,
+  recettesParJour,
+  retireDeMaketouXof,
+  surcoutAcheteurMaketou,
+  tauxMaketou,
+  totalMaketou,
+  TAUX_MAKETOU_ACHETEUR,
+} from "@/lib/recettes-boutique";
 import { DERNIER_JOUR_CHARIOW, TAUX_CHARIOW } from "@/lib/recettes-histoire";
 import Reconciliation from "./Reconciliation";
 import { Indicateur } from "../_components/Indicateur";
@@ -57,6 +65,31 @@ export default async function PartenairesPage() {
   );
   const partPct = partenaires[0]?.part_ca_pct ?? 0;
   const net = Math.max(0, cumul.xof - cumul.frais);
+
+  // ── LE RAPPROCHEMENT AVEC L'ÉCRAN DE MAKETOU ────────────────────────────
+  //
+  // Cette page comptera toujours moins que le tableau de bord de la boutique,
+  // et c'est normal : MakeTou affiche ce que l'ACHETEUR a payé, nous comptons
+  // le prix de vente. Le 28 août 2026, 42 840 là-bas contre 42 000 ici, pour
+  // les mêmes 21 ventes — les 840 francs sont un supplément versé en plus du
+  // prix, qui n'est jamais entré chez nous.
+  //
+  // Le calcul est fait sur TOUTE l'ère MakeTou et non sur la période du
+  // contrat : c'est ainsi que la boutique le présente, et un rapprochement qui
+  // ne porte pas sur la même période ne rapproche rien.
+  const mt = totalMaketou(parJour ?? {});
+  const netMaketou = Math.max(0, mt.xof - mt.fraisXof);
+  const surcoutMaketou = surcoutAcheteurMaketou(mt.xof);
+  const afficheMaketou = mt.xof + surcoutMaketou;
+
+  // ── ACQUIS N'EST PAS ENCAISSÉ ───────────────────────────────────────────
+  //
+  // « Entrées en attente : 39 900. Solde retirable : 0. » Tout ce que la page
+  // appelle recette dort encore chez la boutique tant qu'un retrait n'a pas
+  // été fait. Un partenaire payé sur cet argent-là est payé sur une promesse,
+  // et le risque est pour le projet, pas pour lui.
+  const retireMaketou = retireDeMaketouXof();
+  const chezMaketou = Math.max(0, netMaketou - retireMaketou);
 
   return (
     <div className="space-y-6">
@@ -161,6 +194,24 @@ export default async function PartenairesPage() {
               Lu à <span className="text-white/60 font-bold tabular-nums">{heureDeLecture()}</span>,
               au moment où cette page s'est affichée. Rechargez pour lire l'instant présent.
             </p>
+
+            {/* ── CE PARTAGE PORTE SUR DE L'ARGENT PAS ENCORE REÇU ──────────
+                Les quatre chiffres du dessus sont exacts, et pourtant aucun
+                d'eux n'est en banque : MakeTou garde les recettes jusqu'au
+                retrait. « Entrées en attente : 39 900, solde retirable : 0 »,
+                au 28 août 2026.
+
+                Ce n'est pas une erreur de calcul, c'est un risque de
+                trésorerie — verser une part avant d'avoir encaissé se paie
+                avec sa propre poche. Il doit se lire au même endroit que le
+                montant dû, pas se découvrir le jour du virement. */}
+            {chezMaketou > 0 && (
+              <p className="text-[11.5px] text-amber-200/60 mt-2.5 leading-relaxed">
+                <strong className="font-black text-amber-200/90">{fcfa(chezMaketou)}</strong> de
+                ces recettes sont encore chez MakeTou et ne sont pas retirables à ce jour, tous
+                mois confondus. Le détail est en bas de page.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -411,18 +462,81 @@ export default async function PartenairesPage() {
                         </p>
                       </div>
 
+                      {/* ── RAPPROCHEMENT AVEC L'ÉCRAN DE LA BOUTIQUE ──────
+                          Deux écrans qui parlent du même argent et n'affichent
+                          pas le même nombre font douter des deux. Le 22 août
+                          2026, vingt minutes d'écart d'horloge avec Chariow ont
+                          fait chercher pendant une heure une erreur de calcul
+                          qui n'existait pas.
+
+                          Ici l'écart est permanent et parfaitement normal :
+                          MakeTou affiche ce que l'ACHETEUR a payé, cette page
+                          compte le prix de vente. Il est donc écrit ligne à
+                          ligne, pour se vérifier à l'œil contre le tableau de
+                          bord sans avoir à refaire un calcul. */}
+                      {mt.ventes > 0 && (
+                        <div className="mt-4 rounded-[16px] border border-[#2e4757] bg-[#1a2b36] px-4 py-3.5">
+                          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-white/40">
+                            Rapprochement avec MakeTou
+                          </p>
+                          <div className="mt-2.5 space-y-1 text-[12.5px] tabular-nums">
+                            <p className="text-white/50">
+                              « Revenus totaux » chez MakeTou :{" "}
+                              <span className="font-bold text-white">{fcfa(afficheMaketou)}</span>
+                            </p>
+                            <p className="text-white/50">
+                              &minus; {fcfa(surcoutMaketou)} ajoutés aux acheteurs par la boutique
+                              — cet argent ne vous a jamais appartenu
+                            </p>
+                            <p className="text-white/50">
+                              = {fcfa(mt.xof)} de prix de vente sur {mt.ventes} vente
+                              {mt.ventes > 1 ? "s" : ""}, &minus; {fcfa(mt.fraisXof)} de commission
+                            </p>
+                            <p className="text-white/75 font-bold pt-0.5">
+                              = {fcfa(netMaketou)} qui vous reviennent — le « solde en attente » de
+                              la boutique, au franc près
+                            </p>
+                          </div>
+
+                          {/* ── ACQUIS N'EST PAS ENCAISSÉ ──────────────────
+                              La boutique garde l'argent jusqu'au retrait. Rien
+                              dans l'application ne peut le savoir : ce montant
+                              est déclaré, et il est écrit qu'il l'est. Un
+                              chiffre présenté comme mesuré alors qu'il est
+                              saisi finit par ne plus être mis à jour, et
+                              personne ne s'en aperçoit. */}
+                          <div className="mt-3 rounded-[14px] border border-amber-400/25 bg-amber-400/[0.06] px-3.5 py-3">
+                            <p className="text-[12.5px] text-amber-100/75 leading-relaxed">
+                              <strong className="font-black text-amber-200">
+                                {fcfa(chezMaketou)}
+                              </strong>{" "}
+                              sont acquis mais pas encore retirables : MakeTou les conserve jusqu'au
+                              retrait. Une part versée sur cet argent sort de votre poche avant
+                              d'être entrée en caisse.
+                            </p>
+                            <p className="text-[11px] text-amber-100/40 mt-1.5">
+                              {retireMaketou > 0
+                                ? `${fcfa(retireMaketou)} déjà retirés, montant déclaré`
+                                : "Aucun retrait déclaré à ce jour"} — se règle par la variable
+                              MAKETOU_RETIRE_XOF, à mettre à jour après chaque retrait.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Le taux MakeTou est AFFICHÉ, pas caché dans le code :
-                          il n'est pas encore confirmé par un relevé, et c'est
-                          avec lui qu'on paie quelqu'un. Un chiffre faux qu'on
-                          voit se corrige ; un chiffre faux qu'on ne voit pas
-                          se paie. */}
+                          c'est avec lui qu'on paie quelqu'un. Un chiffre faux
+                          qu'on voit se corrige ; un chiffre faux qu'on ne voit
+                          pas se paie. */}
                       <p className="mt-3 text-[11.5px] text-white/30 leading-relaxed">
                         Frais retenus : {Math.round(TAUX_CHARIOW * 100)} % jusqu'au{" "}
                         {dateCourte(DERNIER_JOUR_CHARIOW)} (Chariow), puis{" "}
-                        {(tauxMaketou() * 100).toFixed(tauxMaketou() * 100 % 1 ? 1 : 0)} % (MakeTou).
-                        Le taux MakeTou reste à confirmer sur un relevé de transactions ; il se
-                        règle par la variable MAKETOU_COMMISSION_PCT et tous les mois se
-                        recalculent.
+                        {(tauxMaketou() * 100).toFixed(tauxMaketou() * 100 % 1 ? 1 : 0)} % (MakeTou),
+                        retenus sur le vendeur. Taux confirmé le 28 août 2026 sur le relevé des
+                        transactions, au franc près sur 21 ventes — il se règle par la variable
+                        MAKETOU_COMMISSION_PCT et tous les mois se recalculent. Les{" "}
+                        {Math.round(TAUX_MAKETOU_ACHETEUR * 100)} % ajoutés à l'acheteur n'entrent
+                        dans aucun de ces calculs : ils ne transitent pas par vous.
                       </p>
                     </>
                   )}

@@ -29,7 +29,7 @@
  * quelqu'un.
  */
 
-import { HISTOIRE_CHARIOW, TAUX_CHARIOW } from './recettes-histoire';
+import { HISTOIRE_CHARIOW, TAUX_CHARIOW, DERNIER_JOUR_CHARIOW } from './recettes-histoire';
 import { lireReserve, ecrireReserve } from './api-football';
 
 /**
@@ -161,26 +161,119 @@ export async function recettesParJour(): Promise<RecettesParJour | null> {
 }
 
 /**
- * Ce que MakeTou prélève sur chaque vente.
+ * Ce que MakeTou retient au VENDEUR sur chaque vente.
  *
- * ── CE CHIFFRE N'EST PAS ENCORE CONFIRMÉ ──────────────────────────────────
+ * ── CE N'EST PLUS UNE ANNONCE, C'EST UNE MESURE ───────────────────────────
  *
- * MakeTou annonce 5 % sur sa page d'accueil. Mais l'acheteur, lui, règle 2 040
- * FCFA pour un produit à 2 000 : 2 % lui sont ajoutés, ce qui n'est pas la
- * même chose qu'un prélèvement sur le vendeur. Les deux peuvent coexister.
+ * Ce taux a longtemps été recopié de la page d'accueil de MakeTou, faute de
+ * mieux. Le 28 août 2026, le relevé des transactions l'a confirmé au franc
+ * près, sur 21 ventes de l'Accès Essentiel affiché 2 000 FCFA :
  *
- * Il vit donc dans une variable d'environnement, seul, et il est AFFICHÉ sur
- * la page des partenaires. Le jour où le relevé des transactions donnera le
- * taux exact, une seule valeur change et tous les mois se recalculent — sans
- * qu'il faille relire une ligne de code.
+ *     Tableau de bord, « Revenus totaux »      42 840  =  21 × 2 040
+ *     Transactions, « Entrées en attente »     39 900  =  21 × 1 900
  *
- * Un taux faux se voit ; un taux caché ne se voit pas. C'est un partenaire
- * qu'on paie avec.
+ * Mesuré sur un seul tarif ce jour-là. Le premier Pro (5 000) et le premier
+ * VIP (15 000) sont tombés deux heures plus tard : si les 5 % valent aussi
+ * pour eux, les 23 ventes du 28 août doivent afficher 58 900 en attente. Le
+ * jour où ce nombre ne tombe pas, c'est que le taux dépend de l'offre.
+ *
+ * Deux prélèvements distincts, et non un seul :
+ *
+ *   • 100 F retenus au VENDEUR, soit 5 % du prix affiché — c'est ce taux-ci ;
+ *   • 40 F ajoutés à l'ACHETEUR — voir TAUX_MAKETOU_ACHETEUR.
+ *
+ * Seuls les 5 % sortent de la poche du projet : les 40 F n'y sont jamais
+ * entrés. Confondre les deux ferait payer à un partenaire une commission de
+ * 7 % que personne n'a prélevée sur nous.
+ *
+ * Il reste réglable par variable d'environnement et AFFICHÉ sur la page des
+ * partenaires : un taux faux se voit ; un taux caché ne se voit pas. C'est un
+ * partenaire qu'on paie avec.
  */
+export const TAUX_MAKETOU_VENDEUR = 0.05;
+
 export function tauxMaketou(): number {
   const brut = Number(process.env.MAKETOU_COMMISSION_PCT);
   if (Number.isFinite(brut) && brut >= 0 && brut <= 100) return brut / 100;
-  return 0.05;
+  return TAUX_MAKETOU_VENDEUR;
+}
+
+/**
+ * Ce que MakeTou ajoute PAR-DESSUS le prix, à la charge de l'acheteur.
+ *
+ * ── POURQUOI COMPTER UN ARGENT QUI NE NOUS COÛTE RIEN ─────────────────────
+ *
+ * Il n'entre dans aucun calcul de partenaire — cet argent n'a jamais appartenu
+ * au projet. Mais il explique le seul écart qui subsiste entre cette
+ * application et le tableau de bord MakeTou : 42 840 là-bas contre 42 000 ici,
+ * pour exactement les mêmes 21 ventes.
+ *
+ * Un écart inexpliqué entre deux écrans qui parlent d'argent fait douter des
+ * deux à la fois. On l'a déjà vécu le 22 août 2026 avec Chariow, où vingt
+ * minutes d'écart d'horloge ont fait chercher une erreur de calcul inexistante.
+ * Celui-ci est donc nommé et affiché, pas effacé.
+ *
+ * ── CE QUE LA MESURE NE TRANCHE PAS ENCORE ────────────────────────────────
+ *
+ * Les 40 F ont été relevés sur un seul tarif, l'Essentiel à 2 000 FCFA. Un
+ * supplément de 2 % et un forfait fixe de 40 F y donnent exactement le même
+ * nombre : cette mesure-là ne les distingue pas.
+ *
+ * De quoi trancher est arrivé le soir même — un VIP à 15 000 (21 h 11) et un
+ * Pro à 5 000 (21 h 16). Sur les 23 ventes du 28 août, 62 000 FCFA de prix de
+ * vente, les deux hypothèses cessent de coïncider :
+ *
+ *     supplément de 2 %   →  63 240 affichés par MakeTou
+ *     forfait de 40 F     →  62 920 affichés par MakeTou
+ *
+ * Trois cent vingt francs les séparent, et c'est le tableau de bord de la
+ * boutique qui tranche, pas un raisonnement. La page des partenaires affiche
+ * la première hypothèse : si l'écran de MakeTou annonce l'autre nombre, c'est
+ * cette constante-ci qu'il faut corriger, et elle seule.
+ */
+export const TAUX_MAKETOU_ACHETEUR = 0.02;
+
+export function surcoutAcheteurMaketou(xof: number): number {
+  return Math.round(Number(xof ?? 0) * TAUX_MAKETOU_ACHETEUR);
+}
+
+/**
+ * Ce qui a DÉJÀ été retiré de MakeTou, déclaré à la main.
+ *
+ * ── POURQUOI CE CHIFFRE N'EST PAS CALCULÉ ─────────────────────────────────
+ *
+ * MakeTou garde l'argent jusqu'au retrait et ne nous en dit rien. Au 28 août
+ * 2026 : « Entrées en attente 39 900 », « Solde retirable 0 ». L'application
+ * n'a aucun moyen de savoir ce qui est réellement arrivé en banque.
+ *
+ * Sans cette déclaration, la page affirmerait éternellement que la totalité
+ * dort encore chez la boutique — ce qui devient faux au premier retrait. Elle
+ * est donc affichée COMME déclarée, pour qu'on voie bien qu'une main humaine
+ * la tient à jour et qu'aucune mesure ne la garantit.
+ */
+export function retireDeMaketouXof(): number {
+  const brut = Number(process.env.MAKETOU_RETIRE_XOF);
+  return Number.isFinite(brut) && brut >= 0 ? Math.round(brut) : 0;
+}
+
+/**
+ * Ce que MakeTou a encaissé depuis son ouverture.
+ *
+ * La frontière est le dernier jour de Chariow, pas une date recopiée : les
+ * deux boutiques n'ont jamais encaissé le même jour, et une constante de plus
+ * finirait par diverger de celle qui décide déjà du taux de frais.
+ */
+export function totalMaketou(parJour: RecettesParJour): JourneeBoutique {
+  let xof = 0;
+  let ventes = 0;
+  let fraisXof = 0;
+  for (const [jour, poste] of Object.entries(parJour)) {
+    if (jour <= DERNIER_JOUR_CHARIOW) continue;
+    xof += poste.xof;
+    ventes += poste.ventes;
+    fraisXof += poste.fraisXof ?? 0;
+  }
+  return { xof, ventes, fraisXof };
 }
 
 /** Les ventes MakeTou de notre base, regroupées par jour. */
