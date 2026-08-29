@@ -449,3 +449,34 @@ test('★ ACQUIS — les confettis s’allègent sur petit écran', () => {
   assert.match(ecran, /window\.innerWidth < 480/, 'Les confettis ne s’allègent plus sur téléphone.');
   assert.match(ecran, /particleCount: n\(/, 'Le nombre de particules n’est plus modulé.');
 });
+
+// ── LE TON D'UN OUTIL QU'ON PAIE ───────────────────────────────────────────
+
+test('★ ACQUIS — aucun émoji dans ce que l’écran affiche', () => {
+  // Les outils professionnels ne mettent pas d'émoji dans leurs titres. Un
+  // ballon après « Quel est ton club favori ? » et une main qui pointe après
+  // « Donne-nous ta réponse » font remarquer la mise en forme au lieu de la
+  // question — et rangent le produit du côté de la publicité.
+  //
+  // On lit le RENDU, pas les commentaires : ceux-ci citent volontairement les
+  // anciens textes pour expliquer pourquoi ils ont disparu.
+  const ecran = sansCommentaires(lire(ECRAN));
+  const emojis = ecran.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu) ?? [];
+  assert.equal(
+    emojis.length,
+    0,
+    `L’écran affiche de nouveau ${emojis.length} émoji(s) : ${emojis.join(' ')}`
+  );
+});
+
+test('★ ACQUIS — le titre est d’une seule couleur, sans dégradé', () => {
+  // « club favori » était écrit en dégradé vert-jaune au milieu d'une phrase
+  // blanche. Écrire trois mots d'une même phrase dans une autre couleur attire
+  // l'œil sur la typographie, pas sur ce qui est demandé.
+  const ecran = sansCommentaires(lire(ECRAN));
+  const titre = ecran.match(/<h2[\s\S]{0,400}?<\/h2>/);
+  assert.ok(titre, 'Le titre a disparu.');
+  assert.match(titre![0], /Quel est ton club favori/, 'Le titre a changé de texte.');
+  assert.doesNotMatch(titre![0], /linear-gradient/, 'Le dégradé est revenu dans le titre.');
+  assert.doesNotMatch(titre![0], /<span/, 'Le titre est de nouveau découpé en morceaux colorés.');
+});

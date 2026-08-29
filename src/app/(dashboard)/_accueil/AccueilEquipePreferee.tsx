@@ -501,23 +501,18 @@ function Choix({
                 trois lignes. Une question courte tient sur deux, et peut donc
                 s'écrire beaucoup plus gros : c'est elle qu'on doit lire en
                 entrant, pas la deviner. */}
+            {/* ── UNE SEULE COULEUR, AUCUN ÉMOJI ──────────────────────────
+                « club favori » était écrit en dégradé vert-jaune, et la
+                question se terminait par un ballon. Deux effets qui font
+                remarquer la MISE EN FORME au lieu de la question.
+
+                Les outils qu'on paie ne mettent pas d'émoji dans leurs
+                titres, et n'écrivent pas trois mots d'une phrase dans une
+                autre couleur que les autres. La sobriété n'est pas une
+                absence de soin : c'est ce qui distingue un produit d'une
+                publicité. */}
             <h2 className="text-[30px] font-black leading-[1.08] tracking-tight text-white">
-              Quel est ton{" "}
-              {/* Le mot qui porte l'attachement est en dégradé plutôt qu'en
-                  couleur plate : c'est lui qu'on voit en premier, avant même
-                  d'avoir lu la phrase. */}
-              <span
-                style={{
-                  background: "linear-gradient(100deg, #34D399 0%, #A7F3D0 45%, #FBBF24 100%)",
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                  color: "transparent",
-                  textShadow: "0 0 28px rgba(16,185,129,0.35)",
-                }}
-              >
-                club favori
-              </span>
-              &nbsp;? ⚽
+              Quel est ton club favori&nbsp;?
             </h2>
             {/* Une demande directe met le lecteur en position de répondre.
                 C'est la dernière ligne avant la grille : elle doit pousser le
@@ -527,7 +522,7 @@ function Choix({
                   C'est la dernière ligne avant la grille : elle doit pousser
                   le doigt vers le bas. */}
               <p className="text-[13px] font-bold leading-snug text-white/55">
-                Donne-nous ta réponse 👇
+                Donne-nous ta réponse
               </p>
 
               {/* Discret à l'œil, mais JAMAIS discret au doigt : 44 px de
@@ -840,7 +835,7 @@ function Fete({
         style={{ textShadow: "0 0 26px rgba(16,185,129,0.35)" }}
       >
         {prenom ? `${prenom}, ` : ""}vrai fan de{" "}
-        <span className="text-[#34D399]">{equipe?.nom ?? "ton club"}</span>&nbsp;! 🔥
+        <span className="text-[#34D399]">{equipe?.nom ?? "ton club"}</span>&nbsp;!
       </p>
 
       <p className="relative mt-2 text-[12.5px] leading-relaxed text-white/40">
