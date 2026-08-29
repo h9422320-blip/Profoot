@@ -45,11 +45,37 @@
  * sortir de la boucle.
  */
 
+/**
+ * ── LA DEUXIÈME BOUCLE, DÉCOUVERTE LE 29 AOÛT 2026 ────────────────────────
+ *
+ * Une seule porte de sortie ne suffisait pas, parce qu'il existe désormais des
+ * comptes dont le propriétaire n'a JAMAIS choisi de mot de passe : depuis ce
+ * soir, l'application crée le compte de celui qui a payé sans en avoir un.
+ *
+ * Pour cette personne, les deux écrans se renvoyaient l'un à l'autre :
+ *
+ *   Connexion  → « mot de passe incorrect, sinon CRÉEZ UN COMPTE »
+ *   Inscription → « ce compte existe déjà, CONNECTEZ-VOUS plutôt »
+ *   Connexion  → …
+ *
+ * Un client a filmé son téléphone en train de tourner dans cette boucle. Il
+ * avait payé, son abonnement était actif, et l'application ne lui a jamais
+ * proposé la seule action qui l'aurait fait entrer : demander un lien pour
+ * choisir son mot de passe.
+ *
+ * D'où deux sorties et non plus une. Aucune ne confirme si le compte existe —
+ * le message reste le même pour tout le monde — mais aucune situation ne se
+ * retrouve plus sans issue.
+ */
+
 /** Ce qu'on montre, et vers où l'on envoie. */
 export interface MessageAuth {
   texte: string;
-  /** Une porte de sortie, quand il en existe une. */
-  lien?: { texte: string; href: string };
+  /**
+   * Les portes de sortie. Jamais zéro quand la personne est bloquée : c'est
+   * l'absence de sortie qui fabrique les boucles.
+   */
+  liens?: { texte: string; href: string }[];
 }
 
 /**
@@ -68,10 +94,14 @@ export function messageAuth(brut: string | null | undefined): MessageAuth {
   if (m.includes('invalid login') || m.includes('invalid credentials')) {
     return {
       texte:
-        "Adresse e-mail ou mot de passe incorrect. Si vous n'avez pas encore de compte, " +
-        'créez-le : il ne sert à rien de demander un nouveau mot de passe pour une adresse ' +
-        "qui n'en a pas.",
-      lien: { texte: 'Créer un compte', href: '/signup' },
+        'Adresse e-mail ou mot de passe incorrect. Deux raisons possibles. ' +
+        "Si vous avez payé et que nous avons créé votre compte pour vous, vous n'avez " +
+        'pas encore choisi de mot de passe : demandez le lien qui vous permettra d\'en ' +
+        "choisir un. Si vous n'avez jamais eu de compte ici, créez-le.",
+      liens: [
+        { texte: 'Choisir mon mot de passe', href: '/mot-de-passe-oublie' },
+        { texte: 'Créer un compte', href: '/signup' },
+      ],
     };
   }
 
@@ -85,8 +115,14 @@ export function messageAuth(brut: string | null | undefined): MessageAuth {
 
   if (m.includes('already registered') || m.includes('already exists')) {
     return {
-      texte: 'Un compte existe déjà avec cette adresse. Connectez-vous plutôt.',
-      lien: { texte: 'Se connecter', href: '/login' },
+      texte:
+        'Un compte existe déjà avec cette adresse. Si vous ne connaissez pas son mot de ' +
+        'passe — par exemple parce que nous avons créé ce compte pour vous après votre ' +
+        "paiement — demandez le lien qui vous permettra d'en choisir un.",
+      liens: [
+        { texte: 'Choisir mon mot de passe', href: '/mot-de-passe-oublie' },
+        { texte: 'Se connecter', href: '/login' },
+      ],
     };
   }
 
@@ -115,7 +151,10 @@ export function messageAuth(brut: string | null | undefined): MessageAuth {
   // La personne, elle, lit du français.
   console.warn(`[AUTH] Message non traduit : « ${brut} »`);
   return {
-    texte: 'La connexion a échoué. Réessayez, ou créez un compte si vous n\'en avez pas encore.',
-    lien: { texte: 'Créer un compte', href: '/signup' },
+    texte: 'La connexion a échoué. Réessayez, ou choisissez une de ces deux voies.',
+    liens: [
+      { texte: 'Choisir mon mot de passe', href: '/mot-de-passe-oublie' },
+      { texte: 'Créer un compte', href: '/signup' },
+    ],
   };
 }

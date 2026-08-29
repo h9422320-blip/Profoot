@@ -10,7 +10,7 @@ import { ProFootLogo } from '@/components/ui/ProFootLogo'
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   /** La porte de sortie proposée avec le message : créer un compte, se connecter. */
-  const [lienErreur, setLienErreur] = useState<{ texte: string; href: string } | null>(null)
+  const [liensErreur, setLiensErreur] = useState<{ texte: string; href: string }[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
@@ -36,7 +36,7 @@ export default function SignupPage() {
       const result = await signup(formData)
       if (result?.error) {
         setError(result.error)
-        setLienErreur((result as { lien?: { texte: string; href: string } }).lien ?? null)
+        setLiensErreur((result as { liens?: { texte: string; href: string }[] }).liens ?? [])
         setIsLoading(false)
       }
     } catch (e: any) {
@@ -139,17 +139,32 @@ export default function SignupPage() {
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-200">{error}</p>
-                {/* Une porte de sortie, quand le message en propose une. Sans
-                    elle, la personne relit le même message et recommence. */}
-                {lienErreur && (
-                  <Link
-                    href={lienErreur.href}
-                    className="inline-block mt-2 text-sm font-bold text-white underline underline-offset-2"
-                  >
-                    {lienErreur.texte}
-                  </Link>
-                )}
+                {/* ── LES SORTIES SOUS LE TEXTE, PAS À CÔTÉ ──────────────
+                    Le conteneur est une rangée « flex » : le lien se retrouvait
+                    poussé à DROITE du message, écrasé sur un téléphone, et sa
+                    marge « mt-2 » ne servait à rien. Il faut une colonne.
+
+                    Et il en faut PLUSIEURS. Une seule sortie renvoyait celui
+                    dont nous avions créé le compte vers l'inscription, qui le
+                    renvoyait vers la connexion, qui le renvoyait vers
+                    l'inscription. Un client a filmé son téléphone tournant dans
+                    cette boucle le 29 août 2026. */}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-red-200">{error}</p>
+                  {liensErreur.length > 0 && (
+                    <div className="mt-3 flex flex-col gap-2">
+                      {liensErreur.map((l) => (
+                        <Link
+                          key={l.href}
+                          href={l.href}
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-white/10 px-4 text-sm font-bold text-white"
+                        >
+                          {l.texte}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

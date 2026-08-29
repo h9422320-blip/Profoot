@@ -90,7 +90,7 @@ export async function login(formData: FormData) {
     // récupération de mot de passe avant d'abandonner en soixante-sept
     // secondes, sans jamais entrer.
     const m = messageAuth(error.message)
-    return { error: m.texte, lien: m.lien }
+    return { error: m.texte, liens: m.liens }
   }
 
   // La connexion a réussi : le compteur de tentatives repart à zéro. Quelqu'un
@@ -205,7 +205,7 @@ export async function signup(formData: FormData) {
     // récupération de mot de passe avant d'abandonner en soixante-sept
     // secondes, sans jamais entrer.
     const m = messageAuth(error.message)
-    return { error: m.texte, lien: m.lien }
+    return { error: m.texte, liens: m.liens }
   }
 
   revalidatePath('/', 'layout')

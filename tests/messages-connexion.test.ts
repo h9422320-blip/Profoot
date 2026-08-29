@@ -49,11 +49,44 @@ test('★ ACQUIS — « identifiants invalides » propose de créer un compte', 
       "jamais, et repart."
   );
 
-  assert.equal(
-    m.lien?.href,
-    '/signup',
-    "Aucune porte de sortie n'est proposée. Sans lien, la personne relit le même " +
-      'message et recommence.'
+  const href = (m.liens ?? []).map((l) => l.href);
+
+  assert.ok(
+    href.includes('/signup'),
+    "Aucune porte de sortie vers l'inscription. Sans lien, la personne relit le " +
+      'même message et recommence.'
+  );
+
+  // ── LA DEUXIÈME SORTIE, AJOUTÉE LE 29 AOÛT 2026 ─────────────────────────
+  //
+  // Depuis ce soir, l'application crée le compte de celui qui a payé sans en
+  // avoir un. Cette personne possède donc un compte dont elle n'a JAMAIS choisi
+  // le mot de passe — et les deux écrans se renvoyaient l'un à l'autre :
+  //
+  //   Connexion   → « sinon, CRÉEZ UN COMPTE »
+  //   Inscription → « ce compte existe déjà, CONNECTEZ-VOUS »
+  //   Connexion   → …
+  //
+  // Un client a filmé son téléphone tournant dans cette boucle. Il avait payé,
+  // son abonnement était actif, et rien ne lui proposait la seule action qui
+  // l'aurait fait entrer.
+  assert.ok(
+    href.includes('/mot-de-passe-oublie'),
+    "Aucune sortie vers le choix du mot de passe. C'est la seule issue pour " +
+      "quelqu'un dont nous avons créé le compte après son paiement : il ne " +
+      'connaîtra jamais un mot de passe qu\'il n\'a pas choisi.'
+  );
+});
+
+test('★ ACQUIS — « ce compte existe déjà » ne renvoie pas seulement vers la connexion', () => {
+  // L'autre moitié de la boucle. Renvoyer vers la connexion quelqu'un qui n'a
+  // pas de mot de passe, c'est le renvoyer d'où il vient.
+  const m = messageAuth('User already registered');
+  const href = (m.liens ?? []).map((l) => l.href);
+  assert.ok(
+    href.includes('/mot-de-passe-oublie'),
+    'La boucle est rouverte : l’inscription renvoie vers la connexion, qui renvoie ' +
+      'vers l’inscription.'
   );
 });
 
