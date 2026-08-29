@@ -56,6 +56,15 @@ const EXPEDITEUR_PAR_DEFAUT = 'ProFoot AI <noreply@profootai.com>';
  */
 const REPONSE_PAR_DEFAUT = 'm09997818@gmail.com';
 
+/**
+ * Où partent les alertes destinées à l'administration.
+ *
+ * La même boîte que celle qui reçoit les réponses des clients, et pour la même
+ * raison : c'est celle qui est réellement ouverte. Une alerte envoyée vers une
+ * adresse que personne ne relève ne prévient personne.
+ */
+export const ADRESSE_ALERTES = REPONSE_PAR_DEFAUT;
+
 export interface Courriel {
   a: string;
   sujet: string;

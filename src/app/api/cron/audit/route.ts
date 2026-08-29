@@ -178,7 +178,31 @@ export async function GET(request: Request) {
       console.warn('[AUDIT] Réconciliation des ventes impossible :', e?.message);
     }
 
-    return NextResponse.json({ ...resultat, verification, ventes });
+    // ── CEUX QUI ONT PAYÉ ET QUI SONT RESTÉS DEHORS ──────────────────────
+    //
+    // La réconciliation ci-dessus vérifie que l'accès est OUVERT. Elle ne dit
+    // rien de celui qui n'arrive pas à s'en servir — et c'est exactement ce
+    // qui s'est produit le 29 août 2026 : trois personnes avaient un
+    // abonnement actif et n'étaient jamais entrées, faute de mot de passe.
+    //
+    // Le second passage de la journée, cinq heures après celui de minuit : une
+    // personne bloquée depuis la veille au soir ne doit pas attendre un jour
+    // entier pour être vue.
+    let bloques = null;
+    try {
+      const { signalerAbonnesJamaisEntres } = await import('@/lib/abonnes-jamais-entres');
+      bloques = await signalerAbonnesJamaisEntres();
+      if (bloques.bloques.length > 0) {
+        console.error(
+          `[AUDIT] ANOMALIE — accès : ${bloques.bloques.length} abonné(s) actif(s) ne se sont ` +
+            `jamais connectés : ${bloques.bloques.map((b) => b.email).join(', ')}`
+        );
+      }
+    } catch (e: any) {
+      console.warn('[AUDIT] Relevé des abonnés jamais entrés impossible :', e?.message);
+    }
+
+    return NextResponse.json({ ...resultat, verification, ventes, bloques });
   } catch (erreur: any) {
     console.error('[AUDIT] Exécution impossible :', erreur?.message);
     return NextResponse.json({ error: erreur?.message ?? 'Audit impossible' }, { status: 500 });

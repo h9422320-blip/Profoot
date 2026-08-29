@@ -220,6 +220,29 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
     etapes
   );
 
+  // ── OUVRIR L'ACCÈS NE SUFFIT PAS : ENCORE FAUT-IL QU'IL SERVE ───────────
+  //
+  // Placé juste après la livraison, parce que c'est elle qui fabrique le cas :
+  // un compte créé par nous appartient à quelqu'un qui n'a jamais choisi de
+  // mot de passe. Si le message contenant le lien se perd, l'accès est ouvert
+  // et la personne reste dehors — sans que rien ne le signale.
+  //
+  // Le 29 août 2026, on ne l'a appris que parce qu'un client a filmé son
+  // téléphone. Celui qui ne filme pas pose un avis d'une étoile, ou se tait.
+  await etape(
+    'Repérer les abonnés qui ne sont jamais entrés',
+    async () => {
+      const { signalerAbonnesJamaisEntres } = await import('./abonnes-jamais-entres');
+      const r = await signalerAbonnesJamaisEntres();
+      if (!r.bloques.length) return 'aucun abonné bloqué dehors';
+      return (
+        `${r.bloques.length} abonné(s) jamais connecté(s), ${r.aSignaler.length} signalé(s)` +
+        (r.aSignaler.length && !r.alerteEnvoyee ? ' — ALERTE NON PARTIE' : '')
+      );
+    },
+    etapes
+  );
+
   await etape(
     'Relever la précision du jour',
     async () => {
