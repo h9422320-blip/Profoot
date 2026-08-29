@@ -5,6 +5,7 @@ import {
   MessageSquare, Target, Trophy, User, XCircle,
 } from "lucide-react";
 import { getFicheUtilisateur } from "@/lib/fiche-utilisateur";
+import OuvrirAcces from "./OuvrirAcces";
 import { EnTete, Rapport } from "../../_components/EnTete";
 import { Indicateur } from "../../_components/Indicateur";
 import { Panneau } from "../../_components/Panneaux";
@@ -284,6 +285,7 @@ export default async function FicheCompte({ params }: { params: Promise<{ id: st
             sousTitre="Abonnements enregistrés et demandes de paiement"
             icone={<CreditCard className="w-4 h-4" />}
             teinte="vert"
+            action={<OuvrirAcces userId={f.id} email={f.email} />}
           >
             {f.abonnements.length === 0 && f.paiements.length === 0 ? (
               <Vide
