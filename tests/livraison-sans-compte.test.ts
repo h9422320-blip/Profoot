@@ -132,3 +132,28 @@ test('★ ACQUIS — la porte de livraison exige la clé, dans un en-tête, en P
   assert.match(s, /cleValide/, 'La comparaison n’est plus à durée constante.');
   assert.match(s, /livrerVentesSansCompte/, 'La porte ne livre plus rien.');
 });
+
+test('★ ACQUIS — la livraison lit les DEUX endroits où une vente s’écrit', () => {
+  // `payment_intents` ne contient que les achats partis de profootai.com. Un
+  // achat fait directement sur la vitrine de la boutique n'y laisse rien : il
+  // n'existe que dans le message reçu, rangé dans `webhook_events`.
+  //
+  // Le 29 août 2026, la livraison a servi les deux acheteurs qu'elle voyait,
+  // pendant que deux autres — payés les 20 et 25 août — lui restaient
+  // invisibles. Neuf et quatre jours sans rien recevoir, sans que personne ne
+  // puisse le savoir depuis l'application.
+  const s = sansCommentaires(lire(MODULE));
+  assert.match(s, /from\(['"]payment_intents['"]\)/, 'La livraison ne lit plus les intentions de paiement.');
+  assert.match(s, /from\(['"]webhook_events['"]\)[\s\S]{0,400}payload/, 'La livraison ne lit plus les messages de la boutique.');
+  assert.match(s, /planFromAmount/, 'L’offre ne se déduit plus du montant payé.');
+});
+
+test('★ ACQUIS — une vente déjà portée par un abonnement n’est jamais reservie', () => {
+  // Trois cent soixante-neuf ventes de la boutique dorment dans
+  // `webhook_events`. Les relire sans ce filtre offrirait un second abonnement
+  // à des gens déjà servis — et un second compte à ceux qui en ont un.
+  const s = sansCommentaires(lire(MODULE));
+  assert.match(s, /chariow_sale_id/, 'Le filtre des ventes déjà servies a sauté.');
+  assert.match(s, /servies\.has/, 'Les ventes déjà portées ne sont plus écartées.');
+  assert.match(s, /adressesConnues\.has\(email\)/, 'Le garde-fou du compte existant a sauté.');
+});

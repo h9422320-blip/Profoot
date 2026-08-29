@@ -30,7 +30,7 @@
  */
 
 import { createAdminClient } from './supabase-admin';
-import { PLANS, type PlanKey } from './subscription';
+import { PLANS, planFromAmount, type PlanKey } from './subscription';
 
 /** Au-delà, on ne livre plus automatiquement : la vente est trop ancienne. */
 const FENETRE_JOURS = 45;
@@ -79,7 +79,32 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
   const sb = createAdminClient();
   const depuis = new Date(Date.now() - FENETRE_JOURS * 24 * 3600 * 1000).toISOString();
 
-  const { data: ventes, error } = await sb
+  // ── UNE VENTE PAYÉE S'ÉCRIT À DEUX ENDROITS, PAS UN ──────────────────────
+  //
+  // `payment_intents` ne contient que les achats partis de profootai.com : la
+  // page de paiement y dépose une intention avant d'envoyer vers la boutique.
+  // Un achat fait directement sur la vitrine de la boutique n'y laisse rien —
+  // il n'existe que dans le message reçu de celle-ci, rangé dans
+  // `webhook_events`.
+  //
+  // Ne lire que la première table revenait à ne voir que la moitié des
+  // acheteurs. Le 29 août 2026, la livraison a servi les deux personnes
+  // qu'elle voyait, pendant que deux autres — payées les 20 et 25 août —
+  // restaient invisibles pour elle : neuf et quatre jours sans rien recevoir,
+  // sans que personne ne puisse le savoir depuis l'application.
+  //
+  // On lit donc les deux, et on les fond en une seule liste. Le reste du
+  // traitement ne change pas : c'est le même acheteur, quel que soit le chemin
+  // par lequel son argent est arrivé.
+  interface Candidate {
+    sale_id: string;
+    email: string;
+    plan: string;
+    created_at: string;
+  }
+  const candidats: Candidate[] = [];
+
+  const { data: intentions, error } = await sb
     .from('payment_intents')
     .select('sale_id, email, plan, created_at, user_id')
     .in('statut_boutique', ['completed', 'settled'])
@@ -89,9 +114,60 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
     .limit(100);
 
   if (error) {
-    console.warn('[LIVRAISON] Lecture impossible :', error.message);
-    return bilan;
+    console.warn('[LIVRAISON] Lecture des intentions impossible :', error.message);
   }
+  for (const i of intentions ?? []) {
+    candidats.push({
+      sale_id: String(i.sale_id ?? ''),
+      email: String(i.email ?? ''),
+      plan: String(i.plan ?? ''),
+      created_at: String(i.created_at ?? ''),
+    });
+  }
+
+  // Les messages de la boutique. L'offre s'y déduit du montant : le nom du
+  // produit change au gré de la vitrine, le prix payé ne ment pas.
+  const { data: messages, error: erreurMessages } = await sb
+    .from('webhook_events')
+    .select('delivery_id, payload, received_at')
+    .gte('received_at', depuis)
+    .order('received_at', { ascending: false })
+    .limit(500);
+
+  if (erreurMessages) {
+    console.warn('[LIVRAISON] Lecture des messages de la boutique impossible :', erreurMessages.message);
+  }
+  for (const m of messages ?? []) {
+    const p: any = m.payload ?? {};
+    if (!/sale|paiement|payment/i.test(String(p.event ?? '')) || /refund|cancel/i.test(String(p.event ?? '')))
+      continue;
+    if (String(p?.sale?.status ?? '').toLowerCase() !== 'completed') continue;
+
+    const email = String(p?.customer?.email ?? p?.email ?? '');
+    const montant = Number(p?.sale?.amount?.value ?? p?.sale?.original_amount?.value ?? 0);
+    const plan = planFromAmount(montant);
+    // Un achat à l'unité (600 F) n'ouvre pas d'abonnement : il débloque une
+    // rencontre, ce que gère `matchs_debloques`. Le servir ici offrirait un
+    // mois entier à quelqu'un qui a payé un match.
+    if (!email || !plan) continue;
+
+    const sale = String(p?.sale?.id ?? m.delivery_id ?? '');
+    if (!sale) continue;
+    if (candidats.some((c) => c.sale_id === sale)) continue;
+
+    candidats.push({ sale_id: sale, email, plan, created_at: String(m.received_at ?? '') });
+  }
+
+  // Une vente déjà portée par un abonnement est servie : elle ne concerne plus
+  // cette fonction, même si son acheteur n'a pas de compte à cette adresse.
+  const { data: dejaPortees } = await sb
+    .from('subscriptions')
+    .select('chariow_sale_id')
+    .gte('created_at', depuis)
+    .not('chariow_sale_id', 'is', null);
+  const servies = new Set((dejaPortees ?? []).map((s) => String(s.chariow_sale_id)));
+
+  const ventes = candidats.filter((c) => !servies.has(c.sale_id));
 
   // Les adresses déjà connues, lues UNE FOIS et en entier : près de six mille
   // comptes, et une lecture partielle ferait créer un doublon à quelqu'un qui
