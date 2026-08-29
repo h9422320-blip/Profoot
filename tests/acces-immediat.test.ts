@@ -177,3 +177,34 @@ test('★ ACQUIS — les deux verrous de coût sont toujours dans le code', () =
   );
   assert.match(filet, /avecDelai/, 'Le délai a sauté : une boutique lente bloquerait la page.');
 });
+
+// ── L'ACHETEUR SANS COMPTE NE DOIT PLUS ÊTRE LAISSÉ EN SILENCE ─────────────
+
+test('★ ACQUIS — une vente sans compte déclenche une invitation à s’inscrire', () => {
+  // Le 28 août 2026 à 12 h 43, quelqu'un paie 2 000 FCFA sans compte. La vente
+  // est enregistrée, l'accès l'attend — mais rien ne le lui dit. Le lendemain
+  // matin, le seul courrier reçu est celui de la boutique demandant « Comment
+  // s'est passé votre achat ? ». Il répond : « Je comprends rien d'abord. »
+  // Vingt et une heures après avoir payé, il n'avait toujours pas de compte.
+  const m = fs.readFileSync(path.join(process.cwd(), 'src/lib/maketou.ts'), 'utf8');
+  assert.match(m, /messageCompteAcreer/, 'L’acheteur sans compte n’est plus invité à s’inscrire.');
+  assert.match(m, /if \(!erreurTrace && !dejaVue\)/, 'L’invitation part même quand la vente est perdue, ou en double.');
+});
+
+test('★ ACQUIS — l’invitation ne part qu’une fois par vente', () => {
+  // MakeTou renvoie parfois deux fois le même message. Un client qui reçoit
+  // trois courriels après avoir payé conclut que quelque chose ne tourne pas
+  // rond.
+  const m = fs.readFileSync(path.join(process.cwd(), 'src/lib/maketou.ts'), 'utf8');
+  assert.match(m, /const dejaVue = !!dejaEnregistree/, 'Le garde contre le doublon a sauté.');
+});
+
+test('★ ACQUIS — l’invitation dit l’adresse exacte à employer', () => {
+  // C'est là que ça casse : le 29 août, quinze personnes payantes se
+  // retrouvaient devant le mur de paiement pour s'être inscrites avec une
+  // adresse voisine d'une lettre.
+  const c = fs.readFileSync(path.join(process.cwd(), 'src/lib/courriel.ts'), 'utf8');
+  assert.match(c, /export function messageCompteAcreer/);
+  assert.match(c, /inscrivez-vous avec cette adresse exactement/i, 'Le message ne nomme plus l’adresse à employer.');
+  assert.match(c, /profootai\.com\/signup/, 'Le message ne dit plus où s’inscrire.');
+});

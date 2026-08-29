@@ -276,6 +276,19 @@ export async function ouvrirAccesMaketou(
     if (data.users.length < 1000) break;
   }
 
+  // ── AVONS-NOUS DÉJÀ VU CETTE VENTE ? ────────────────────────────────────
+  //
+  // MakeTou renvoie parfois deux fois le même message. Sans cette lecture,
+  // l'acheteur sans compte recevrait l'invitation autant de fois que le pulse
+  // se répète — et un client qui reçoit trois fois le même courriel après
+  // avoir payé conclut que quelque chose ne tourne pas rond.
+  const { data: dejaEnregistree } = await admin
+    .from('payment_intents')
+    .select('sale_id')
+    .eq('sale_id', venteId)
+    .maybeSingle();
+  const dejaVue = !!dejaEnregistree;
+
   const { error: erreurTrace } = await admin.from('payment_intents').upsert(
     {
       sale_id: venteId,
@@ -303,13 +316,50 @@ export async function ouvrirAccesMaketou(
   }
 
   if (!userId) {
+    // ── ON LUI DIT QUOI FAIRE, AU LIEU DE L'ATTENDRE ──────────────────────
+    //
+    // La règle du projet est qu'on crée son compte AVANT de payer, et le
+    // parcours de l'application l'impose. Mais la vitrine de la boutique est
+    // publique : on peut y payer par un lien partagé, sans jamais passer par
+    // profootai.com. Ces ventes-là arrivent donc sans compte, et il n'y a
+    // aucun moyen de l'empêcher depuis ici.
+    //
+    // Ce qu'on peut empêcher, c'est le silence. Le 28 août 2026 à 12 h 43,
+    // quelqu'un a payé 2 000 FCFA sans compte. Le lendemain matin, le seul
+    // courrier qu'il avait reçu était celui de la boutique lui demandant
+    // « Comment s'est passé votre achat ? ». Il a répondu : « Je comprends
+    // rien d'abord. » Vingt et une heures après son paiement, il n'avait
+    // toujours pas de compte — et l'accès qui l'attendait ne pouvait pas
+    // s'ouvrir.
+    //
+    // L'envoi ne bloque rien et n'échoue jamais bruyamment : la vente est
+    // déjà enregistrée, et un service de courriel injoignable ne doit pas
+    // faire échouer le traitement du pulse.
+    if (!erreurTrace && !dejaVue) {
+      void (async () => {
+        try {
+          const { envoyerCourriel, messageCompteAcreer } = await import('./courriel');
+          const parti = await envoyerCourriel({
+            a: email,
+            ...messageCompteAcreer(email, PLANS[plan].label),
+          });
+          console.log(
+            `[MAKETOU] Invitation à créer son compte ${parti ? 'envoyée' : 'NON envoyée'} à ${email}.`
+          );
+        } catch (e: any) {
+          console.warn('[MAKETOU] Invitation non envoyée :', e?.message);
+        }
+      })();
+    }
+
     return {
       ouvert: false,
       email,
       motif: erreurTrace
         ? `Aucun compte ProFoot à cette adresse, ET la vente n'a PAS PU être enregistrée ` +
           `(${erreurTrace.message}). Elle est donc perdue : à rattraper à la main.`
-        : `Aucun compte ProFoot à cette adresse. La vente est enregistrée ; l'accès s'ouvrira à l'inscription.`,
+        : `Aucun compte ProFoot à cette adresse. La vente est enregistrée, un courriel ` +
+          `invite l'acheteur à créer son compte ; l'accès s'ouvrira alors tout seul.`,
     };
   }
 

@@ -130,6 +130,58 @@ export async function envoyerCourriel({ a, sujet, texte }: Courriel): Promise<bo
  * Il ne s'excuse qu'une fois. Répéter des excuses attire l'attention sur la
  * panne plutôt que sur son règlement.
  */
+/**
+ * IL A PAYÉ, IL N'A PAS DE COMPTE, ET PERSONNE NE LUI DIT QUOI FAIRE.
+ *
+ * ── CE QUI S'EST PASSÉ ────────────────────────────────────────────────────
+ *
+ * Le 28 août 2026 à 12 h 43, quelqu'un paie 2 000 FCFA. Il n'a pas de compte
+ * ProFoot : la vente est enregistrée, l'accès s'ouvrira à son inscription —
+ * mais rien ne le lui dit. Le lendemain matin, il reçoit de la boutique un
+ * message automatique « Comment s'est passé votre achat ? » et répond :
+ *
+ *     « Je comprends rien d'abord »
+ *
+ * Il a payé, il attend, et le seul courrier qu'il reçoit lui demande s'il est
+ * content. Vingt et une heures plus tard, il n'avait toujours pas de compte.
+ *
+ * ── POURQUOI CE TEXTE-LÀ ──────────────────────────────────────────────────
+ *
+ * La première ligne dit que le paiement est reçu : c'est ce qu'il doute le
+ * plus. La deuxième dit l'unique geste qui reste, et l'adresse à employer y
+ * est écrite en toutes lettres — c'est exactement là que ça casse. Le 29 août,
+ * quinze personnes payantes se retrouvaient devant le mur de paiement pour
+ * s'être inscrites avec une adresse voisine d'une lettre.
+ *
+ * Aucune excuse : il n'y a pas eu de panne. Le dire laisserait croire qu'il
+ * s'est passé quelque chose d'anormal, alors qu'il lui manque une inscription.
+ */
+export function messageCompteAcreer(adresse: string, offre: string): Omit<Courriel, 'a'> {
+  return {
+    sujet: 'Votre accès ProFoot AI vous attend — il reste une étape',
+    texte: [
+      'Bonjour,',
+      '',
+      `Votre paiement pour l'offre ${offre} est bien reçu. Merci.`,
+      '',
+      'Il reste une seule étape : créer votre compte sur profootai.com. ' +
+        'Votre accès s\'ouvrira tout seul, sans rien avoir à demander.',
+      '',
+      `IMPORTANT : inscrivez-vous avec cette adresse exactement — ${adresse}`,
+      "C'est elle qui porte votre paiement. Avec une autre adresse, même " +
+        'proche, votre accès ne vous retrouvera pas.',
+      '',
+      'Pour créer votre compte : profootai.com/signup',
+      '',
+      "Si quoi que ce soit bloque, répondez simplement à ce message : c'est " +
+        'une vraie boîte, et je vous réponds.',
+      '',
+      'Ousmane',
+      'ProFoot AI — profootai.com',
+    ].join('\n'),
+  };
+}
+
 export function messageAccesRouvert(expireLe: string | null): Omit<Courriel, 'a'> {
   const echeance = expireLe
     ? new Date(expireLe).toLocaleDateString('fr-FR', {
