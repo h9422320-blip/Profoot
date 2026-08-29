@@ -606,7 +606,36 @@ function poidsAffiche(p: Preuve, grandsClubs: string[]): number {
   return notoriete * 100 + niveau - (estAmical(competition) ? 3 : 0);
 }
 
-export async function getPreuvesPubliques(limite = 10): Promise<{
+/** Ce qu'on veut voir du mur, et dans quel ordre. */
+export interface OptionsPreuves {
+  /**
+   * N'afficher que les cartes où le score a été trouvé AU BUT PRÈS.
+   *
+   * C'est le réglage de la page d'analyse : elle ne montre que la preuve la
+   * plus forte. Les issues justes, elles, restent entières sur la page dédiée
+   * — on ne les cache pas, on les met ailleurs.
+   *
+   * Le bandeau de chiffres n'est PAS filtré pour autant : il continue de
+   * compter toutes les réussites. Un visiteur doit lire « 61 scores exacts,
+   * 211 analyses réussies » même si la liste en dessous n'en montre que
+   * quarante.
+   */
+  uniquementScoresExacts?: boolean;
+  /**
+   * Classer strictement du plus récent au plus ancien, à la seconde près.
+   *
+   * Sans cette option, la notoriété des affiches départage à l'intérieur d'une
+   * journée : un Real Madrid remonte devant un Guingamp du même jour. Sur une
+   * liste de scores exacts, ce n'est pas ce qu'on veut — on veut une frise,
+   * lisible de haut en bas, du plus frais au plus ancien.
+   */
+  ordreChronologique?: boolean;
+}
+
+export async function getPreuvesPubliques(
+  limite = 10,
+  options: OptionsPreuves = {}
+): Promise<{
   preuves: Preuve[];
   bilan: BilanPreuves;
   total: number;
@@ -632,7 +661,16 @@ export async function getPreuvesPubliques(limite = 10): Promise<{
     .order('mise_en_avant', { ascending: false })
     .order('score_exact', { ascending: false })
     .order('date_match', { ascending: false })
-    .limit(200);
+    // ── LE PLAFOND DISAIT « 200 » ALORS QU'IL Y EN AVAIT 211 ───────────────
+    //
+    // Le bandeau annonce le nombre de réussites, et ce nombre venait de cette
+    // requête : plafonnée à 200, elle faisait afficher « 200 analyses
+    // réussies » quand la base en comptait 211. Onze réussites réelles
+    // disparaissaient du décompte — et le bouton invitait à « voir les 200
+    // preuves » alors qu'il y en avait davantage.
+    //
+    // Un chiffre de vente doit être vrai, surtout celui-là.
+    .limit(1000);
 
   if (error) {
     // La migration n'a pas encore été appliquée : la section ne s'affiche pas,
@@ -717,8 +755,26 @@ export async function getPreuvesPubliques(limite = 10): Promise<{
 
   const ilYAUneSemaine = Date.now() - 7 * 86400000;
 
+  // ── CE QUI EST MONTRÉ, ET CE QUI EST COMPTÉ, SONT DEUX CHOSES ───────────
+  //
+  // Le bandeau compte TOUTES les réussites — c'est le palmarès, il ne se
+  // filtre pas. La liste, elle, peut n'en montrer qu'une partie : la page
+  // d'analyse ne veut que les scores exacts, en frise chronologique.
+  //
+  // Séparer les deux est la seule façon d'afficher « 211 analyses réussies »
+  // au-dessus de quarante cartes sans mentir sur ni l'un ni l'autre.
+  const montrees = options.uniquementScoresExacts
+    ? ordonnees.filter((p) => p.scoreExact)
+    : ordonnees;
+
+  const liste = options.ordreChronologique
+    ? [...montrees].sort((a, b) =>
+        String(b.dateMatch ?? '').localeCompare(String(a.dateMatch ?? ''))
+      )
+    : montrees;
+
   return {
-    preuves: ordonnees.slice(0, limite),
+    preuves: liste.slice(0, limite),
     total: ordonnees.length,
     bilan: {
       reussites: ordonnees.length,

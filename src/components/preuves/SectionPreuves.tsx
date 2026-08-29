@@ -224,18 +224,35 @@ function CartePreuve({ p }: { p: Preuve }) {
 }
 
 export default async function SectionPreuves({
-  // Huit cartes coupaient des réussites du jour : la victoire du Barça et
-  // celle du Real, toutes deux justes, tombaient hors du mur. Un visiteur ne
-  // fait pas défiler indéfiniment, mais rien de correct ne doit disparaître
-  // faute de place.
-  limite = 16,
+  // ── QUARANTE CARTES, ET RIEN QUE DES SCORES EXACTS ────────────────────────
+  //
+  // La page d'analyse montrait seize cartes mêlant les issues justes et les
+  // scores exacts, reclassées par notoriété. Elle ne montre plus que la preuve
+  // la plus forte — le score trouvé AU BUT PRÈS — en frise, du plus récent au
+  // plus ancien.
+  //
+  // Ce n'est pas cacher les autres : les 150 issues justes restent entières
+  // sur la page dédiée, où mène le bouton. Ici, on ouvre avec ce qu'il y a de
+  // plus difficile à faire.
+  //
+  // Quarante : il y a 61 scores exacts au 29 août 2026, le quarantième
+  // remonte au 15 août. La liste couvre donc les douze derniers jours — assez
+  // récente pour prouver que l'outil marche AUJOURD'HUI, assez longue pour
+  // qu'on ne la parcoure pas d'un coup d'œil.
+  limite = 40,
   avecEntete = true,
+  scoresExactsSeuls = true,
 }: {
   limite?: number;
   /** Faux sur la page dediee, qui porte deja son propre titre. */
   avecEntete?: boolean;
+  /** Faux sur la page dédiée, qui montre TOUT le palmarès. */
+  scoresExactsSeuls?: boolean;
 }) {
-  const { preuves, bilan, total } = await getPreuvesPubliques(limite);
+  const { preuves, bilan, total } = await getPreuvesPubliques(limite, {
+    uniquementScoresExacts: scoresExactsSeuls,
+    ordreChronologique: scoresExactsSeuls,
+  });
   return <MurPreuves preuves={preuves} bilan={bilan} total={total} avecEntete={avecEntete} />;
 }
 

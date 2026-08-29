@@ -103,7 +103,17 @@ export default async function PagePreuves() {
     }
   });
 
-  const { preuves, bilan, total } = await getPreuvesPubliques(60);
+  // ── ICI, TOUT LE PALMARÈS ────────────────────────────────────────────────
+  //
+  // Le bouton de la page d'analyse promet « voir les 211 preuves » ; cette
+  // page en montrait soixante. Quelqu'un venu vérifier la promesse trouvait un
+  // tiers de ce qu'on lui avait annoncé — et rien ne lui disait où était le
+  // reste.
+  //
+  // Elle montre donc désormais toutes les réussites : les issues justes comme
+  // les scores exacts, dans l'ordre du mur. La page d'analyse ouvre avec les
+  // quarante scores exacts ; celle-ci répond à « et tout le reste ? ».
+  const { preuves, bilan, total } = await getPreuvesPubliques(1000);
 
   /**
    * Ce que Google lit, et ce qu'il n'y trouvera pas.
