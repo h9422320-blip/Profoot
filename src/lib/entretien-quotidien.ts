@@ -188,6 +188,26 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
   // Le relevé se fait donc ici, juste après le mur dont il se déduit, dans un
   // entretien porté par les visites plutôt que par une horloge qui n'a pas le
   // temps d'arriver au bout.
+  // ── LE FILET REPASSE SUR CEUX QUI ATTENDENT EN SILENCE ──────────────────
+  //
+  // Le pulse invite l'acheteur sans compte au moment où sa vente arrive. Il ne
+  // peut rien pour les ventes traitées avant qu'il sache le faire, ni pour
+  // celles où l'envoi a échoué. Un filet qui ne rattrape que ce qui tombe
+  // pendant qu'il est tendu n'est pas un filet.
+  await etape(
+    'Inviter les acheteurs sans compte',
+    async () => {
+      const { inviterAcheteursSansCompte } = await import('./invitation-acheteurs');
+      const r = await inviterAcheteursSansCompte();
+      return (
+        `${r.invites} invitation(s) envoyée(s) sur ${r.examines} vente(s) sans compte ` +
+        `— ${r.dejaInvites} déjà invité(s), ${r.inscritsEntreTemps} inscrit(s) depuis` +
+        (r.echecs ? `, ${r.echecs} envoi(s) en échec` : '')
+      );
+    },
+    etapes
+  );
+
   await etape(
     'Relever la précision du jour',
     async () => {
