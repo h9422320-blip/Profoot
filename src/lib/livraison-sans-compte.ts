@@ -52,7 +52,7 @@ const MAX_PAR_PASSE = 20;
  * client dans le message — un vrai message porte toujours l'identifiant des
  * deux.
  */
-const DOMAINES_DE_TEST = /@(profoot-test\.com|profootai\.com|example\.(com|org|net)|test\.[a-z]+|localhost)$/i;
+export const DOMAINES_DE_TEST = /@(profoot-test\.com|profootai\.com|example\.(com|org|net)|test\.[a-z]+|localhost)$/i;
 
 export interface BilanLivraison {
   examinees: number;

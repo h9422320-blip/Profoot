@@ -172,3 +172,21 @@ test('★ ACQUIS — une vente de test ne reçoit jamais de compte', () => {
   assert.ok(s.includes('profoot-test'), 'Le domaine des scripts de test n’est plus reconnu.');
   assert.match(s, /!p\?\.store\?\.id \|\| !p\?\.customer\?\.id/, 'Un message sans boutique ni client passe de nouveau.');
 });
+
+// ── LA REMISE EN ORDRE ─────────────────────────────────────────────────────
+
+test('★ ACQUIS — un abonnement de test est annulé, jamais supprimé', () => {
+  // Un abonnement supprimé ne se retrouve pas. Si le filtre venait à se
+  // tromper — une adresse réelle prise pour une adresse de test — l'effacement
+  // coûterait son accès à quelqu'un qui a payé, sans moyen de le lui rendre.
+  //
+  // Le montant tombe à zéro parce qu'aucun argent n'est entré : le laisser à
+  // 2 000 gonflerait les recettes du mois et, avec elles, la part due aux
+  // partenaires. On paierait quelqu'un sur de l'argent qui n'existe pas.
+  const s = sansCommentaires(lire('src/lib/menage-comptes-test.ts'));
+  assert.match(s, /status: 'cancelled', amount: 0/, 'L’abonnement de test n’est plus neutralisé.');
+  assert.doesNotMatch(s, /\.delete\(\)/, 'La remise en ordre efface désormais des lignes.');
+  assert.doesNotMatch(s, /deleteUser/, 'La remise en ordre supprime désormais des comptes.');
+  assert.match(s, /DOMAINES_DE_TEST/, 'La liste des domaines de test n’est plus partagée avec la livraison.');
+  assert.match(s, /for \(let page = 1; page <= 60; page\+\+\)/, 'La lecture des comptes n’est plus paginée.');
+});

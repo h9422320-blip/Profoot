@@ -60,6 +60,29 @@ export async function POST(requete: Request) {
     return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 });
   }
 
+  // ── LA REMISE EN ORDRE PASSE PAR LA MÊME PORTE ──────────────────────────
+  //
+  // Elle défait ce que la livraison a fait de travers : les abonnements
+  // ouverts le 29 août 2026 sur des ventes fabriquées par les scripts de test.
+  // Elle n'efface rien — elle annule, ce qui se relit et se défait.
+  //
+  // Même porte, même clé : une seconde porte, c'est un second verrou à tenir
+  // à jour, et celui qu'on oublie est toujours le bon.
+  let action = '';
+  try {
+    const corps = await requete.clone().json();
+    action = String(corps?.action ?? '');
+  } catch {
+    // Pas de corps, ou corps illisible : c'est une livraison ordinaire.
+  }
+
+  if (action === 'menage') {
+    const { neutraliserAbonnementsDeTest } = await import('@/lib/menage-comptes-test');
+    const m = await neutraliserAbonnementsDeTest();
+    console.log(`[MÉNAGE] ${m.neutralises} abonnement(s) de test annulé(s).`);
+    return NextResponse.json(m);
+  }
+
   const bilan = await livrerVentesSansCompte();
   console.log(
     `[LIVRAISON] Déclenchée par la porte de service : ${bilan.livrees} livraison(s) ` +
