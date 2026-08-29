@@ -76,6 +76,15 @@ export async function POST(requete: Request) {
     // Pas de corps, ou corps illisible : c'est une livraison ordinaire.
   }
 
+  // La surveillance passe par la même porte, pour la même raison : pouvoir la
+  // déclencher tout de suite plutôt qu'attendre l'horloge. Une alerte qu'on
+  // n'a jamais vue partir n'est pas une alerte, c'est une intention.
+  if (action === 'blocages') {
+    const { signalerAbonnesJamaisEntres } = await import('@/lib/abonnes-jamais-entres');
+    const b = await signalerAbonnesJamaisEntres();
+    return NextResponse.json(b);
+  }
+
   if (action === 'menage') {
     const { neutraliserAbonnementsDeTest } = await import('@/lib/menage-comptes-test');
     const m = await neutraliserAbonnementsDeTest();
