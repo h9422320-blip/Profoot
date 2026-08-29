@@ -38,6 +38,21 @@ export interface ClubVedette {
    * référentiel ne répond pas, ce qui arrive sur une connexion mobile lente.
    */
   monogramme: string;
+  /**
+   * La couleur du club, pour le halo au moment du choix.
+   *
+   * ── CE QUE CETTE COULEUR N'EST PAS ──────────────────────────────────────
+   *
+   * Ce n'est pas une charte officielle et elle ne prétend pas l'être : c'est
+   * la teinte à laquelle on reconnaît un club de loin — le rouge de Liverpool,
+   * le jaune de Dortmund, le ciel de Manchester City. Elle ne sert qu'à
+   * allumer la carte choisie.
+   *
+   * Elle est choisie assez lumineuse pour se voir sur fond noir : le bleu nuit
+   * du PSG ou le noir de la Juventus ne feraient aucun halo, alors on prend
+   * leur seconde couleur, celle qui claque.
+   */
+  couleur: string;
   /** Noms sous lesquels le fournisseur connaît ce club. */
   alias: string[];
 }
@@ -57,8 +72,8 @@ export const CHAMPIONNATS_VEDETTES: readonly ChampionnatVedette[] = [
     libelle: 'La Liga',
     drapeau: '🇪🇸',
     clubs: [
-      { id: 'realmadrid', nom: 'Real Madrid', monogramme: 'RM', alias: ['Real Madrid'] },
-      { id: 'barcelona', nom: 'FC Barcelone', monogramme: 'FCB', alias: ['Barcelona', 'FC Barcelona'] },
+      { id: 'realmadrid', nom: 'Real Madrid', monogramme: 'RM', couleur: '#FEBE10', alias: ['Real Madrid'] },
+      { id: 'barcelona', nom: 'FC Barcelone', monogramme: 'FCB', couleur: '#A50044', alias: ['Barcelona', 'FC Barcelona'] },
     ],
   },
   {
@@ -66,11 +81,13 @@ export const CHAMPIONNATS_VEDETTES: readonly ChampionnatVedette[] = [
     libelle: 'Premier League',
     drapeau: '🇬🇧',
     clubs: [
-      { id: 'manchestercity', nom: 'Manchester City', monogramme: 'MC', alias: ['Manchester City'] },
-      { id: 'liverpool', nom: 'Liverpool', monogramme: 'LFC', alias: ['Liverpool'] },
-      { id: 'manchesterunited', nom: 'Manchester United', monogramme: 'MU', alias: ['Manchester United'] },
-      { id: 'chelsea', nom: 'Chelsea', monogramme: 'CFC', alias: ['Chelsea'] },
-      { id: 'arsenal', nom: 'Arsenal', monogramme: 'ARS', alias: ['Arsenal'] },
+      { id: 'manchestercity', nom: 'Manchester City', monogramme: 'MC', couleur: '#6CABDD', alias: ['Manchester City'] },
+      { id: 'liverpool', nom: 'Liverpool', monogramme: 'LFC', couleur: '#C8102E', alias: ['Liverpool'] },
+      { id: 'manchesterunited', nom: 'Manchester United', monogramme: 'MU', couleur: '#DA291C', alias: ['Manchester United'] },
+      // Le bleu de Chelsea est très sombre : on prend sa version éclaircie,
+      // sans quoi le halo ne se voit pas sur fond noir.
+      { id: 'chelsea', nom: 'Chelsea', monogramme: 'CFC', couleur: '#3C6FD1', alias: ['Chelsea'] },
+      { id: 'arsenal', nom: 'Arsenal', monogramme: 'ARS', couleur: '#EF0107', alias: ['Arsenal'] },
     ],
   },
   {
@@ -82,11 +99,14 @@ export const CHAMPIONNATS_VEDETTES: readonly ChampionnatVedette[] = [
         id: 'parissaintgermain',
         nom: 'Paris Saint-Germain',
         monogramme: 'PSG',
+        // Le bleu marine du PSG ne ferait aucun halo sur fond noir : on
+        // prend son rouge, celui du maillot extérieur et de l'écusson.
+        couleur: '#E30613',
         // « Paris Saint Germain » sans trait d'union chez le fournisseur, et il
         // existe un « Paris FC » dans le même championnat : l'identifiant tranche.
         alias: ['Paris Saint Germain', 'Paris Saint-Germain'],
       },
-      { id: 'marseille', nom: 'Marseille', monogramme: 'OM', alias: ['Marseille'] },
+      { id: 'marseille', nom: 'Marseille', monogramme: 'OM', couleur: '#2FAEE0', alias: ['Marseille'] },
     ],
   },
   {
@@ -94,9 +114,9 @@ export const CHAMPIONNATS_VEDETTES: readonly ChampionnatVedette[] = [
     libelle: 'Serie A',
     drapeau: '🇮🇹',
     clubs: [
-      { id: 'juventus', nom: 'Juventus', monogramme: 'JUV', alias: ['Juventus'] },
-      { id: 'acmilan', nom: 'AC Milan', monogramme: 'ACM', alias: ['AC Milan'] },
-      { id: 'inter', nom: 'Inter Milan', monogramme: 'INT', alias: ['Inter'] },
+      { id: 'juventus', nom: 'Juventus', monogramme: 'JUV', couleur: '#E8E8E8', alias: ['Juventus'] },
+      { id: 'acmilan', nom: 'AC Milan', monogramme: 'ACM', couleur: '#FB090B', alias: ['AC Milan'] },
+      { id: 'inter', nom: 'Inter Milan', monogramme: 'INT', couleur: '#0A84FF', alias: ['Inter'] },
     ],
   },
   {
@@ -108,6 +128,7 @@ export const CHAMPIONNATS_VEDETTES: readonly ChampionnatVedette[] = [
         id: 'bayernmunchen',
         nom: 'Bayern Munich',
         monogramme: 'BAY',
+        couleur: '#DC052D',
         // Le fournisseur écrit « Bayern München ». Écrit « Bayern Munich », il
         // ne renvoie rien — c'est exactement le piège documenté dans
         // `noms-clubs-fr.ts`.
@@ -117,6 +138,7 @@ export const CHAMPIONNATS_VEDETTES: readonly ChampionnatVedette[] = [
         id: 'borussiadortmund',
         nom: 'Borussia Dortmund',
         monogramme: 'BVB',
+        couleur: '#FDE100',
         alias: ['Borussia Dortmund'],
       },
     ],

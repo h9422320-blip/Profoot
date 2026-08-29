@@ -259,14 +259,20 @@ test('★ ACQUIS — l’adresse d’écusson conservée vient bien de l’hébe
 // d'ouvrir, une page qui glisse de côté.
 
 test('★ ACQUIS — toutes les cibles tactiles font au moins 44 px', () => {
-  // Mesuré dans un navigateur à 360 px le 28 août 2026 : bouton « Passer »
-  // 44 px, champ de recherche 54 px, carte de club 66 px, « Continuer » 52 px.
-  // Ces minimums vivent dans les classes, un test peut donc les tenir.
+  // Mesuré dans un navigateur à 360 px : bouton « Passer » 44 px, champ de
+  // recherche 54 px, carte de club 66 px, « Continuer » 52 px.
+  //
+  // Le test lit les VALEURS et vérifie le seuil, au lieu de recopier les
+  // hauteurs exactes. Une première version les figeait une à une : agrandir
+  // une carte de 64 à 68 px — une amélioration — faisait échouer le verrou.
+  // Un test qui punit les progrès finit par être contourné.
   const ecran = lire(ECRAN);
-  assert.match(ecran, /min-h-\[44px\][^"]*rounded-full/, 'Le bouton « Passer » a perdu sa hauteur minimale.');
-  assert.match(ecran, /min-h-\[52px\][^"]*rounded-\[16px\]/, 'Le champ de recherche a perdu sa hauteur minimale.');
-  assert.match(ecran, /min-h-\[64px\]/, 'Les cartes de club ont perdu leur hauteur minimale.');
-  assert.match(ecran, /min-h-\[56px\]/, 'Les résultats de recherche ont perdu leur hauteur minimale.');
+  const hauteurs = [...ecran.matchAll(/min-h-\[(\d+)px\]/g)].map((m) => Number(m[1]));
+
+  assert.ok(hauteurs.length >= 4, `Seulement ${hauteurs.length} hauteurs minimales trouvées.`);
+  for (const h of hauteurs) {
+    assert.ok(h >= 44, `Une cible tactile est tombée à ${h} px, sous le minimum de 44.`);
+  }
 });
 
 test('★ ACQUIS — le champ de recherche ne fait pas zoomer iOS', () => {
@@ -298,7 +304,11 @@ test('★ ACQUIS — la carte reste contenue et centrée', () => {
   // de chaque côté, 690 px de haut sur 844 — l'overlay reste visible autour.
   const ecran = lire(ECRAN);
   assert.match(ecran, /max-w-\[400px\]/, 'La carte n’est plus bornée en largeur.');
-  assert.match(ecran, /rounded-\[22px\]/, 'La carte a perdu ses coins arrondis.');
+  // Le rayon exact peut évoluer ; ce qui compte est qu'il reste franc. Une
+  // notice à coins presque droits ne se lit plus comme un objet posé.
+  const rayon = ecran.match(/max-w-\[400px\][^"]*rounded-\[(\d+)px\]/);
+  assert.ok(rayon, 'La carte a perdu ses coins arrondis.');
+  assert.ok(Number(rayon![1]) >= 20, `Coins trop droits : ${rayon![1]} px.`);
   assert.match(ecran, /items-center justify-center/, 'La carte n’est plus centrée.');
   assert.match(ecran, /bg-black\/80/, 'Le voile sombre derrière la carte a disparu.');
   assert.doesNotMatch(ecran, /rounded-t-\[28px\]/, 'La carte est redevenue une feuille collée en bas.');
@@ -341,7 +351,36 @@ test('★ ACQUIS — le club touché s’allume avant que l’écran ne change',
   // à 15 % sur la carte choisie, contre blanc à 7 % et 1 px sur les autres.
   const ecran = lire(ECRAN);
   assert.match(ecran, /aria-pressed=\{choisi\}/, 'L’état choisi n’est plus annoncé.');
-  assert.match(ecran, /border-2 border-\[#10B981\] bg-\[#10B981\]\/15/, 'L’état choisi a perdu son style.');
+  // Le halo prend les couleurs DU CLUB, pas le vert de marque : c'est ce qui
+  // fait la différence entre « bouton sélectionné » et « c'est TON club ».
+  assert.match(ecran, /borderColor: club\.couleur/, 'Le halo a perdu les couleurs du club.');
+  assert.match(ecran, /boxShadow: `0 0 0 4px \$\{club\.couleur\}/, 'Le halo du club a disparu.');
+  // Elle grandit : on ne récompense pas un geste en enfonçant le bouton.
+  assert.match(ecran, /"border-2 scale-105"/, 'La carte choisie ne grandit plus.');
+});
+
+test('★ ACQUIS — chaque club porte une couleur lisible sur fond noir', () => {
+  // Le bleu marine du PSG et le noir de la Juventus ne feraient aucun halo :
+  // on prend leur seconde couleur. Un halo invisible vaut pas de halo, sauf
+  // qu'il donne l'illusion d'avoir été prévu.
+  for (const club of tousLesClubsVedettes()) {
+    assert.match(club.couleur, /^#[0-9A-F]{6}$/, `${club.nom} : couleur mal formée.`);
+    const r = parseInt(club.couleur.slice(1, 3), 16);
+    const v = parseInt(club.couleur.slice(3, 5), 16);
+    const b = parseInt(club.couleur.slice(5, 7), 16);
+    // Luminance perçue : l'œil ne pèse pas les trois canaux pareillement.
+    const clarte = 0.299 * r + 0.587 * v + 0.114 * b;
+    assert.ok(clarte > 55, `${club.nom} : couleur trop sombre (${Math.round(clarte)}) pour un halo.`);
+  }
+});
+
+test('★ ACQUIS — la carte entre en scène', () => {
+  // Une notice qui surgit s'impose ; une notice qui monte se présente. Fait en
+  // état React et non en image-clé CSS : aucune règle à déclarer, donc rien
+  // qui puisse ne pas être généré par Tailwind.
+  const ecran = lire(ECRAN);
+  assert.match(ecran, /setEntree\(true\)/, 'L’animation d’entrée a disparu.');
+  assert.match(ecran, /opacity-0 translate-y-4 scale-95/, 'L’état de départ de l’entrée a disparu.');
 });
 
 test('★ ACQUIS — aucune classe Tailwind fantôme dans les styles vivants', () => {

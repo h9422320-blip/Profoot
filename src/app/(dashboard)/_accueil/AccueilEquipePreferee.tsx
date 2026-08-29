@@ -69,6 +69,8 @@ export default function AccueilEquipePreferee() {
   const [clavier, setClavier] = useState(0);
   /** Le club touché, le temps que sa carte s'allume avant la fête. */
   const [enCours, setEnCours] = useState<string | null>(null);
+  /** Faux au premier rendu : la carte entre en scène au lieu d'apparaître. */
+  const [entree, setEntree] = useState(false);
   const enregistrement = useRef(false);
 
   // ── FAUT-IL OUVRIR ? ────────────────────────────────────────────────────
@@ -313,6 +315,21 @@ export default function AccueilEquipePreferee() {
     };
   }, [etape]);
 
+  // ── L'ENTRÉE EN SCÈNE ───────────────────────────────────────────────────
+  //
+  // La carte monte et se révèle en trois dixièmes de seconde au lieu de
+  // surgir. C'est ce qui distingue une notice qui s'impose d'un objet qu'on
+  // vous présente — et ça ne coûte que deux propriétés animées, opacité et
+  // déplacement, les deux seules que le téléphone traite sans repeindre.
+  //
+  // Fait en état React plutôt qu'en image-clé CSS : aucune règle à déclarer,
+  // donc rien qui puisse ne pas être généré.
+  useEffect(() => {
+    if (etape === "sommeil") return;
+    const t = setTimeout(() => setEntree(true), 20);
+    return () => clearTimeout(t);
+  }, [etape]);
+
   // Le fond ne défile pas derrière la feuille : sur téléphone, un arrière-plan
   // qui bouge sous le doigt donne l'impression que l'écran est cassé.
   useEffect(() => {
@@ -331,8 +348,21 @@ export default function AccueilEquipePreferee() {
       role="dialog"
       aria-modal="true"
       aria-label="Choisir son équipe préférée"
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-6"
-      style={clavier ? { height: `calc(100% - ${clavier}px)` } : undefined}
+      className="fixed inset-0 z-[300] flex items-center justify-center backdrop-blur-sm p-4 sm:p-6"
+      // ── L'AMBIANCE : DES PROJECTEURS, PAS UN VOILE GRIS ────────────────
+      //
+      // Un `bg-black/80` uniforme aplatit tout : la carte y flotte sur du
+      // néant. Deux halos posés en haut et en bas donnent la profondeur d'un
+      // stade éclairé — la carte semble prise dans la lumière au lieu d'être
+      // collée dessus. C'est un dégradé, pas un flou : aucune image par
+      // seconde perdue sur un téléphone d'entrée de gamme.
+      style={{
+        background:
+          "radial-gradient(130% 85% at 50% -10%, rgba(16,185,129,0.22) 0%, rgba(16,185,129,0.05) 35%, rgba(0,0,0,0) 65%)," +
+          "radial-gradient(120% 80% at 50% 110%, rgba(16,185,129,0.12) 0%, rgba(0,0,0,0) 60%)," +
+          "rgba(2,6,10,0.90)",
+        ...(clavier ? { height: `calc(100% - ${clavier}px)` } : {}),
+      }}
     >
       {/* ── UNE NOTICE POSÉE SUR LA PAGE, PAS UN ÉCRAN QUI LA REMPLACE ─────
           Elle occupait toute la hauteur du téléphone : on ne voyait plus
@@ -344,11 +374,34 @@ export default function AccueilEquipePreferee() {
           de la hauteur au maximum : c'est L'INTÉRIEUR qui défile, jamais la
           page. `overflow-x-hidden` est la ceinture de sécurité — aucun nom de
           club un peu long ne peut faire glisser la page de côté. */}
-      {/* `shadow-2xl` et non une ombre sur mesure : les valeurs arbitraires de
-          `shadow-[...]` contenant des virgules ne sont pas générées par
-          Tailwind ici — vérifié dans le navigateur. Une ombre déclarée qui
-          n'existe pas est pire qu'une ombre standard. */}
-      <div className="w-full max-w-[400px] max-h-[85%] flex flex-col overflow-hidden overflow-x-hidden rounded-[22px] border border-white/[0.09] bg-[#0f1a22] shadow-2xl">
+      {/* ── LA CARTE ───────────────────────────────────────────────────────
+          Le liseré vert du haut et l'ombre colorée sont écrits en style en
+          ligne, pas en classes : les valeurs Tailwind sur mesure contenant des
+          virgules ne sont pas générées ici — vérifié dans le navigateur, où
+          `shadow-[0_0_0_3px_rgba(...)]` ne produisait rigoureusement rien. Un
+          style qui a l'air écrit et qui n'existe pas est le pire des défauts,
+          parce qu'il survit à toutes les relectures. */}
+      <div
+        className={`relative w-full max-w-[400px] max-h-[85%] flex flex-col overflow-hidden overflow-x-hidden rounded-[26px] border border-white/[0.09] transition-all duration-300 ease-out ${
+          entree ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95"
+        }`}
+        style={{
+          background:
+            "linear-gradient(180deg, #12212b 0%, #0d161d 38%, #0a1218 100%)",
+          boxShadow:
+            "0 30px 90px rgba(0,0,0,0.8), 0 0 70px rgba(16,185,129,0.14)",
+        }}
+      >
+        {/* Le fil de lumière sur l'arête haute : c'est ce détail qui fait la
+            différence entre une boîte et un objet. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(52,211,153,0.85) 50%, rgba(16,185,129,0) 100%)",
+          }}
+        />
         {etape === "fete" ? (
           <Fete prenom={prenom} equipe={choisie} onContinuer={() => setEtape("sommeil")} />
         ) : (
@@ -403,18 +456,57 @@ function Choix({
 
           Le voile vert très pâle en haut de la carte tient lieu de signature
           de marque : c'est le vert de ProFoot, à peine posé, jamais crié. */}
-      <div className="relative shrink-0 border-b border-white/[0.06] bg-gradient-to-b from-[#10B981]/[0.07] to-transparent px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between gap-3">
+      <div className="relative shrink-0 overflow-hidden border-b border-white/[0.06] px-5 pt-5 pb-4">
+        {/* ── LA LUEUR DE MARQUE ──────────────────────────────────────────
+            Un dégradé radial posé en calque plutôt qu'un `blur` : sur un
+            téléphone d'entrée de gamme, flouter une grande surface coûte des
+            images par seconde, un dégradé n'en coûte aucune. Et il est écrit
+            en style en ligne parce que les valeurs Tailwind sur mesure
+            contenant des virgules ne sont pas générées — vérifié à l'écran. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(120% 90% at 50% -20%, rgba(16,185,129,0.30) 0%, rgba(16,185,129,0.08) 42%, rgba(16,185,129,0) 72%)",
+          }}
+        />
+
+        <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#10B981]">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#34D399]">
               {prenom ? `Bienvenue ${prenom}` : "Bienvenue"}
             </p>
-            <h2 className="mt-1.5 text-[20px] font-black leading-tight tracking-tight text-white">
-              Quelle est ton équipe préférée&nbsp;? ⚽
+
+            {/* ── ON NE DEMANDE PAS UNE PRÉFÉRENCE, ON LANCE UN DÉFI ───────
+                « Choisis ton club de cœur, juste pour le plaisir » était une
+                case de formulaire polie : rien à défendre, rien à ressentir,
+                on passe. Un supporter ne se lève pas pour une préférence — il
+                se lève pour dire que SON club est le meilleur du monde, et
+                que la question ne se pose même pas.
+
+                C'est le même clic, et ce n'est pas le même geste. */}
+            <h2 className="mt-2 text-[23px] font-black leading-[1.14] tracking-tight text-white">
+              Alors, c&apos;est qui le{" "}
+              {/* Le mot qui porte la provocation est écrit en dégradé plutôt
+                  qu'en couleur plate : c'est lui qu'on doit voir en premier,
+                  avant même d'avoir lu la phrase. */}
+              <span
+                style={{
+                  background: "linear-gradient(100deg, #34D399 0%, #A7F3D0 45%, #FBBF24 100%)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
+                  textShadow: "0 0 28px rgba(16,185,129,0.35)",
+                }}
+              >
+                MEILLEUR
+              </span>{" "}
+              club du monde&nbsp;? 🔥⚽
             </h2>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/45">
-              Choisis ton club de cœur — juste pour le plaisir. Tu resteras
-              libre d&apos;analyser n&apos;importe quel match.
+            <p className="mt-2 text-[13px] font-semibold leading-relaxed text-white/55">
+              Chaque vrai fan a <span className="text-white/85">SA</span> réponse.
+              Défends tes couleurs 👇
             </p>
           </div>
 
@@ -502,9 +594,14 @@ function Choix({
               ))}
             </div>
 
+            {/* La réassurance descend ici, en tout petit : elle est
+                nécessaire — cette réponse ne filtre aucune analyse — mais au
+                milieu d'un moment d'émotion elle éteignait la question. */}
             <p className="pt-4 pb-1 text-center text-[11.5px] leading-relaxed text-white/25">
               Ton club n&apos;est pas là&nbsp;? Cherche-le en haut — tous les
               championnats et toutes les sélections y sont.
+              <br />
+              Ta réponse ne change rien à tes analyses.
             </p>
           </>
         )}
@@ -546,17 +643,43 @@ function CarteClub({
       // pleine, doublée d'épaisseur, et fond teinté. C'est la confirmation que
       // le bon club a été touché, sur un écran où le doigt cache la moitié de
       // la carte.
-      className={`group flex min-h-[64px] items-center gap-2.5 rounded-[16px] p-3 text-left transition-all active:scale-[0.97] ${
+      // ── LE CLUB CHOISI S'ALLUME À SES PROPRES COULEURS ───────────────────
+      //
+      // Un halo vert de marque, identique pour les quatorze clubs, disait
+      // « bouton sélectionné ». Le rouge de Liverpool, le jaune de Dortmund ou
+      // le ciel de City disent « c'est TON club » — et c'est exactement ce
+      // qu'on vient de lui demander de revendiquer.
+      //
+      // La carte grandit légèrement au lieu de rétrécir : on ne récompense pas
+      // un geste en enfonçant le bouton.
+      className={`group flex min-h-[68px] items-center gap-3 rounded-[18px] p-3 text-left transition-all duration-200 ${
         choisi
-          ? "border-2 border-[#10B981] bg-[#10B981]/15"
-          : "border border-white/[0.07] bg-white/[0.03] hover:border-[#10B981]/40 hover:bg-[#10B981]/[0.07] active:bg-[#10B981]/10"
+          ? "border-2 scale-105"
+          : "border border-white/[0.08] bg-white/[0.035] hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.97]"
       }`}
+      style={
+        choisi
+          ? {
+              borderColor: club.couleur,
+              background: `linear-gradient(160deg, ${club.couleur}2E 0%, ${club.couleur}12 100%)`,
+              boxShadow: `0 0 0 4px ${club.couleur}33, 0 12px 34px ${club.couleur}55`,
+            }
+          : undefined
+      }
     >
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-white/[0.06] overflow-hidden">
+      {/* L'écusson posé sur un fond légèrement bombé : il se détache du noir
+          au lieu d'y flotter, et les blasons sombres restent lisibles. */}
+      <span
+        className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-[14px]"
+        style={{
+          background:
+            "linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 100%)",
+        }}
+      >
         {ecusson ? (
           <img src={ecusson} alt="" className="h-8 w-8 object-contain" />
         ) : (
-          <span className="text-[10px] font-black tracking-tight text-white/55">
+          <span className="text-[10px] font-black tracking-tight text-white/60">
             {club.monogramme}
           </span>
         )}
@@ -639,11 +762,27 @@ function Fete({
   onContinuer: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center px-6 py-11 sm:py-14 text-center">
+    <div className="relative flex flex-col items-center overflow-hidden px-6 py-11 text-center">
+      {/* Le halo de fond, en dégradé plutôt qu'en flou : même effet, aucune
+          image par seconde perdue sur un téléphone d'entrée de gamme. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(90% 60% at 50% 22%, rgba(16,185,129,0.28) 0%, rgba(16,185,129,0.06) 45%, rgba(16,185,129,0) 75%)",
+        }}
+      />
+
       <div className="relative">
-        {/* Halo : il donne au moment son épaisseur sans coûter une image. */}
-        <span className="absolute inset-0 -m-4 rounded-full bg-[#10B981]/20 blur-2xl" />
-        <span className="relative grid h-24 w-24 place-items-center rounded-[28px] border border-[#10B981]/30 bg-white/[0.06] overflow-hidden animate-fade-in">
+        <span
+          className="relative grid h-24 w-24 place-items-center overflow-hidden rounded-[28px] border border-[#10B981]/40 animate-fade-in"
+          style={{
+            background:
+              "linear-gradient(160deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)",
+            boxShadow: "0 0 40px rgba(16,185,129,0.35), 0 12px 40px rgba(0,0,0,0.5)",
+          }}
+        >
           {equipe?.logo ? (
             <img src={equipe.logo} alt="" className="h-16 w-16 object-contain" />
           ) : (
@@ -652,17 +791,24 @@ function Fete({
         </span>
       </div>
 
-      <p className="mt-7 text-[24px] sm:text-[30px] font-black leading-tight tracking-tight text-white">
+      <p
+        className="relative mt-7 text-[27px] font-black leading-tight tracking-tight text-white"
+        style={{ textShadow: "0 0 30px rgba(16,185,129,0.35)" }}
+      >
         Waouh{prenom ? ` ${prenom}` : ""} 🔥
       </p>
-      <p className="mt-2 text-[17px] sm:text-[19px] font-bold leading-snug text-white/80">
+      <p className="relative mt-2 text-[18px] font-bold leading-snug text-white/85">
         Tu es un GRAND fan de{" "}
-        <span className="text-[#10B981]">{equipe?.nom ?? "ton club"}</span>&nbsp;!
+        <span className="text-[#34D399]">{equipe?.nom ?? "ton club"}</span>&nbsp;!
       </p>
 
-      <p className="mt-5 max-w-[340px] text-[12.5px] leading-relaxed text-white/35">
-        C&apos;est noté. Tu peux maintenant analyser le match que tu veux —
-        n&apos;importe quelle équipe, quand tu veux.
+      {/* ── LA PHRASE QUI FLATTE, PAS CELLE QUI INFORME ────────────────────
+          Elle disait « c'est noté, tu peux maintenant analyser le match que
+          tu veux » — un accusé de réception. Au moment précis où quelqu'un
+          vient de revendiquer son club, on ne lui répond pas par le mode
+          d'emploi de l'application. */}
+      <p className="relative mt-4 max-w-[300px] text-[13px] leading-relaxed text-white/45">
+        Et personne ne te fera changer d&apos;avis.
       </p>
 
       {/* Pleine largeur sur téléphone : c'est la seule action de l'écran, elle
@@ -670,7 +816,11 @@ function Fete({
       <button
         type="button"
         onClick={onContinuer}
-        className="mt-7 w-full sm:w-auto min-h-[52px] rounded-[16px] bg-[#10B981] px-8 py-3.5 text-[14px] font-black text-[#04140d] transition-colors hover:bg-[#0ea472] active:scale-[0.98]"
+        className="relative mt-7 w-full min-h-[52px] rounded-[16px] px-8 py-3.5 text-[14.5px] font-black text-[#04140d] transition-transform active:scale-[0.98]"
+        style={{
+          background: "linear-gradient(180deg, #34D399 0%, #10B981 100%)",
+          boxShadow: "0 10px 30px rgba(16,185,129,0.35)",
+        }}
       >
         Continuer
       </button>
