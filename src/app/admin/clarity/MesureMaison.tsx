@@ -144,9 +144,22 @@ export default async function MesureMaison({ heures = 24 }: { heures?: number })
             })}
           </div>
 
+          {/* ── CES TROIS LIGNES NE FORMENT PAS UN PARTAGE ──────────────────
+              Le texte disait qu'elles « se partagent » ceux qui ont cliqué sur
+              une offre. Elles ne les partagent pas : chaque ligne compte les
+              PERSONNES ayant connu cette issue au moins une fois, et une même
+              personne peut fermer la notice, revenir, puis continuer.
+
+              Relevé le 29 août 2026 sur l'écran du propriétaire : 154 + 6 + 50
+              font 210 pour 188 personnes, et les parts affichées totalisent
+              111 %. Les nombres sont justes ; c'était la phrase qui promettait
+              une addition impossible — et qui faisait douter du tableau
+              entier. */}
           <p className="text-[11px] text-foreground/35 mt-4 leading-relaxed">
-            Les trois lignes en retrait sont les issues de la notice de paiement : elles se
-            partagent ceux qui ont cliqué sur une offre, elles ne se suivent pas. Cliquer
+            Les trois lignes en retrait sont les issues de la notice de paiement : elles ne
+            se suivent pas, et elles ne s&apos;additionnent pas non plus. Chacune compte les
+            personnes ayant connu cette issue au moins une fois — revenir sur les tarifs et
+            s&apos;y reprendre à deux fois place la même personne dans deux lignes. Cliquer
             « Continuer » est une décision, laisser filer les vingt secondes est de
             l&apos;indifférence, fermer est un refus — les distinguer dit s&apos;il faut
             raccourcir le délai, réécrire le texte, ou ne rien changer.

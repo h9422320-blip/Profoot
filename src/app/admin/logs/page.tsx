@@ -223,9 +223,12 @@ export default async function AdminLogs({
                   Ont essayé plusieurs fois sans jamais aboutir
                 </p>
                 <div className="space-y-1.5">
-                  {echecs.insistants.map((p) => (
+                  {/* Une clé tirée au hasard change à chaque rendu : React
+                      considère alors la ligne comme neuve et la remonte
+                      entièrement. Le rang est stable, et il suffit ici. */}
+                  {echecs.insistants.map((p, i) => (
                     <div
-                      key={p.email ?? p.userId ?? Math.random()}
+                      key={p.email ?? p.userId ?? `anonyme-${i}`}
                       className="flex flex-wrap items-center gap-3 px-3.5 py-2.5 rounded-[14px] bg-amber-500/[0.07] border border-amber-500/20"
                     >
                       <span className="text-sm font-black text-amber-400 tabular-nums shrink-0">

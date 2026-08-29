@@ -172,6 +172,33 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
     etapes
   );
 
+  // ── LA COURBE DE PRÉCISION S'ÉTAIT ARRÊTÉE LE 24 AOÛT ────────────────────
+  //
+  // Cet entretien reconstruisait le mur sans jamais enregistrer le relevé du
+  // jour. Le seul endroit qui l'écrivait était la tâche planifiée de minuit —
+  // celle-là même dont le fichier prévient qu'elle se fait couper avant la
+  // fin, faute de temps d'exécution. Résultat mesuré le 29 août 2026 :
+  // `precision_quotidienne` s'arrêtait au 24, avec des trous les 15 à 18 et
+  // les 21 et 22.
+  //
+  // Rien ne le signalait. La courbe ne disparaît pas quand elle cesse d'être
+  // alimentée : elle continue d'afficher son dernier point, et c'est le
+  // chiffre de précision qu'on montre aux visiteurs.
+  //
+  // Le relevé se fait donc ici, juste après le mur dont il se déduit, dans un
+  // entretien porté par les visites plutôt que par une horloge qui n'a pas le
+  // temps d'arriver au bout.
+  await etape(
+    'Relever la précision du jour',
+    async () => {
+      const { enregistrerPrecisionDuJour } = await import('./precision-quotidienne');
+      const r = await enregistrerPrecisionDuJour();
+      if (!r.ok) throw new Error(r.raison ?? 'relevé impossible');
+      return `${r.matchs ?? 0} match(s) du jour`;
+    },
+    etapes
+  );
+
   await etape(
     'Apprendre des résultats',
     async () => {
