@@ -173,22 +173,56 @@ test('★ ACQUIS — le bouton « Passer » existe et reste atteignable', () => 
 // ── LE MOMENT « WAOUH » ────────────────────────────────────────────────────
 
 test('★ ACQUIS — les confettis et le message personnel sont là', () => {
-  const ecran = lire(ECRAN);
-  assert.match(ecran, /canvas-confetti/, 'Les confettis ont disparu.');
-  assert.match(ecran, /Waouh/, 'Le message de fête a disparu.');
-  assert.match(ecran, /GRAND fan de/, 'Le message ne nomme plus le club.');
+  // ── LE TEST LIT LE RENDU, PAS LES COMMENTAIRES ───────────────────────────
+  //
+  // Une version précédente cherchait « Waouh » et « GRAND fan de » dans le
+  // fichier entier. Le jour où ces phrases ont été remplacées, le test est
+  // resté vert : les mots survivaient dans les commentaires qui expliquaient
+  // pourquoi on les avait retirés. Un verrou qui se satisfait de ses propres
+  // notes ne verrouille plus rien.
+  const brut = lire(ECRAN);
+  const ecran = sansCommentaires(brut);
+
+  assert.match(brut, /canvas-confetti/, 'Les confettis ont disparu.');
+  assert.match(ecran, /vrai fan de/, 'Le message de fête a disparu.');
+  assert.match(ecran, /\{prenom \? `\$\{prenom\}, ` : ""\}/, 'Le message ne nomme plus la personne.');
+  assert.match(ecran, /equipe\?\.nom \?\? "ton club"/, 'Le message ne nomme plus le club.');
   assert.match(
-    ecran,
+    brut,
     /prefers-reduced-motion/,
     'Les confettis ignorent les réglages d’accessibilité du téléphone.'
   );
 });
 
-test('★ ACQUIS — la fête rend la main toute seule', () => {
-  // Un écran de joie dont on ne sort qu'en cliquant cesse d'être une joie.
+test('★ ACQUIS — la fête se referme seule en cinq secondes au plus', () => {
+  // Un écran de joie dont on ne sort qu'en cliquant cesse d'être une joie ;
+  // un écran de joie qui s'attarde devient une porte qu'on attend.
   const ecran = lire(ECRAN);
-  assert.match(ecran, /DUREE_FETE_MS/);
+  const duree = ecran.match(/const DUREE_FETE_MS = (\d+);/);
+  assert.ok(duree, 'La durée de la fête a disparu.');
+  assert.ok(
+    Number(duree![1]) <= 5000,
+    `La fête dure ${duree![1]} ms : au-delà de cinq secondes, on l’attend.`
+  );
+  assert.ok(Number(duree![1]) >= 2000, 'Trop court pour lire son nom à côté de son club.');
   assert.match(ecran, /setEtape\("sommeil"\)/);
+});
+
+test('★ ACQUIS — une simple tape referme la fête', () => {
+  // Un moment de joie ne doit pas se terminer par la recherche d'un bouton.
+  const ecran = sansCommentaires(lire(ECRAN));
+  assert.match(ecran, /role="button"[\s\S]{0,200}onClick=\{onContinuer\}/, 'La carte de fête n’est plus tapable.');
+  assert.match(ecran, /e\.key === "Enter" \|\| e\.key === " "/, 'La fête ne se referme plus au clavier.');
+});
+
+test('★ ACQUIS — la fête reste compacte', () => {
+  // Elle remplissait la moitié de l'écran d'un téléphone. Une célébration qui
+  // occupe tout finit par se faire attendre.
+  const ecran = sansCommentaires(lire(ECRAN));
+  const ecusson = ecran.match(/grid h-(\d+) w-\d+ place-items-center overflow-hidden rounded-\[24px\]/);
+  assert.ok(ecusson, 'L’écusson de la fête a changé de forme.');
+  assert.ok(Number(ecusson![1]) <= 20, `Écusson de fête trop grand : h-${ecusson![1]}.`);
+  assert.match(ecran, /px-6 py-8 text-center/, 'La marge intérieure de la fête a regrossi.');
 });
 
 // ── ET SURTOUT : ELLE NE DÉCIDE DE RIEN ────────────────────────────────────

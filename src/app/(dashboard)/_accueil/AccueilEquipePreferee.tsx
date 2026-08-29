@@ -45,8 +45,17 @@ const ROUTES_ACCUEIL = ["/analyze", "/dashboard"];
 /** Au-dessous, la recherche à distance ne rend rien d'utile. */
 const MIN_RECHERCHE = 3;
 
-/** Le temps que dure la fête avant de rendre la main. */
-const DUREE_FETE_MS = 3000;
+/**
+ * Le temps que dure la fête avant de rendre la main.
+ *
+ * Quatre secondes et demie : assez pour que les confettis retombent et qu'on
+ * lise son nom à côté de son club, jamais assez pour se demander comment on
+ * sort. Le plafond est de cinq secondes — au-delà, une célébration cesse
+ * d'être un cadeau et devient une porte qu'on attend.
+ *
+ * On peut aussi la fermer d'une simple tape, n'importe où sur la carte.
+ */
+const DUREE_FETE_MS = 4500;
 
 type Etape = "sommeil" | "choix" | "fete";
 
@@ -504,9 +513,12 @@ function Choix({
               </span>{" "}
               club du monde&nbsp;? 🔥⚽
             </h2>
-            <p className="mt-2 text-[13px] font-semibold leading-relaxed text-white/55">
-              Chaque vrai fan a <span className="text-white/85">SA</span> réponse.
-              Défends tes couleurs 👇
+            {/* Une affirmation — « chaque vrai fan a SA réponse » — laisse le
+                lecteur spectateur : il acquiesce et ne fait rien. Une demande
+                directe le met en position de répondre. C'est la dernière ligne
+                avant la grille, elle doit pousser le doigt vers le bas. */}
+            <p className="mt-2 text-[13.5px] font-bold leading-relaxed text-white/60">
+              Donne-nous ta réponse 👇
             </p>
           </div>
 
@@ -762,7 +774,22 @@ function Fete({
   onContinuer: () => void;
 }) {
   return (
-    <div className="relative flex flex-col items-center overflow-hidden px-6 py-11 text-center">
+    // ── TOUTE LA CARTE FERME LA FÊTE ────────────────────────────────────
+    //
+    // Un moment de joie ne doit pas se terminer par la recherche d'un bouton.
+    // N'importe quelle tape referme, le bouton reste pour ceux qui cherchent
+    // quoi faire. Elle se referme aussi seule au bout de quatre secondes et
+    // demie — au-delà, une célébration devient une porte qu'on attend.
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label="Continuer"
+      onClick={onContinuer}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onContinuer();
+      }}
+      className="relative flex cursor-pointer flex-col items-center overflow-hidden px-6 py-8 text-center"
+    >
       {/* Le halo de fond, en dégradé plutôt qu'en flou : même effet, aucune
           image par seconde perdue sur un téléphone d'entrée de gamme. */}
       <div
@@ -770,56 +797,53 @@ function Fete({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(90% 60% at 50% 22%, rgba(16,185,129,0.28) 0%, rgba(16,185,129,0.06) 45%, rgba(16,185,129,0) 75%)",
+            "radial-gradient(90% 60% at 50% 20%, rgba(16,185,129,0.28) 0%, rgba(16,185,129,0.06) 45%, rgba(16,185,129,0) 75%)",
         }}
       />
 
-      <div className="relative">
-        <span
-          className="relative grid h-24 w-24 place-items-center overflow-hidden rounded-[28px] border border-[#10B981]/40 animate-fade-in"
-          style={{
-            background:
-              "linear-gradient(160deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)",
-            boxShadow: "0 0 40px rgba(16,185,129,0.35), 0 12px 40px rgba(0,0,0,0.5)",
-          }}
-        >
-          {equipe?.logo ? (
-            <img src={equipe.logo} alt="" className="h-16 w-16 object-contain" />
-          ) : (
-            <Sparkles className="h-10 w-10 text-[#10B981]" />
-          )}
-        </span>
-      </div>
-
-      <p
-        className="relative mt-7 text-[27px] font-black leading-tight tracking-tight text-white"
-        style={{ textShadow: "0 0 30px rgba(16,185,129,0.35)" }}
+      {/* ── PLUS COMPACT QU'AVANT ──────────────────────────────────────────
+          L'écusson est passé de 96 à 80 px, le message de deux lignes à une,
+          et la marge intérieure a fondu. Le moment reste le même ; il tient
+          simplement dans la moitié de la hauteur, ce qui lui va mieux : une
+          célébration qui remplit tout l'écran finit par se faire attendre. */}
+      <span
+        className="relative grid h-20 w-20 place-items-center overflow-hidden rounded-[24px] border border-[#10B981]/40 animate-fade-in"
+        style={{
+          background:
+            "linear-gradient(160deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)",
+          boxShadow: "0 0 36px rgba(16,185,129,0.35), 0 10px 32px rgba(0,0,0,0.5)",
+        }}
       >
-        Waouh{prenom ? ` ${prenom}` : ""} 🔥
-      </p>
-      <p className="relative mt-2 text-[18px] font-bold leading-snug text-white/85">
-        Tu es un GRAND fan de{" "}
-        <span className="text-[#34D399]">{equipe?.nom ?? "ton club"}</span>&nbsp;!
+        {equipe?.logo ? (
+          <img src={equipe.logo} alt="" className="h-14 w-14 object-contain" />
+        ) : (
+          <Sparkles className="h-9 w-9 text-[#10B981]" />
+        )}
+      </span>
+
+      {/* ── LE NOM, PUIS LE CLUB, DANS LA MÊME PHRASE ──────────────────────
+          « Waouh Ousmane 🔥 » sur une ligne et « Tu es un GRAND fan de… » sur
+          la suivante séparaient la personne de son club. Réunis, ils forment
+          une étiquette qu'on porte : Ousmane, vrai fan de Liverpool. */}
+      <p
+        className="relative mt-5 text-[21px] font-black leading-[1.2] tracking-tight text-white"
+        style={{ textShadow: "0 0 26px rgba(16,185,129,0.35)" }}
+      >
+        {prenom ? `${prenom}, ` : ""}vrai fan de{" "}
+        <span className="text-[#34D399]">{equipe?.nom ?? "ton club"}</span>&nbsp;! 🔥
       </p>
 
-      {/* ── LA PHRASE QUI FLATTE, PAS CELLE QUI INFORME ────────────────────
-          Elle disait « c'est noté, tu peux maintenant analyser le match que
-          tu veux » — un accusé de réception. Au moment précis où quelqu'un
-          vient de revendiquer son club, on ne lui répond pas par le mode
-          d'emploi de l'application. */}
-      <p className="relative mt-4 max-w-[300px] text-[13px] leading-relaxed text-white/45">
+      <p className="relative mt-2 text-[12.5px] leading-relaxed text-white/40">
         Et personne ne te fera changer d&apos;avis.
       </p>
 
-      {/* Pleine largeur sur téléphone : c'est la seule action de l'écran, elle
-          n'a aucune raison d'être une petite pastille qu'on vise. */}
       <button
         type="button"
         onClick={onContinuer}
-        className="relative mt-7 w-full min-h-[52px] rounded-[16px] px-8 py-3.5 text-[14.5px] font-black text-[#04140d] transition-transform active:scale-[0.98]"
+        className="relative mt-5 w-full min-h-[48px] rounded-[14px] px-6 py-3 text-[13.5px] font-black text-[#04140d] transition-transform active:scale-[0.98]"
         style={{
           background: "linear-gradient(180deg, #34D399 0%, #10B981 100%)",
-          boxShadow: "0 10px 30px rgba(16,185,129,0.35)",
+          boxShadow: "0 8px 26px rgba(16,185,129,0.35)",
         }}
       >
         Continuer
