@@ -1,5 +1,6 @@
 'use server'
 
+import { verifierAdresse } from '@/lib/adresse-email'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { messageAuth } from '@/lib/messages-auth'
@@ -155,6 +156,24 @@ export async function signup(formData: FormData) {
 
   if (!email || !password || !name) {
     return { error: 'Veuillez remplir tous les champs.' }
+  }
+
+  // ── L'ADRESSE EST LA SEULE CLÉ DU COMPTE ────────────────────────────────
+  //
+  // Le 29 août 2026, quinze personnes payantes se retrouvaient devant le mur
+  // de paiement : leur abonnement était actif, sur une adresse voisine d'une
+  // lettre. Quarante adresses impossibles avaient été acceptées — « @gamil »,
+  // « @gmail » sans extension, « jay@381 ».
+  //
+  // La confirmation d'e-mail est désactivée sur ce projet : rien ne rattrape
+  // la faute de frappe, et elle ne se voit qu'un mois plus tard, quand le
+  // client écrit qu'on lui a pris son argent.
+  //
+  // Le contrôle est ici, dans l'action serveur, et non seulement dans le
+  // formulaire : c'est le seul endroit que personne ne peut contourner.
+  const verdict = verifierAdresse(email)
+  if (!verdict.ok) {
+    return { error: verdict.message ?? 'Cette adresse e-mail est invalide.' }
   }
 
   const supabase = await createClient()
