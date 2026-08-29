@@ -266,6 +266,36 @@ export async function computeEntitlements(
   const RANK: Record<PlanTier, number> = { FREE: 0, ESSENTIAL: 1, PRO: 2, VIP: 3 };
   let best: Entitlements = FREE_ENTITLEMENTS;
 
+  // ── CHAQUE ACHAT DONNE SON QUOTA, TOUT DE SUITE ─────────────────────────
+  //
+  // Ce qui se passait : la boucle ne retenait QUE l'abonnement du meilleur
+  // niveau (`RANK <= RANK` écarte les suivants). Deux abonnements Essentiel
+  // étant du même niveau, le second était purement ignoré — il ne donnait
+  // aucune analyse, seulement des jours de validité en plus.
+  //
+  // Le 28 août 2026 à 10 h 49 et 10 h 50, quelqu'un a payé DEUX FOIS 2 000
+  // FCFA. Il a reçu 20 analyses. Il en a fait 20, s'est retrouvé bloqué, et a
+  // écrit : « Je paye deux fois, normalement 40 analyses. » Il avait raison :
+  // 4 000 francs encaissés, un quota servi.
+  //
+  // ── LA RÈGLE, TELLE QUE LE PROPRIÉTAIRE L'ÉNONCE ────────────────────────
+  //
+  // « Il achète 2 000, il a 20 analyses. Il les finit, il rachète 2 000, on
+  // lui redonne 20 analyses. Même le même jour. Même cinquante fois. »
+  //
+  // Ce n'est pas un abonnement à débit mensuel : c'est un carnet qu'on
+  // recharge. Le quota est donc la SOMME des offres achetées et encore
+  // valides, et la période de décompte part de la plus ancienne d'entre elles
+  // — sinon un rachat effacerait les analyses déjà consommées sur la
+  // précédente, et ferait cadeau de ce qui a déjà servi.
+  //
+  // Le niveau, l'Agent VIP et la date d'expiration continuent, eux, de suivre
+  // l'abonnement le plus avantageux : quelqu'un qui cumule un Essentiel et un
+  // Pro reste Pro.
+  let quotaCumule = 0;
+  let quotaIllimite = false;
+  let debutLePlusAncien: string | null = null;
+
   for (const sub of subscriptions) {
     // Une absence de date d'expiration ne vaut accès permanent que pour les
     // anciens abonnements « lifetime » (héritage Moneroo). Pour tout le reste,
@@ -285,22 +315,43 @@ export async function computeEntitlements(
     // le jour meme, sans qu'ils aient a se reabonner.
     const reglee = offres?.[key];
 
+    // ── LE CUMUL SE FAIT AVANT LE CLASSEMENT ──────────────────────────────
+    //
+    // Ces trois lignes doivent être AU-DESSUS du `continue` qui écarte les
+    // abonnements de niveau inférieur ou égal : c'est précisément ceux-là
+    // qu'on oubliait, et ce sont eux que le client a payés.
+    const limite = reglee?.limiteAnalyses ?? config.analysisLimit;
+    if (limite === UNLIMITED) quotaIllimite = true;
+    else quotaCumule += limite;
+
+    const debut = sub.created_at
+      ? currentPeriodStart(sub.created_at, config.durationDays).toISOString()
+      : null;
+    if (debut && (!debutLePlusAncien || debut < debutLePlusAncien)) debutLePlusAncien = debut;
+
     if (RANK[config.tier] <= RANK[best.plan]) continue;
 
     best = {
       plan: config.tier,
       premium: true,
       vip: reglee?.agentVip ?? config.vip,
-      analysisLimit: reglee?.limiteAnalyses ?? config.analysisLimit,
+      analysisLimit: limite,
       expiresAt: sub.expires_at,
-      periodStart: sub.created_at
-        ? currentPeriodStart(sub.created_at, config.durationDays).toISOString()
-        : null,
+      periodStart: debut,
       isAdmin: false,
     };
   }
 
-  return best;
+  // Le quota et la période retenus sont ceux de TOUS les achats valides, pas
+  // du seul mieux classé. Sans abonnement actif, rien n'a été cumulé et l'on
+  // rend les droits gratuits inchangés.
+  if (!best.premium) return best;
+
+  return {
+    ...best,
+    analysisLimit: quotaIllimite ? UNLIMITED : quotaCumule,
+    periodStart: debutLePlusAncien,
+  };
 }
 
 // Une session dont la dernière connexion remonte à plus de 24h n'est plus
