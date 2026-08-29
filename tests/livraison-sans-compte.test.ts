@@ -36,6 +36,7 @@ const MODULE = 'src/lib/livraison-sans-compte.ts';
 const PULSE = 'src/lib/maketou.ts';
 const ENTRETIEN = 'src/lib/entretien-quotidien.ts';
 const ACTION = 'src/app/admin/users/actions.ts';
+const PORTE = 'src/app/api/livraison/route.ts';
 
 test('★ ACQUIS — le compte est créé, l’accès crédité, le lien envoyé', () => {
   const s = sansCommentaires(lire(MODULE));
@@ -107,4 +108,27 @@ test('★ ACQUIS — le bouton de livraison est réservé à l’administration'
     /export async function livrerVentesSansCompteMaintenant[\s\S]{0,200}await administrateur\(\)/,
     'La livraison manuelle ne vérifie plus qui la demande.'
   );
+});
+
+// ── LA PORTE DE SERVICE ────────────────────────────────────────────────────
+
+test('★ ACQUIS — la porte de livraison exige la clé, dans un en-tête, en POST', () => {
+  // Le 29 août 2026, le seul moyen de livrer deux clients qui avaient payé
+  // était un bouton perdu dans l'administration. Le propriétaire ne l'a pas
+  // trouvé sur son téléphone, et les deux ont attendu une nuit de plus. Cette
+  // porte permet de déclencher la même réparation sans chercher d'écran.
+  //
+  // Trois garde-fous, chacun pour une raison déjà mesurée dans ce projet : la
+  // clé voyage dans un en-tête (une adresse s'écrit dans les journaux, dans
+  // l'historique et dans le « Referer »), la comparaison est à durée constante
+  // (une comparaison naïve livre le secret lettre par lettre), et la méthode
+  // est POST (un aperçu de lien suit les GET tout seul — créer des comptes ne
+  // doit pas pouvoir arriver parce qu'un lien a été collé quelque part).
+  const s = sansCommentaires(lire(PORTE));
+  assert.match(s, /export async function POST/, 'La porte de livraison n’est plus en POST.');
+  assert.doesNotMatch(s, /export async function GET/, 'Un GET rouvrirait la porte aux robots.');
+  assert.match(s, /headers\.get\(['"]authorization['"]\)/, 'La clé ne passe plus par un en-tête.');
+  assert.doesNotMatch(s, /searchParams/, 'Un secret dans l’adresse finit dans les journaux.');
+  assert.match(s, /cleValide/, 'La comparaison n’est plus à durée constante.');
+  assert.match(s, /livrerVentesSansCompte/, 'La porte ne livre plus rien.');
 });
