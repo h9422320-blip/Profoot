@@ -335,47 +335,31 @@ export async function ouvrirAccesMaketou(
     // L'envoi ne bloque rien et n'échoue jamais bruyamment : la vente est
     // déjà enregistrée, et un service de courriel injoignable ne doit pas
     // faire échouer le traitement du pulse.
+    // ── ON LIVRE, ON N INVITE PLUS ────────────────────────────────────────
+    //
+    // On envoyait « creez votre compte, votre acces s ouvrira ensuite ».
+    // C etait demander a quelqu un qui a DEJA PAYE de faire encore une
+    // demarche, et de ne pas se tromper d un caractere dans son adresse.
+    // Le 29 aout 2026, deux acheteurs attendaient ainsi depuis un et deux
+    // jours : aucun n avait cree son compte.
+    //
+    // Le compte est donc cree pour lui, l acces credite, et il ne recoit
+    // qu un lien pour choisir son mot de passe — la seule chose que personne
+    // ne peut faire a sa place.
+    //
+    // La livraison passe par la MEME fonction que l entretien quotidien :
+    // une seule regle, une seule trace, et rien qui puisse diverger entre le
+    // chemin immediat et le filet de rattrapage.
     if (!erreurTrace && !dejaVue) {
       void (async () => {
         try {
-          const { envoyerCourriel, messageCompteAcreer } = await import('./courriel');
-          const parti = await envoyerCourriel({
-            a: email,
-            ...messageCompteAcreer(email, PLANS[plan].label),
-          });
+          const { livrerVentesSansCompte } = await import('./livraison-sans-compte');
+          const r = await livrerVentesSansCompte();
           console.log(
-            `[MAKETOU] Invitation à créer son compte ${parti ? 'envoyée' : 'NON envoyée'} à ${email}.`
+            `[MAKETOU] Livraison immédiate : ${r.livrees} accès ouvert(s). ${r.details.join(' ; ')}`
           );
-
-          // ── LA TRACE, ET POURQUOI ELLE EST INDISPENSABLE ────────────────
-          //
-          // Le rattrapage quotidien repasse sur les ventes payées sans compte
-          // et n'écrit qu'à ceux qui n'ont PAS de trace `invitation-<vente>`.
-          // Cet envoi-ci n'en posait aucune : le lendemain, le rattrapage
-          // croyait la personne jamais prévenue et lui envoyait le MÊME
-          // message une seconde fois.
-          //
-          // Deux fois « créez votre compte » à quelqu'un qui vient de payer,
-          // c'est le faire douter de ce qu'il a reçu la première fois.
-          //
-          // La trace ne s'écrit QUE si le message est parti. Posée sur un
-          // envoi manqué, elle condamnerait la personne au silence : le
-          // rattrapage la croirait servie et ne réessaierait jamais.
-          if (parti) {
-            await admin.from('webhook_events').insert({
-              provider: 'invitation',
-              delivery_id: `invitation-${venteId}`,
-              event: 'invitation_creation_compte',
-              payload: {
-                email,
-                plan,
-                envoye_le: new Date().toISOString(),
-                origine: 'pulse',
-              },
-            });
-          }
         } catch (e: any) {
-          console.warn('[MAKETOU] Invitation non envoyée :', e?.message);
+          console.warn('[MAKETOU] Livraison immédiate impossible :', e?.message);
         }
       })();
     }

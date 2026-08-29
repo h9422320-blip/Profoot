@@ -182,6 +182,62 @@ export function messageCompteAcreer(adresse: string, offre: string): Omit<Courri
   };
 }
 
+/**
+ * ON A CRÉÉ LE COMPTE POUR LUI. IL N'A PLUS QU'À ENTRER.
+ *
+ * ── POURQUOI CE MESSAGE REMPLACE L'INVITATION ─────────────────────────────
+ *
+ * On envoyait « créez votre compte, votre accès s'ouvrira ensuite ». C'était
+ * demander à quelqu'un qui a déjà payé de faire encore une démarche — et de
+ * ne pas se tromper d'un caractère dans son adresse, sans quoi rien ne le
+ * retrouve.
+ *
+ * Le 29 août 2026, deux acheteurs attendaient ainsi depuis un et deux jours.
+ * Aucun n'avait créé son compte. Le message ne suffisait pas.
+ *
+ * Le compte est donc créé pour eux, l'accès crédité, et il ne reste qu'un
+ * mot de passe à choisir — ce que personne ne peut faire à leur place.
+ */
+export function messageAccesCree(
+  lienMotDePasse: string,
+  offre: string,
+  expireLe: string | null
+): Omit<Courriel, 'a'> {
+  const echeance = expireLe
+    ? new Date(expireLe).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : null;
+
+  return {
+    sujet: 'Votre accès ProFoot AI est ouvert',
+    texte: [
+      'Bonjour,',
+      '',
+      `Votre paiement pour l'offre ${offre} est bien reçu, et votre accès est ` +
+        `ouvert${echeance ? ` jusqu'au ${echeance}` : ''}.`,
+      '',
+      "Nous avons créé votre compte avec cette adresse. Il ne reste qu'une " +
+        'chose à faire : choisir votre mot de passe.',
+      '',
+      lienMotDePasse,
+      '',
+      'Une fois votre mot de passe choisi, vous serez connecté et vous pourrez ' +
+        'lancer votre première analyse.',
+      '',
+      "Si le lien ne fonctionne pas, allez sur profootai.com, cliquez sur " +
+        '« Mot de passe oublié » et saisissez cette même adresse.',
+      '',
+      'Répondez simplement à ce message si quoi que ce soit bloque.',
+      '',
+      'Ousmane',
+      'ProFoot AI — profootai.com',
+    ].join('\n'),
+  };
+}
+
 export function messageAccesRouvert(expireLe: string | null): Omit<Courriel, 'a'> {
   const echeance = expireLe
     ? new Date(expireLe).toLocaleDateString('fr-FR', {

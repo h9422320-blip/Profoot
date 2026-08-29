@@ -194,15 +194,27 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
   // peut rien pour les ventes traitées avant qu'il sache le faire, ni pour
   // celles où l'envoi a échoué. Un filet qui ne rattrape que ce qui tombe
   // pendant qu'il est tendu n'est pas un filet.
+  // ── ON LIVRE, ON N'INVITE PLUS ──────────────────────────────────────────
+  //
+  // L'étape précédente envoyait « créez votre compte, votre accès s'ouvrira
+  // ensuite ». Le 29 août 2026, deux acheteurs attendaient ainsi depuis un et
+  // deux jours : aucun n'avait créé son compte. Une solution qui dépend d'un
+  // geste du client n'est pas une solution — c'est un report du problème sur
+  // celui qui a payé.
+  //
+  // On crée donc le compte à sa place, on crédite l'accès, et on n'envoie que
+  // ce que personne ne peut faire pour lui : un lien pour choisir son mot de
+  // passe.
   await etape(
-    'Inviter les acheteurs sans compte',
+    'Livrer les ventes sans compte',
     async () => {
-      const { inviterAcheteursSansCompte } = await import('./invitation-acheteurs');
-      const r = await inviterAcheteursSansCompte();
+      const { livrerVentesSansCompte } = await import('./livraison-sans-compte');
+      const r = await livrerVentesSansCompte();
       return (
-        `${r.invites} invitation(s) envoyée(s) sur ${r.examines} vente(s) sans compte ` +
-        `— ${r.dejaInvites} déjà invité(s), ${r.inscritsEntreTemps} inscrit(s) depuis` +
-        (r.echecs ? `, ${r.echecs} envoi(s) en échec` : '')
+        `${r.livrees} accès ouvert(s) sur ${r.examinees} vente(s) sans compte ` +
+        `— ${r.dejaLivrees} déjà livrée(s), ${r.comptesExistants} compte(s) déjà là` +
+        (r.echecs ? `, ${r.echecs} échec(s)` : '') +
+        (r.details.length ? ` · ${r.details.join(' ; ')}` : '')
       );
     },
     etapes

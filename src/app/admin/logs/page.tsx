@@ -2,6 +2,7 @@ import { getAdminMetrics, resoudrePeriode } from "@/lib/admin-metrics";
 import { getOrigineAcheteurs } from "@/lib/origine-acheteurs";
 import { getBilanEchecsPaiement } from "@/lib/echecs-paiement";
 import BoutonRelever from "./BoutonRelever";
+import LivrerVentes from "./LivrerVentes";
 import SelecteurPeriode from "../_components/SelecteurPeriode";
 import { LienCompte, Vide, dateHeure, montant } from "../_components/Ui";
 import { Panneau } from "../_components/Panneaux";
@@ -46,6 +47,13 @@ export default async function AdminLogs({
           { libelle: "Encaissé", valeur: montant(m.revenus.totalCumule, m.revenus.devise) },
         ]}
       />
+
+      {/* ── AGIR MAINTENANT, PAS DEMAIN MATIN ──────────────────────────────
+          L'alerte qui arrive par courriel quand une vente n'ouvre pas d'accès
+          se termine par « il faut agir maintenant ». Elle n'indiquait aucun
+          endroit où le faire : l'entretien qui répare ne repasse qu'une fois
+          par vingt heures. Le voici. */}
+      <LivrerVentes />
 
       {/* Les achats à l'unité, comptés à part.
           Les fondre dans le revenu total masquerait exactement ce qu'on veut

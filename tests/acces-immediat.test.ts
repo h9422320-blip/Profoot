@@ -180,15 +180,21 @@ test('★ ACQUIS — les deux verrous de coût sont toujours dans le code', () =
 
 // ── L'ACHETEUR SANS COMPTE NE DOIT PLUS ÊTRE LAISSÉ EN SILENCE ─────────────
 
-test('★ ACQUIS — une vente sans compte déclenche une invitation à s’inscrire', () => {
+test('★ ACQUIS — une vente sans compte est LIVRÉE, pas seulement signalée', () => {
   // Le 28 août 2026 à 12 h 43, quelqu'un paie 2 000 FCFA sans compte. La vente
   // est enregistrée, l'accès l'attend — mais rien ne le lui dit. Le lendemain
   // matin, le seul courrier reçu est celui de la boutique demandant « Comment
   // s'est passé votre achat ? ». Il répond : « Je comprends rien d'abord. »
-  // Vingt et une heures après avoir payé, il n'avait toujours pas de compte.
+  //
+  // On a d'abord répondu par une invitation : « créez votre compte ». Le
+  // 29 août, DEUX acheteurs attendaient ainsi depuis un et deux jours, et
+  // aucun n'avait créé le sien. Demander une démarche à quelqu'un qui a déjà
+  // payé, c'est lui repasser le problème.
+  //
+  // Le compte est désormais créé pour lui, et l'accès crédité dans la seconde.
   const m = fs.readFileSync(path.join(process.cwd(), 'src/lib/maketou.ts'), 'utf8');
-  assert.match(m, /messageCompteAcreer/, 'L’acheteur sans compte n’est plus invité à s’inscrire.');
-  assert.match(m, /if \(!erreurTrace && !dejaVue\)/, 'L’invitation part même quand la vente est perdue, ou en double.');
+  assert.match(m, /livrerVentesSansCompte/, 'L’acheteur sans compte n’est plus livré.');
+  assert.match(m, /if \(!erreurTrace && !dejaVue\)/, 'La livraison part même quand la vente est perdue, ou en double.');
 });
 
 test('★ ACQUIS — l’invitation ne part qu’une fois par vente', () => {
