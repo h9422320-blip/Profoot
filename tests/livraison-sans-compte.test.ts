@@ -157,3 +157,18 @@ test('★ ACQUIS — une vente déjà portée par un abonnement n’est jamais r
   assert.match(s, /servies\.has/, 'Les ventes déjà portées ne sont plus écartées.');
   assert.match(s, /adressesConnues\.has\(email\)/, 'Le garde-fou du compte existant a sauté.');
 });
+
+test('★ ACQUIS — une vente de test ne reçoit jamais de compte', () => {
+  // Le 29 août 2026, en élargissant la lecture aux messages de la boutique, la
+  // livraison est tombée sur les ventes fabriquées par les scripts de test du
+  // 8 août. Elle leur a créé des comptes et ouvert des abonnements, qui sont
+  // ensuite allés grossir le nombre d'abonnés actifs de l'administration.
+  //
+  // Une vente de test ressemble à une vraie : même forme, même montant. Ce qui
+  // la trahit, c'est le domaine de l'adresse, et l'absence de la boutique et
+  // du client dans le message — un vrai message porte toujours les deux.
+  const s = sansCommentaires(lire(MODULE));
+  assert.match(s, /DOMAINES_DE_TEST/, 'Les domaines de test ne sont plus écartés.');
+  assert.ok(s.includes('profoot-test'), 'Le domaine des scripts de test n’est plus reconnu.');
+  assert.match(s, /!p\?\.store\?\.id \|\| !p\?\.customer\?\.id/, 'Un message sans boutique ni client passe de nouveau.');
+});

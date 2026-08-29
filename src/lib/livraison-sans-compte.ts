@@ -38,6 +38,22 @@ const FENETRE_JOURS = 45;
 /** Jamais plus que ça en une passe : une livraison n'est pas un envoi de masse. */
 const MAX_PAR_PASSE = 20;
 
+/**
+ * LES ADRESSES QUI N'APPARTIENNENT À PERSONNE.
+ *
+ * Le 29 août 2026, en élargissant la lecture aux messages de la boutique, la
+ * livraison est tombée sur les ventes fabriquées par les scripts de test du
+ * 8 août — `plans.test@profoot-test.com`, `verif.essentiel@profoot-test.com`.
+ * Elle leur a créé des comptes et ouvert des abonnements, qui sont ensuite
+ * allés grossir le nombre d'abonnés actifs de l'administration.
+ *
+ * Une vente de test ressemble à une vraie : même forme, même montant. Ce qui
+ * la trahit, c'est le domaine de l'adresse, et l'absence de la boutique et du
+ * client dans le message — un vrai message porte toujours l'identifiant des
+ * deux.
+ */
+const DOMAINES_DE_TEST = /@(profoot-test\.com|profootai\.com|example\.(com|org|net)|test\.[a-z]+|localhost)$/i;
+
 export interface BilanLivraison {
   examinees: number;
   livrees: number;
@@ -143,6 +159,11 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
       continue;
     if (String(p?.sale?.status ?? '').toLowerCase() !== 'completed') continue;
 
+    // Un vrai message de la boutique porte toujours l'identifiant de la
+    // boutique ET celui du client. Les ventes fabriquées par les scripts de
+    // test n'en ont ni l'un ni l'autre.
+    if (!p?.store?.id || !p?.customer?.id) continue;
+
     const email = String(p?.customer?.email ?? p?.email ?? '');
     const montant = Number(p?.sale?.amount?.value ?? p?.sale?.original_amount?.value ?? 0);
     const plan = planFromAmount(montant);
@@ -185,7 +206,8 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
 
     const sale = String(vente.sale_id ?? '');
     const email = String(vente.email ?? '').trim().toLowerCase();
-    if (!email || /^(verif|diagnostic)/i.test(sale) || email.endsWith('@profootai.com')) continue;
+    if (!email || /^(verif|diagnostic|test|e2e|prod_|pay_|l_)/i.test(sale)) continue;
+    if (DOMAINES_DE_TEST.test(email)) continue;
 
     const plan = String(vente.plan ?? '') as PlanKey;
     const config = PLANS[plan];
