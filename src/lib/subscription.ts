@@ -354,10 +354,27 @@ export async function computeEntitlements(
   };
 }
 
-// Une session dont la dernière connexion remonte à plus de 24h n'est plus
-// valable. Contrôlé ici — point de passage unique de toutes les gardes — pour
-// que les routes API soient couvertes au même titre que les pages.
-const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000;
+// ── SEPT JOURS, ET NON PLUS VINGT-QUATRE HEURES ───────────────────────────
+//
+// Une session dont la dernière connexion est trop ancienne n'est plus valable.
+// Contrôlé ici — point de passage unique de toutes les gardes — pour que les
+// routes API soient couvertes au même titre que les pages.
+//
+// La limite était d'un jour. Mesuré le 29 août 2026 : 242 des 358 abonnés
+// actifs avaient une session périmée, et devaient donc retaper leur mot de
+// passe à leur prochain retour. Sur des téléphones d'Afrique de l'Ouest, une
+// reconnexion quotidienne imposée à quelqu'un qui a déjà payé, c'est la
+// friction qui fait écrire « je n'arrive pas à accéder ».
+//
+// ── CETTE VALEUR EST ÉCRITE DEUX FOIS, ET C'EST UN DANGER ─────────────────
+//
+// Le portier de requêtes applique la même règle de son côté : il déconnecte
+// la session périmée et renvoie vers la connexion. Si les deux durées
+// divergeaient, le portier laisserait passer quelqu'un que ces droits-ci
+// tiendraient pour anonyme — un abonné payant verrait le mur de paiement sans
+// jamais être renvoyé vers la connexion, donc sans comprendre ni pouvoir
+// réparer. Un test refuse désormais que les deux nombres diffèrent.
+const MAX_SESSION_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isSessionFresh(user: User): boolean {
   const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;

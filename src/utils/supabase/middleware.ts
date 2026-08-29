@@ -79,10 +79,23 @@ export async function updateSession(request: NextRequest) {
   // issues with cross-site tracking (CORS).
   const user = besoinDIdentite ? (await supabase.auth.getUser()).data.user : null
 
-  // --- SESSION LIMITÉE À 24H ---
-  // Au-delà de 24h après la dernière connexion, la session est invalidée :
-  // l'utilisateur doit se reconnecter (exigence produit ProFoot).
-  const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000;
+  // --- SESSION LIMITÉE À 7 JOURS ---
+  //
+  // Au-delà, la session est invalidée : l'utilisateur doit se reconnecter.
+  //
+  // La limite était d'un jour. Mesuré le 29 août 2026 : 242 des 358 abonnés
+  // actifs avaient une session périmée et devaient retaper leur mot de passe
+  // à leur prochain retour. Une reconnexion quotidienne imposée à quelqu'un
+  // qui a déjà payé, sur un téléphone et une connexion lente, est la friction
+  // qui fait écrire « je n'arrive pas à accéder ».
+  //
+  // CETTE DURÉE EST ÉCRITE DEUX FOIS : ici, et dans `subscription.ts` qui
+  // calcule les droits. Elles doivent rester IDENTIQUES. Si ce portier était
+  // plus permissif, il laisserait entrer quelqu'un que le calcul des droits
+  // tient pour anonyme : l'abonné verrait le mur de paiement sans jamais être
+  // renvoyé vers la connexion — donc sans comprendre, ni pouvoir réparer. Un
+  // test refuse que les deux nombres diffèrent.
+  const MAX_SESSION_AGE_MS = 7 * 24 * 60 * 60 * 1000;
   let activeUser = user;
   if (user) {
     const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
