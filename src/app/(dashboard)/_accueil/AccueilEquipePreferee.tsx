@@ -391,7 +391,7 @@ export default function AccueilEquipePreferee() {
           style qui a l'air écrit et qui n'existe pas est le pire des défauts,
           parce qu'il survit à toutes les relectures. */}
       <div
-        className={`relative w-full max-w-[400px] max-h-[85%] flex flex-col overflow-hidden overflow-x-hidden rounded-[26px] border border-white/[0.09] transition-all duration-300 ease-out ${
+        className={`relative w-full max-w-[400px] max-h-[76%] flex flex-col overflow-hidden overflow-x-hidden rounded-[26px] border border-white/[0.09] transition-all duration-300 ease-out ${
           entree ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95"
         }`}
         style={{
@@ -465,7 +465,7 @@ function Choix({
 
           Le voile vert très pâle en haut de la carte tient lieu de signature
           de marque : c'est le vert de ProFoot, à peine posé, jamais crié. */}
-      <div className="relative shrink-0 overflow-hidden border-b border-white/[0.06] px-5 pt-5 pb-4">
+      <div className="relative shrink-0 overflow-hidden border-b border-white/[0.06] px-5 pt-4 pb-3.5">
         {/* ── LA LUEUR DE MARQUE ──────────────────────────────────────────
             Un dégradé radial posé en calque plutôt qu'un `blur` : sur un
             téléphone d'entrée de gamme, flouter une grande surface coûte des
@@ -481,25 +481,31 @@ function Choix({
           }}
         />
 
-        <div className="relative flex items-start justify-between gap-3">
+        {/* ── LE TITRE PREND TOUTE LA LARGEUR ────────────────────────────────
+            « Passer » vivait à droite du titre et lui volait quatre-vingts
+            pixels : la question se coupait en deux morceaux étroits au lieu de
+            se lire d'un trait. Il descend d'une ligne, à hauteur du
+            sous-titre — toujours visible, toujours atteignable au pouce, mais
+            plus au travers de la seule chose qu'on doit lire en entrant. */}
+        <div className="relative">
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#34D399]">
-              {prenom ? `Bienvenue ${prenom}` : "Bienvenue"}
-            </p>
+            {/* ── LA QUESTION OCCUPE LE HAUT, SEULE ────────────────────────
+                Trois choses se disputaient l'entrée de la notice : une
+                salutation en petites capitales, un titre de trois lignes, et
+                un sous-titre. Le regard ne savait pas où se poser, et le tout
+                mangeait la moitié de la hauteur avant le premier écusson.
+                La salutation a disparu — le prénom revient de toute façon au
+                moment qui compte, dans le message de fête.
 
-            {/* ── ON NE DEMANDE PAS UNE PRÉFÉRENCE, ON LANCE UN DÉFI ───────
-                « Choisis ton club de cœur, juste pour le plaisir » était une
-                case de formulaire polie : rien à défendre, rien à ressentir,
-                on passe. Un supporter ne se lève pas pour une préférence — il
-                se lève pour dire que SON club est le meilleur du monde, et
-                que la question ne se pose même pas.
-
-                C'est le même clic, et ce n'est pas le même geste. */}
-            <h2 className="mt-2 text-[23px] font-black leading-[1.14] tracking-tight text-white">
-              Alors, c&apos;est qui le{" "}
-              {/* Le mot qui porte la provocation est écrit en dégradé plutôt
-                  qu'en couleur plate : c'est lui qu'on doit voir en premier,
-                  avant même d'avoir lu la phrase. */}
+                « Alors, c'est qui le MEILLEUR club du monde ? » tenait sur
+                trois lignes. Une question courte tient sur deux, et peut donc
+                s'écrire beaucoup plus gros : c'est elle qu'on doit lire en
+                entrant, pas la deviner. */}
+            <h2 className="text-[30px] font-black leading-[1.08] tracking-tight text-white">
+              Quel est ton{" "}
+              {/* Le mot qui porte l'attachement est en dégradé plutôt qu'en
+                  couleur plate : c'est lui qu'on voit en premier, avant même
+                  d'avoir lu la phrase. */}
               <span
                 style={{
                   background: "linear-gradient(100deg, #34D399 0%, #A7F3D0 45%, #FBBF24 100%)",
@@ -509,30 +515,34 @@ function Choix({
                   textShadow: "0 0 28px rgba(16,185,129,0.35)",
                 }}
               >
-                MEILLEUR
-              </span>{" "}
-              club du monde&nbsp;? 🔥⚽
+                club favori
+              </span>
+              &nbsp;? ⚽
             </h2>
-            {/* Une affirmation — « chaque vrai fan a SA réponse » — laisse le
-                lecteur spectateur : il acquiesce et ne fait rien. Une demande
-                directe le met en position de répondre. C'est la dernière ligne
-                avant la grille, elle doit pousser le doigt vers le bas. */}
-            <p className="mt-2 text-[13.5px] font-bold leading-relaxed text-white/60">
-              Donne-nous ta réponse 👇
-            </p>
-          </div>
+            {/* Une demande directe met le lecteur en position de répondre.
+                C'est la dernière ligne avant la grille : elle doit pousser le
+                doigt vers le bas. */}
+            <div className="mt-1 flex items-center justify-between gap-3">
+              {/* Une demande directe met le lecteur en position de répondre.
+                  C'est la dernière ligne avant la grille : elle doit pousser
+                  le doigt vers le bas. */}
+              <p className="text-[13px] font-bold leading-snug text-white/55">
+                Donne-nous ta réponse 👇
+              </p>
 
-          {/* Discret à l'œil, mais JAMAIS discret au doigt : 44 px de haut,
-              la plus petite cible qu'un pouce atteint sans rater. Un bouton
-              d'abandon trop petit, c'est quelqu'un qui tape trois fois à côté
-              et qui referme l'application. */}
-          <button
-            type="button"
-            onClick={onPasser}
-            className="shrink-0 min-h-[44px] min-w-[44px] rounded-full px-3.5 py-2.5 text-[12.5px] font-bold text-white/40 transition-colors hover:bg-white/5 hover:text-white/80 active:bg-white/10"
-          >
-            Passer
-          </button>
+              {/* Discret à l'œil, mais JAMAIS discret au doigt : 44 px de
+                  haut, la plus petite cible qu'un pouce atteint sans rater.
+                  Un bouton d'abandon trop petit, c'est quelqu'un qui tape
+                  trois fois à côté et qui referme l'application. */}
+              <button
+                type="button"
+                onClick={onPasser}
+                className="-mr-1.5 shrink-0 min-h-[44px] min-w-[44px] rounded-full px-3 py-2.5 text-[12.5px] font-bold text-white/35 transition-colors hover:bg-white/5 hover:text-white/80 active:bg-white/10"
+              >
+                Passer
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Recherche : personne n'est exclu parce que son club n'est pas
@@ -572,7 +582,7 @@ function Choix({
       {/* ── SEUL L'INTÉRIEUR DÉFILE ────────────────────────────────────────
           La page derrière ne bouge pas, la carte garde sa taille : c'est
           cette zone-ci, et elle seule, qui glisse sous le doigt. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 custom-scrollbar">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-3.5 custom-scrollbar">
         {cherche ? (
           <ListeRecherche
             resultats={resultats}

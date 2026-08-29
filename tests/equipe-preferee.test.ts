@@ -325,7 +325,15 @@ test('★ ACQUIS — la carte remonte au-dessus du clavier', () => {
   assert.match(ecran, /window\.visualViewport/, 'La carte ne suit plus le clavier.');
   assert.match(ecran, /height: `calc\(100% - \$\{clavier\}px\)`/);
   // Hauteur en pourcentage du conteneur, pas en `vh` : `vh` ignore le clavier.
-  assert.match(ecran, /max-h-\[85%\]/, 'La carte a perdu son plafond de hauteur.');
+  //
+  // Le plafond exact peut évoluer — on l'a descendu de 85 à 76 % pour que la
+  // notice pèse moins sur l'écran. Ce que ce test protège, c'est qu'il EXISTE
+  // et qu'il reste dans des bornes tenables : au-dessus de 85 % la notice
+  // remplit tout, en dessous de 60 % la grille de clubs ne se voit plus.
+  const plafond = ecran.match(/max-h-\[(\d+)%\]/);
+  assert.ok(plafond, 'La carte a perdu son plafond de hauteur.');
+  assert.ok(Number(plafond![1]) <= 85, `Carte trop haute : ${plafond![1]} %.`);
+  assert.ok(Number(plafond![1]) >= 60, `Carte trop basse : ${plafond![1]} %.`);
   assert.doesNotMatch(ecran, /max-h-\[\d+vh\]/, 'Une hauteur en vh ignorerait le clavier.');
 });
 
