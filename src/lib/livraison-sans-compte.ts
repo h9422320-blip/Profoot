@@ -31,6 +31,7 @@
 
 import { createAdminClient } from './supabase-admin';
 import { PLANS, planFromAmount, type PlanKey } from './subscription';
+import { jumelleProbable, type CompteConnu } from './adresses-jumelles';
 
 /** Au-delà, on ne livre plus automatiquement : la vente est trop ancienne. */
 const FENETRE_JOURS = 45;
@@ -194,10 +195,34 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
   // comptes, et une lecture partielle ferait créer un doublon à quelqu'un qui
   // possède déjà son compte.
   const adressesConnues = new Set<string>();
+  const comptesConnus: CompteConnu[] = [];
+
+  // Qui possède déjà un accès payé : une jumelle qui en a un n'est pas la
+  // bonne — deux personnes différentes, pas une faute de frappe.
+  const avecAcces = new Set(
+    (
+      await sb
+        .from('subscriptions')
+        .select('user_id, status, expires_at')
+        .eq('status', 'active')
+    ).data
+      ?.filter((s) => s.expires_at && new Date(s.expires_at).getTime() > Date.now())
+      .map((s) => String(s.user_id)) ?? []
+  );
+
   for (let page = 1; page <= 60; page++) {
     const { data } = await sb.auth.admin.listUsers({ page, perPage: 200 });
     if (!data?.users?.length) break;
-    for (const u of data.users) adressesConnues.add(String(u.email ?? '').toLowerCase());
+    for (const u of data.users) {
+      const email = String(u.email ?? '').toLowerCase();
+      adressesConnues.add(email);
+      comptesConnus.push({
+        email,
+        id: u.id,
+        aUnAccesActif: avecAcces.has(u.id),
+        creeLe: String(u.created_at ?? ''),
+      });
+    }
     if (data.users.length < 200) break;
   }
 
@@ -236,24 +261,57 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
     try {
       // ── 1. LE COMPTE ────────────────────────────────────────────────────
       //
-      // Adresse confirmée d'office : elle vient d'un paiement encaissé, c'est
-      // une preuve plus forte qu'un clic dans un courriel. Le mot de passe est
-      // tiré au hasard et n'est communiqué à personne — la personne choisira
-      // le sien par le lien.
-      const motDePasse = `Pf${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2).toUpperCase()}!9`;
-      const { data: cree, error: erreurCompte } = await sb.auth.admin.createUser({
-        email,
-        password: motDePasse,
-        email_confirm: true,
-        user_metadata: { origine_compte: 'livraison_vente_sans_compte', vente: sale },
-      });
+      // ── D'ABORD : L'ADRESSE PAYÉE EST-ELLE UNE FAUTE DE FRAPPE ? ────────
+      //
+      // Le 29 août 2026, AMON crée son compte à 18 h 34, paie à 18 h 46 en
+      // tapant `essanon231@` au lieu de `essanamon231@`, revient à 19 h 02 —
+      // et ne trouve rien. À 19 h 28, un avis d'une étoile arrive.
+      //
+      // L'adresse qu'il avait tapée n'existait pas : Gmail répond
+      // « 550 5.1.1 Address not found ». Lui créer un compte à cette adresse,
+      // c'était poser son accès dans une boîte que personne n'ouvrira jamais,
+      // et lui envoyer un lien qui rebondit.
+      //
+      // Retaper son adresse dans le formulaire de la boutique est le seul
+      // endroit du parcours où le client peut se tromper sans que rien ne le
+      // lui dise. Deux acheteurs sur quatre s'y sont trompés le même soir.
+      //
+      // La règle qui décide est volontairement serrée — voir
+      // `adresses-jumelles.ts` : même domaine, deux caractères d'écart au
+      // plus, et UNE SEULE candidate. Ouvrir un accès payé sur le compte de
+      // quelqu'un d'autre serait pire que le problème qu'on répare.
+      const jumelle = jumelleProbable(email, comptesConnus, vente.created_at || undefined);
 
-      if (erreurCompte || !cree?.user) {
-        bilan.echecs++;
-        bilan.details.push(`${email} : compte non créé (${erreurCompte?.message ?? 'inconnu'})`);
-        continue;
+      let userId: string;
+      let adressePrevenue = email;
+
+      if (jumelle) {
+        userId = jumelle.id;
+        adressePrevenue = jumelle.email;
+        bilan.details.push(
+          `${email} : adresse inconnue, accès posé sur ${jumelle.email} (même personne, faute de frappe)`
+        );
+        console.log(`[LIVRAISON] ${email} rattaché à son compte ${jumelle.email}.`);
+      } else {
+        // Adresse confirmée d'office : elle vient d'un paiement encaissé,
+        // c'est une preuve plus forte qu'un clic dans un courriel. Le mot de
+        // passe est tiré au hasard et n'est communiqué à personne — la
+        // personne choisira le sien par le lien.
+        const motDePasse = `Pf${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2).toUpperCase()}!9`;
+        const { data: cree, error: erreurCompte } = await sb.auth.admin.createUser({
+          email,
+          password: motDePasse,
+          email_confirm: true,
+          user_metadata: { origine_compte: 'livraison_vente_sans_compte', vente: sale },
+        });
+
+        if (erreurCompte || !cree?.user) {
+          bilan.echecs++;
+          bilan.details.push(`${email} : compte non créé (${erreurCompte?.message ?? 'inconnu'})`);
+          continue;
+        }
+        userId = cree.user.id;
       }
-      const userId = cree.user.id;
 
       // ── 2. L'ACCÈS ──────────────────────────────────────────────────────
       //
@@ -293,7 +351,7 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
       // avant la personne.
       const { data: lien, error: erreurLien } = await sb.auth.admin.generateLink({
         type: 'recovery',
-        email,
+        email: adressePrevenue,
       });
 
       const jeton = lien?.properties?.hashed_token;
@@ -302,18 +360,34 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
         : `${siteUrl()}/mot-de-passe-oublie`;
 
       if (erreurLien || !jeton) {
-        console.warn(`[LIVRAISON] Lien non généré pour ${email} :`, erreurLien?.message);
+        console.warn(`[LIVRAISON] Lien non généré pour ${adressePrevenue} :`, erreurLien?.message);
       }
 
       // ── 4. LE MESSAGE ───────────────────────────────────────────────────
+      //
+      // Il part à l'adresse du COMPTE, pas à celle qui a payé. Quand les deux
+      // diffèrent, c'est que celle du paiement est fautive — et souvent
+      // inexistante : le message envoyé à `essanon231@` a été refusé par
+      // Gmail avec « 550 5.1.1 Address not found ».
+      //
+      // Il part AUSSI à l'adresse tapée au paiement quand elle diffère : si
+      // c'est en réalité la bonne des deux, elle recevra ; si elle n'existe
+      // pas, le rebond ne coûte rien. Une chance de plus, jamais une de moins.
       const parti = await envoyerCourriel({
-        a: email,
+        a: adressePrevenue,
         ...messageAccesCree(adresse, config.label, expireLe),
       });
 
+      if (adressePrevenue !== email) {
+        await envoyerCourriel({
+          a: email,
+          ...messageAccesCree(adresse, config.label, expireLe),
+        });
+      }
+
       bilan.livrees++;
       bilan.details.push(
-        `${email} : ${config.label} jusqu'au ${expireLe.slice(0, 10)}` +
+        `${adressePrevenue} : ${config.label} jusqu'au ${expireLe.slice(0, 10)}` +
           (parti ? ', message envoyé' : ', MESSAGE NON ENVOYÉ')
       );
 
@@ -323,6 +397,8 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
         event: 'compte_cree_et_acces_ouvert',
         payload: {
           email,
+          adresse_prevenue: adressePrevenue,
+          jumelle: adressePrevenue !== email,
           plan,
           user_id: userId,
           expire_le: expireLe,

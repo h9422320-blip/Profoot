@@ -69,11 +69,22 @@ export async function POST(requete: Request) {
   // Même porte, même clé : une seconde porte, c'est un second verrou à tenir
   // à jour, et celui qu'on oublie est toujours le bon.
   let action = '';
+  let corps: any = null;
   try {
-    const corps = await requete.clone().json();
+    corps = await requete.clone().json();
     action = String(corps?.action ?? '');
   } catch {
     // Pas de corps, ou corps illisible : c'est une livraison ordinaire.
+  }
+
+  // Déplacer un accès déjà ouvert vers le compte qui est vraiment celui de
+  // l'acheteur, quand l'adresse tapée au paiement était fautive. Explicite —
+  // on nomme la vente et le compte — parce qu'une tâche de nuit qui se
+  // tromperait de compte retirerait son accès à celui qui a payé.
+  if (action === 'rattacher') {
+    const { rattacherVente } = await import('@/lib/rattacher-vente');
+    const r = await rattacherVente(String(corps?.vente ?? ''), String(corps?.vers ?? ''));
+    return NextResponse.json(r, { status: r.ok ? 200 : 409 });
   }
 
   // La surveillance passe par la même porte, pour la même raison : pouvoir la
