@@ -86,3 +86,19 @@ test('★ ACQUIS — le rattrapage est branché à l’entretien quotidien', () 
   assert.match(e, /inviterAcheteursSansCompte/, 'Le rattrapage n’est plus appelé.');
   assert.match(e, /Inviter les acheteurs sans compte/);
 });
+
+test('★ ACQUIS — le pulse et le rattrapage posent la MÊME trace', () => {
+  // Sans cela, le rattrapage du lendemain croyait la personne jamais prévenue
+  // et lui envoyait le même « créez votre compte » une seconde fois. Deux fois
+  // le même message à quelqu'un qui vient de payer, c'est le faire douter de
+  // ce qu'il a reçu la première fois.
+  const pulse = sansCommentaires(lire('src/lib/maketou.ts'));
+  const rattrapage = sansCommentaires(lire(MODULE));
+
+  assert.match(pulse, /delivery_id: `invitation-\$\{venteId\}`/, 'Le pulse ne pose plus de trace.');
+  assert.match(rattrapage, /const reference = `invitation-\$\{sale\}`/);
+  assert.match(pulse, /provider: 'invitation'/);
+
+  // La trace du pulse ne s'écrit que si le message est VRAIMENT parti.
+  assert.match(pulse, /if \(parti\) \{[\s\S]{0,200}webhook_events/, 'La trace est posée même quand l’envoi échoue.');
+});

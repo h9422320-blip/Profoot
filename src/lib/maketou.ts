@@ -346,6 +346,34 @@ export async function ouvrirAccesMaketou(
           console.log(
             `[MAKETOU] Invitation à créer son compte ${parti ? 'envoyée' : 'NON envoyée'} à ${email}.`
           );
+
+          // ── LA TRACE, ET POURQUOI ELLE EST INDISPENSABLE ────────────────
+          //
+          // Le rattrapage quotidien repasse sur les ventes payées sans compte
+          // et n'écrit qu'à ceux qui n'ont PAS de trace `invitation-<vente>`.
+          // Cet envoi-ci n'en posait aucune : le lendemain, le rattrapage
+          // croyait la personne jamais prévenue et lui envoyait le MÊME
+          // message une seconde fois.
+          //
+          // Deux fois « créez votre compte » à quelqu'un qui vient de payer,
+          // c'est le faire douter de ce qu'il a reçu la première fois.
+          //
+          // La trace ne s'écrit QUE si le message est parti. Posée sur un
+          // envoi manqué, elle condamnerait la personne au silence : le
+          // rattrapage la croirait servie et ne réessaierait jamais.
+          if (parti) {
+            await admin.from('webhook_events').insert({
+              provider: 'invitation',
+              delivery_id: `invitation-${venteId}`,
+              event: 'invitation_creation_compte',
+              payload: {
+                email,
+                plan,
+                envoye_le: new Date().toISOString(),
+                origine: 'pulse',
+              },
+            });
+          }
         } catch (e: any) {
           console.warn('[MAKETOU] Invitation non envoyée :', e?.message);
         }
