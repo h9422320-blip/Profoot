@@ -32,6 +32,33 @@ import Image from "next/image";
 // Inspired by Visifoot — Dark + Emerald + Stadium aesthetic
 // ============================================================================
 
+/**
+ * LES DATES DE LA MAQUETTE, RELATIVES A AUJOURD'HUI.
+ *
+ * Elles etaient ecrites en dur : « 03/04 » et « 08/04 ». Le 30 aout 2026, un
+ * visiteur lisait donc « Prochains matchs : 3 avril » — cinq mois en arriere —
+ * juste a cote d'un badge « Temps Reel » et d'une promesse de donnees
+ * actualisees en permanence. La maquette contredisait l'argument de vente
+ * qu'elle est censee illustrer.
+ *
+ * Le calcul se fait APRES l'affichage, dans le navigateur, et jamais pendant le
+ * rendu du serveur : cette page est mise en cache et servie identique a tout le
+ * monde, une date calculee au rendu serait donc figee au jour de sa
+ * fabrication — le defaut qu'on repare. Le repli reste une chaine vide plutot
+ * qu'une fausse date : mieux vaut un blanc d'une seconde qu'un mensonge.
+ */
+function useDateProche(joursApres: number): string {
+  const [texte, setTexte] = useState('');
+  useEffect(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + joursApres);
+    const jj = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    setTexte(`${jj}/${mm}`);
+  }, [joursApres]);
+  return texte;
+}
+
 // Animated counter hook
 function useCounter(end: number, duration: number = 2000, startOnView: boolean = true) {
   const [count, setCount] = useState(0);
@@ -793,6 +820,8 @@ function BoutonsLateraux() {
 
 // Reusable App Mockup Content
 function AppMockupContent() {
+  const dateProche = useDateProche(1);
+  const datePlusLoin = useDateProche(6);
   return (
     <div className="flex-1 bg-[#16242e] p-5 pt-8 flex flex-col font-sans relative overflow-hidden">
       {/* Phone Header */}
@@ -851,7 +880,7 @@ function AppMockupContent() {
         <div className="space-y-3">
           {/* Match Row */}
           <div className="flex items-center justify-between bg-[#16242e] hover:bg-[#16242e] border border-white/5 hover:border-white/10 rounded-lg p-2 cursor-pointer transition-all hover:scale-[1.02] group">
-            <div className="text-[9px] text-white/40 leading-tight group-hover:text-white/60 transition-colors">03/04<br/>20:45</div>
+            <div className="text-[9px] text-white/40 leading-tight group-hover:text-white/60 transition-colors" suppressHydrationWarning>{dateProche}<br/>20:45</div>
             <div className="flex items-center gap-1.5 text-[10px] font-bold">
               <span className="text-[#10b981]">Paris Saint G...</span>
               <img src="https://media.api-sports.io/football/teams/85.png" alt="" loading="lazy" decoding="async" width={12} height={12} className="w-3 h-3 group-hover:scale-110 transition-transform" />
@@ -862,7 +891,7 @@ function AppMockupContent() {
           </div>
           {/* Match Row */}
           <div className="flex items-center justify-between bg-[#16242e] hover:bg-[#16242e] border border-white/5 hover:border-white/10 rounded-lg p-2 cursor-pointer transition-all hover:scale-[1.02] group">
-            <div className="text-[9px] text-white/40 leading-tight group-hover:text-white/60 transition-colors">08/04<br/>21:00</div>
+            <div className="text-[9px] text-white/40 leading-tight group-hover:text-white/60 transition-colors" suppressHydrationWarning>{datePlusLoin}<br/>21:00</div>
             <div className="flex items-center gap-1.5 text-[10px] font-bold">
               <span className="text-[#10b981]">Paris Saint G...</span>
               <img src="https://media.api-sports.io/football/teams/85.png" alt="" loading="lazy" decoding="async" width={12} height={12} className="w-3 h-3 group-hover:scale-110 transition-transform" />
