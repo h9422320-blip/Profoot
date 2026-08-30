@@ -12,6 +12,7 @@ import { usePaysAcheteur } from "@/components/usePaysAcheteur";
 import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
 import { reserverOngletPaiement, partirPayer, libererOnglet } from "@/lib/depart-paiement";
 import { heureLocale, dateLongueLocale, jourEtMoisLocaux } from "@/lib/heure-locale";
+import type { MatchDuJour } from "@/lib/grands-matchs-du-jour";
 
 /**
  * La notice est chargee A LA DEMANDE, comme sur le paywall et les tarifs.
@@ -22,6 +23,14 @@ import { heureLocale, dateLongueLocale, jourEtMoisLocaux } from "@/lib/heure-loc
  * rien.
  */
 const NoticePaiement = chargerADemande(() => import("@/components/NoticePaiement"), { ssr: false });
+
+/**
+ * Le carrousel des grands matchs du jour.
+ *
+ * Chargé à la demande, comme la notice : il n'est utile qu'avant le premier
+ * résultat, et la page d'analyse est la plus visitée du site.
+ */
+const MatchsDuJour = chargerADemande(() => import("./MatchsDuJour"), { ssr: false });
 
 // Extract future matches for the "Prochains matchs" list
 const futureMatches = matches.filter(m => m.status === "upcoming");
@@ -546,9 +555,18 @@ export interface OffreEntree {
 export default function AnalyzePage({
   preuves,
   offreEntree,
+  matchsDuJour,
 }: {
   preuves?: React.ReactNode;
   offreEntree?: OffreEntree;
+  /**
+   * Les grands matchs du jour, relevés par le SERVEUR et descendus tout faits.
+   *
+   * Le fournisseur de données est interrogé une fois par jour pour tout le
+   * monde, jamais une fois par visiteur : son quota est la ressource la plus
+   * rare du projet, et la page d'analyse est la plus consultée du site.
+   */
+  matchsDuJour?: { matchs: MatchDuJour[]; aujourdhui: boolean };
 }) {
   const offre = offreEntree ?? { libelle: "Essentiel", prixXof: 2000, analyses: 20 };
   const prixOffre = offre.prixXof.toLocaleString("fr-FR");
@@ -1033,6 +1051,26 @@ export default function AnalyzePage({
   };
 
   /**
+   * Taper un match du jour revient EXACTEMENT à choisir deux équipes à la main.
+   *
+   * Les deux gestes passent par les mêmes trois lignes : inscrire le club au
+   * référentiel local — sans quoi il s'afficherait « Inconnu », comme le FC
+   * Bâle le jour de Bâle–Barcelone — puis appeler `handleQuickMatchSelect`,
+   * qui pose les deux équipes et lance `handleAnalyze`.
+   *
+   * AUCUNE logique d'analyse propre à ce chemin. Une seconde façon de lancer
+   * une analyse aurait fini par diverger de la première : un décompte de quota
+   * oublié d'un côté, une reprise automatique manquante de l'autre — et
+   * personne ne s'en serait aperçu avant qu'un client ne paie deux fois le
+   * même match.
+   */
+  const choisirMatchDuJour = (m: MatchDuJour) => {
+    enregistrerClub(m.dom);
+    enregistrerClub(m.ext);
+    handleQuickMatchSelect(m.dom.id, m.ext.id);
+  };
+
+  /**
    * Reprise automatique de l'analyse payée.
    *
    * Après un achat à l'unité, la page de paiement renvoie ici avec les deux
@@ -1103,28 +1141,28 @@ export default function AnalyzePage({
 
         <div className="flex flex-col items-center gap-3 w-full">
           {/* Selectors Area — Visifoot style */}
-          <div className="flex flex-col items-center gap-4 w-full max-w-lg mx-auto">
+          <div className="flex flex-col items-center gap-2.5 w-full max-w-lg mx-auto">
               
               {/* Team 1 Selector */}
-              <div className="flex flex-col items-center w-full gap-2.5">
-                {team1 && <img src={getClub(team1!).logo} className="w-16 h-16 md:w-20 md:h-20 object-contain animate-fade-in drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" alt="" />}
+              <div className="flex flex-col items-center w-full gap-2">
+                {team1 && <img src={getClub(team1!).logo} className="w-12 h-12 md:w-16 md:h-16 object-contain animate-fade-in drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" alt="" />}
                 <button
                   onClick={() => setPickerOpen(1)}
-                  className={`w-full bg-transparent border-2 ${team1 ? 'border-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.15)] text-center' : 'border-[#10B981]/60 shadow-[0_0_15px_rgba(16,185,129,0.05)] text-left'} hover:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-semibold text-white transition-all flex items-center justify-between cursor-pointer`}
+                  className={`w-full bg-transparent border-2 ${team1 ? 'border-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.15)] text-center' : 'border-[#10B981]/60 shadow-[0_0_15px_rgba(16,185,129,0.05)] text-left'} hover:border-[#10B981] rounded-[14px] px-4 py-3 text-sm font-semibold text-white transition-all flex items-center justify-between cursor-pointer`}
                 >
                   <span className={`truncate text-white/90 ${team1 ? 'mx-auto' : ''}`}>{team1 ? getClub(team1!).name : "Cherche une équipe (ex: Barcelona, PSG...)"}</span>
                   {!team1 && <ChevronDown className="w-4 h-4 text-[#10B981]/60 shrink-0 ml-2" />}
                 </button>
               </div>
 
-              <span className="text-sm font-black text-white/30 uppercase tracking-[0.25em] my-1">vs</span>
+              <span className="text-xs font-black text-white/30 uppercase tracking-[0.25em]">vs</span>
 
               {/* Team 2 Selector */}
-              <div className="flex flex-col items-center w-full gap-2.5">
-                {team2 && <img src={getClub(team2!).logo} className="w-16 h-16 md:w-20 md:h-20 object-contain animate-fade-in drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" alt="" />}
+              <div className="flex flex-col items-center w-full gap-2">
+                {team2 && <img src={getClub(team2!).logo} className="w-12 h-12 md:w-16 md:h-16 object-contain animate-fade-in drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" alt="" />}
                 <button
                   onClick={() => setPickerOpen(2)}
-                  className={`w-full bg-transparent border-2 ${team2 ? 'border-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.15)] text-center' : 'border-[#10B981]/60 shadow-[0_0_15px_rgba(16,185,129,0.05)] text-left'} hover:border-[#10B981] rounded-[14px] px-4 py-3.5 text-sm font-semibold text-white transition-all flex items-center justify-between cursor-pointer`}
+                  className={`w-full bg-transparent border-2 ${team2 ? 'border-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.15)] text-center' : 'border-[#10B981]/60 shadow-[0_0_15px_rgba(16,185,129,0.05)] text-left'} hover:border-[#10B981] rounded-[14px] px-4 py-3 text-sm font-semibold text-white transition-all flex items-center justify-between cursor-pointer`}
                 >
                   <span className={`truncate text-white/90 ${team2 ? 'mx-auto' : ''}`}>{team2 ? getClub(team2!).name : "Cherche une équipe (ex: Real Madrid, Bayern)"}</span>
                   {!team2 && <ChevronDown className="w-4 h-4 text-[#10B981]/60 shrink-0 ml-2" />}
@@ -1134,7 +1172,7 @@ export default function AnalyzePage({
         </div>
 
         {/* Action button / Spinner */}
-        <div className="w-full max-w-md mx-auto mt-6 flex flex-col items-center gap-1.5">
+        <div className="w-full max-w-md mx-auto mt-4 flex flex-col items-center gap-1.5">
           {analyzing ? (
             <button disabled className="w-full bg-[#11221A] border border-[#10B981]/30 text-[#10B981] font-black py-3 rounded-full flex items-center justify-center gap-3 text-sm uppercase tracking-widest transition-all">
               <span className="w-4 h-4 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
@@ -1152,6 +1190,25 @@ export default function AnalyzePage({
           <span className="text-[8px] text-white/25 uppercase tracking-widest font-bold mt-1">
             Basé sur stats réelles + actualités foot 2026
           </span>
+
+          {/* ── LES GRANDS MATCHS DU JOUR ───────────────────────────────
+              Sous les sélecteurs, jamais à leur place : le choix à la main
+              reste le chemin principal, et il est intact. Le carrousel donne
+              un point de départ à qui ouvre l'application sans idée précise —
+              devant deux champs vides, il n'y avait rien à quoi se raccrocher.
+
+              Il disparaît pendant l'analyse : proposer un autre match à
+              quelqu'un qui attend le sien l'inviterait à perdre celui-là. */}
+          {!analyzing && matchsDuJour && (
+            <div className="w-full mt-4">
+              <MatchsDuJour
+                matchs={matchsDuJour.matchs}
+                aujourdhui={matchsDuJour.aujourdhui}
+                onChoisir={choisirMatchDuJour}
+                desactive={analyzing}
+              />
+            </div>
+          )}
 
           {/* ── LA NOTICE DE RECHARGEMENT ────────────────────────────────
               La même que sur le paywall et la page des tarifs : mêmes moyens

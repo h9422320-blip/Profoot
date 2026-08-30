@@ -3,6 +3,7 @@ import AnalyzeClient from "./AnalyzeClient";
 import SectionPreuves from "@/components/preuves/SectionPreuves";
 import { lireOffre } from "@/lib/offres";
 import { UNLIMITED } from "@/lib/subscription";
+import { matchsDuJour } from "@/lib/grands-matchs-du-jour";
 
 /**
  * La page d'analyse.
@@ -36,6 +37,22 @@ export default async function AnalyzePage() {
   // étant régénérée toutes les cinq minutes, un changement s'y voit aussitôt.
   const essentiel = await lireOffre("essential_monthly");
 
+  // ── LES GRANDS MATCHS DU JOUR, RELEVÉS ICI ET NON DANS LE NAVIGATEUR ──
+  //
+  // Le quota du fournisseur de données est la ressource la plus rare du
+  // projet : il a frôlé les 100 % le 16 août 2026, et au-delà, plus aucune
+  // analyse ne fonctionne pour personne. Un appel par visiteur sur la page la
+  // plus consultée du site l'épuiserait en une matinée.
+  //
+  // La liste est donc relevée une fois par jour, rangée dans la réserve
+  // partagée, et descendue toute faite. Cette page étant elle-même
+  // régénérée toutes les cinq minutes, un match qui approche apparaît sans
+  // que personne ne rappelle le fournisseur.
+  //
+  // La liste ne fait jamais échouer la page : en cas de panne du
+  // fournisseur elle revient vide, et les deux sélecteurs restent entiers.
+  const journee = await matchsDuJour();
+
   return (
     <AnalyzeClient
       offreEntree={{
@@ -43,6 +60,7 @@ export default async function AnalyzePage() {
         prixXof: essentiel.prixXof,
         analyses: essentiel.limiteAnalyses === UNLIMITED ? null : essentiel.limiteAnalyses,
       }}
+      matchsDuJour={journee}
       preuves={
         <Suspense fallback={null}>
           <SectionPreuves />
