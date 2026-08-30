@@ -144,8 +144,29 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
   await etape(
     'Vérifier les pronostics',
     async () => {
+      // ── LE LOT DOIT COUVRIR UNE JOURNÉE, PAS UN CINQUIÈME ────────────
+      //
+      // Il valait trois cents. L'application produit environ mille cinq cents
+      // analyses par jour : chaque passage en laissait donc mille deux cents
+      // de côté, et l'arriéré grossissait d'autant, tous les jours.
+      //
+      // Mesuré le 30 août 2026 : le taux d'analyses confrontées à leur
+      // résultat tombait de 96 % le 22 août à 8 % le 27, et 5 006 analyses de
+      // plus de trente-six heures n'avaient jamais été vérifiées — dont 824
+      // vieilles de plus d'une semaine.
+      //
+      // Rien ne le signalait, parce que rien n'était en panne. C'est le mur de
+      // preuves qui maigrissait, et le taux de précision affiché aux visiteurs
+      // qui se calculait sur un échantillon de plus en plus vieux — pendant
+      // qu'un client écrivait « les pronostics n'ont pas marché » sans qu'on
+      // puisse lui répondre, faute d'avoir vérifié ses matchs.
+      //
+      // Deux mille, et non trois cents : mesuré à vingt-neuf secondes pour
+      // deux mille, quarante-huit pour trois mille deux cents. La marge
+      // au-dessus du volume quotidien permet de rattraper un passage manqué
+      // sans jamais laisser l'arriéré s'installer.
       const { verifierPronostics } = await import('./precision-reelle');
-      const r: any = await verifierPronostics(300);
+      const r: any = await verifierPronostics(2000);
       return `${r?.verifiees ?? 0} analyse(s) vérifiée(s)`;
     },
     etapes
