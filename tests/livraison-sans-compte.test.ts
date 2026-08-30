@@ -81,7 +81,16 @@ test('★ ACQUIS — la vente est rattachée à son acheteur', () => {
   // Sans cela, le balayage suivant la compterait encore comme perdue, et la
   // livraison recommencerait indéfiniment.
   const s = sansCommentaires(lire(MODULE));
-  assert.match(s, /from\('payment_intents'\)\s*\.update\(\{ user_id: userId \}\)/);
+  assert.match(s, /from\('payment_intents'\)\s*\.update\(\{ user_id: userId,/);
+
+  // ── ET ELLE EST MARQUÉE COMME CONSOMMÉE ─────────────────────────────────
+  //
+  // `consumed_at` dit « cette vente a ouvert un accès ». Le webhook de
+  // l'ancienne boutique la remplissait ; la livraison ne le faisait pas. Le
+  // 30 août 2026, le diagnostic quotidien en concluait que quatre clients
+  // avaient payé sans rien recevoir — quatre clients parfaitement servis, dont
+  // un qui s'était déjà connecté.
+  assert.match(s, /consumed_at: new Date\(\)\.toISOString\(\)/, 'La vente livrée n’est plus marquée comme consommée.');
 });
 
 test('★ ACQUIS — la livraison reste bornée', () => {

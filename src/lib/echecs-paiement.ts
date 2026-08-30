@@ -181,6 +181,74 @@ export async function rafraichirStatutsPaiement(limite = 40): Promise<{
  * La seconde se voit sans réseau ; la première demande d'interroger la
  * boutique, d'où le plafond d'appels.
  */
+/**
+ * Cette vente a-t-elle réellement ouvert un accès ?
+ *
+ * Trois façons de l'avoir honorée, et il suffit d'une :
+ *   • un abonnement porte la référence de la vente ;
+ *   • le compte rattaché possède un accès actif ;
+ *   • l'adresse de l'acheteur possède un compte avec un accès actif — le cas
+ *     des ventes livrées, où l'accès est ouvert avant que la vente ne soit
+ *     rattachée.
+ *
+ * Rend `null` quand la base ne répond pas : « je ne sais pas » n'est pas
+ * « non ». Confondre les deux, c'est accuser un client servi.
+ */
+async function accesOuvertPour(
+  sb: ReturnType<typeof createAdminClient>,
+  saleId: string,
+  userId: string | null,
+  email: string | null
+): Promise<boolean | null> {
+  try {
+    const { data: parVente, error: e1 } = await sb
+      .from('subscriptions')
+      .select('id')
+      .eq('chariow_sale_id', saleId)
+      .limit(1);
+    if (e1) return null;
+    if (parVente?.length) return true;
+
+    const encoreValide = async (id: string) => {
+      const { data, error } = await sb
+        .from('subscriptions')
+        .select('status, expires_at')
+        .eq('user_id', id)
+        .eq('status', 'active');
+      if (error) return null;
+      return (data ?? []).some((s) => s.expires_at && new Date(s.expires_at).getTime() > Date.now());
+    };
+
+    if (userId) {
+      const r = await encoreValide(userId);
+      if (r === null) return null;
+      if (r) return true;
+    }
+
+    // L'adresse peut porter un compte que la vente ne connaît pas encore.
+    const adresse = String(email ?? '').trim().toLowerCase();
+    if (adresse) {
+      for (let page = 1; page <= 60; page++) {
+        const { data } = await sb.auth.admin.listUsers({ page, perPage: 200 });
+        if (!data?.users?.length) break;
+        const trouve = data.users.find((u) => String(u.email ?? '').toLowerCase() === adresse);
+        if (trouve) {
+          const r = await encoreValide(trouve.id);
+          return r === null ? null : r;
+        }
+        if (data.users.length < 200) break;
+      }
+    }
+
+    return false;
+  } catch {
+    return null;
+  }
+}
+
+/** Les adresses fabriquées par les scripts de test n'appartiennent à personne. */
+const ADRESSES_DE_TEST = /@(profoot-test\.com|profootai\.com|example\.(com|org|net)|test\.[a-z]+|localhost)$/i;
+
 export async function clientsLeses(
   jours = 7,
   plafondAppels = 60
@@ -225,6 +293,11 @@ export async function clientsLeses(
   let examenPartiel = false;
 
   for (const i of data as any[]) {
+    // Une vente fabriquée par un script de diagnostic n'a pas de client à
+    // léser. La laisser passer, c'est une anomalie de plus tous les matins —
+    // et une de plus derrière laquelle une vraie peut se cacher.
+    if (ADRESSES_DE_TEST.test(String(i.email ?? ''))) continue;
+
     let payee = !!i.consumed_at;
 
     // Une intention non consommée n'est pas forcément un impayé : la
@@ -251,12 +324,37 @@ export async function clientsLeses(
 
       if (statut === 'completed' || statut === 'settled') {
         ventesPayees++;
-        leses.push({
-          email: i.email ?? null,
-          userId: i.user_id ?? null,
-          saleId: i.sale_id,
-          raison: "payé chez la boutique, la notification n'est jamais arrivée",
-        });
+
+        // ── AVANT DE CRIER AU VOL, REGARDER SI L'ACCÈS EST OUVERT ────────
+        //
+        // `consumed_at` est une colonne de l'époque Chariow, remplie par son
+        // webhook. La boutique MakeTou ne la remplit pas, et la livraison des
+        // ventes sans compte non plus : une vente parfaitement honorée y reste
+        // donc vide.
+        //
+        // Le 30 août 2026, ce contrôle accusait QUATRE clients d'avoir payé
+        // sans rien recevoir. Tous les quatre avaient leur abonnement actif ;
+        // l'un d'eux s'était même déjà connecté. L'alerte la plus grave du
+        // système — « quelqu'un a payé sans rien recevoir » — se trompait
+        // quatre fois sur quatre, tous les matins.
+        //
+        // La question n'est pas « la colonne est-elle remplie », c'est « cette
+        // personne a-t-elle son accès ». On la pose donc.
+        const servie = await accesOuvertPour(sb, i.sale_id, i.user_id, i.email);
+        if (servie === null) {
+          // Base muette : on ne conclut pas. Voir plus bas — une alerte qui
+          // crie au vol pour un hoquet réseau finit ignorée le jour du vol.
+          examenPartiel = true;
+          continue;
+        }
+        if (!servie) {
+          leses.push({
+            email: i.email ?? null,
+            userId: i.user_id ?? null,
+            saleId: i.sale_id,
+            raison: "payé chez la boutique, la notification n'est jamais arrivée",
+          });
+        }
       }
       continue;
     }

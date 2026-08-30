@@ -68,7 +68,6 @@ const ACTIVITE_MINIMALE = 5;
  */
 const DELAI_RESORPTION_MS = 2 * 3600 * 1000;
 
-const CHARIOW = 'https://api.chariow.com/v1';
 const FOOT = 'https://v3.football.api-sports.io';
 
 async function reessayer<T>(f: () => Promise<T>, essai = 1): Promise<T> {
@@ -136,37 +135,48 @@ export async function executerAudit(): Promise<ResultatAudit> {
   const prixAnnonce = (cle: keyof typeof PLANS) =>
     offresBoutique?.[cle]?.prixXof ?? PLANS[cle].amountXof;
 
-  const produits: [string, string | undefined, number][] = [
-    ['Essentiel', process.env.CHARIOW_PRODUCT_ID_ESSENTIAL, prixAnnonce('essential_monthly')],
-    ['Pro', process.env.CHARIOW_PRODUCT_ID_PRO ?? process.env.CHARIOW_PRODUCT_ID_MONTHLY, prixAnnonce('pro_monthly')],
-    ['VIP Annuel', process.env.CHARIOW_PRODUCT_ID_VIP ?? process.env.CHARIOW_PRODUCT_ID_YEARLY, prixAnnonce('vip_yearly')],
+  // ── LE CONTRÔLE SUIT LA BOUTIQUE, PAS L'INVERSE ─────────────────────────
+  //
+  // Ce bloc interrogeait Chariow. Cette boutique a fermé le 27 août 2026 et
+  // l'application vend depuis sur MakeTou : le contrôle rendait donc TROIS
+  // anomalies tous les matins — « produit Essentiel introuvable », « produit
+  // Pro introuvable », « produit VIP introuvable » — pour des offres qui se
+  // vendaient parfaitement. Le 30 août, elles formaient un tiers des anomalies
+  // du diagnostic.
+  //
+  // Un diagnostic qui se trompe tous les jours au même endroit apprend à son
+  // lecteur à sauter ce paragraphe. Le jour où la ligne devient vraie, elle est
+  // sautée comme les autres.
+  //
+  // MakeTou n'expose pas d'interface de programmation pour ses produits. La
+  // question qu'on peut poser, et qui est celle qui compte, devient donc :
+  // « la page où l'on paie cette offre répond-elle ? » Une adresse morte, et
+  // l'acheteur arrive sur une erreur au moment de payer.
+  const { lienMaketou } = await import('./maketou-boutique');
+  const offres: [string, keyof typeof PLANS][] = [
+    ['Essentiel', 'essential_monthly'],
+    ['Pro', 'pro_monthly'],
+    ['VIP Annuel', 'vip_yearly'],
   ];
-  for (const [nom, id, attendu] of produits) {
-    if (!id) {
-      noter('Boutique', 'anomalie', `aucun produit configuré pour l'offre ${nom} — elle n'est pas payable`);
+  for (const [nom, cle] of offres) {
+    const lien = lienMaketou(cle);
+    if (!lien) {
+      noter('Boutique', 'anomalie', `aucune page de paiement pour l'offre ${nom} — elle n'est pas payable`);
       continue;
     }
     try {
-      const p = (
-        await reessayer(async () => {
-          const r = await fetch(`${CHARIOW}/products/${id}`, {
-            headers: { Authorization: `Bearer ${process.env.CHARIOW_API_KEY}`, Accept: 'application/json' },
-          });
-          return r.json();
-        })
-      )?.data;
-
-      if (!p) noter('Boutique', 'anomalie', `produit ${nom} introuvable dans la boutique`);
-      else if (p.status !== 'published') noter('Boutique', 'anomalie', `${nom} n'est pas publié (${p.status})`);
-      else if (Number(p.pricing?.effective?.value) !== attendu)
-        noter(
-          'Boutique',
-          'anomalie',
-          `${nom} : la boutique facture ${p.pricing?.effective?.value} alors que l'application annonce ${attendu}`
-        );
-      else noter('Boutique', 'ok', `${nom} à ${attendu} FCFA, publié`);
+      const r = await reessayer(async () =>
+        fetch(lien, { method: 'GET', headers: { 'User-Agent': 'ProFootAI-Audit' } })
+      );
+      if (!r.ok) {
+        noter('Boutique', 'anomalie', `la page de paiement ${nom} répond ${r.status} — l'offre n'est pas payable`);
+      } else {
+        noter('Boutique', 'ok', `${nom} à ${prixAnnonce(cle)} FCFA, page de paiement joignable`);
+      }
     } catch (e: any) {
-      noter('Boutique', 'attention', `${nom} : vérification impossible (${e?.message})`);
+      // Boutique injoignable depuis notre serveur : on le signale sans conclure
+      // qu'elle est en panne. Un incident réseau n'est pas une offre morte.
+      noter('Boutique', 'attention', `${nom} : page de paiement non vérifiable (${e?.message})`);
     }
   }
 
@@ -371,10 +381,40 @@ export async function executerAudit(): Promise<ResultatAudit> {
     if (data?.length) {
       const sans = data.filter((e: any) => e.recherches_web === 0).length;
       const part = (sans / data.length) * 100;
-      // Une réponse sans recherche vient de la mémoire du modèle, qui a des mois
-      // de retard.
-      if (part > 20) noter('Agent VIP', 'anomalie', `${Math.round(part)} % des réponses sans aucune recherche web`);
-      else noter('Agent VIP', 'ok', `${sans} réponse(s) sans recherche sur ${data.length}`);
+
+      // ── « ÉTEINT EXPRÈS » N'EST PAS « EN PANNE » ────────────────────────
+      //
+      // La recherche web est un outil des serveurs d'Anthropic : une
+      // passerelle tierce ne peut pas la fournir. Depuis le 20 août 2026 tout
+      // passe par OpenRouter — un seul crédit à recharger au lieu de deux —
+      // et l'agent n'a donc AUCUN accès au web.
+      //
+      // Le contrôle l'annonçait comme une anomalie tous les matins : « 100 %
+      // des réponses sans aucune recherche web ». C'est exact, et c'est sans
+      // objet — rien dans le code ne peut le corriger, seule une variable
+      // d'environnement le peut. Une anomalie qu'aucune correction ne peut
+      // éteindre apprend à son lecteur à ne plus lire ce paragraphe.
+      //
+      // On dit donc ce qui est vrai : l'agent tourne sans le web, voici
+      // pourquoi, et voici comment le rebrancher.
+      const { passerellesDisponibles } = await import('./passerelle-claude');
+      const webPossible = passerellesDisponibles().some((p) => p.rechercheWeb);
+
+      if (!webPossible) {
+        noter(
+          'Agent VIP',
+          'attention',
+          `agent sans accès au web : la passerelle en service ne le permet pas. ` +
+            `Il garde toutes ses données football, il perd la presse et le mercato. ` +
+            `Pour le rebrancher : ANTHROPIC_DIRECT=1 dans Vercel.`
+        );
+      } else if (part > 20) {
+        // Une réponse sans recherche vient alors de la mémoire du modèle, qui
+        // a des mois de retard — et là, c'est une vraie anomalie.
+        noter('Agent VIP', 'anomalie', `${Math.round(part)} % des réponses sans aucune recherche web`);
+      } else {
+        noter('Agent VIP', 'ok', `${sans} réponse(s) sans recherche sur ${data.length}`);
+      }
     }
   } catch (e: any) {
     noter('Agent VIP', 'attention', `agent non vérifiable : ${e?.message}`);

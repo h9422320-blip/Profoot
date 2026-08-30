@@ -341,7 +341,15 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
 
       // La vente porte désormais son acheteur : le prochain balayage ne la
       // comptera plus comme perdue.
-      await sb.from('payment_intents').update({ user_id: userId }).eq('sale_id', sale);
+      // `consumed_at` dit « cette vente a ouvert un accès ». Le webhook de
+      // l'ancienne boutique la remplissait ; la livraison ne le faisait pas, et
+      // le diagnostic quotidien concluait donc que ces clients avaient payé
+      // sans rien recevoir — quatre accusations à tort le 30 août 2026, sur
+      // quatre clients parfaitement servis.
+      await sb
+        .from('payment_intents')
+        .update({ user_id: userId, consumed_at: new Date().toISOString() })
+        .eq('sale_id', sale);
 
       // ── 3. LE LIEN ──────────────────────────────────────────────────────
       //
