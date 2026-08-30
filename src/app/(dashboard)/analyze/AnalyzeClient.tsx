@@ -595,6 +595,17 @@ export default function AnalyzePage({
   /** Vrai quand la notice de rechargement est ouverte. */
   const [noticeRecharge, setNoticeRecharge] = useState(false);
   const [rechargeEnCours, setRechargeEnCours] = useState(false);
+
+  /**
+   * ── LE SEUIL OÙ L'ON PRÉVIENT ─────────────────────────────────────────
+   *
+   * Trois analyses : assez tôt pour qu'il reste de quoi travailler pendant
+   * qu'on recharge, assez tard pour ne pas harceler quelqu'un qui vient
+   * d'acheter. En dessous, le rappel arriverait quand il est déjà trop tard ;
+   * au-dessus, il s'afficherait la moitié du mois et on cesserait de le voir.
+   */
+  const SEUIL_PRESQUE_SEC = 3;
+
   /**
    * Le pays de l acheteur, demande au serveur SEULEMENT quand la notice
    * s ouvre. L interroger a chaque chargement de la page d analyse — la plus
@@ -607,6 +618,22 @@ export default function AnalyzePage({
     used: number; limit: number | null; remaining: number | null;
     unlimited: boolean; periodEnd: string | null;
   } | null>(null);
+
+  /**
+   * Vrai uniquement dans les toutes dernières analyses d'un abonné payant.
+   *
+   * Jamais pour un compte illimité — il n'a rien à recharger — et jamais à
+   * zéro : c'est alors la carte « limite atteinte » qui parle, et deux
+   * messages sur le même sujet au même moment se contredisent plus qu'ils
+   * n'aident.
+   */
+  const presqueASec =
+    isPremium &&
+    !!quota &&
+    !quota.unlimited &&
+    quota.remaining !== null &&
+    quota.remaining > 0 &&
+    quota.remaining <= SEUIL_PRESQUE_SEC;
   const [teamsVersion, setTeamsVersion] = useState(0);
 
   // Équipes de la saison en cours, chargées depuis API-Football et fusionnées
@@ -1253,7 +1280,9 @@ export default function AnalyzePage({
                       className={`h-full rounded-full transition-all ${
                         quota.remaining === 0
                           ? 'bg-red-500'
-                          : 'bg-gradient-to-r from-[#10B981] to-[#2DD4BF]'
+                          : presqueASec
+                            ? 'bg-warning'
+                            : 'bg-gradient-to-r from-[#10B981] to-[#2DD4BF]'
                       }`}
                       style={{
                         width: `${Math.min(100, quota.limit ? (quota.used / quota.limit) * 100 : 0)}%`,
@@ -1262,6 +1291,58 @@ export default function AnalyzePage({
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {/* ── PRÉVENIR AVANT LE MUR, PAS APRÈS ─────────────────────────
+              Le compteur existait déjà, mais il ne dit rien : c'est une barre
+              qui se remplit, et personne ne surveille une barre. L'abonné
+              découvrait sa limite en la heurtant — au moment précis où il
+              voulait une analyse, donc au pire moment.
+
+              Mesuré le 30 août 2026 : un abonné à 40/40 et un autre à 55/60,
+              aucun des deux prévenu. Le premier n'a plus rien et l'ignore.
+
+              Ce rappel n'apparaît QUE dans les trois dernières analyses, et
+              disparaît à zéro — à zéro, c'est la carte « limite atteinte » qui
+              parle, et deux messages sur le même sujet en même temps se
+              contredisent plus qu'ils n'aident.
+
+              Le bouton est le MÊME que celui de la carte de limite atteinte,
+              avec la même offre et le même signalement d'étape : deux chemins
+              d'achat écrits séparément finiraient par diverger. */}
+          {presqueASec && offreActuelle && (
+            <div className="w-full max-w-[300px] mt-3 rounded-[16px] border border-warning/25 bg-warning/[0.07] px-4 py-3 text-center">
+              <p className="text-[12.5px] font-black text-warning">
+                {quota!.remaining === 1
+                  ? 'Il te reste 1 analyse'
+                  : `Il te reste ${quota!.remaining} analyses`}
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-white/45">
+                Recharge maintenant : elles s&apos;ajoutent aussitôt à celles qui te
+                restent, sans attendre le mois prochain.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  signalerEtape('offre-cliquee', offreActuelle.cle);
+                  setNoticeRecharge(true);
+                }}
+                disabled={rechargeEnCours}
+                className="mt-2.5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-warning px-5 text-[11.5px] font-black uppercase tracking-widest text-black transition-all active:scale-95 disabled:cursor-wait disabled:opacity-60"
+              >
+                {rechargeEnCours ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Ouverture du paiement…
+                  </>
+                ) : (
+                  <>
+                    Recharger — {offreActuelle.prixXof.toLocaleString('fr-FR')} FCFA
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
             </div>
           )}
           {/* Premium Inline Error Card */}
