@@ -132,10 +132,28 @@ export function messageAlerteVenteNonHonoree(details: {
       '',
       `Motif    : ${motif}`,
       '',
-      'Ce client a payé et n\'a rien reçu. Il faut agir maintenant.',
+      // ── DIRE OÙ AGIR, PAS SEULEMENT QU'IL FAUT AGIR ────────────────────
+      //
+      // Le message se terminait par « il faut agir maintenant » suivi d'une
+      // commande à taper dans un terminal. Le destinataire de cette alerte
+      // lit ses courriels sur un téléphone : il ne peut pas exécuter de
+      // commande, et une consigne qu'on ne peut pas suivre équivaut à pas de
+      // consigne du tout.
+      //
+      // Depuis le 29 août l'application se répare seule dans la plupart des
+      // cas. L'alerte doit donc dire ce qui est déjà en cours, et ne réclamer
+      // une intervention humaine que lorsqu'il en faut vraiment une.
+      'CE QUI SE FAIT TOUT SEUL',
       '',
-      'Pour rouvrir l\'accès une fois la cause comprise :',
-      '  npx tsx scripts/rattrapage-maketou.ts --ouvrir',
+      "Si l'acheteur n'a pas de compte, l'application le crée, crédite l'accès",
+      'et lui envoie un lien pour choisir son mot de passe. En cas d\'échec,',
+      "l'entretien repasse deux fois par jour, et l'acheteur est relancé",
+      'automatiquement au bout de 24 h puis de 72 h.',
+      '',
+      "SI RIEN NE BOUGE D'ICI QUELQUES HEURES",
+      '',
+      "Ouvrez /admin/logs et cliquez « Livrer maintenant » : c'est le même",
+      'traitement, déclenché à la main.',
       '',
       'ProFoot AI — alerte automatique',
     ]

@@ -316,6 +316,9 @@ export async function ouvrirAccesMaketou(
   }
 
   if (!userId) {
+    /** Vrai quand la livraison a réellement ouvert l'accès dans la foulée. */
+    let livree = false;
+
     // ── ON LUI DIT QUOI FAIRE, AU LIEU DE L'ATTENDRE ──────────────────────
     //
     // La règle du projet est qu'on crée son compte AVANT de payer, et le
@@ -350,28 +353,53 @@ export async function ouvrirAccesMaketou(
     // La livraison passe par la MEME fonction que l entretien quotidien :
     // une seule regle, une seule trace, et rien qui puisse diverger entre le
     // chemin immediat et le filet de rattrapage.
+    // ── ET ON L'ATTEND ──────────────────────────────────────────────────
+    //
+    // Cette livraison était lancée avec `void`, sans être attendue, pour ne pas
+    // retarder la réponse au pulse. C'était une erreur, et elle a coûté cher :
+    // une fonction sans serveur est GELÉE dès que sa réponse HTTP part. Le
+    // travail lancé après ne s'exécute pas.
+    //
+    // Mesuré le 30 août 2026 : sept livraisons tracées depuis la mise en place,
+    // TOUTES venues d'un appelant qui attend le résultat — l'entretien
+    // quotidien, ou la porte de service. Pas une seule n'est jamais venue du
+    // pulse, alors que c'est lui qui est censé servir dans la seconde.
+    //
+    // Le pulse répond donc quelques secondes plus tard. La boutique s'en
+    // moque ; l'acheteur, non.
     if (!erreurTrace && !dejaVue) {
-      void (async () => {
-        try {
-          const { livrerVentesSansCompte } = await import('./livraison-sans-compte');
-          const r = await livrerVentesSansCompte();
-          console.log(
-            `[MAKETOU] Livraison immédiate : ${r.livrees} accès ouvert(s). ${r.details.join(' ; ')}`
-          );
-        } catch (e: any) {
-          console.warn('[MAKETOU] Livraison immédiate impossible :', e?.message);
-        }
-      })();
+      try {
+        const { livrerVentesSansCompte } = await import('./livraison-sans-compte');
+        const r = await livrerVentesSansCompte();
+        livree = r.livrees > 0;
+        console.log(
+          `[MAKETOU] Livraison immédiate : ${r.livrees} accès ouvert(s). ${r.details.join(' ; ')}`
+        );
+      } catch (e: any) {
+        // Une livraison qui échoue ne doit pas faire échouer le pulse : la
+        // vente est déjà enregistrée, et l'entretien repassera dessus.
+        console.warn('[MAKETOU] Livraison immédiate impossible :', e?.message);
+      }
     }
 
     return {
       ouvert: false,
       email,
+      // ── LE MOTIF DIT CE QUI S'EST RÉELLEMENT PASSÉ ─────────────────────
+      //
+      // Il annonçait encore « un courriel invite l'acheteur à créer son
+      // compte » — la manière de faire d'avant le 29 août, abandonnée parce
+      // qu'elle laissait deux acheteurs dehors pendant deux jours. L'alerte
+      // décrivait donc une action qui n'existait plus, et laissait croire
+      // qu'il fallait attendre le client.
       motif: erreurTrace
         ? `Aucun compte ProFoot à cette adresse, ET la vente n'a PAS PU être enregistrée ` +
           `(${erreurTrace.message}). Elle est donc perdue : à rattraper à la main.`
-        : `Aucun compte ProFoot à cette adresse. La vente est enregistrée, un courriel ` +
-          `invite l'acheteur à créer son compte ; l'accès s'ouvrira alors tout seul.`,
+        : livree
+          ? `Aucun compte ProFoot à cette adresse : son compte vient d'être créé, l'accès ` +
+            `est crédité, et un lien pour choisir son mot de passe lui a été envoyé.`
+          : `Aucun compte ProFoot à cette adresse, et la livraison immédiate n'a rien ouvert. ` +
+            `L'entretien repassera dessus, et l'acheteur sera relancé automatiquement.`,
     };
   }
 

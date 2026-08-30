@@ -199,3 +199,40 @@ test('★ ACQUIS — un abonnement de test est annulé, jamais supprimé', () =>
   assert.match(s, /DOMAINES_DE_TEST/, 'La liste des domaines de test n’est plus partagée avec la livraison.');
   assert.match(s, /for \(let page = 1; page <= 60; page\+\+\)/, 'La lecture des comptes n’est plus paginée.');
 });
+
+test('★ ACQUIS — le pulse ATTEND sa livraison', () => {
+  // Elle était lancée avec `void`, sans être attendue, pour ne pas retarder la
+  // réponse au pulse. C'était une erreur, et elle a coûté cher : une fonction
+  // sans serveur est GELÉE dès que sa réponse HTTP part, et le travail lancé
+  // après ne s'exécute pas.
+  //
+  // Mesuré le 30 août 2026 : sept livraisons tracées depuis la mise en place,
+  // TOUTES venues d'un appelant qui attend le résultat — l'entretien quotidien
+  // ou la porte de service. Pas une seule n'est jamais venue du pulse, alors
+  // que c'est lui qui est censé servir dans la seconde.
+  const s = sansCommentaires(lire(PULSE));
+  assert.match(
+    s,
+    /const r = await livrerVentesSansCompte\(\);/,
+    'La livraison immédiate n’est plus attendue : elle ne s’exécutera pas.'
+  );
+  assert.doesNotMatch(
+    s,
+    /void \(async \(\) => \{[\s\S]{0,300}livrerVentesSansCompte/,
+    'La livraison repart en arrière-plan, là où la plateforme la tue.'
+  );
+});
+
+test('★ ACQUIS — l’alerte décrit ce qui se passe vraiment', () => {
+  // Elle annonçait « un courriel invite l'acheteur à créer son compte » : la
+  // manière de faire d'avant le 29 août, abandonnée parce qu'elle laissait
+  // deux acheteurs dehors pendant deux jours.
+  const s = sansCommentaires(lire(PULSE));
+  assert.doesNotMatch(s, /invite l’acheteur à créer son compte|invite l'acheteur à créer son compte/, 'L’alerte décrit une action qui n’existe plus.');
+
+  // Et elle ne demande plus une commande de terminal à quelqu'un qui lit ses
+  // courriels sur un téléphone.
+  const c = sansCommentaires(lire('src/lib/maketou-courriels.ts'));
+  assert.doesNotMatch(c, /npx tsx scripts/, 'L’alerte réclame une commande que son destinataire ne peut pas taper.');
+  assert.match(c, /Livrer maintenant/, 'L’alerte n’indique plus où agir.');
+});
