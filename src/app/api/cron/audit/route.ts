@@ -202,6 +202,17 @@ export async function GET(request: Request) {
       console.warn('[AUDIT] Relevé des abonnés jamais entrés impossible :', e?.message);
     }
 
+    // Et on leur écrit. Le second passage de la journée : quelqu'un qui a
+    // franchi les vingt-quatre heures dans la nuit ne doit pas attendre
+    // l'entretien du lendemain pour recevoir son lien.
+    try {
+      const { relancerAbonnesJamaisEntres } = await import('@/lib/relance-jamais-entres');
+      const r = await relancerAbonnesJamaisEntres();
+      if (r.relances) console.log(`[AUDIT] ${r.relances} abonné(s) relancé(s) : ${r.details.join(' ; ')}`);
+    } catch (e: any) {
+      console.warn('[AUDIT] Relance des abonnés impossible :', e?.message);
+    }
+
     return NextResponse.json({ ...resultat, verification, ventes, bloques });
   } catch (erreur: any) {
     console.error('[AUDIT] Exécution impossible :', erreur?.message);

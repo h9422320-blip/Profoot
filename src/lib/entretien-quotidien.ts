@@ -243,6 +243,31 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
     etapes
   );
 
+  // ── PRÉVENIR LE PROPRIÉTAIRE NE SUFFIT PAS ─────────────────────────────
+  //
+  // L'étape précédente signale ces personnes à l'administration. Entre
+  // l'alerte et le message au client, il faut qu'un humain lise, comprenne,
+  // retrouve l'adresse et écrive — la nuit, le week-end, un jour chargé.
+  //
+  // Le 30 août 2026, un acheteur a payé 5 000 FCFA à 00 h 38, n'a pas réussi
+  // à entrer, et a REPAYÉ 2 000 FCFA à 09 h 08. Il ne s'est pas plaint : il a
+  // payé une deuxième fois. Cinq des six mauvais avis de la boutique ne
+  // parlaient pas du produit, mais d'un accès qu'on n'arrivait pas à ouvrir.
+  //
+  // L'application écrit donc elle-même au client, avec le lien qui le fait
+  // entrer. Deux messages au maximum : passé deux, on n'aide plus, on harcèle
+  // quelqu'un qui nous a déjà payés.
+  await etape(
+    'Relancer les abonnés qui ne sont jamais entrés',
+    async () => {
+      const { relancerAbonnesJamaisEntres } = await import('./relance-jamais-entres');
+      const r = await relancerAbonnesJamaisEntres();
+      if (!r.examines) return 'personne à relancer';
+      return `${r.relances} relance(s) sur ${r.examines} examiné(s)` + (r.details.length ? ` · ${r.details.join(' ; ')}` : '');
+    },
+    etapes
+  );
+
   await etape(
     'Relever la précision du jour',
     async () => {

@@ -89,3 +89,44 @@ test('★ ACQUIS — les comptes de test ne déclenchent pas l’alerte', () => 
   const s = sansCommentaires(lire(MODULE));
   assert.match(s, /DOMAINES_DE_TEST\.test\(compte\.email\)/, 'Une adresse de test ferait sonner l’alerte.');
 });
+
+// ── ON N'ATTEND PLUS QU'UN HUMAIN ÉCRIVE ──────────────────────────────────
+
+test('★ ACQUIS — l’application écrit au client, pas seulement au propriétaire', () => {
+  // Entre l'alerte et le message au client, il fallait qu'un humain lise,
+  // comprenne, retrouve l'adresse et écrive — la nuit, le week-end, un jour
+  // chargé. Le client attendait pendant ce temps.
+  //
+  // Le 30 août 2026, un acheteur a payé 5 000 FCFA à 00 h 38, n'a pas réussi à
+  // entrer, et a REPAYÉ 2 000 FCFA à 09 h 08. Il ne s'est pas plaint : il a
+  // payé une deuxième fois.
+  const s = sansCommentaires(lire('src/lib/relance-jamais-entres.ts'));
+  assert.match(s, /a: compte\.email/, 'La relance ne part plus vers le client.');
+  assert.match(s, /generateLink/, 'Aucun lien de mot de passe n’accompagne la relance.');
+  assert.match(s, /ne payez pas une seconde fois/i, 'Le message ne dit plus de ne pas repayer.');
+
+  // Les deux passages quotidiens la déclenchent, comme la surveillance.
+  assert.match(sansCommentaires(lire(ENTRETIEN)), /relancerAbonnesJamaisEntres/, 'L’entretien ne relance plus.');
+  assert.match(sansCommentaires(lire(AUDIT)), /relancerAbonnesJamaisEntres/, 'L’audit ne relance plus.');
+});
+
+test('★ ACQUIS — jamais plus de deux relances à la même personne', () => {
+  // Quelqu'un qui n'a pas répondu à deux messages ne répondra pas au dixième.
+  // Passé deux, on n'aide plus : on harcèle quelqu'un qui nous a déjà payés.
+  const s = sansCommentaires(lire('src/lib/relance-jamais-entres.ts'));
+  const max = s.match(/MAX_RELANCES = (\d+)/);
+  assert.ok(max && Number(max[1]) <= 2, 'Le plafond de relances a sauté.');
+  assert.match(s, /if \(envoyees >= MAX_RELANCES\) continue;/, 'Le plafond n’est plus appliqué.');
+
+  const premier = s.match(/PREMIER_RAPPEL_H = (\d+)/);
+  assert.ok(premier && Number(premier[1]) >= 24, 'On relance avant vingt-quatre heures : la personne dormait peut-être.');
+
+  // La trace n'est écrite QUE si le message est parti : l'inverse ferait passer
+  // pour relancé quelqu'un qui n'a rien reçu.
+  assert.match(
+    s,
+    /if \(!parti\)[\s\S]{0,160}continue;/,
+    'La trace s’écrit même quand le message n’est pas parti.'
+  );
+  assert.match(s, /DOMAINES_DE_TEST\.test\(compte\.email\)/, 'Une adresse de test serait relancée.');
+});
