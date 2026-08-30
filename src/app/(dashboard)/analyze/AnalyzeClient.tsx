@@ -1199,11 +1199,15 @@ export default function AnalyzePage({
 
               Il disparaît pendant l'analyse : proposer un autre match à
               quelqu'un qui attend le sien l'inviterait à perdre celui-là. */}
-          {!analyzing && matchsDuJour && (
+          {/* La section s'affiche MÊME sans liste : le composant dit alors
+              qu'il n'y a pas de grand match. Une section qui disparaît en
+              silence ne se distingue pas d'une fonctionnalité absente — on ne
+              sait pas s'il n'y a rien à montrer, ou si quelque chose est cassé. */}
+          {!analyzing && (
             <div className="w-full mt-4">
               <MatchsDuJour
-                matchs={matchsDuJour.matchs}
-                aujourdhui={matchsDuJour.aujourdhui}
+                matchs={matchsDuJour?.matchs ?? []}
+                aujourdhui={matchsDuJour?.aujourdhui ?? true}
                 onChoisir={choisirMatchDuJour}
                 desactive={analyzing}
               />
