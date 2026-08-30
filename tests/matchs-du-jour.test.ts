@@ -124,17 +124,30 @@ test('★ ACQUIS — le carrousel ne peut pas élargir la page', () => {
   // bande de matchs.
   const s = sansCommentaires(lire(CARROUSEL));
   assert.match(s, /w-full min-w-0 space-y-2/, 'Le conteneur ne se contraint plus.');
-  assert.match(s, /flex w-full min-w-0 gap-2\.5 overflow-x-auto/, 'La piste ne se contraint plus.');
+  assert.match(s, /flex w-full min-w-0 gap-\d(\.\d)? overflow-x-auto/, 'La piste ne se contraint plus.');
 });
 
-test('★ ACQUIS — le défilement automatique ne relit pas sa position dans la page', () => {
-  // `scrollLeft` est ARRONDI par le navigateur : écrire 0,4 puis relire rend 0.
-  // Le pas était perdu à chaque tour et le carrousel restait immobile — mesuré,
-  // pas supposé. La position se tient donc à part.
+test('★ ACQUIS — le défilement avance par match, trois secondes chacun', () => {
+  // La première version glissait d'un demi-pixel toutes les trente
+  // millisecondes : seize pixels par seconde, juste sur le papier, invisible
+  // en vrai. Le propriétaire a regardé l'écran et a conclu que rien ne
+  // bougeait. Un mouvement qu'on ne voit pas n'existe pas.
   const s = sansCommentaires(lire(CARROUSEL));
-  assert.match(s, /const position = useRef\(0\)/, 'La position n’est plus tenue à part.');
-  assert.match(s, /position\.current \+ PAS_PX/, 'Le pas ne s’accumule plus.');
-  assert.doesNotMatch(s, /el\.scrollLeft \+ PAS_PX/, 'Le pas repart de la valeur arrondie par le navigateur.');
+  const duree = s.match(/DUREE_PAR_MATCH_MS = (\d+)/);
+  assert.ok(duree, 'La durée par match n’est plus fixée.');
+  assert.ok(Number(duree![1]) >= 3000, 'Chaque match reste moins de trois secondes : on n’a plus le temps de lire.');
+  assert.ok(
+    s.includes('(rang.current + 1) % matchs.length'),
+    'Le carrousel n’avance plus d’un match à la fois.'
+  );
+  assert.ok(s.includes('el.scrollTo({ left: gauche'), 'Le déplacement ne vise plus une carte.');
+
+  // La position est mesurée sur la carte, jamais déduite d'une largeur écrite
+  // en dur : le jour où la carte change de taille, le défilement suit.
+  assert.ok(
+    s.includes('carte.getBoundingClientRect().left'),
+    'La position est de nouveau calculée à la main.'
+  );
 });
 
 test('★ ACQUIS — le collage ne combat pas le défilement automatique', () => {
@@ -142,7 +155,11 @@ test('★ ACQUIS — le collage ne combat pas le défilement automatique', () =>
   // donnait 178. Il annulait chaque pas. Il est excellent au doigt, donc on
   // l'allume au moment où la personne prend la main.
   const s = sansCommentaires(lire(CARROUSEL));
-  assert.match(s, /scrollSnapType: manuel \? 'x proximity' : 'none'/, 'Le collage combat de nouveau l’animation.');
+  assert.match(
+    s,
+    /scrollSnapType: manuel \? 'x (proximity|mandatory)' : 'none'/,
+    'Le collage combat de nouveau l’animation.'
+  );
 });
 
 test('★ ACQUIS — le défilement s’arrête au doigt, et ne repart pas', () => {
@@ -181,4 +198,32 @@ test('★ ACQUIS — aucun vocabulaire de paris', () => {
       `Le mot « ${mot} » est apparu : ce n'est pas ce que vend ProFoot.`
     );
   }
+});
+
+test('★ ACQUIS — le carrousel avance même quand le glissement n’a pas lieu', () => {
+  // `behavior: 'smooth'` est une DEMANDE, pas une garantie. Vérifié dans le
+  // navigateur : quand la page n'est pas rendue, le glissement n'a simplement
+  // pas lieu et la piste ne bouge pas d'un pixel. Le carrousel paraît alors
+  // cassé — c'est exactement le reproche qui nous a été fait.
+  const s = sansCommentaires(lire(CARROUSEL));
+  assert.ok(
+    s.includes('if (Math.abs(el.scrollLeft - gauche) > 8) el.scrollLeft = gauche;'),
+    'Le filet a sauté : si le glissement n’a pas lieu, la piste reste immobile.'
+  );
+});
+
+test('★ ACQUIS — « animations réduites » ne fige pas le carrousel', () => {
+  // La première version renonçait purement et simplement. C'est un réglage
+  // courant sur les téléphones d'entrée de gamme, activé pour économiser la
+  // batterie : le carrousel y restait figé sans que rien ne l'explique.
+  //
+  // Le réglage demande de ne pas ANIMER, pas de ne rien montrer.
+  const s = sansCommentaires(lire(CARROUSEL));
+  assert.match(s, /const sansAnimation = /, 'Le réglage n’est plus relevé.');
+  assert.doesNotMatch(
+    s,
+    /prefers-reduced-motion[^\n]*\)\.matches\) return;/,
+    'Le carrousel renonce de nouveau à tout mouvement.'
+  );
+  assert.match(s, /glisse \? 'smooth' : 'auto'/, 'Le repli sans animation a disparu.');
 });
