@@ -130,10 +130,113 @@ async function ficheDuMatch(
   try {
     const data = await apiFootball<any>(`/fixtures?id=${fixtureId}`, CACHE_TTL.STANDINGS);
     const f = data?.response?.[0];
-    return { competition: f?.league?.name ?? null, date: f?.fixture?.date ?? null };
+    return {
+      competition: nommerCompetition(f?.league?.name, f?.league?.country),
+      date: f?.fixture?.date ?? null,
+    };
   } catch {
     return { competition: null, date: null };
   }
+}
+
+/**
+ * LES CHAMPIONNATS QUI PORTENT LE MÊME NOM DANS DEUX PAYS.
+ *
+ * Le 31 août 2026, le mur de preuves affichait « SERIE A » au-dessus de
+ * Flamengo — Botafogo, et « BUNDESLIGA » au-dessus de Rapid Vienne — Sturm
+ * Graz. Les deux étiquettes venaient du fournisseur et étaient exactes : le
+ * championnat brésilien s'appelle bien Série A, l'autrichien bien Bundesliga.
+ *
+ * Exactes, et trompeuses. Sur la même page, « SERIE A » coiffait aussi
+ * Napoli — Como. Un amateur de football qui voit Flamengo rangé dans le
+ * championnat italien n'en conclut pas qu'il existe deux Série A : il conclut
+ * que nos données sont fausses. Sur la page dont le seul rôle est de prouver
+ * que nos données sont justes.
+ *
+ * On ajoute donc le pays UNIQUEMENT quand le nom est ambigu et que le pays
+ * n'est pas celui auquel on pense spontanément. « Premier League » reste
+ * « Premier League » pour l'Angleterre, et devient « Premier League (Russie) »
+ * pour la Russie.
+ */
+const PAYS_ATTENDU: Record<string, string> = {
+  'serie a': 'Italy',
+  'serie b': 'Italy',
+  bundesliga: 'Germany',
+  'bundesliga 2': 'Germany',
+  'premier league': 'England',
+  championship: 'England',
+  'ligue 1': 'France',
+  'ligue 2': 'France',
+  'la liga': 'Spain',
+  eredivisie: 'Netherlands',
+  'primeira liga': 'Portugal',
+  'super lig': 'Turkey',
+  'süper lig': 'Turkey',
+};
+
+/** Le nom français des pays qui apparaissent réellement dans nos preuves. */
+const NOM_PAYS: Record<string, string> = {
+  Brazil: 'Brésil',
+  Austria: 'Autriche',
+  Russia: 'Russie',
+  Ukraine: 'Ukraine',
+  Switzerland: 'Suisse',
+  Greece: 'Grèce',
+  Belgium: 'Belgique',
+  Scotland: 'Écosse',
+  Denmark: 'Danemark',
+  Norway: 'Norvège',
+  Sweden: 'Suède',
+  Poland: 'Pologne',
+  Croatia: 'Croatie',
+  Romania: 'Roumanie',
+  Israel: 'Israël',
+  Cyprus: 'Chypre',
+  Hungary: 'Hongrie',
+  Bulgaria: 'Bulgarie',
+  Czechia: 'Tchéquie',
+  'Czech-Republic': 'Tchéquie',
+  Serbia: 'Serbie',
+  Slovakia: 'Slovaquie',
+  Slovenia: 'Slovénie',
+  Ireland: 'Irlande',
+  Iceland: 'Islande',
+  Finland: 'Finlande',
+  Kazakhstan: 'Kazakhstan',
+  Argentina: 'Argentine',
+  Mexico: 'Mexique',
+  'USA': 'États-Unis',
+  Japan: 'Japon',
+  'South-Korea': 'Corée du Sud',
+  China: 'Chine',
+  Egypt: 'Égypte',
+  Morocco: 'Maroc',
+  Tunisia: 'Tunisie',
+  Algeria: 'Algérie',
+  'Ivory-Coast': "Côte d'Ivoire",
+  Senegal: 'Sénégal',
+};
+
+/**
+ * Le nom d'un championnat, complété par son pays quand il le faut.
+ *
+ * Ne lève jamais et ne perd jamais l'information d'origine : sans pays connu,
+ * ou sur un nom non ambigu, la chaîne du fournisseur ressort telle quelle.
+ */
+export function nommerCompetition(
+  nom: string | null | undefined,
+  pays: string | null | undefined
+): string | null {
+  const n = String(nom ?? '').trim();
+  if (!n) return null;
+
+  const p = String(pays ?? '').trim();
+  if (!p || p.toLowerCase() === 'world') return n;
+
+  const attendu = PAYS_ATTENDU[n.toLowerCase()];
+  if (!attendu || attendu.toLowerCase() === p.toLowerCase()) return n;
+
+  return `${n} (${NOM_PAYS[p] ?? p})`;
 }
 
 /**
@@ -481,8 +584,23 @@ export async function construirePreuves(): Promise<{
     // fonctionne pour personne jusqu'au lendemain.
     //
     // La fiche n'est donc interrogée que si l'information manque.
+    // ── SAUF QUAND CE QU'ON SAIT EST TROMPEUR ─────────────────────────────
+    //
+    // Les cartes enregistrées avant le 31 août 2026 portent le nom brut du
+    // fournisseur : « Serie A » pour Flamengo — Botafogo, « Bundesliga » pour
+    // Rapid Vienne — Sturm Graz. Sans ce rattrapage, elles garderaient cette
+    // étiquette pour toujours, puisqu'on ne redemande jamais une fiche connue.
+    //
+    // On redemande donc la fiche des seules cartes concernées : un nom ambigu,
+    // et aucun pays entre parenthèses. Trois appels au fournisseur une fois,
+    // puis plus jamais — la carte réécrite porte désormais son pays.
+    const etiquette = String((existante as any)?.competition ?? '');
+    const aBesoinDuPays =
+      !!etiquette && !etiquette.includes('(') && !!PAYS_ATTENDU[etiquette.toLowerCase()];
+
     const dejaConnue =
       !!(existante as any)?.competition &&
+      !aBesoinDuPays &&
       /^\d{4}-\d{2}-\d{2}T/.test(String((existante as any)?.date_match ?? ''));
 
     const fiche = dejaConnue
