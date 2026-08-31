@@ -226,22 +226,25 @@ function CartePreuve({ p }: { p: Preuve }) {
 export default async function SectionPreuves({
   // ── QUARANTE CARTES, ET RIEN QUE DES SCORES EXACTS ────────────────────────
   //
-  // La page d'analyse montrait seize cartes mêlant les issues justes et les
-  // scores exacts, reclassées par notoriété. Elle ne montre plus que la preuve
-  // la plus forte — le score trouvé AU BUT PRÈS — en frise, du plus récent au
-  // plus ancien.
+  // ── LE SCORE EXACT SEUL NE MONTRAIT PRESQUE RIEN ────────────────────────
   //
-  // Ce n'est pas cacher les autres : les 150 issues justes restent entières
-  // sur la page dédiée, où mène le bouton. Ici, on ouvre avec ce qu'il y a de
-  // plus difficile à faire.
+  // La frise ne retenait que la preuve la plus forte : le score trouvé au but
+  // près. C'était juste sur le principe, et intenable en pratique — un score
+  // exact est rare.
   //
-  // Quarante : il y a 61 scores exacts au 29 août 2026, le quarantième
-  // remonte au 15 août. La liste couvre donc les douze derniers jours — assez
-  // récente pour prouver que l'outil marche AUJOURD'HUI, assez longue pour
-  // qu'on ne la parcoure pas d'un coup d'œil.
+  // Mesuré sur la journée du 30 août 2026 : 46 rencontres analysées et
+  // vérifiées, **29 vainqueurs correctement annoncés**, et **UN SEUL score
+  // exact** (SS Lazio — Genoa, 1-0). Le mur affichait donc un match sur
+  // quarante-six. Un visiteur venu vérifier si l'outil marche voyait une
+  // journée quasiment vide, le jour même où l'application avait eu raison
+  // vingt-neuf fois.
+  //
+  // On montre donc TOUTES les rencontres où le vainqueur annoncé était le bon,
+  // le score exact restant distingué parmi elles. La preuve la plus forte ne
+  // disparaît pas : elle cesse d'être la seule admise.
   limite = 40,
   avecEntete = true,
-  scoresExactsSeuls = true,
+  scoresExactsSeuls = false,
 }: {
   limite?: number;
   /** Faux sur la page dediee, qui porte deja son propre titre. */
@@ -249,9 +252,17 @@ export default async function SectionPreuves({
   /** Faux sur la page dédiée, qui montre TOUT le palmarès. */
   scoresExactsSeuls?: boolean;
 }) {
+  // ── L'ORDRE RESTE CHRONOLOGIQUE, QUOI QU'IL ARRIVE ────────────────────
+  //
+  // Il suivait le filtre : en retirant l'exigence du score exact, la liste
+  // serait repassée au classement « par notoriété », et les rencontres d'hier
+  // auraient disparu derrière un Real Madrid du mois dernier.
+  //
+  // Or c'est précisément la question que se pose le visiteur : est-ce que ça
+  // marche EN CE MOMENT ? Une preuve datée d'il y a trois semaines répond mal.
   const { preuves, bilan, total } = await getPreuvesPubliques(limite, {
     uniquementScoresExacts: scoresExactsSeuls,
-    ordreChronologique: scoresExactsSeuls,
+    ordreChronologique: true,
   });
   return <MurPreuves preuves={preuves} bilan={bilan} total={total} avecEntete={avecEntete} />;
 }

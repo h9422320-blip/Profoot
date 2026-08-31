@@ -31,11 +31,28 @@ const LIB = 'src/lib/preuves.ts';
 const SECTION = 'src/components/preuves/SectionPreuves.tsx';
 const PAGE = 'src/app/(dashboard)/preuves/page.tsx';
 
-test('★ ACQUIS — la page d’analyse ne montre que des scores exacts', () => {
+test('★ ACQUIS — la page d’analyse montre TOUTES les réussites, pas les seuls scores exacts', () => {
+  // ── CE QUE LE FILTRE CACHAIT ──────────────────────────────────────────
+  //
+  // La frise ne retenait que la preuve la plus forte : le score trouvé au but
+  // près. Juste sur le principe, intenable en pratique — un score exact est
+  // rare.
+  //
+  // Mesuré sur la journée du 30 août 2026 : 46 rencontres analysées et
+  // vérifiées, 29 vainqueurs correctement annoncés, et UN SEUL score exact
+  // (SS Lazio — Genoa, 1-0). Le mur affichait donc un match sur quarante-six.
+  // Un visiteur venu vérifier si l'outil marche voyait une journée quasiment
+  // vide, le jour même où l'application avait eu raison vingt-neuf fois.
   const s = sansCommentaires(lire(SECTION));
-  assert.match(s, /scoresExactsSeuls = true/, 'La page d’analyse remontre les issues justes.');
+  assert.match(s, /scoresExactsSeuls = false/, 'La page d’analyse recache les issues justes.');
   assert.match(s, /uniquementScoresExacts: scoresExactsSeuls/);
-  assert.match(s, /ordreChronologique: scoresExactsSeuls/, 'L’ordre chronologique a sauté.');
+
+  // L'ordre ne suit plus le filtre : sans cela, retirer l'exigence du score
+  // exact ferait repasser la liste au classement par notoriété, et les
+  // rencontres d'hier disparaîtraient derrière un Real Madrid du mois dernier.
+  // Or c'est précisément la question du visiteur : est-ce que ça marche EN CE
+  // MOMENT ?
+  assert.match(s, /ordreChronologique: true/, 'L’ordre chronologique a sauté.');
 });
 
 test('★ ACQUIS — quarante cartes, ni huit ni seize', () => {
