@@ -7,6 +7,20 @@ import { ArrowRight, Mail, Lock, User, AlertCircle, TrendingUp, Zap, ShieldCheck
 import { signup } from '../login/actions'
 import { ProFootLogo } from '@/components/ui/ProFootLogo'
 
+/**
+ * Le nom lisible d'une offre, pour l'afficher à l'inscription.
+ *
+ * Le PRIX n'y figure pas : l'offre arrive de l'adresse, donc de l'extérieur.
+ * Afficher un montant venu de l'URL laisserait n'importe qui fabriquer un lien
+ * annonçant « Essentiel — 200 FCFA ». Le vrai prix reste celui du serveur, à
+ * l'étape suivante. Un nom inconnu n'affiche rien du tout.
+ */
+const LIBELLE_OFFRE: Record<string, string> = {
+  essential_monthly: 'Essentiel',
+  pro_monthly: 'Pro',
+  vip_yearly: 'VIP Annuel',
+}
+
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   /** La porte de sortie proposée avec le message : créer un compte, se connecter. */
@@ -27,6 +41,20 @@ export default function SignupPage() {
     // Le serveur revalide de toute façon ; ce contrôle évite seulement
     // d'envoyer une valeur qu'il rejettera en silence.
     return v.startsWith('/') && !v.startsWith('//') ? v : ''
+  })
+
+  /**
+   * L'offre sur laquelle la personne vient de cliquer.
+   *
+   * Elle arrive dans son propre paramètre, et non dans `suite` : celui-ci
+   * n'accepte qu'un chemin sans point d'interrogation, et cette contrainte
+   * est ce qui empêche un lien truqué de renvoyer vers un site tiers juste
+   * après la saisie du mot de passe.
+   */
+  const [offre] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const v = new URLSearchParams(window.location.search).get('offre') ?? ''
+    return /^[a-z0-9_-]{1,40}$/i.test(v) ? v : ''
   })
 
   async function handleSubmit(formData: FormData) {
@@ -123,6 +151,28 @@ export default function SignupPage() {
                 Connectez-vous
               </Link>
             </p>
+
+            {/* ── DIRE POURQUOI IL EST ICI ─────────────────────────────────
+                Il vient de cliquer « Choisir l'Essentiel — 2 000 FCFA » et
+                lisait « Créer un compte », sans un mot sur l'offre ni sur son
+                prix. Certains croient s'être trompés de bouton et repartent.
+
+                Le nom et le prix sont écrits EN DUR ici, et c'est délibéré :
+                l'offre arrive de l'adresse, donc de l'extérieur. Afficher un
+                prix venu de l'URL laisserait n'importe qui fabriquer un lien
+                annonçant « Essentiel — 200 FCFA ». Un nom inconnu n'affiche
+                rien du tout. Le vrai prix reste celui du serveur, à l'étape
+                suivante. */}
+            {LIBELLE_OFFRE[offre] && (
+              <div className="mt-4 flex items-center gap-2.5 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.07] px-4 py-3 text-left">
+                <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-400" />
+                <p className="text-[13px] font-semibold leading-snug text-zinc-200">
+                  Créez votre compte pour finaliser votre accès{' '}
+                  <span className="font-black text-emerald-300">{LIBELLE_OFFRE[offre]}</span>.
+                  Le paiement s&apos;ouvrira juste après.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Form */}
@@ -135,6 +185,7 @@ export default function SignupPage() {
                 chemin interne : une adresse complète permettrait d'expédier
                 quelqu'un vers un site tiers juste après son mot de passe. */}
             <input type="hidden" name="suite" value={suite} />
+            <input type="hidden" name="offre" value={offre} />
             
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">

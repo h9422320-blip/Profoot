@@ -138,6 +138,22 @@ function destinationApres(formData: FormData): string {
     !suite.startsWith('//') &&
     /^\/[a-z0-9/_-]{0,60}$/i.test(suite)
   ) {
+    // ── L'OFFRE REVIENT AVEC LUI ────────────────────────────────────────
+    //
+    // Quelqu'un qui cliquait « Choisir l'Essentiel » sans compte était envoyé
+    // ici, puis renvoyé sur la page des tarifs NUE : il devait re-choisir son
+    // offre, c'est-à-dire reprendre la même décision une seconde fois, au
+    // moment précis où il sortait son argent.
+    //
+    // L'offre voyage dans son propre champ, et non dans `suite` : celui-ci
+    // n'accepte qu'un chemin sans point d'interrogation, et c'est exactement
+    // cette contrainte qui empêche un lien truqué d'expédier quelqu'un vers
+    // un site tiers juste après son mot de passe. Elle est revalidée ici,
+    // comme `t1` et `t2`, avant d'être recollée à l'adresse.
+    const offre = propre(formData.get('offre'))
+    if (offre && suite === '/pricing') {
+      return `/pricing?offre=${encodeURIComponent(offre)}`
+    }
     return suite
   }
 

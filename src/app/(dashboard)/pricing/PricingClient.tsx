@@ -185,6 +185,25 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
   const [noticePour, setNoticePour] = useState<PlanKey | null>(null);
   const paysDetecte = usePaysAcheteur(noticePour !== null);
 
+  // ── AU RETOUR DE L'INSCRIPTION, ON REPREND OÙ IL EN ÉTAIT ───────────────
+  //
+  // Quelqu'un qui cliquait « Choisir l'Essentiel » sans compte était envoyé
+  // vers l'inscription, puis ramené sur cette page NUE : il devait re-choisir
+  // son offre, c'est-à-dire reprendre la même décision une seconde fois, au
+  // moment précis où il sortait son argent. Chaque décision reprise est une
+  // occasion de renoncer.
+  //
+  // L'offre est revalidée AVANT d'être appliquée : elle arrive de l'adresse,
+  // donc de l'extérieur. Un nom inconnu est ignoré sans bruit — la page
+  // s'affiche normalement, elle n'ouvre simplement pas de paiement.
+  useEffect(() => {
+    const demandee = new URLSearchParams(window.location.search).get('offre');
+    if (demandee && (OFFRES as readonly { cle: PlanKey }[]).some((o) => o.cle === demandee)) {
+      setNoticePour(demandee as PlanKey);
+      signalerEtape('offre-cliquee', demandee);
+    }
+  }, []);
+
   // Le niveau affiché vient du serveur : le frontend ne décide jamais des
   // droits, il se contente de refléter ce que le backend applique réellement.
   //
@@ -245,7 +264,11 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
     // recommence pas à zéro.
     if (!sessionPresumee()) {
       signalerEtape('inscription-requise', selectedPlan);
-      window.location.href = '/signup?suite=/pricing';
+      // L'offre voyage à part, jamais dans `suite` : ce champ n'accepte qu'un
+      // chemin sans point d'interrogation, et c'est ce qui empêche un lien
+      // truqué d'expédier quelqu'un vers un site tiers juste après son mot de
+      // passe. Même précaution que pour `t1`/`t2`, déjà transportés ainsi.
+      window.location.href = `/signup?suite=/pricing&offre=${encodeURIComponent(selectedPlan)}`;
       return;
     }
 
