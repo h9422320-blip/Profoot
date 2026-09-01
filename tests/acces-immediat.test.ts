@@ -212,5 +212,18 @@ test('★ ACQUIS — l’invitation dit l’adresse exacte à employer', () => {
   const c = fs.readFileSync(path.join(process.cwd(), 'src/lib/courriel.ts'), 'utf8');
   assert.match(c, /export function messageCompteAcreer/);
   assert.match(c, /inscrivez-vous avec cette adresse exactement/i, 'Le message ne nomme plus l’adresse à employer.');
-  assert.match(c, /profootai\.com\/signup/, 'Le message ne dit plus où s’inscrire.');
+
+  // ── ET IL PORTE LE LIEN QUI LA REMPLIT ────────────────────────────────
+  //
+  // Nommer l'adresse ne suffisait pas : le message renvoyait vers un
+  // formulaire VIDE, qu'il fallait remplir à la main. Le 29 août 2026, AMON a
+  // payé avec `essanon231@` au lieu de `essanamon231@` — un caractère de
+  // travers — et son accès ne l'a jamais retrouvé.
+  assert.match(c, /messageCompteAcreer\(adresse: string, offre: string, lien: string\)/, 'L’invitation ne porte plus de lien.');
+  assert.match(c, /votre adresse y est déjà remplie/, 'Le lien ne remplit plus l’adresse.');
+
+  // Le formulaire lit ce paramètre et remplit le champ.
+  const s = fs.readFileSync(path.join(process.cwd(), 'src/app/signup/page.tsx'), 'utf8');
+  assert.match(s, /const \[emailInvite\] = useState/, 'L’inscription ne lit plus l’adresse du lien.');
+  assert.match(s, /defaultValue=\{emailInvite\}/, 'Le champ e-mail n’est plus pré-rempli.');
 });

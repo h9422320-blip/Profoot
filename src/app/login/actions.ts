@@ -200,7 +200,7 @@ export async function signup(formData: FormData) {
   // revient pas — précisément celui qu'on cherche à comprendre.
   const origine = lireOrigine(await headers())
 
-  const { error } = await supabase.auth.signUp({
+  const { data: cree, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -222,6 +222,28 @@ export async function signup(formData: FormData) {
     // secondes, sans jamais entrer.
     const m = messageAuth(error.message)
     return { error: m.texte, liens: m.liens }
+  }
+
+  // ── SON ACCÈS DÉJÀ PAYÉ S'OUVRE ICI, PAS DEMAIN MATIN ──────────────────
+  //
+  // On ne crée jamais de compte à la place de quelqu'un : c'est la règle. Mais
+  // la vitrine de la boutique est publique, et des gens y paient sans passer
+  // par le site. Leur vente attend alors qu'ils s'inscrivent — c'est
+  // maintenant.
+  //
+  // Un filet quotidien faisait déjà ce travail, mais deux fois par jour
+  // seulement : quelqu'un qui s'inscrivait à 14 h voyait un mur de paiement
+  // jusqu'au lendemain matin, pour un accès déjà payé. C'est ce que Diarra a
+  // vécu les 28 et 29 août.
+  //
+  // Ne lève jamais : l'inscription a réussi, elle ne doit pas échouer à cause
+  // d'un rattachement. Ce qui serait manqué ici, l'entretien le reprendra.
+  if (cree?.user?.id) {
+    const { ouvrirAccesAlInscription } = await import('@/lib/acces-a-l-inscription')
+    const r = await ouvrirAccesAlInscription(cree.user.id, email)
+    if (r.ouverts) {
+      console.log(`[INSCRIPTION] ${email} : ${r.ouverts} accès rattaché(s) — ${r.details.join(' ; ')}`)
+    }
   }
 
   revalidatePath('/', 'layout')

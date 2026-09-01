@@ -58,6 +58,8 @@ export const DOMAINES_DE_TEST = /@(profoot-test\.com|profootai\.com|example\.(co
 export interface BilanLivraison {
   examinees: number;
   livrees: number;
+  /** Acheteurs sans compte, invités à en créer un — on ne le fait plus pour eux. */
+  invitations: number;
   dejaLivrees: number;
   comptesExistants: number;
   echecs: number;
@@ -77,10 +79,47 @@ function siteUrl(): string {
  * Ne lève jamais : cette étape s'exécute au milieu d'un entretien qui fait des
  * choses plus importantes qu'elle.
  */
+/**
+ * Invite un acheteur sans compte à en créer un, son adresse déjà remplie.
+ *
+ * Une seule invitation par vente : la trace en garde la mémoire. Recevoir
+ * trois courriels après avoir payé fait conclure que quelque chose ne tourne
+ * pas rond.
+ */
+async function inviterAsInscrire(
+  sb: ReturnType<typeof createAdminClient>,
+  email: string,
+  sale: string,
+  offre: string
+): Promise<'envoyee' | 'deja' | 'echec'> {
+  const reference = `invitation-${sale}`;
+  const { data: deja } = await sb
+    .from('webhook_events')
+    .select('id')
+    .eq('delivery_id', reference)
+    .limit(1);
+  if (deja?.length) return 'deja';
+
+  const { envoyerCourriel, messageCompteAcreer } = await import('./courriel');
+  const lien = `${siteUrl()}/signup?email=${encodeURIComponent(email)}`;
+  const parti = await envoyerCourriel({ a: email, ...messageCompteAcreer(email, offre, lien) });
+  if (!parti) return 'echec';
+
+  await sb.from('webhook_events').insert({
+    provider: 'invitation',
+    delivery_id: reference,
+    event: 'acheteur_invite_a_s_inscrire',
+    payload: { email, offre, vente: sale, invite_le: new Date().toISOString() },
+  });
+  console.log(`[LIVRAISON] ${email} invité à créer son compte (${offre}).`);
+  return 'envoyee';
+}
+
 export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
   const bilan: BilanLivraison = {
     examinees: 0,
     livrees: 0,
+    invitations: 0,
     dejaLivrees: 0,
     comptesExistants: 0,
     echecs: 0,
@@ -293,24 +332,30 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
         );
         console.log(`[LIVRAISON] ${email} rattaché à son compte ${jumelle.email}.`);
       } else {
-        // Adresse confirmée d'office : elle vient d'un paiement encaissé,
-        // c'est une preuve plus forte qu'un clic dans un courriel. Le mot de
-        // passe est tiré au hasard et n'est communiqué à personne — la
-        // personne choisira le sien par le lien.
-        const motDePasse = `Pf${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2).toUpperCase()}!9`;
-        const { data: cree, error: erreurCompte } = await sb.auth.admin.createUser({
-          email,
-          password: motDePasse,
-          email_confirm: true,
-          user_metadata: { origine_compte: 'livraison_vente_sans_compte', vente: sale },
-        });
-
-        if (erreurCompte || !cree?.user) {
+        // ── ON NE CRÉE PLUS DE COMPTE À LA PLACE DE QUELQU'UN ────────────
+        //
+        // Décision du propriétaire, le 1er septembre 2026 : un compte
+        // appartient à celui qui l'ouvre. Nous n'avons pas à le faire pour
+        // lui, même avec les meilleures intentions — et même après un
+        // paiement.
+        //
+        // On garde donc son argent au chaud et on l'invite, avec son adresse
+        // DÉJÀ REMPLIE dans le formulaire : c'est là qu'on perdait les gens,
+        // un caractère de travers dans l'adresse et plus rien ne le retrouve.
+        //
+        // L'abonnement se rattache tout seul à la seconde où le compte naît —
+        // voir `acces-a-l-inscription.ts`, appelé par l'inscription elle-même.
+        // Il n'attend pas l'entretien du lendemain.
+        const invitation = await inviterAsInscrire(sb, email, sale, config.label);
+        if (invitation === 'deja') bilan.dejaLivrees++;
+        else if (invitation === 'envoyee') {
+          bilan.invitations++;
+          bilan.details.push(`${email} : invité à créer son compte (${config.label})`);
+        } else {
           bilan.echecs++;
-          bilan.details.push(`${email} : compte non créé (${erreurCompte?.message ?? 'inconnu'})`);
-          continue;
+          bilan.details.push(`${email} : invitation NON envoyée`);
         }
-        userId = cree.user.id;
+        continue;
       }
 
       // ── 2. L'ACCÈS ──────────────────────────────────────────────────────

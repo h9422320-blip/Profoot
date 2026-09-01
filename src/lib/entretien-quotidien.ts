@@ -232,7 +232,7 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
       const { livrerVentesSansCompte } = await import('./livraison-sans-compte');
       const r = await livrerVentesSansCompte();
       return (
-        `${r.livrees} accès ouvert(s) sur ${r.examinees} vente(s) sans compte ` +
+        `${r.livrees} accès ouvert(s), ${r.invitations} invitation(s) sur ${r.examinees} vente(s) sans compte ` +
         `— ${r.dejaLivrees} déjà livrée(s), ${r.comptesExistants} compte(s) déjà là` +
         (r.echecs ? `, ${r.echecs} échec(s)` : '') +
         (r.details.length ? ` · ${r.details.join(' ; ')}` : '')

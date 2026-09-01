@@ -57,6 +57,23 @@ export default function SignupPage() {
     return /^[a-z0-9_-]{1,40}$/i.test(v) ? v : ''
   })
 
+  /**
+   * L'adresse déjà payée, pré-remplie depuis le lien de l'invitation.
+   *
+   * C'est très exactement là qu'on perdait les gens. Le 29 août 2026, AMON a
+   * payé avec `essanon231@` au lieu de `essanamon231@` — un caractère de
+   * travers — et son accès ne l'a jamais retrouvé. Le champ rempli d'avance
+   * supprime la faute de frappe.
+   *
+   * Modifiable : si la personne veut un autre compte, elle efface et retape.
+   * On ne l'enferme pas, on lui évite une erreur.
+   */
+  const [emailInvite] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const v = new URLSearchParams(window.location.search).get('email') ?? ''
+    return /^[^@\s]{1,64}@[^@\s]{3,255}$/.test(v) ? v.toLowerCase() : ''
+  })
+
   async function handleSubmit(formData: FormData) {
     setIsLoading(true)
     setError(null)
@@ -253,6 +270,7 @@ export default function SignupPage() {
                   type="email"
                   autoComplete="email"
                   required
+                  defaultValue={emailInvite}
                   className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 focus:bg-white/10 transition-all text-base sm:text-sm shadow-sm"
                   placeholder="vous@exemple.com"
                 />

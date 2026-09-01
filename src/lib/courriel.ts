@@ -165,7 +165,18 @@ export async function envoyerCourriel({ a, sujet, texte }: Courriel): Promise<bo
  * Aucune excuse : il n'y a pas eu de panne. Le dire laisserait croire qu'il
  * s'est passé quelque chose d'anormal, alors qu'il lui manque une inscription.
  */
-export function messageCompteAcreer(adresse: string, offre: string): Omit<Courriel, 'a'> {
+/**
+ * ── LE LIEN PORTE SON ADRESSE, DÉJÀ REMPLIE ───────────────────────────────
+ *
+ * Le message disait « inscrivez-vous avec cette adresse exactement », puis
+ * renvoyait vers un formulaire vide. C'est là qu'on perdait les gens : le
+ * 29 août 2026, AMON a payé avec `essanon231@` au lieu de `essanamon231@`, un
+ * caractère de travers, et son accès ne l'a jamais retrouvé.
+ *
+ * Le lien remplit le champ à sa place. Il n'a plus qu'à choisir son mot de
+ * passe.
+ */
+export function messageCompteAcreer(adresse: string, offre: string, lien: string): Omit<Courriel, 'a'> {
   return {
     sujet: 'Votre accès ProFoot AI vous attend — il reste une étape',
     texte: [
@@ -180,7 +191,9 @@ export function messageCompteAcreer(adresse: string, offre: string): Omit<Courri
       "C'est elle qui porte votre paiement. Avec une autre adresse, même " +
         'proche, votre accès ne vous retrouvera pas.',
       '',
-      'Pour créer votre compte : profootai.com/signup',
+      'Pour créer votre compte, ouvrez ce lien — votre adresse y est déjà remplie :',
+      '',
+      lien,
       '',
       "Si quoi que ce soit bloque, répondez simplement à ce message : c'est " +
         'une vraie boîte, et je vous réponds.',

@@ -38,12 +38,39 @@ const ENTRETIEN = 'src/lib/entretien-quotidien.ts';
 const ACTION = 'src/app/admin/users/actions.ts';
 const PORTE = 'src/app/api/livraison/route.ts';
 
-test('★ ACQUIS — le compte est créé, l’accès crédité, le lien envoyé', () => {
+test('★ ACQUIS — on ne crée JAMAIS un compte à la place de quelqu’un', () => {
+  // ── DÉCISION DU PROPRIÉTAIRE, LE 1er SEPTEMBRE 2026 ───────────────────
+  //
+  // Un compte appartient à celui qui l'ouvre. Nous n'avons pas à le faire pour
+  // lui, même avec les meilleures intentions, et même après un paiement.
+  //
+  // Ce qui remplace : la vente est gardée, l'acheteur est invité avec son
+  // adresse DÉJÀ REMPLIE, et l'abonnement se rattache tout seul à la seconde
+  // où le compte naît — voir `acces-a-l-inscription.ts`.
   const s = sansCommentaires(lire(MODULE));
-  assert.match(s, /auth\.admin\.createUser/, 'Le compte n’est plus créé.');
+  assert.doesNotMatch(s, /auth\.admin\.createUser/, 'L’application recrée des comptes à la place des acheteurs.');
+  assert.match(s, /inviterAsInscrire/, 'L’invitation à s’inscrire a disparu.');
+  assert.match(s, /\/signup\?email=\$\{encodeURIComponent\(email\)\}/, 'Le lien ne pré-remplit plus l’adresse.');
+
+  // L'accès reste crédité pour qui a DÉJÀ un compte — la jumelle d'adresse.
   assert.match(s, /from\('subscriptions'\)[\s\S]{0,80}\.upsert/, 'L’accès n’est plus crédité.');
-  assert.match(s, /generateLink/, 'Le lien de mot de passe n’est plus généré.');
-  assert.match(s, /messageAccesCree/, 'Le message n’est plus envoyé.');
+  assert.match(s, /messageAccesCree/, 'Le message d’accès ouvert n’est plus envoyé.');
+});
+
+test('★ ACQUIS — l’accès payé s’ouvre à la seconde de l’inscription', () => {
+  // Un filet quotidien faisait déjà ce travail, mais deux fois par jour :
+  // quelqu'un qui s'inscrivait à 14 h voyait un mur de paiement jusqu'au
+  // lendemain matin, pour un accès déjà payé. C'est ce que Diarra a vécu.
+  const a = sansCommentaires(lire('src/app/login/actions.ts'));
+  assert.match(a, /ouvrirAccesAlInscription\(cree\.user\.id, email\)/, 'L’inscription ne rattache plus l’accès payé.');
+
+  const r = sansCommentaires(lire('src/lib/acces-a-l-inscription.ts'));
+  assert.match(r, /from\('payment_intents'\)/, 'Le rattachement ne lit plus les intentions de paiement.');
+  assert.match(r, /from\('webhook_events'\)/, 'Le rattachement ne lit plus les messages de la boutique.');
+  assert.match(r, /onConflict: 'chariow_sale_id', ignoreDuplicates: true/, 'Une vente pourrait être créditée deux fois.');
+  assert.doesNotMatch(r, /createUser/, 'Le rattachement crée des comptes.');
+  // Ne lève jamais : une inscription ne doit pas échouer à cause de ça.
+  assert.match(r, /catch \(e: any\) \{[\s\S]{0,200}console\.warn/, 'Une inscription peut de nouveau échouer sur un rattachement.');
 });
 
 test('★ ACQUIS — jamais de compte en double', () => {

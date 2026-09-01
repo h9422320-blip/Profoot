@@ -211,7 +211,7 @@ export async function livrerVentesSansCompteMaintenant(): Promise<string> {
   if (!r.examinees) return 'Aucune vente en attente : tout le monde a son accès.';
 
   const lignes = [
-    `${r.livrees} accès ouvert(s) sur ${r.examinees} vente(s) examinée(s).`,
+    `${r.livrees} accès ouvert(s) et ${r.invitations} invitation(s) sur ${r.examinees} vente(s) examinée(s).`,
     r.dejaLivrees ? `${r.dejaLivrees} déjà livrée(s) auparavant.` : '',
     r.comptesExistants ? `${r.comptesExistants} avai(en)t déjà un compte.` : '',
     r.echecs ? `${r.echecs} échec(s).` : '',

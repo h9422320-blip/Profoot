@@ -389,9 +389,11 @@ export async function ouvrirAccesMaketou(
       try {
         const { livrerVentesSansCompte } = await import('./livraison-sans-compte');
         const r = await livrerVentesSansCompte();
-        livree = r.livrees > 0;
+        // « Servi » veut dire : accès ouvert OU invitation partie. Les deux sont
+        // un succès du point de vue de l'acheteur, qui a désormais un chemin.
+        livree = r.livrees > 0 || r.invitations > 0;
         console.log(
-          `[MAKETOU] Livraison immédiate : ${r.livrees} accès ouvert(s). ${r.details.join(' ; ')}`
+          `[MAKETOU] Livraison immédiate : ${r.livrees} accès ouvert(s), ${r.invitations} invitation(s). ${r.details.join(' ; ')}`
         );
       } catch (e: any) {
         // Une livraison qui échoue ne doit pas faire échouer le pulse : la
