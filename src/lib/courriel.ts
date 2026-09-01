@@ -113,6 +113,7 @@ export async function envoyerCourriel({ a, sujet, texte }: Courriel): Promise<bo
       console.error(
         `[COURRIEL] Refusé pour ${a} (${reponse.status}) — ${detail.slice(0, 200)}`
       );
+      dernierRefus = `${reponse.status} ${detail.slice(0, 200)}`;
       return false;
     }
 
@@ -120,8 +121,33 @@ export async function envoyerCourriel({ a, sujet, texte }: Courriel): Promise<bo
     return true;
   } catch (e: any) {
     console.error(`[COURRIEL] Envoi impossible pour ${a} : ${e?.message}`);
+    dernierRefus = String(e?.message ?? 'erreur inconnue');
     return false;
   }
+}
+
+/**
+ * LA RAISON DU DERNIER REFUS, POUR POUVOIR LA LIRE DE L'EXTÉRIEUR.
+ *
+ * ── POURQUOI CETTE VARIABLE EXISTE ────────────────────────────────────────
+ *
+ * Le 1er septembre 2026, une campagne s'est arrêtée d'elle-même après cinq
+ * refus d'affilée. Le bilan rendu par la route disait « envoi refusé », cinq
+ * fois, et rien d'autre. La raison — quota du jour épuisé ? cadence dépassée ?
+ * adresse rejetée ? — n'existait que dans les journaux du serveur, hors
+ * d'atteinte.
+ *
+ * Or ces trois causes appellent trois décisions opposées : attendre demain,
+ * ralentir, ou corriger la liste. Sans la raison, on ne peut que deviner.
+ *
+ * `envoyerCourriel` garde sa signature — elle est appelée depuis huit endroits
+ * qui n'ont que faire du détail — et dépose ici de quoi enquêter.
+ */
+export let dernierRefus: string | null = null;
+
+/** À appeler avant une série d'envois, pour ne pas lire le refus d'hier. */
+export function oublierDernierRefus(): void {
+  dernierRefus = null;
 }
 
 /**

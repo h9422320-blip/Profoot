@@ -332,7 +332,11 @@ export async function diffuser(options: {
       // trace dirait « écrit » pour un message jamais parti.
       await sb.from('webhook_events').delete().eq('delivery_id', cleTrace(campagne, email));
       bilan.echecs++;
-      bilan.details.push(`${email} : envoi refusé`);
+      // La RAISON, et pas seulement le fait. « Envoi refusé » cinq fois de
+      // suite ne dit pas s'il faut attendre demain, ralentir, ou corriger la
+      // liste — et ce sont trois décisions opposées.
+      const { dernierRefus } = await import('../courriel');
+      bilan.details.push(`${email} : refusé — ${dernierRefus ?? 'raison inconnue'}`);
       if (++echecsDaffilee >= ECHECS_AVANT_ARRET) {
         bilan.details.push('ARRÊT : cinq envois refusés d’affilée.');
         break;
