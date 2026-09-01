@@ -4,6 +4,7 @@ import { MODELES_GEMINI } from "@/lib/gemini-models";
 import { genererAnalyseJSON } from "@/lib/analyse-modele";
 import { compterTentative, messageAttente } from "@/lib/limite-partagee";
 import { PRIX_MATCH_UNIQUE, matchDebloque, matchUniqueDisponible } from "@/lib/match-unique";
+import { essaiOffert } from "@/lib/essai-offert";
 import { openRouterDisponible } from "@/lib/openrouter";
 import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, rembourserAnalyse, type QuotaState } from "@/lib/analysis-quota";
@@ -630,8 +631,33 @@ async function analyser(req: Request, billet: BilletQuota) {
    * DOIVENT s'accorder — sinon une version réduite finirait chez quelqu'un qui
    * a payé.
    */
-  const aDroitAuComplet =
+  /**
+   * ── LA TROISIÈME PORTE : L'ANALYSE OFFERTE ────────────────────────────
+   *
+   * 2 767 personnes ont lancé UNE analyse et ne sont jamais revenues — la
+   * moitié de tous les non-payeurs. Le compte gratuit avait un quota de zéro :
+   * dès la toute première analyse on voyait 15 % et un mur. Elles ont donc
+   * refusé d'acheter quelque chose qu'elles n'avaient jamais pu regarder.
+   *
+   * Une analyse complète, une seule, pour toujours, liée à la rencontre sur
+   * laquelle elle a été prise — pour qu'un rechargement de page ne reprenne
+   * pas le cadeau au moment précis où il vient d'être fait.
+   *
+   * L'appel n'est fait QUE pour les comptes sans droits. Un abonné n'a rien à
+   * consommer, et lui faire écrire une ligne en base à chaque analyse serait
+   * une écriture inutile sur le chemin le plus fréquenté du site.
+   */
+  const dejaOuvert =
     guard.entitlements.premium || (await matchDebloque(guard.user.id, team1.id, team2.id));
+
+  const essai = dejaOuvert
+    ? { accorde: false, premiereFois: false }
+    : await essaiOffert(guard.user.id, quotaMatchKey, {
+        equipe1: team1.name,
+        equipe2: team2.name,
+      });
+
+  const aDroitAuComplet = dejaOuvert || essai.accorde;
 
   const estApercuGlobal = !aDroitAuComplet;
 
@@ -710,7 +736,20 @@ async function analyser(req: Request, billet: BilletQuota) {
             // Vrai quand l'accès vient d'un achat à l'unité et non d'un
             // abonnement. C'est le seul moment où proposer l'abonnement a du
             // sens : la personne vient de payer, elle a la preuve en main.
-            debloqueParAchat: !guard.entitlements.premium,
+            //
+            // L'ESSAI OFFERT EN EST EXCLU, et c'est important : sans ce
+            // `!essai.accorde`, quelqu'un qui vient de recevoir son analyse
+            // gratuite lirait « merci pour votre achat ». On le remercierait
+            // d'un paiement qu'il n'a pas fait, sur la seule page qui devait
+            // le convaincre de le faire.
+            debloqueParAchat: !guard.entitlements.premium && !essai.accorde,
+            // Vrai uniquement au tout premier octroi. L'écran s'en sert pour
+            // dire ce qui vient de se passer — « voici votre analyse
+            // offerte » — et pour annoncer que la suivante sera payante. Le
+            // silence ici transformerait le cadeau en malentendu : la personne
+            // croirait que tout est gratuit et se heurterait au mur au
+            // deuxième match, sans comprendre pourquoi.
+            essaiOffert: essai.premiereFois,
           }
         : {
             ...(await toTeaser(data, team1.name, team2.name)),

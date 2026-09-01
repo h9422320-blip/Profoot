@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { sessionPresumee } from "@/lib/session-legere";
+import type { ChiffresPublics } from "@/lib/chiffres-publics";
 import {
   ArrowRight,
   BarChart3,
@@ -11,7 +12,6 @@ import {
   Shield,
   PlayCircle,
   CheckCircle2,
-  Star,
   ChevronDown,
   TrendingUp,
   Activity,
@@ -165,19 +165,31 @@ const faqItems = [
   },
 ];
 
-// Testimonials data
-const testimonials = [
-  { name: "Karim B.", role: "Analyste Football", text: "ProFoot a complètement changé ma façon d'analyser les matchs. Les analyses sont incroyablement précises.", rating: 5 },
-  { name: "Lucas M.", role: "Passionné de foot", text: "L'interface est magnifique et les analyses IA sont bluffantes. Je ne regarde plus un match sans consulter ProFoot.", rating: 5 },
-  { name: "Sofiane A.", role: "Passionné de football", text: "Les statistiques avancées (xG, forme récente) m'ont permis de mieux comprendre chaque rencontre. Indispensable !", rating: 5 },
-  { name: "Thomas R.", role: "Coach amateur", text: "J'utilise ProFoot pour préparer mes analyses tactiques avant chaque match. Le moteur IA est impressionnant.", rating: 4 },
-  { name: "Moussa D.", role: "Journaliste sportif", text: "Une plateforme qui rivalise avec les outils pros. Les scénarios tactiques sont un vrai plus pour mes articles.", rating: 5 },
-  { name: "Antoine L.", role: "Data Analyst", text: "En tant que data analyst, je suis impressionné par la profondeur des données. ProFoot est un bijou technologique.", rating: 5 },
-  { name: "Youssef K.", role: "Fan de Premier League", text: "Enfin une plateforme qui couvre toutes mes compétitions préférées avec des données fiables et en temps réel.", rating: 5 },
-  { name: "Claire P.", role: "Étudiante en sport", text: "ProFoot m'aide énormément dans mes études. Les analyses sont claires, précises et très bien présentées.", rating: 4 },
-];
+// ── LES TÉMOIGNAGES ONT ÉTÉ RETIRÉS, ET C'EST DÉLIBÉRÉ ────────────────────
+//
+// Huit citations vivaient ici : « Karim B., Analyste Football », « Antoine L.,
+// Data Analyst », « Claire P., Étudiante en sport ». Aucune de ces personnes
+// n'existe. Des noms inventés, majoritairement européens, cinq étoiles partout,
+// sur un produit vendu à Abidjan, Bamako et Ouagadougou.
+//
+// Ils ont été remplacés par le mur des preuves — des rencontres réelles, avec
+// leur date, le pronostic annoncé avant le coup d'envoi et le score final. Le
+// mur existait déjà, il était public, et rien sur cette page n'y menait.
+//
+// Ne pas les remettre. Un témoignage à cinq étoiles ne se vérifie pas, donc ne
+// convainc pas celui qui doute — et celui qui doute est précisément le visiteur
+// qu'il faut retourner. Une carte du mur se vérifie en trente secondes sur
+// n'importe quel site de football.
 
-export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.ReactNode }) {
+export default function LandingPage({
+  ambassadeurs,
+  preuves,
+  chiffres,
+}: {
+  ambassadeurs?: React.ReactNode;
+  preuves?: React.ReactNode;
+  chiffres?: ChiffresPublics;
+}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -220,6 +232,15 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
           </Link>
 
           <div className="nav-links-desktop">
+            {/* ── « PREUVES » VIENT EN PREMIER, ET C'EST UN VRAI LIEN ───────
+                La page `/preuves` était publique depuis le début et AUCUN lien
+                du site n'y menait : on ne pouvait y arriver que par Google ou
+                en tapant l'adresse. Le seul argument vérifiable du produit
+                était injoignable depuis sa propre page d'accueil.
+                Il passe devant « Fonctionnalités » parce que c'est la question
+                que se pose d'abord quelqu'un qui découvre le site : est-ce que
+                ça marche vraiment ? */}
+            <Link href="/preuves">Preuves</Link>
             <a href="#features">Fonctionnalités</a>
             <a href="#competitions">Compétitions</a>
             <a href="#how-it-works">Comment ça marche</a>
@@ -400,7 +421,7 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
         {/* STATS COUNTERS */}
         {/* ================================================================ */}
         <section className="stats-section">
-          <StatsContent />
+          <StatsContent chiffres={chiffres} />
         </section>
 
         {/* ================================================================ */}
@@ -411,11 +432,15 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
         </section>
 
         {/* ================================================================ */}
-        {/* TESTIMONIALS SECTION */}
+        {/* LE MUR DES PREUVES — à la place des huit témoignages inventés    */}
         {/* ================================================================ */}
-        <section className="testimonials-section">
-          <TestimonialsSection />
-        </section>
+        {/*
+          Il garde la classe `testimonials-section` : c'est elle qui porte le
+          rythme vertical de la page et le filet lumineux qui sépare les
+          sections. Renommer la classe aurait demandé de dupliquer trente
+          lignes de CSS pour un résultat identique à l'œil.
+        */}
+        <section className="testimonials-section">{preuves}</section>
 
         {/* ================================================================ */}
         {/* FAQ SECTION */}
@@ -515,6 +540,9 @@ export default function LandingPage({ ambassadeurs }: { ambassadeurs?: React.Rea
             <div className="footer-col">
               <h4>Produit</h4>
               <Link href={user ? "/analyze" : "/signup"}>Analyse IA</Link>
+              {/* Second chemin vers les preuves : le menu du haut disparaît sur
+                  téléphone, et c'est là que sont presque tous les visiteurs. */}
+              <Link href="/preuves">Analyses vérifiées</Link>
               <Link href="/matches">Matchs du jour</Link>
               <Link href="/standings">Classements</Link>
               <Link href="/support">Support</Link>
@@ -573,40 +601,6 @@ function CompetitionsFadeIn() {
             <div key={`${c.name}-${i}`} className="marquee-item" title={c.name}>
               <img src={c.logo} alt={c.name} className="competition-logo" loading="lazy" decoding="async" />
               <span className="marquee-name">{c.name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TestimonialsSection() {
-  const { ref, visible } = useFadeIn();
-  const doubledTestimonials = [...testimonials, ...testimonials];
-  return (
-    <div ref={ref} className={`testimonials-inner ${visible ? "fade-in-up" : "fade-hidden"}`}>
-      <div className="section-header">
-        <h2 className="section-title">CE QUE PENSENT NOS<br /><span className="text-emerald-gradient">UTILISATEURS</span></h2>
-        <p className="section-subtitle">Des milliers de passionnés utilisent ProFoot pour analyser les matchs avec précision.</p>
-      </div>
-      <div className="testimonials-marquee-container">
-        <div className="testimonials-marquee-track">
-          {doubledTestimonials.map((t, i) => (
-            <div key={`${t.name}-${i}`} className="testimonial-card">
-              <div className="testimonial-stars">
-                {Array.from({ length: t.rating }).map((_, j) => (
-                  <Star key={j} className="w-4 h-4 fill-[#10b981] text-[#10b981]" />
-                ))}
-              </div>
-              <p className="testimonial-text">"{t.text}"</p>
-              <div className="testimonial-author">
-                <div className="testimonial-avatar">{t.name.charAt(0)}</div>
-                <div>
-                  <div className="testimonial-name">{t.name}</div>
-                  <div className="testimonial-role">{t.role}</div>
-                </div>
-              </div>
             </div>
           ))}
         </div>
@@ -711,34 +705,75 @@ function HowItWorksContent() {
   );
 }
 
-function StatsContent() {
-  const s1 = useCounter(220, 2500);
-  const s2 = useCounter(15, 1500);
-  const s3 = useCounter(500, 2000);
-  const s4 = useCounter(98, 2200);
+/**
+ * LE BANDEAU DE CHIFFRES — CHACUN VÉRIFIABLE.
+ *
+ * ── CE QU'IL ANNONÇAIT ────────────────────────────────────────────────────
+ *
+ *     500K+   MATCHS ANALYSÉS      la base en contenait 21 140
+ *      98%    DONNÉES EN TEMPS RÉEL  un pourcentage de rien du tout
+ *
+ * Le premier était faux d'un facteur vingt-quatre. Le second ne mesurait rien :
+ * « 98 % de données en temps réel » ne veut dire rien de vérifiable, et
+ * personne n'aurait su dire ce qu'auraient été les 2 % restants.
+ *
+ * ── CE QU'ILS DISENT MAINTENANT ───────────────────────────────────────────
+ *
+ * Des rencontres comptées une par une, doublons retirés, et le taux de réussite
+ * réel — celui qu'on peut recompter sur `/preuves`. 56 % d'issues correctes là
+ * où le hasard en donne 33 : c'est plus modeste que « 500K+ » et infiniment
+ * plus convaincant, parce que c'est contrôlable.
+ *
+ * Les valeurs de repli ne sont pas des chiffres ronds inventés : c'est le
+ * relevé réel du 1er septembre 2026, servi si le serveur n'a rien pu calculer.
+ */
+function StatsContent({ chiffres }: { chiffres?: ChiffresPublics }) {
+  const c = chiffres ?? {
+    matchsAnalyses: 21140,
+    matchsVerifies: 1995,
+    tauxIssue: 56,
+    tauxScoreExact: 14,
+    competitions: 15,
+  };
+
+  const s1 = useCounter(c.matchsAnalyses, 2500);
+  const s2 = useCounter(c.matchsVerifies, 1500);
+  const s3 = useCounter(c.tauxIssue, 2000);
+  const s4 = useCounter(c.competitions, 2200);
 
   return (
     <div className="stats-inner">
-      <h2 className="section-title">NOUS ANALYSONS<br /><span className="text-[#10b981]">+220 SOURCES</span></h2>
+      <h2 className="section-title">
+        CE QUE NOUS AVONS
+        <br />
+        <span className="text-[#10b981]">RÉELLEMENT FAIT</span>
+      </h2>
       <p className="section-subtitle">
-        Des millions de données football compilées à partir de plus de 220 sources pour fournir les meilleures analyses possibles.
+        Chaque analyse est publiée avant le coup d&apos;envoi, puis confrontée au résultat réel.
+        Ces chiffres se recomptent un par un sur la page des preuves.
       </p>
       <div className="stats-grid">
         <div className="stat-card">
-          <span className="stat-value" ref={s1.ref}>+{s1.count}</span>
-          <span className="stat-label">Sources de données</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-value" ref={s2.ref}>{s2.count}+</span>
-          <span className="stat-label">Compétitions couvertes</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-value" ref={s3.ref}>{s3.count}K+</span>
+          {/* Les milliers sont séparés : « 21140 » se lit mal en gros, et un
+              visiteur pressé y voit 2 114 ou 211 400. */}
+          <span className="stat-value" ref={s1.ref}>
+            {s1.count.toLocaleString("fr-FR")}
+          </span>
           <span className="stat-label">Matchs analysés</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value" ref={s4.ref}>{s4.count}%</span>
-          <span className="stat-label">Données en temps réel</span>
+          <span className="stat-value" ref={s2.ref}>
+            {s2.count.toLocaleString("fr-FR")}
+          </span>
+          <span className="stat-label">Vérifiés après le match</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" ref={s3.ref}>{s3.count}%</span>
+          <span className="stat-label">Vainqueur bien annoncé</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" ref={s4.ref}>{s4.count}</span>
+          <span className="stat-label">Compétitions couvertes</span>
         </div>
       </div>
     </div>
