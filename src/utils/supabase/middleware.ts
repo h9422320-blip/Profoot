@@ -67,7 +67,30 @@ export async function updateSession(request: NextRequest) {
   // /admin, /login et /a/ restent ouverts en toutes circonstances : il garde
   // le moyen de la désactiver.
   const chemin = request.nextUrl.pathname;
-  const protectedPaths = ['/dashboard', '/analyze', '/settings', '/history', '/search', '/expert', '/payment-success', '/payment-failed', '/admin'];
+  // ── LES TARIFS SE FERMENT LE 1er SEPTEMBRE 2026 ────────────────────────
+  //
+  // Ils étaient publics depuis le 16/08, pour que Google les voie. Décision du
+  // propriétaire : on ne veut plus que quiconque y arrive sans compte. Une
+  // grille de prix vue par quelqu'un qui ignore ce que fait le produit ne
+  // vend rien — et c'est par là qu'arrivaient les acheteurs sans compte, ceux
+  // dont la vente n'avait ensuite aucun compte à qui se rattacher.
+  //
+  // Le parcours voulu : l'accueil, puis l'inscription, puis l'achat.
+  const protectedPaths = ['/dashboard', '/analyze', '/settings', '/history', '/search', '/expert', '/payment-success', '/payment-failed', '/admin', '/pricing'];
+
+  /**
+   * Les pages dont le visiteur anonyme est FORCÉMENT nouveau.
+   *
+   * Les autres pages protégées appartiennent à quelqu'un qui a déjà un compte :
+   * son historique, ses réglages, son analyse. Le renvoyer vers la connexion a
+   * du sens.
+   *
+   * Les tarifs, non : celui qui les regarde n'a par définition rien acheté. Lui
+   * demander ses identifiants, c'est lui demander ce qu'il n'a pas — et le
+   * 23 août 2026, quelqu'un au Bénin a fait trois allers-retours entre les deux
+   * écrans avant d'abandonner en soixante-sept secondes.
+   */
+  const versInscription = ['/pricing'];
   const isProtectedPath = protectedPaths.some(
     (path) => chemin === path || chemin.startsWith(path + '/')
   );
@@ -149,7 +172,9 @@ export async function updateSession(request: NextRequest) {
     // Non connecté (ou session expirée) sur une page protégée : redirection vers /login,
     // en conservant les cookies (notamment l'effacement de session) posés par Supabase.
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = versInscription.some((p) => chemin === p || chemin.startsWith(p + '/'))
+      ? '/signup'
+      : '/login'
     // LA PAGE DEMANDÉE EST MÉMORISÉE.
     //
     // Sans cela, la connexion renvoyait TOUJOURS vers l'analyse : quelqu'un qui

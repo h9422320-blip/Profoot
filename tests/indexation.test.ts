@@ -83,3 +83,32 @@ test('★ ACQUIS — robots.txt ne les interdit PAS', () => {
     );
   }
 });
+
+// ── LES TARIFS SE FERMENT ──────────────────────────────────────────────────
+
+test('★ ACQUIS — les tarifs ne s’ouvrent plus à un visiteur sans compte', () => {
+  // Décision du propriétaire, le 1er septembre 2026. Une grille de prix vue
+  // par quelqu'un qui ignore ce que fait le produit ne vend rien — et c'est
+  // par là qu'arrivaient les acheteurs sans compte, ceux dont la vente n'avait
+  // ensuite aucun compte à qui se rattacher.
+  const s = sansCommentaires(lire('src/utils/supabase/middleware.ts'));
+  assert.match(s, /const protectedPaths = \[[^\]]*'\/pricing'/, 'Les tarifs sont de nouveau ouverts à tous.');
+});
+
+test('★ ACQUIS — on l’envoie s’INSCRIRE, pas se connecter', () => {
+  // Les autres pages protégées appartiennent à quelqu'un qui a déjà un compte.
+  // Les tarifs, non : celui qui les regarde n'a par définition rien acheté.
+  // Lui demander ses identifiants, c'est lui demander ce qu'il n'a pas — et le
+  // 23 août 2026, quelqu'un au Bénin a fait trois allers-retours entre les deux
+  // écrans avant d'abandonner en soixante-sept secondes.
+  const s = sansCommentaires(lire('src/utils/supabase/middleware.ts'));
+  assert.match(s, /const versInscription = \['\/pricing'\]/, 'La liste des pages menant à l’inscription a disparu.');
+  assert.match(
+    s,
+    /versInscription\.some\(\(p\) => chemin === p \|\| chemin\.startsWith\(p \+ '\/'\)\)\s*\?\s*'\/signup'\s*:\s*'\/login'/,
+    'Un nouveau visiteur est de nouveau envoyé vers la connexion.'
+  );
+  // La page demandée reste mémorisée : il revient aux tarifs après s'être
+  // inscrit, plutôt que d'atterrir ailleurs et de devoir recommencer.
+  assert.match(s, /url\.searchParams\.set\('suite', request\.nextUrl\.pathname\)/, 'La page demandée n’est plus mémorisée.');
+});
