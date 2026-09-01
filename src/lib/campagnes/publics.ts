@@ -331,8 +331,25 @@ export function abonnesDormants(t: Terrain, silenceJours = 5): Destinataire[] {
     const derniere = t.derniereAnalyse.get(userId) ?? 0;
     if (derniere >= limite) continue;
 
+    // ── L'ÉCHÉANCE ANNONCÉE DOIT ÊTRE À VENIR ─────────────────────────────
+    //
+    // Le filtre ne gardait que « une date existe », et prenait la plus
+    // récente. Or quelqu'un peut être actif par une ligne SANS date
+    // d'expiration tout en traînant une ancienne ligne échue : le message
+    // partait alors avec « votre accès court jusqu'au 7 août » — un mois en
+    // arrière. Observé sur ob42654@gmail.com.
+    //
+    // Annoncer une échéance dépassée à quelqu'un qui a payé, c'est lui dire
+    // qu'il n'a plus rien alors qu'il a encore tout. Sans date valable, le
+    // message n'en cite aucune : il reste juste.
+    const maintenant = Date.now();
     const abo = t.abonnements
-      .filter((a) => a.userId === userId && a.expireLe)
+      .filter(
+        (a) =>
+          a.userId === userId &&
+          a.expireLe &&
+          new Date(a.expireLe).getTime() > maintenant
+      )
       .sort(
         (a, b) => new Date(b.expireLe!).getTime() - new Date(a.expireLe!).getTime()
       )[0];

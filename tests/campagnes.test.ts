@@ -222,3 +222,18 @@ test('★ ACQUIS — les chiffres annoncés dans les messages sont ceux du mur',
   const chiffres = sansCommentaires(lire('src/lib/chiffres-publics.ts'));
   assert.match(chiffres, /tauxIssue: 56/, 'Le relevé de repli ne concorde plus avec le message.');
 });
+
+test('★ ACQUIS — le réveil n’annonce jamais une échéance déjà passée', () => {
+  // Le 1er septembre 2026, la simulation a sorti :
+  //     ob42654@gmail.com — « Votre accès ProFoot court jusqu'au 7 août »
+  // Un mois en arrière. La personne était bien active — par une ligne SANS
+  // date — mais traînait une ancienne ligne échue, et c'est celle-là que le
+  // message citait. Annoncer une échéance dépassée à quelqu'un qui a payé, c'est
+  // lui dire qu'il n'a plus rien alors qu'il a encore tout.
+  const bloc = publics.slice(publics.indexOf('export function abonnesDormants'));
+  assert.match(
+    bloc,
+    /a\.expireLe &&\s*new Date\(a\.expireLe\)\.getTime\(\) > maintenant/,
+    'Le réveil peut de nouveau citer une date d’expiration passée.'
+  );
+});
