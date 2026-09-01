@@ -1,0 +1,467 @@
+[
+ {
+  "uid": "b8450afd-9705-4389-9fd7-0c99c2d53e1c",
+  "email": "ibrahimmeite121@gmail.com",
+  "clics": 14,
+  "apercus": 7,
+  "plan": "vip_yearly",
+  "pays": "CI",
+  "jours": 1.1,
+  "causes": [],
+  "statuts": [
+   "abandoned"
+  ]
+ },
+ {
+  "uid": "1abd221b-c3ea-430d-a247-ec6c761d6390",
+  "email": "gopegop65@gmail.com",
+  "clics": 13,
+  "apercus": 42,
+  "plan": "essential_monthly",
+  "pays": "GN",
+  "jours": 0.8,
+  "causes": [],
+  "statuts": [
+   "abandoned"
+  ]
+ },
+ {
+  "uid": "0e38b1f7-7f5c-4b03-b107-b15732d5f1b8",
+  "email": "malzij654@gmail.com",
+  "clics": 12,
+  "apercus": 24,
+  "plan": "pro_monthly",
+  "pays": "GN",
+  "jours": 0.8,
+  "causes": [],
+  "statuts": [
+   "abandoned"
+  ]
+ },
+ {
+  "uid": "a1708024-57fb-42c1-8181-61bb7562a8b9",
+  "email": "tenereamachakoul@gmail.com",
+  "clics": 9,
+  "apercus": 7,
+  "plan": "pro_monthly",
+  "pays": "ML",
+  "jours": 0.1,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "35727f9f-0ffd-4811-acdf-9bd6d7041891",
+  "email": "tiebimarcelin7@gmail.com",
+  "clics": 8,
+  "apercus": 8,
+  "plan": "essential_monthly",
+  "pays": "CI",
+  "jours": 4.9,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "2b437007-eb26-4fef-89d5-3efb7a4e7701",
+  "email": "quesnaytagola@gmail.com",
+  "clics": 7,
+  "apercus": 37,
+  "plan": "essential_monthly",
+  "pays": "CF",
+  "jours": 4.3,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "84579f6e-cd86-46cb-81a1-55557a4dc456",
+  "email": "sidoineadou477@gmail.com",
+  "clics": 7,
+  "apercus": 20,
+  "plan": "essential_monthly",
+  "pays": "CI",
+  "jours": 3.9,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "557f9f59-07db-4afa-beba-08f36513e32d",
+  "email": "sabaoumarou863@gmail.com",
+  "clics": 7,
+  "apercus": 5,
+  "plan": "vip_yearly",
+  "pays": "ZA",
+  "jours": 6.8,
+  "causes": [],
+  "statuts": [
+   "abandoned"
+  ]
+ },
+ {
+  "uid": "13cf9965-303c-4a5e-b5a9-1e36edfb4209",
+  "email": "elhadjikd2812@gmail.com",
+  "clics": 6,
+  "apercus": 4,
+  "plan": "essential_monthly",
+  "pays": "FR",
+  "jours": 1.9,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "ed66912f-d40a-4061-929d-ac0dfb25312a",
+  "email": "mc3475987@gmail.com",
+  "clics": 6,
+  "apercus": 3,
+  "plan": "essential_monthly",
+  "pays": "TG",
+  "jours": 5.1,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "548af4ae-7ea6-4d56-b243-3b0e64060db1",
+  "email": "0748249446bamba225@gmail.com",
+  "clics": 6,
+  "apercus": 2,
+  "plan": "vip_yearly",
+  "pays": "DZ",
+  "jours": 3,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "3565b91b-7c6d-459d-9d10-8c64e89c2fbb",
+  "email": "zoneanime286@gmail.com",
+  "clics": 6,
+  "apercus": 2,
+  "plan": "pro_monthly",
+  "pays": "IT",
+  "jours": 4.1,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "8161124b-decc-4943-aa39-e087264c9d16",
+  "email": "obedmanika898@gmail.com",
+  "clics": 5,
+  "apercus": 5,
+  "plan": "pro_monthly",
+  "pays": "CD",
+  "jours": 0.2,
+  "causes": [
+   "UNSPECIFIED_FAILURE"
+  ],
+  "statuts": [
+   "failed"
+  ]
+ },
+ {
+  "uid": "b57d465a-d789-4d71-b04a-c6c60573b4a2",
+  "email": "thotpanda24@proton.me",
+  "clics": 5,
+  "apercus": 3,
+  "plan": "essential_monthly",
+  "pays": "NL",
+  "jours": 0,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "f5e48634-c149-4c46-9f26-2f2a7bdfb716",
+  "email": "siriacdesirenguetta@gmail.com",
+  "clics": 4,
+  "apercus": 21,
+  "plan": "pro_monthly",
+  "pays": "FR",
+  "jours": 6,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "40e8de04-c28b-40b8-bd6d-4f021b80b113",
+  "email": "www.yacoubakone84@gmail.com",
+  "clics": 4,
+  "apercus": 4,
+  "plan": "essential_monthly",
+  "pays": "ML",
+  "jours": 0.1,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "9eae00b0-1944-47d6-b564-2a9163f78c10",
+  "email": "mebrabakayoko72@gmail.com",
+  "clics": 4,
+  "apercus": 3,
+  "plan": "vip_yearly",
+  "pays": "CI",
+  "jours": 5.5,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "71004591-0dab-42f4-a70d-70fb46b799ce",
+  "email": "dfggggf@gmail10p.com",
+  "clics": 4,
+  "apercus": 2,
+  "plan": "pro_monthly",
+  "pays": "TG",
+  "jours": 1.2,
+  "causes": [
+   "GENERAL_ERROR"
+  ],
+  "statuts": [
+   "abandoned",
+   "failed"
+  ]
+ },
+ {
+  "uid": "798043d7-4a0c-43b8-a840-4cf6e657ed66",
+  "email": "diarayebarry@gmail.com",
+  "clics": 4,
+  "apercus": 2,
+  "plan": "pro_monthly",
+  "pays": "GN",
+  "jours": 2.1,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "acb42bca-08df-4592-a480-752a7ce9f8ab",
+  "email": "soulekone131@gmail.com",
+  "clics": 4,
+  "apercus": 2,
+  "plan": "essential_monthly",
+  "pays": "CI",
+  "jours": 5.5,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "e80abd70-b0c7-435c-add8-854097c8fb02",
+  "email": "aboubakaryeo89@gmail.com",
+  "clics": 4,
+  "apercus": 2,
+  "plan": "pro_monthly",
+  "pays": "CI",
+  "jours": 6.3,
+  "causes": [],
+  "statuts": [
+   "abandoned"
+  ]
+ },
+ {
+  "uid": "305d1dc1-5397-48f2-8d55-a175832c543b",
+  "email": "abdoulrahimseoni43@gmail.com",
+  "clics": 3,
+  "apercus": 20,
+  "plan": "essential_monthly",
+  "pays": "NL",
+  "jours": 4.8,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "14d8cffd-e6af-4565-ba7f-7c3ffe0803df",
+  "email": "niaoneibrahim61@gmail.com",
+  "clics": 3,
+  "apercus": 20,
+  "plan": "pro_monthly",
+  "pays": "DZ",
+  "jours": 5.3,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "a4254e13-8b98-4050-9776-4c04f331a8a8",
+  "email": "blokoleriche331@gmail.com",
+  "clics": 3,
+  "apercus": 11,
+  "plan": "pro_monthly",
+  "pays": "BF",
+  "jours": 6.1,
+  "causes": [],
+  "statuts": [
+   "abandoned"
+  ]
+ },
+ {
+  "uid": "1a2a0cf5-a23c-4242-b08f-cc081600eacf",
+  "email": "mbayesaliou2004@icloud.com",
+  "clics": 3,
+  "apercus": 6,
+  "plan": "essential_monthly",
+  "pays": "CI",
+  "jours": 6.1,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "add3a941-2866-4234-a436-ba47bb2a3211",
+  "email": "iragijoseph50@gmail.com",
+  "clics": 3,
+  "apercus": 5,
+  "plan": "pro_monthly",
+  "pays": "CD",
+  "jours": 5.3,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "c1b3d188-3d78-48ab-a823-a576c4089a5c",
+  "email": "abdoualigarga@gmail.com",
+  "clics": 3,
+  "apercus": 4,
+  "plan": "pro_monthly",
+  "pays": "CM",
+  "jours": 2.3,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "97a3791b-4be8-484e-93f7-22da6123cb73",
+  "email": "mamadoualphaly193@gmail.com",
+  "clics": 3,
+  "apercus": 3,
+  "plan": "vip_yearly",
+  "pays": "GN",
+  "jours": 0.7,
+  "causes": [],
+  "statuts": [
+   "abandoned"
+  ]
+ },
+ {
+  "uid": "e4e5540d-47ee-45ae-92ca-afe0d6bfee6f",
+  "email": "rasmanio45@gmail.com",
+  "clics": 3,
+  "apercus": 3,
+  "plan": "essential_monthly",
+  "pays": "CI",
+  "jours": 2.1,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "7afd4e53-4f0a-433e-bf1b-6d25f2c87e59",
+  "email": "maibracamara8@gmail.com",
+  "clics": 3,
+  "apercus": 3,
+  "plan": "vip_yearly",
+  "pays": "DE",
+  "jours": 2.7,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "7eaabb17-1527-4e8e-9b49-e62cf4f9fba1",
+  "email": "sd1110295@gmail.com",
+  "clics": 3,
+  "apercus": 3,
+  "plan": "essential_monthly",
+  "pays": "GN",
+  "jours": 3.2,
+  "causes": [],
+  "statuts": [
+   "abandoned"
+  ]
+ },
+ {
+  "uid": "7f10bc16-08b4-43e8-b495-68ac38c3272b",
+  "email": "tibrahima979@gmail.com",
+  "clics": 3,
+  "apercus": 3,
+  "plan": "essential_monthly",
+  "pays": "SL",
+  "jours": 3.7,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "04fb814b-917e-448d-87ce-acdd34ad8ea0",
+  "email": "lekingkalabachir@gmail.com",
+  "clics": 3,
+  "apercus": 3,
+  "plan": "pro_monthly",
+  "pays": "CI",
+  "jours": 5.3,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "651d46d4-d22d-411b-ae9a-c2e329b19824",
+  "email": "kimamarc58@gmail.com",
+  "clics": 3,
+  "apercus": 2,
+  "plan": "vip_yearly",
+  "pays": "CI",
+  "jours": 0,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "7ba723cd-8cbb-47fd-98d5-a4b29503b681",
+  "email": "laysmatondo10@gmail.com",
+  "clics": 3,
+  "apercus": 2,
+  "plan": "essential_monthly",
+  "pays": "CD",
+  "jours": 3,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "a46e43ec-b18e-475a-84e9-ee31317b6faf",
+  "email": "ollomolewis@icloud.com",
+  "clics": 3,
+  "apercus": 2,
+  "plan": "pro_monthly",
+  "pays": "ES",
+  "jours": 3.2,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "d30f4462-ccc6-4649-afa4-c36b50041425",
+  "email": "alainakbbilivogui@gmail.com",
+  "clics": 3,
+  "apercus": 2,
+  "plan": "pro_monthly",
+  "pays": "GN",
+  "jours": 3.3,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "5a4665ac-4a24-41fc-9eaf-20f88aac938e",
+  "email": "delriodeigo29@gmail.com",
+  "clics": 3,
+  "apercus": 2,
+  "plan": "pro_monthly",
+  "pays": "CI",
+  "jours": 4.4,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "792aad92-96b3-4455-9f5d-c8309c9e7ee8",
+  "email": "konananicetkouakou32@gmail.com",
+  "clics": 3,
+  "apercus": 2,
+  "plan": "essential_monthly",
+  "pays": "CI",
+  "jours": 4.8,
+  "causes": [],
+  "statuts": []
+ },
+ {
+  "uid": "1cf539ee-811d-46ae-8d50-2d68805fa5bb",
+  "email": "vianneybaldeh@gmail.com",
+  "clics": 2,
+  "apercus": 50,
+  "plan": "essential_monthly",
+  "pays": "CF",
+  "jours": 4.5,
+  "causes": [],
+  "statuts": []
+ }
+]

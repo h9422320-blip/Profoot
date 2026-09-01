@@ -797,7 +797,34 @@ export async function getPreuvesPubliques(
     return vide;
   }
 
-  const toutes = (data ?? []).map(versPreuve);
+  // ── UNE PREUVE PORTE SUR UN MATCH QU'ON POUVAIT ENCORE PRÉDIRE ──────────
+  //
+  // Le 1er septembre 2026, seize cartes publiées portaient sur des rencontres
+  // jouées AVANT que l'application n'existe. La pire annonçait « score exact »
+  // sur Liverpool — Barcelone du 7 mai 2019.
+  //
+  // Elles venaient d'analyses lancées à la main sur deux équipes sans match à
+  // venir : la vérification retrouvait alors leur dernière confrontation, la
+  // comparait au pronostic, et publiait le résultat. La cause est corrigée dans
+  // `precision-reelle.ts` ; ce filtre écarte ce qui est déjà enregistré, et
+  // rattrapera toute nouvelle échappée.
+  //
+  // Le seuil est la première analyse jamais enregistrée : le 6 juillet 2026.
+  // Rien d'antérieur ne peut avoir été prédit par un outil qui n'existait pas.
+  //
+  // Ce n'est pas une question de présentation. Un amateur de football qui
+  // reconnaît le 4-0 de Liverpool conclut que TOUT le mur est fabriqué — et
+  // les 288 preuves honnêtes tombent avec les seize fausses.
+  const PREMIERE_ANALYSE = '2026-07-06';
+
+  const toutes = (data ?? [])
+    .map(versPreuve)
+    .filter((p) => {
+      const jour = String(p.dateMatch ?? '').slice(0, 10);
+      // Une date absente ne disqualifie pas : c'est une fiche incomplète, pas
+      // une preuve inventée. Elle sera reprise à la reconstruction suivante.
+      return !jour || jour >= PREMIERE_ANALYSE;
+    });
   if (!toutes.length) return vide;
 
   // Liste reglee depuis l administration, avec repli sur celle du code.

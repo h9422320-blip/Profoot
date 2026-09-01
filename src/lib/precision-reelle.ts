@@ -138,6 +138,8 @@ interface RencontreTerminee {
   butsExterieur: number;
   idDomicile: string;
   competition: string | null;
+  /** Quand la rencontre a été jouée — sert à refuser un match antérieur à l’analyse. */
+  jouéeLe: string | null;
 }
 
 /** Le fournisseur n'accepte pas plus de vingt identifiants par appel. */
@@ -233,6 +235,7 @@ async function lireRencontresParIdentifiant(
         // le championnat de la première équipe quand la rencontre n'avait pas
         // pu être résolue.
         competition: f.league?.name ?? null,
+        jouéeLe: f.fixture?.date ?? null,
       });
     }
   }
@@ -362,6 +365,30 @@ export async function verifierPronostics(limite = 60): Promise<{
     if (analyse.fixture_id !== null && analyse.fixture_id !== undefined && analyse.fixture_id !== '') {
       const connue = rencontresParId.get(String(analyse.fixture_id));
       if (!connue) return null;
+
+      // ── UNE ANALYSE NE PRÉDIT PAS UN MATCH DÉJÀ JOUÉ ──────────────────
+      //
+      // L'autre chemin refusait déjà toute rencontre antérieure à l'analyse.
+      // Celui-ci ne vérifiait rien : il faisait confiance à l'identifiant
+      // enregistré, et cet identifiant peut pointer sur une confrontation
+      // ancienne quand deux équipes sont choisies à la main sans match à
+      // venir.
+      //
+      // Le 1er septembre 2026, seize preuves PUBLIQUES en découlaient. La
+      // pire annonçait « score exact » sur Liverpool — Barcelone du 7 mai
+      // 2019 : l'application n'existait pas. Un amateur de football qui
+      // reconnaît ce match conclut que tout le mur est fabriqué — et les
+      // 288 preuves honnêtes tombent avec.
+      //
+      // Six heures de tolérance, comme sur l'autre chemin : une analyse
+      // lancée le matin porte sur un match du soir.
+      if (
+        connue.jouéeLe &&
+        new Date(connue.jouéeLe).getTime() < new Date(analyse.created_at).getTime() - 6 * 3600 * 1000
+      ) {
+        return null;
+      }
+
       return { ...connue, inverse: String(connue.idDomicile) !== String(id1) };
     }
 
