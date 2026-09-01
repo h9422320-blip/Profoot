@@ -56,7 +56,31 @@ export interface ResultatAudit {
  */
 const FENETRE_HEURES = 24;
 const MINIMUM_POUR_JUGER = 15;
-const ANALYSES_EXAMINEES = 40;
+
+/**
+ * ── QUARANTE ANALYSES NE SUFFISAIENT PAS À JUGER ──────────────────────────
+ *
+ * Le contrôle lisait les quarante analyses les plus récentes. L'application en
+ * produit environ mille quatre cents par jour : il jugeait donc la qualité du
+ * moteur sur trois pour cent de sa production.
+ *
+ * Mesuré le 1er septembre 2026, au même instant :
+ *
+ *     sur 40 analyses  ->  27 affiches, « 2-1 » à 48 %   ANOMALIE
+ *     sur la journée   -> 126 affiches, « 2-1 » à 33 %   normal
+ *
+ * Le seuil d'alerte est à 45 %. L'audit annonçait donc un moteur en panne
+ * alors qu'il tournait juste — et « 2-1 » est le score le plus fréquent du
+ * football réel, il DOIT arriver en tête.
+ *
+ * Un signal qui se déclenche à tort finit ignoré, et c'est précisément celui-là
+ * qui doit attraper le vrai défaut : le « 2-1 » servi à 82 % des analyses est
+ * passé inaperçu pendant des jours faute d'être mesuré.
+ *
+ * Mille : une page de lecture, une seule requête, et de quoi couvrir une
+ * journée entière d'affiches distinctes.
+ */
+const ANALYSES_EXAMINEES = 1000;
 
 /** En dessous, le moteur est à l'arrêt — ce n'est plus un creux de trafic. */
 const ACTIVITE_MINIMALE = 5;
