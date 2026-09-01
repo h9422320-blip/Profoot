@@ -258,7 +258,23 @@ export async function POST(request: Request) {
     const repetee = await dejaAlertee(trace.vente);
     let alerte = false;
     if (!ignoree && !repetee) {
-      if (/Aucun compte/i.test(r.motif) && r.email) {
+      // ── DEUX MESSAGES QUI SE CONTREDISENT, À LA MÊME MINUTE ─────────────
+      //
+      // Cette invitation — « créez votre compte, votre accès s'ouvrira
+      // ensuite » — date d'avant le 29 août, quand on attendait l'acheteur.
+      // Depuis, la livraison crée son compte et lui envoie un lien pour
+      // choisir son mot de passe. Les deux partaient ENSEMBLE : l'un annonce
+      // que son compte existe déjà, l'autre lui demande d'en créer un.
+      //
+      // Le 31 août 2026 à 12 h 47, Emile Zola a reçu les deux. À 13 h 21 il
+      // écrivait « je comprends pas je me suis abonné mais je ne vois pas les
+      // analyses du jour ». Il n'est entré qu'à 23 h 24 — dix heures plus
+      // tard, pour un accès qui était ouvert depuis la première minute.
+      //
+      // L'invitation ne part donc plus que si la livraison n'a RIEN pu faire.
+      // Dans ce cas seulement, « créez votre compte » est un bon conseil :
+      // il n'y en a pas.
+      if (/Aucun compte/i.test(r.motif) && r.email && !r.livree) {
         await prevenir(r.email, messageCompteAcreer(r.email));
       }
       alerte = await prevenir(
@@ -270,6 +286,7 @@ export async function POST(request: Request) {
           motif: r.motif,
           pays: trace.pays,
           moyen: trace.moyen,
+          livree: r.livree,
         })
       );
     }

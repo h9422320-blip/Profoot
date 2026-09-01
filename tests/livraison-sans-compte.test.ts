@@ -236,3 +236,38 @@ test('★ ACQUIS — l’alerte décrit ce qui se passe vraiment', () => {
   assert.doesNotMatch(c, /npx tsx scripts/, 'L’alerte réclame une commande que son destinataire ne peut pas taper.');
   assert.match(c, /Livrer maintenant/, 'L’alerte n’indique plus où agir.');
 });
+
+test('★ ACQUIS — on n’envoie plus « créez votre compte » à qui vient d’en recevoir un', () => {
+  // ── DEUX MESSAGES QUI SE CONTREDISENT, À LA MÊME MINUTE ────────────────
+  //
+  // L'invitation « créez votre compte, votre accès s'ouvrira ensuite » date
+  // d'avant le 29 août, quand on attendait l'acheteur. Depuis, la livraison
+  // crée son compte et lui envoie un lien pour choisir son mot de passe.
+  // Les deux partaient ENSEMBLE : l'un annonce que son compte existe déjà,
+  // l'autre lui demande d'en créer un.
+  //
+  // Le 31 août 2026 à 12 h 47, Emile Zola a reçu les deux. À 13 h 21 il
+  // écrivait « je comprends pas je me suis abonné mais je ne vois pas les
+  // analyses du jour ». Il n'est entré qu'à 23 h 24 — dix heures plus tard,
+  // pour un accès ouvert depuis la première minute.
+  const s = sansCommentaires(lire('src/app/api/maketou/pulse/route.ts'));
+  assert.match(
+    s,
+    /if \(\/Aucun compte\/i\.test\(r\.motif\) && r\.email && !r\.livree\)/,
+    'L’invitation repart en même temps que le message de livraison.'
+  );
+
+  // Le pulse doit dire à son appelant si la livraison a servi.
+  assert.match(sansCommentaires(lire(PULSE)), /livree,/, 'Le résultat ne dit plus si la livraison a servi.');
+});
+
+test('★ ACQUIS — l’alerte ne crie pas au désastre quand tout s’est bien passé', () => {
+  // Le titre annonçait « une vente n'a PAS ouvert d'accès » même quand la
+  // livraison avait servi l'acheteur la seconde suivante. Le danger n'est pas
+  // le message de trop : c'est qu'à force, celui qui annonce une VRAIE vente
+  // perdue ait la même tête que les autres, et se lise aussi vite.
+  const c = sansCommentaires(lire('src/lib/maketou-courriels.ts'));
+  assert.match(c, /sujet: livree/, 'Le titre de l’alerte ne dépend plus du résultat.');
+  assert.match(c, /vente livrée automatiquement/, 'Le titre rassurant a disparu.');
+  assert.match(c, /Rien à faire/, 'Le corps ne dit plus qu’il n’y a rien à faire.');
+});

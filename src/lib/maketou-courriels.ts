@@ -115,12 +115,27 @@ export function messageAlerteVenteNonHonoree(details: {
   motif: string;
   pays?: string | null;
   moyen?: string | null;
+  /** Vrai quand la livraison immédiate a servi l'acheteur dans la foulée. */
+  livree?: boolean;
 }): Omit<Courriel, 'a'> {
-  const { email, venteId, produit, motif, pays, moyen } = details;
+  const { email, venteId, produit, motif, pays, moyen, livree } = details;
   return {
-    sujet: `ProFoot — une vente n'a PAS ouvert d'accès (${email ?? 'client inconnu'})`,
+    // ── UNE ALERTE QUI SE TROMPE APPREND À NE PLUS ÊTRE LUE ───────────────
+    //
+    // Le titre criait « une vente n'a PAS ouvert d'accès » même quand la
+    // livraison avait servi l'acheteur la seconde suivante. Le 31 août 2026,
+    // il annonçait un désastre à 12 h 46 pour un accès crédité à 12 h 47.
+    //
+    // Le danger n'est pas le message de trop : c'est qu'à force, celui qui
+    // annonce une VRAIE vente perdue ait exactement la même tête que les
+    // autres, et se lise aussi vite.
+    sujet: livree
+      ? `ProFoot — vente livrée automatiquement (${email ?? 'client inconnu'})`
+      : `ProFoot — une vente n'a PAS ouvert d'accès (${email ?? 'client inconnu'})`,
     texte: [
-      'Une vente MakeTou vient d\'être encaissée sans que l\'accès s\'ouvre.',
+      livree
+        ? "Une vente MakeTou est arrivée sans compte : le compte vient d'être créé et l'accès est crédité. Rien à faire."
+        : "Une vente MakeTou vient d'être encaissée sans que l'accès s'ouvre.",
       '',
       `Client   : ${email ?? '(adresse absente du message)'}`,
       `Vente    : ${venteId ?? '(référence absente)'}`,

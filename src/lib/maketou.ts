@@ -195,7 +195,25 @@ export function montantComparable(vente: VenteMaketou): boolean {
 
 export type ResultatPulse =
   | { ouvert: true; plan: PlanKey; expireLe: string; email: string }
-  | { ouvert: false; motif: string; email?: string };
+  | {
+      ouvert: false;
+      motif: string;
+      email?: string;
+      /**
+       * Vrai quand la livraison immédiate a créé le compte et crédité l'accès
+       * dans la foulée.
+       *
+       * L'appelant en a besoin. Sans lui, il envoyait à l'acheteur l'ancienne
+       * invitation « créez votre compte » DANS LA MÊME MINUTE que le message de
+       * livraison, qui annonce au contraire que son compte existe déjà et qu'il
+       * n'a qu'à choisir son mot de passe.
+       *
+       * Le 31 août 2026 à 12 h 47, Emile Zola a reçu les deux. À 13 h 21 il
+       * écrivait : « je comprends pas je me suis abonné mais je ne vois pas les
+       * analyses du jour ». Il n'est entré qu'à 23 h 24 — dix heures plus tard.
+       */
+      livree?: boolean;
+    };
 
 /**
  * Ouvre l'accès d'un acheteur MakeTou.
@@ -385,6 +403,7 @@ export async function ouvrirAccesMaketou(
     return {
       ouvert: false,
       email,
+      livree,
       // ── LE MOTIF DIT CE QUI S'EST RÉELLEMENT PASSÉ ─────────────────────
       //
       // Il annonçait encore « un courriel invite l'acheteur à créer son
