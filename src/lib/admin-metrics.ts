@@ -194,7 +194,22 @@ export interface AdminMetrics {
   };
 
   abonnements: {
+    /**
+     * Nombre d'ABONNEMENTS actifs — pas de personnes.
+     *
+     * Un abonné qui rachète en a plusieurs : le 1er septembre 2026, 475
+     * abonnements actifs pour 420 personnes. Les 55 de différence sont des
+     * rachats, et ce sont eux qui font vivre le projet.
+     */
     actifs: number;
+    /**
+     * Nombre de PERSONNES ayant au moins un abonnement actif.
+     *
+     * C'est ce chiffre que veut dire « abonnés », et le seul qui ait un sens
+     * rapporté au nombre de comptes inscrits : rapporter des abonnements à
+     * des personnes gonflait la conversion de 6,0 % à 6,8 %.
+     */
+    personnes: number;
     total: number;
     nouveaux: number;
     expires: number;
@@ -809,7 +824,18 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
     : null;
 
   const comptesAyantAnalyse = new Set(analyses.map((a) => a.user_id)).size;
-  const abonnesActifs = abosActifs.length;
+  // ── DES PERSONNES, PAS DES LIGNES ──────────────────────────────────────
+  //
+  // Ce nombre valait `abosActifs.length` — le nombre d'ABONNEMENTS. Or un
+  // abonné qui rachète en possède plusieurs : le 1er septembre 2026, 475
+  // abonnements pour 420 personnes.
+  //
+  // La carte dit « Abonnés actifs », et son sous-titre les rapporte aux
+  // comptes inscrits. Les deux parlent de PERSONNES. Compter les lignes
+  // gonflait donc la conversion de 6,0 % à 6,8 %, et faisait paraître la
+  // recette par abonné plus faible qu’elle n’est — 3 097 FCFA au lieu de
+  // 3 502.
+  const abonnesActifs = new Set(abosActifs.map((s) => s.userId)).size;
 
   const pourcent = (part: number, total: number) =>
     total > 0 ? Math.round((part / total) * 1000) / 10 : 0;
@@ -876,6 +902,7 @@ export async function getAdminMetrics(periode: Periode): Promise<AdminMetrics> {
 
     abonnements: {
       actifs: abosActifs.length,
+      personnes: abonnesActifs,
       total: abosEnrichis.length,
       nouveaux: nouveauxAbos.length,
       expires: abosEnrichis.filter((s) => !s.actif).length,

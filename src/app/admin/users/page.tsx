@@ -40,7 +40,7 @@ export default async function AdminUsers({
           valeur={m.utilisateurs.total}
           teinte="violet"
           icone={<Users className="w-4 h-4" />}
-          aide={`${m.abonnements.actifs} abonné${m.abonnements.actifs > 1 ? "s" : ""}, soit ${m.liens.tauxConversion} %`}
+          aide={`${m.abonnements.personnes} abonné${m.abonnements.personnes > 1 ? "s" : ""}, soit ${m.liens.tauxConversion} %`}
           delai={0.05}
         />
         <Indicateur
@@ -95,7 +95,7 @@ export default async function AdminUsers({
             libelle="Souscrivent"
             valeur={`${m.liens.tauxConversion} %`}
             pourcentage={m.liens.tauxConversion}
-            detail={`${m.abonnements.actifs} abonné${m.abonnements.actifs > 1 ? "s" : ""} actif${m.abonnements.actifs > 1 ? "s" : ""} • ${m.liens.revenuParAbonne.toLocaleString("fr-FR")} FCFA chacun`}
+            detail={`${m.abonnements.personnes} abonné${m.abonnements.personnes > 1 ? "s" : ""} actif${m.abonnements.personnes > 1 ? "s" : ""} • ${m.liens.revenuParAbonne.toLocaleString("fr-FR")} FCFA chacun`}
           />
         </div>
       </Panneau>

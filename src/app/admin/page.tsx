@@ -151,12 +151,24 @@ async function BlocIndicateurs({ periode }: { periode: ReturnType<typeof resoudr
           icone={<TrendingUp className="w-4 h-4" />}
           delai={0.1}
         />
+        {/* ── DES PERSONNES, PAS DES LIGNES ─────────────────────────────
+            Cette carte affichait le nombre d'ABONNEMENTS. Un abonné qui
+            rachète en possède plusieurs : le 1er septembre 2026, 475
+            abonnements pour 420 personnes.
+
+            Le mot « abonnés » et le sous-titre « des comptes inscrits »
+            parlent tous deux de PERSONNES. Les 55 rachats gonflaient donc le
+            chiffre de 13 %, et avec lui le taux de conversion.
+
+            Les abonnements ne disparaissent pas pour autant : ils sont dits
+            juste à côté, parce qu'un rachat est une bonne nouvelle et qu'il
+            faut pouvoir la lire. */}
         <Indicateur
           libelle="Abonnés actifs"
-          valeur={m.abonnements.actifs}
+          valeur={m.abonnements.personnes}
           teinte="vert"
           icone={<Target className="w-4 h-4" />}
-          aide={`${m.liens.tauxConversion} % des ${m.utilisateurs.total} comptes • ${m.abonnements.nouveaux} nouvel abonnement sur la période`}
+          aide={`${m.liens.tauxConversion} % des ${m.utilisateurs.total} comptes • ${m.abonnements.actifs} abonnements en cours, dont ${m.abonnements.actifs - m.abonnements.personnes} rachats • ${m.abonnements.nouveaux} nouvel abonnement sur la période`}
           delai={0.15}
         />
         <Indicateur
@@ -182,7 +194,7 @@ async function BlocIndicateurs({ periode }: { periode: ReturnType<typeof resoudr
             libelle="Conversion"
             valeur={`${m.liens.tauxConversion} %`}
             pourcentage={m.liens.tauxConversion}
-            detail={`${m.abonnements.actifs} abonnés sur ${m.utilisateurs.total} comptes inscrits`}
+            detail={`${m.abonnements.personnes} abonnés sur ${m.utilisateurs.total} comptes inscrits`}
           />
           <Rapport
             libelle="Activation"
