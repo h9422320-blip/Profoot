@@ -237,3 +237,54 @@ test('★ ACQUIS — le réveil n’annonce jamais une échéance déjà passée
     'Le réveil peut de nouveau citer une date d’expiration passée.'
   );
 });
+
+// ── LE QUOTA EST PARTAGÉ AVEC LES MESSAGES VITAUX ──────────────────────────
+
+test('★ ACQUIS — une campagne ne peut pas vider le quota du jour', () => {
+  // Le 1er septembre 2026, la première campagne réelle s'est arrêtée sur :
+  //     429 — "You have reached your daily email sending quota."
+  //
+  // L'offre en cours autorise CENT messages par jour, et c'est le MÊME
+  // compteur qui sert au lien de mot de passe oublié et à l'ouverture d'accès
+  // envoyée à quelqu'un qui vient de payer.
+  //
+  // Sans ce budget : la campagne du matin part à 7 h 10, consomme les cent
+  // messages en cinquante secondes, et le premier client qui paie à 9 h ne
+  // reçoit pas son accès. On aurait automatisé la panne qu'on a passé trois
+  // semaines à réparer.
+  assert.match(diffusion, /const BUDGET_QUOTIDIEN = Math\.max\(/, 'Le budget quotidien a disparu.');
+  assert.match(
+    diffusion,
+    /Number\(process\.env\.COURRIEL_BUDGET_QUOTIDIEN\) \|\| 50/,
+    'Le budget par défaut a changé — vérifier qu’il laisse la moitié du quota aux messages vitaux.'
+  );
+  assert.match(
+    diffusion,
+    /if \(bilan\.envoyes >= budgetRestant\)/,
+    'Le budget ne coupe plus la boucle d’envoi : le plafond demandé pourrait le dépasser.'
+  );
+});
+
+test('★ ACQUIS — le budget est compté en base, pas en mémoire', () => {
+  // Trois campagnes tournent dans trois appels de fonction serveur différents,
+  // et chaque appel démarre à zéro. Un compteur en mémoire les laisserait
+  // consommer le budget chacune de son côté — donc le triple.
+  assert.match(diffusion, /\.eq\('provider', 'campagne'\)/, 'Le décompte du jour ne lit plus les traces.');
+  assert.match(diffusion, /\.gte\('received_at', minuit\.toISOString\(\)\)/, 'Le décompte ne se limite plus à aujourd’hui.');
+});
+
+test('★ ACQUIS — un décompte illisible bloque les envois plutôt que de les laisser passer', () => {
+  // Mieux vaut n'écrire à personne aujourd'hui que de priver d'accès quelqu'un
+  // qui a payé.
+  assert.match(
+    diffusion,
+    /if \(error\) return BUDGET_QUOTIDIEN;/,
+    'Une lecture ratée du budget laisse de nouveau partir la campagne entière.'
+  );
+});
+
+test('★ ACQUIS — la simulation n’est pas bridée par le budget', () => {
+  // Elle n'envoie rien, et doit pouvoir montrer la liste entière même quand le
+  // quota du jour est épuisé — c'est justement ce moment-là qu'on veut inspecter.
+  assert.match(diffusion, /if \(!options\.simulation\) \{\s*const dejaPartis = await envoyesAujourdhui\(\)/);
+});

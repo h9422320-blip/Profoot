@@ -68,6 +68,73 @@ import { DOMAINES_DE_TEST } from '../livraison-sans-compte';
 export const PLAFOND_PAR_DEFAUT = 100;
 
 /**
+ * COMBIEN DE MESSAGES DE CAMPAGNE PAR JOUR, TOUTES CAMPAGNES CONFONDUES.
+ *
+ * ── LE DANGER QU'IL FERME ─────────────────────────────────────────────────
+ *
+ * Le 1er septembre 2026, la première campagne réelle s'est arrêtée après
+ * 143 envois sur cette réponse :
+ *
+ *     429 — "You have reached your daily email sending quota."
+ *
+ * L'offre en cours chez le fournisseur autorise CENT messages par jour. Et
+ * c'est le même compteur qui sert aux messages vitaux : le lien de mot de passe
+ * oublié, et l'ouverture d'accès envoyée à quelqu'un qui vient de payer.
+ *
+ * Sans ce budget, voici ce qui arriverait demain matin : la campagne du matin
+ * part à 7 h 10, consomme les cent messages de la journée en cinquante
+ * secondes — et le premier client qui paie à 9 h ne reçoit pas son accès. On
+ * aurait automatisé la panne qu'on a passé trois semaines à réparer.
+ *
+ * ── POURQUOI CINQUANTE ────────────────────────────────────────────────────
+ *
+ * La moitié du quota reste libre pour les messages vitaux. Les livraisons et
+ * les mots de passe dépassent rarement la vingtaine par jour ; cinquante laisse
+ * de la marge un jour de forte vente.
+ *
+ * ── CE CHIFFRE EST FAIT POUR ÊTRE RELEVÉ ──────────────────────────────────
+ *
+ * Il ne décrit pas ce qui est souhaitable, il décrit ce que l'offre gratuite
+ * permet. Une offre payante à 50 000 messages par mois couvrirait tout ce qui
+ * est prévu ici — les huit cents du matin, les sept cents du soir et les
+ * 6 723 personnes à rattraper — pour une somme modeste.
+ *
+ * Le jour où l'offre change, poser `COURRIEL_BUDGET_QUOTIDIEN` à 2000 sur le
+ * serveur suffit. Rien d'autre à toucher.
+ */
+const BUDGET_QUOTIDIEN = Math.max(
+  0,
+  Number(process.env.COURRIEL_BUDGET_QUOTIDIEN) || 50
+);
+
+/**
+ * Combien de messages de campagne sont déjà partis aujourd'hui.
+ *
+ * Compté sur les traces réellement écrites, et non sur un compteur en mémoire :
+ * chaque appel de fonction serveur démarre à zéro, et trois campagnes tournent
+ * dans trois appels différents. Un compteur en mémoire les laisserait consommer
+ * le budget chacune de son côté.
+ */
+async function envoyesAujourdhui(): Promise<number> {
+  const minuit = new Date();
+  minuit.setUTCHours(0, 0, 0, 0);
+  try {
+    const { count, error } = await createAdminClient()
+      .from('webhook_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('provider', 'campagne')
+      .gte('received_at', minuit.toISOString());
+    // Une lecture impossible se lit comme « budget épuisé » : mieux vaut
+    // n'écrire à personne aujourd'hui que de priver d'accès quelqu'un qui a
+    // payé.
+    if (error) return BUDGET_QUOTIDIEN;
+    return count ?? 0;
+  } catch {
+    return BUDGET_QUOTIDIEN;
+  }
+}
+
+/**
  * Millisecondes entre deux envois.
  *
  * Deux par seconde : c'est la cadence que les offres d'entrée des services de
@@ -254,6 +321,29 @@ export async function diffuser(options: {
     return bilan;
   }
 
+  // ── LE BUDGET DU JOUR EST PARTAGÉ AVEC LES MESSAGES VITAUX ──────────────
+  //
+  // Le quota du fournisseur est commun aux campagnes ET aux liens de mot de
+  // passe et ouvertures d'accès après paiement. Une campagne qui le viderait le
+  // matin priverait d'accès le premier client qui paie dans la journée.
+  //
+  // La simulation n'est pas concernée : elle n'envoie rien, et doit pouvoir
+  // montrer la liste entière même quand le budget est épuisé.
+  let budgetRestant = Number.POSITIVE_INFINITY;
+  if (!options.simulation) {
+    const dejaPartis = await envoyesAujourdhui();
+    budgetRestant = BUDGET_QUOTIDIEN - dejaPartis;
+    if (budgetRestant <= 0) {
+      bilan.details.push(
+        `Budget du jour épuisé : ${dejaPartis} messages de campagne déjà partis ` +
+          `sur ${BUDGET_QUOTIDIEN}. Le reste du quota est gardé pour les mots de ` +
+          `passe et les livraisons d'accès. Reprise demain.`
+      );
+      bilan.reste = true;
+      return bilan;
+    }
+  }
+
   const desabonnes = await lireDesabonnes();
   const sb = createAdminClient();
   let echecsDaffilee = 0;
@@ -261,6 +351,18 @@ export async function diffuser(options: {
 
   for (const d of destinataires) {
     if (bilan.envoyes >= limite) {
+      bilan.reste = true;
+      break;
+    }
+
+    // Le budget du jour prime sur le plafond demandé : on peut réclamer cinq
+    // cents envois, on n'obtiendra jamais plus que ce que le quota partagé
+    // laisse aux campagnes.
+    if (bilan.envoyes >= budgetRestant) {
+      bilan.details.push(
+        `Budget du jour atteint (${BUDGET_QUOTIDIEN} messages de campagne). ` +
+          `Le reste du quota est gardé pour les mots de passe et les livraisons.`
+      );
       bilan.reste = true;
       break;
     }
