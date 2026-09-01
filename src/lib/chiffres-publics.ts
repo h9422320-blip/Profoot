@@ -52,7 +52,7 @@
 import { lireReserve, ecrireReserve } from './api-football';
 import { createAdminClient } from './supabase-admin';
 
-const CLE = 'chiffres-publics-v1';
+const CLE = 'chiffres-publics-v2';
 
 /** Un jour. Le taux de réussite d'un moteur ne se déplace pas en une matinée. */
 const DUREE_MS = 24 * 60 * 60 * 1000;
@@ -78,12 +78,34 @@ export interface ChiffresPublics {
  * affiche un faux — mais un chiffre vrai devenu vieux vaut mieux que les deux.
  */
 const DERNIER_RELEVE: ChiffresPublics = {
-  matchsAnalyses: 21140,
+  matchsAnalyses: 2620,
   matchsVerifies: 1995,
   tauxIssue: 56,
   tauxScoreExact: 14,
-  competitions: 15,
+  competitions: 47,
 };
+
+/**
+ * Combien de rencontres analysées avant qu'une compétition compte comme couverte.
+ *
+ * ── POURQUOI PAS UNE SEULE ────────────────────────────────────────────────
+ *
+ * Sans seuil, le décompte donne 86 compétitions. Mais la queue de cette liste
+ * ressemble à ceci :
+ *
+ *     1 analyse   David Kipiani Cup
+ *     1 analyse   Meistaradeildin
+ *     1 analyse   Cupa României
+ *
+ * Une ligue où une seule personne a analysé un seul match, une fois, n'est pas
+ * « couverte » : elle a été visitée. Annoncer 86 serait exactement la faute
+ * qu'on vient de corriger sur cette même page — un grand chiffre vrai au
+ * comptage et faux au sens.
+ *
+ * À cinq rencontres distinctes, il reste 47 compétitions. C'est moins
+ * spectaculaire que 86, et personne ne peut le contester.
+ */
+const RENCONTRES_POUR_COUVRIR = 5;
 
 /** Clé de dédoublonnage : deux équipes, un jour. L'ordre des équipes ne compte pas. */
 function cleRencontre(a: {
@@ -124,17 +146,30 @@ async function calculer(): Promise<ChiffresPublics> {
   }
 
   const rencontres = new Map<string, (typeof lignes)[number]>();
-  const competitions = new Set<string>();
+  // Par compétition, les rencontres DISTINCTES qu'on y a analysées — et non le
+  // nombre d'analyses. Sans quoi une seule rencontre relancée trente fois
+  // ferait passer sa ligue pour une compétition largement couverte.
+  const parCompetition = new Map<string, Set<string>>();
 
   for (const l of lignes) {
-    competitions.add(String(l.competition ?? '').trim().toLowerCase());
     const cle = cleRencontre(l);
+
+    const competition = String(l.competition ?? '').trim().toLowerCase();
+    if (competition) {
+      const vues = parCompetition.get(competition) ?? new Set<string>();
+      vues.add(cle);
+      parCompetition.set(competition, vues);
+    }
+
     const connue = rencontres.get(cle);
     // Entre deux analyses de la même rencontre, on garde celle qui a été
     // vérifiée : c'est la seule qui apporte une information au taux.
     if (!connue || (!connue.verified_at && l.verified_at)) rencontres.set(cle, l);
   }
-  competitions.delete('');
+
+  const competitions = [...parCompetition.values()].filter(
+    (vues) => vues.size >= RENCONTRES_POUR_COUVRIR
+  ).length;
 
   const toutes = [...rencontres.values()];
   const verifiees = toutes.filter((r) => r.verified_at);
@@ -150,7 +185,7 @@ async function calculer(): Promise<ChiffresPublics> {
     matchsVerifies: verifiees.length,
     tauxIssue: Math.round((100 * bonnes) / verifiees.length),
     tauxScoreExact: Math.round((100 * exacts) / verifiees.length),
-    competitions: competitions.size,
+    competitions,
   };
 }
 
