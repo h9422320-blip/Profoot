@@ -90,9 +90,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/competitions`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${SITE_URL}/standings`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${SITE_URL}/stats`, lastModified: now, changeFrequency: 'daily', priority: 0.85 },
-    { url: `${SITE_URL}/pricing`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-    { url: `${SITE_URL}/signup`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${SITE_URL}/login`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    // ── LES TARIFS, L'INSCRIPTION ET LA CONNEXION N'Y SONT PLUS ──────────
+    //
+    // Retirées le 1er septembre 2026, sur décision du propriétaire : personne
+    // ne doit arriver sur ces pages depuis Google. Le parcours voulu part de
+    // la page d'accueil, passe par l'inscription, et ne propose l'achat
+    // qu'ensuite — quelqu'un qui tombe sur les tarifs sans avoir rien vu du
+    // produit ne sait pas ce qu'il achète.
+    //
+    // Les déclarer ici tout en leur posant un `noindex` serait se contredire :
+    // on demanderait à Google de venir indexer une page qui lui dit de ne pas
+    // le faire. C'est le `noindex` de chaque page qui les fait sortir de
+    // l'index ; ce fichier cesse simplement de les y pousser.
     { url: `${SITE_URL}/support`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${SITE_URL}/cgv`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/confidentialite`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
