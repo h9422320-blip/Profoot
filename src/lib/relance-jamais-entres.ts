@@ -107,16 +107,53 @@ export async function relancerAbonnesJamaisEntres(): Promise<BilanRelance> {
     if (data.users.length < 200) break;
   }
 
-  // Qui a déjà été relancé, et combien de fois.
+  // ── QUI A DÉJÀ ÉTÉ RELANCÉ, ET COMBIEN DE FOIS ──────────────────────────
+  //
+  // ── LE PLAFOND DE DEUX MESSAGES N'A JAMAIS FONCTIONNÉ ─────────────────
+  //
+  // L'identifiant de trace s'écrit `relance-<uuid>-<jour>-<rang>`, par
+  // exemple :
+  //
+  //     relance-2a556414-5912-4a4a-a5c7-5f96f45cb54d-2026-08-31-1
+  //
+  // Le découpage cherchait le DERNIER tiret et gardait tout ce qui le
+  // précède. Il obtenait donc :
+  //
+  //     2a556414-5912-4a4a-a5c7-5f96f45cb54d-2026-08-31
+  //                                          ↑ la date est restée dedans
+  //
+  // Chaque jour produisait une clé différente pour la même personne. Le
+  // compteur valait donc toujours 1, le plafond `MAX_RELANCES` n'était
+  // jamais atteint, et le rang restait bloqué à 1 — le même message, avec le
+  // même objet, tous les jours.
+  //
+  // Constaté le 2 septembre 2026 : mbayesaliou2024@icloud.com avait reçu la
+  // relance le 31 août, le 1er ET le 2 septembre. Trois fois le même texte.
+  // Sans correction, elle serait partie tous les jours jusqu'à ce que la
+  // personne se connecte — ou signale le message comme indésirable, ce qui
+  // aurait emporté avec lui les liens de mot de passe de tout le domaine.
+  //
+  // C'est exactement le harcèlement contre lequel l'en-tête de ce fichier met
+  // en garde : « quelqu'un qui n'a pas répondu à deux messages ne répondra
+  // pas au dixième ». La règle était écrite, elle n'était pas appliquée.
+  //
+  // L'identifiant se lit désormais par sa FORME — un UUID fait trente-six
+  // caractères et son découpage ne dépend d'aucun séparateur ambigu.
   const { data: traces } = await sb
     .from('webhook_events')
     .select('delivery_id')
     .like('delivery_id', 'relance-%');
   const dejaRelance = new Map<string, number>();
+  const FORME_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
   for (const t of traces ?? []) {
     const reste = String(t.delivery_id).slice('relance-'.length);
-    const id = reste.slice(0, reste.lastIndexOf('-'));
-    if (id) dejaRelance.set(id, (dejaRelance.get(id) ?? 0) + 1);
+    const trouve = reste.match(FORME_UUID);
+    // Une trace qui ne porte pas d'identifiant reconnaissable est ignorée
+    // plutôt que comptée sous une clé inventée : la compter au hasard
+    // fausserait le plafond d'une autre personne.
+    if (!trouve) continue;
+    const id = trouve[0];
+    dejaRelance.set(id, (dejaRelance.get(id) ?? 0) + 1);
   }
 
   const vus = new Set<string>();
