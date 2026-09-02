@@ -21,6 +21,7 @@
  * trois secondes. Cloudflare pose le vrai pays dans `CF-IPCountry`.
  */
 
+import { after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { compterTentative } from '@/lib/limite-partagee';
 import { clientIp } from '@/lib/rateLimit';
@@ -121,6 +122,32 @@ export async function POST(req: Request) {
       pays: pays === 'XX' || pays === 'T1' ? null : pays,
       mobile: corps.mobile === true,
       compte_id: compteId,
+    });
+
+    // ── C'EST ICI QUE PARTENT LES COURRIELS DU JOUR ────────────────────────
+    //
+    // Pas par une tâche planifiée. Trois avaient été déclarées le 1er septembre
+    // 2026 — 7 h 10, 11 h 10, 21 h 40 UTC — et le lendemain à 17 h 41, elles
+    // n'avaient produit aucun message. Zéro. Pendant ce temps l'entretien
+    // quotidien, lui, avait bien tourné : à 14 h 11, l'heure d'aucune tâche.
+    // C'est une visite de page qui l'avait déclenché.
+    //
+    // Dans cette application, ce qui tourne vraiment, ce sont les visites. On
+    // s'appuie donc dessus. Cette route est la plus fréquentée du site — elle
+    // est appelée à chaque page ouverte — ce qui en fait le meilleur battement
+    // de cœur disponible.
+    //
+    // `after()` est indispensable et non décoratif : une fonction serveur est
+    // GELÉE dès la réponse envoyée. Un `void (async () => …)()` serait tué au
+    // milieu de l'envoi, et laisserait la marque du jour posée sans que les
+    // messages soient partis — donc rien jusqu'au lendemain.
+    //
+    // Le coût pour le visiteur est nul : il a déjà reçu sa réponse. Et hors des
+    // trois fenêtres horaires — vingt heures sur vingt-quatre — le déclencheur
+    // rend la main avant même de toucher la base.
+    after(async () => {
+      const { declencherCampagnesDuJour } = await import('@/lib/campagnes/declencheur');
+      await declencherCampagnesDuJour();
     });
 
     return recu();

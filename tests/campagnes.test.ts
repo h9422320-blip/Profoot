@@ -318,3 +318,55 @@ test('★ ACQUIS — la notice prévient du pays avant d’envoyer à la caisse'
   );
   assert.match(notice, /31 242 GNF/, 'L’exemple chiffré a disparu : « francs guinéens » seul ne parle à personne.');
 });
+
+// ── LES COURRIELS PARTENT SANS DÉPENDRE D'UNE TÂCHE PLANIFIÉE ──────────────
+
+test('★ ACQUIS — le déclencheur vit sur la route la plus fréquentée', () => {
+  // Trois tâches planifiées ont été déclarées le 1er septembre 2026 — 7 h 10,
+  // 11 h 10, 21 h 40 UTC. Le lendemain à 17 h 41, elles avaient produit ZÉRO
+  // message. Pendant ce temps l'entretien quotidien avait bien tourné, à
+  // 14 h 11 : l'heure d'aucune tâche. C'est une visite de page qui l'avait
+  // déclenché.
+  //
+  // Dans cette application, ce qui tourne vraiment, ce sont les visites.
+  const mesure = sansCommentaires(lire('src/app/api/mesure/route.ts'));
+  assert.match(mesure, /declencherCampagnesDuJour/, 'Le déclencheur a été retiré de la route de mesure.');
+  assert.match(
+    mesure,
+    /after\(async \(\) => \{[\s\S]{0,200}declencherCampagnesDuJour/,
+    'Le déclenchement ne passe plus par after() : une fonction serveur est GELÉE dès la réponse envoyée, et l’envoi serait tué en plein milieu.'
+  );
+});
+
+test('★ ACQUIS — une campagne ne peut pas partir deux fois dans la journée', () => {
+  // Des centaines de visites par heure passent par ce déclencheur. Sans marque,
+  // chacune relancerait la campagne.
+  const d = sansCommentaires(lire('src/lib/campagnes/declencheur.ts'));
+  assert.match(
+    d,
+    /const marque = \(campagne: string\) =>\s*`campagne-partie:\$\{campagne\}:\$\{new Date\(\)\.toISOString\(\)\.slice\(0, 10\)\}`/,
+    'La marque du jour a disparu ou changé de forme.'
+  );
+  const posMarque = d.indexOf('await ecrireReserve(cle');
+  const posEnvoi = d.indexOf('await lancerCampagne(');
+  assert.ok(posMarque > 0 && posEnvoi > posMarque,
+    'La marque est posée APRÈS l’envoi : deux visiteurs simultanés paieraient deux fois la lecture complète des comptes.');
+});
+
+test('★ ACQUIS — hors des trois fenêtres, le déclencheur ne touche pas la base', () => {
+  // Vingt heures sur vingt-quatre. Sans ce retour anticipé, chaque page ouverte
+  // du site ferait une lecture de réserve pour rien.
+  const d = sansCommentaires(lire('src/lib/campagnes/declencheur.ts'));
+  const posRdv = d.indexOf('const rdv = RENDEZ_VOUS.find');
+  const posSortie = d.indexOf('if (!rdv) return null;');
+  const posLecture = d.indexOf('await lireReserve');
+  assert.ok(posRdv > 0 && posSortie > posRdv, 'La sortie anticipée a disparu.');
+  assert.ok(posSortie < posLecture, 'La lecture de réserve passe avant le contrôle de l’heure.');
+});
+
+test('★ ACQUIS — les trois rendez-vous couvrent matin, réveil et soir', () => {
+  const d = sansCommentaires(lire('src/lib/campagnes/declencheur.ts'));
+  assert.match(d, /campagne: 'matin', debut: 6, fin: 10/, 'La fenêtre du matin a changé.');
+  assert.match(d, /campagne: 'reveil', debut: 10, fin: 13/, 'La fenêtre du réveil a changé.');
+  assert.match(d, /campagne: 'soir', debut: 21, fin: 24/, 'La fenêtre du soir a changé.');
+});
