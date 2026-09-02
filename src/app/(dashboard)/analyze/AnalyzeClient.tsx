@@ -2170,38 +2170,6 @@ export default function AnalyzePage({
                       vient de payer pour ce match et tient la preuve entre les
                       mains. C'est le seul instant où « et si tu débloques
                       souvent ? » se pose tout seul. */}
-                  {/* ── L'ANALYSE OFFERTE SE DIT, ELLE NE SE DEVINE PAS ───────
-                      Sans ce bandeau, la personne reçoit son analyse complète
-                      et en conclut logiquement que l'application est gratuite.
-                      Elle en lance une deuxième, se heurte au mur, et comprend
-                      qu'on lui a retiré quelque chose — l'inverse exact d'un
-                      cadeau.
-                      Dit ici, au moment où elle tient la preuve entre les
-                      mains, c'est le seul instant où le prix se présente tout
-                      seul : elle vient de voir ce qu'elle achèterait. */}
-                  {result.essaiOffert && (
-                    <div className="rounded-[20px] border border-[#FDE047]/25 bg-[#FDE047]/[0.06] p-4 flex flex-col gap-3">
-                      <p className="text-[13px] font-bold text-white leading-snug">
-                        🎁 Voici votre analyse complète, offerte.
-                      </p>
-                      <p className="text-[12px] text-white/60 leading-relaxed">
-                        C&apos;est la seule. Les suivantes demandent un accès —
-                        l&apos;offre {offre.libelle} à {prixOffre} FCFA en donne {quotaOffre} par
-                        mois.
-                      </p>
-                      <Link
-                        href="/pricing"
-                        className="inline-flex items-center justify-center gap-2 font-black py-3 px-5 rounded-full text-[13px] transition-all active:scale-95 min-h-[48px] w-full sm:w-auto sm:self-start"
-                        style={{
-                          background: "linear-gradient(135deg, #2DD4BF 0%, #10B981 100%)",
-                          color: "#101c24",
-                        }}
-                      >
-                        Voir l&apos;offre
-                      </Link>
-                    </div>
-                  )}
-
                   {result.debloqueParAchat && (
                     <div className="rounded-[20px] border border-[#10B981]/25 bg-[#10B981]/[0.07] p-4 flex flex-col gap-3">
                       <p className="text-[13px] font-bold text-white leading-snug">
