@@ -110,8 +110,37 @@ const FORCE_MAX = 2.6;
  *
  * La surcharge par variable d'environnement n'existe QUE pour le banc d'essai.
  * En production la variable n'est pas posée, et la valeur reste celle-ci.
+ *
+ * ── MESURÉ LE 2 SEPTEMBRE 2026, ET RAMENÉ À ZÉRO ────────────────────────
+ *
+ * Sur 2 305 rencontres réelles — saison complète, huit championnats, rejouées
+ * journée après journée sans jamais connaître la suite :
+ *
+ *     K = 6  →  2-1 dans 58,2 % des cas, 15 scores distincts, issue 50,5 %
+ *     K = 4  →  2-1 dans 55,1 %,         17 scores,           issue 50,3 %
+ *     K = 3  →  2-1 dans 53,4 %,         17 scores,           issue 50,2 %
+ *     K = 0  →  2-1 dans 46,3 %,         20 scores,           issue 49,6 %
+ *
+ * Zéro est retenu : douze points de 2-1 en moins et cinq scores de plus, pour
+ * neuf dixièmes de point d'issue. Un grand club affronte de nouveau un promu
+ * avec l'écart qu'ils ont réellement, au lieu d'être à moitié ramenés au même
+ * point.
+ *
+ * ── CE QUI PROTÈGE ENCORE UNE ÉQUIPE VUE DEUX FOIS ──────────────────────
+ *
+ * `FORCE_MIN` et `FORCE_MAX` bornent la force à 0,35–2,6, et les buts attendus
+ * sont bornés séparément. Une équipe qui gagne 6-0 son premier match ne devient
+ * donc pas une machine à six buts : elle plafonne.
+ *
+ * Le zéro devait être écrit ainsi. `Number('0') || 6` vaut SIX : la valeur
+ * était silencieusement remplacée par le défaut, et K = 0 n'avait jamais pu
+ * être essayé — ni ici, ni au banc.
  */
-const AMORTISSEMENT = Number(process.env.BANC_AMORTISSEMENT) || 6;
+const AMORTISSEMENT_PAR_DEFAUT = 0;
+const AMORTISSEMENT = (() => {
+  const surcharge = Number(process.env.BANC_AMORTISSEMENT);
+  return Number.isFinite(surcharge) ? surcharge : AMORTISSEMENT_PAR_DEFAUT;
+})();
 
 /**
  * Lenteur avec laquelle la saison en cours remplace le socle.

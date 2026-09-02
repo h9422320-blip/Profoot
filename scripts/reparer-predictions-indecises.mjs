@@ -57,9 +57,11 @@ for (const ligne of fs.readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
 
 const ECRIRE = process.argv.includes('--ecrire');
 
-const { createClient } = await import('@supabase/supabase-js');
-const { calculerScoreProbable, competitionPeuFiable } = await import('../src/lib/score-probable.ts');
-const { lireForcesLigue } = await import('../src/lib/forces-equipes.ts');
+const { createJiti } = await import('jiti');
+ const jiti = createJiti(import.meta.url);
+ const { createClient } = await import('@supabase/supabase-js');
+const { calculerScoreProbable, competitionPeuFiable } = await jiti.import('../src/lib/score-probable.ts');
+const { lireForcesLigue } = await jiti.import('../src/lib/forces-equipes.ts');
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
