@@ -16,7 +16,7 @@ import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
 import { lireForcesLigue } from "@/lib/forces-equipes";
 import { lireForcesChampionnats, rapportEntreChampionnats } from "@/lib/forces-championnats";
-import { lirePredictionFigee, figerPrediction } from "@/lib/prediction-figee";
+import { lirePredictionFigee, figerPrediction, remplacerPredictionFigee, predictionIndecise } from "@/lib/prediction-figee";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
@@ -1483,7 +1483,61 @@ async function analyser(req: Request, billet: BilletQuota) {
 
   if (lisible) {
     const deja = await lirePredictionFigee(idRencontre, id1);
-    if (deja) {
+
+    // ── UNE PRÉDICTION QUI N'AVAIT DÉPARTAGÉ PERSONNE N'EST PAS RELUE ──────
+    //
+    // Relevé le 2 septembre 2026 sur Real Betis — Real Madrid : la ligne figée
+    // du 29 août annonçait « 2-1 Betis » sur des probabilités de 36 · 28 · 36
+    // et des buts attendus de 1,40 contre 1,40. Rien n'avait été décidé — c'est
+    // le « supérieur ou égal » du départage qui avait tranché.
+    //
+    // Trois jours plus tard, avec la matière accumulée, le même calcul donne
+    // 0-2 pour le Real Madrid à 84 %. Pendant ce temps, le texte de l'analyse,
+    // la forme récente et le classement encensaient tous le Real Madrid, sous
+    // un score qui le donnait perdant.
+    //
+    // La règle reste étroite : une prédiction qui désignait franchement un
+    // favori NE BOUGE JAMAIS, même si elle se révèle fausse. C'est tout
+    // l'intérêt de la figer. Seules les indécises — deux victoires à moins de
+    // quatre points l'une de l'autre — sont remplacées, et uniquement quand le
+    // calcul du jour, lui, a tranché.
+    const aRemplacer =
+      !!deja &&
+      predictionIndecise(deja) &&
+      !predictionIndecise({
+        probaVictoire1: scoreCalcule.probaVictoire1,
+        probaVictoire2: scoreCalcule.probaVictoire2,
+        buts1: scoreCalcule.buts1,
+        buts2: scoreCalcule.buts2,
+      });
+
+    if (aRemplacer && fixtureDeReference?.fixture?.id && !matchDirect) {
+      const e1Domicile = equipe1AJoueADomicile === true;
+      const remplacee = await remplacerPredictionFigee({
+        fixtureId: fixtureDeReference.fixture.id,
+        domicileId: Number(e1Domicile ? id1 : id2),
+        domicileNom: e1Domicile ? team1.name : team2.name,
+        exterieurId: Number(e1Domicile ? id2 : id1),
+        exterieurNom: e1Domicile ? team2.name : team1.name,
+        butsDomicile: e1Domicile ? scoreCalcule.buts1 : scoreCalcule.buts2,
+        butsExterieur: e1Domicile ? scoreCalcule.buts2 : scoreCalcule.buts1,
+        probaDomicile: e1Domicile ? scoreCalcule.probaVictoire1 : scoreCalcule.probaVictoire2,
+        probaNul: scoreCalcule.probaNul,
+        probaExterieur: e1Domicile ? scoreCalcule.probaVictoire2 : scoreCalcule.probaVictoire1,
+        confiance: scoreCalcule.confiance,
+        xgDomicile: e1Domicile ? scoreCalcule.butsAttendus1 : scoreCalcule.butsAttendus2,
+        xgExterieur: e1Domicile ? scoreCalcule.butsAttendus2 : scoreCalcule.butsAttendus1,
+        calculeeLe: new Date().toISOString(),
+      });
+      console.log(
+        `[PREDICTION] ${team1.name} — ${team2.name} : ligne indécise ` +
+          `(${deja!.buts1}-${deja!.buts2}, ${deja!.probaVictoire1}/${deja!.probaVictoire2}) ` +
+          `remplacée par ${scoreCalcule.buts1}-${scoreCalcule.buts2} ` +
+          `(${scoreCalcule.probaVictoire1}/${scoreCalcule.probaVictoire2}) — ${remplacee ? 'écrite' : 'ÉCHEC ÉCRITURE'}.`
+      );
+    }
+
+    if (deja && !aRemplacer) {
       scoreCalcule.buts1 = deja.buts1;
       scoreCalcule.buts2 = deja.buts2;
       scoreCalcule.probaVictoire1 = deja.probaVictoire1;
@@ -1492,7 +1546,11 @@ async function analyser(req: Request, billet: BilletQuota) {
       scoreCalcule.confiance = deja.confiance;
       if (deja.butsAttendus1 !== null) scoreCalcule.butsAttendus1 = Number(deja.butsAttendus1);
       if (deja.butsAttendus2 !== null) scoreCalcule.butsAttendus2 = Number(deja.butsAttendus2);
-    } else if (enregistrable) {
+    } else if (enregistrable && !deja) {
+      // `!deja` : une ligne vient peut-être d'être REMPLACÉE juste au-dessus.
+      // Sans ce garde, on tenterait aussitôt de l'insérer une seconde fois —
+      // refusée en silence, mais un aller-retour en base pour rien.
+      //
       // Enregistré dans le sens officiel : l'équipe qui reçoit en premier.
       const e1Domicile = equipe1AJoueADomicile === true;
       await figerPrediction({

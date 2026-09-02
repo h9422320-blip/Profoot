@@ -878,8 +878,52 @@ export function calculerScoreProbable(
   // entre deux équipes de force égale. Voir juste au-dessus pour le rejeu qui
   // l'a fixé, et pour ce qui a été essayé puis refusé.
   const ECART_DOMINATION = 4;
+
+  /**
+   * ── ON N'ANNONCE PAS UN VAINQUEUR QUE LE CALCUL N'A PAS DÉPARTAGÉ ────────
+   *
+   * L'issue retenue se décide plus haut par `pv1 >= pv2`. Avec une ÉGALITÉ
+   * PARFAITE, ce test rend « victoire1 » sans que rien ne l'ait départagée : le
+   * signe « supérieur ou égal » tranche à la place du modèle.
+   *
+   * Ce que ça donnait à l'écran, relevé le 2 septembre 2026 sur Real Betis —
+   * Real Madrid :
+   *
+   *     buts attendus   1,40  contre  1,40
+   *     probabilités      36  ·  28  ·  36
+   *     score annoncé          2 - 1        pour le Betis
+   *     confiance                81 %       affichée « Très élevée »
+   *
+   * Le score le plus probable de cette grille est 1-1. Mais « victoire1 » (36)
+   * devançait le nul (28) de huit points, donc au-dessus du seuil de
+   * domination : le calcul abandonnait le 1-1 pour aller chercher le meilleur
+   * score DANS la victoire du Betis, c'est-à-dire 2-1.
+   *
+   * Le seuil de domination compare l'issue retenue à celle du score naturel.
+   * Il ne compare jamais les deux victoires ENTRE ELLES — et c'est là que
+   * l'égalité passait.
+   *
+   * Mesuré sur les 1 019 prédictions enregistrées : 80 désignent un vainqueur
+   * alors que les deux équipes sont à trois points ou moins l'une de l'autre,
+   * avec une confiance moyenne annoncée de 77 %. Quarante-deux le font sur des
+   * buts attendus rigoureusement identiques.
+   *
+   * C'est aussi ce qui nourrissait le 2-1 : il pesait 30,5 % de toutes les
+   * prédictions.
+   *
+   * Le nul, lui, garde le droit de forcer son score : quand `pn` domine
+   * réellement, l'égalité entre les deux victoires n'est pas une indécision,
+   * c'est le résultat annoncé.
+   */
+  const ECART_INDECIS = 4;
+  const vainqueurNonDepartage =
+    (issueRetenue === 'victoire1' || issueRetenue === 'victoire2') &&
+    Math.abs(pv1 - pv2) < ECART_INDECIS;
+
   const meilleur =
-    issueDuScoreNaturel === issueRetenue || avanceDeLIssue < ECART_DOMINATION
+    issueDuScoreNaturel === issueRetenue ||
+    avanceDeLIssue < ECART_DOMINATION ||
+    vainqueurNonDepartage
       ? meilleurGlobal
       : meilleurParIssue[issueRetenue];
 
