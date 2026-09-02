@@ -6,13 +6,6 @@ import { lienMaketou } from '@/lib/maketou-boutique';
 import { ipAcheteur } from '@/lib/pays-acheteur';
 import { paysRetenu } from '@/lib/pays-paiement';
 import { createAdminClient } from '@/lib/supabase-admin';
-import {
-  PRIX_MATCH_UNIQUE,
-  cleMatchDebloque,
-  matchDebloque,
-  matchUniqueDisponible,
-  produitMatchUnique,
-} from '@/lib/match-unique';
 
 export async function POST(req: Request) {
   try {
@@ -22,12 +15,23 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}));
 
-    // ── ACHAT D'UN MATCH À L'UNITÉ ────────────────────────────────────────────
+    // ── L'ACHAT À L'UNITÉ N'EXISTE PLUS ──────────────────────────────────
     //
-    // Même tunnel, même détection du pays, même trace : seul le produit change.
-    // Traité avant la validation du plan, puisqu'il n'y a justement pas de plan.
+    // Retiré du catalogue par le propriétaire le 2 septembre 2026. Il avait
+    // produit DEUX ventes en tout, les 13 août, par la même personne.
+    //
+    // On refuse explicitement plutôt que de laisser la demande tomber dans la
+    // validation de plan : un ancien écran encore ouvert dans un téléphone
+    // aurait reçu « Plan invalide », message qui n'explique rien à qui vient
+    // de cliquer sur « débloquer ce match ».
     if (body?.type === 'match') {
-      return await lancerAchatMatch(req, body, user);
+      return NextResponse.json(
+        {
+          error: "L'achat à l'unité n'existe plus. L'analyse complète s'obtient avec un accès mensuel.",
+          code: 'MATCH_UNIQUE_RETIRE',
+        },
+        { status: 410 }
+      );
     }
 
     // Le plan demandé est validé contre la liste officielle : le client ne peut
@@ -172,108 +176,3 @@ export async function POST(req: Request) {
   }
 }
 
-/**
- * Lance le paiement d'un match à l'unité.
- *
- * L'identité du match est enregistrée dans `payment_intents` AVANT le paiement.
- * C'est indispensable : Chariow ne conserve pas les métadonnées qu'on lui
- * transmet, donc sans cette trace la vente reviendrait payée sans qu'on sache
- * quel match débloquer — le client serait débité pour rien.
- */
-async function lancerAchatMatch(req: Request, body: any, user: any) {
-  if (!matchUniqueDisponible()) {
-    return NextResponse.json(
-      { error: "L'achat à l'unité n'est pas encore configuré.", code: 'MATCH_INDISPONIBLE' },
-      { status: 503 }
-    );
-  }
-
-  const equipe1Id = String(body?.equipe1Id ?? '').trim();
-  const equipe2Id = String(body?.equipe2Id ?? '').trim();
-  if (!equipe1Id || !equipe2Id) {
-    return NextResponse.json({ error: 'Match invalide.' }, { status: 400 });
-  }
-
-  const matchKey = cleMatchDebloque(equipe1Id, equipe2Id);
-
-  // Ne jamais faire payer deux fois la même chose.
-  if (await matchDebloque(user.id, equipe1Id, equipe2Id)) {
-    return NextResponse.json(
-      { error: 'Ce match est déjà débloqué sur votre compte.', code: 'DEJA_DEBLOQUE' },
-      { status: 409 }
-    );
-  }
-
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';
-
-  const pays = paysRetenu(req.headers, body?.fuseau, body?.pays);
-  const ip = ipAcheteur(req.headers);
-
-  const session = await initCheckout({
-    plan: null,
-    produitDirect: produitMatchUnique(),
-    metadonnees: { match_key: matchKey },
-    userId: user.id,
-    email: user.email!,
-    firstName: user.user_metadata?.first_name || 'Utilisateur',
-    lastName: user.user_metadata?.last_name || 'ProFoot',
-    phoneNumber: user.phone || user.user_metadata?.phone || undefined,
-    paysAcheteur: pays.code,
-    ipAcheteur: ip,
-    // Les équipes voyagent dans l'URL de retour, et pas seulement la clé du
-    // match.
-    //
-    // Sans elles, l'acheteur revenait sur une page d'analyse VIERGE : l'analyse
-    // qu'il venait de payer vivait dans l'état React de son navigateur, perdu
-    // au moment de partir vers la page de paiement. Il avait payé et ne voyait
-    // rien. La clé seule (`equipe1__equipe2`) ne suffit pas à relancer
-    // l'analyse : elle est triée par ordre alphabétique et ne dit plus qui
-    // reçoit.
-    redirectUrl:
-      `${baseUrl}/payment-success?match=${encodeURIComponent(matchKey)}` +
-      `&t1=${encodeURIComponent(equipe1Id)}&t2=${encodeURIComponent(equipe2Id)}`,
-  });
-
-  if (!session.checkoutUrl) {
-    console.error('Réponse Chariow sans checkout_url (match) :', session);
-    return NextResponse.json({ error: 'Réponse invalide de Chariow.' }, { status: 502 });
-  }
-
-  if (session.saleId) {
-    const { error } = await createAdminClient()
-      .from('payment_intents')
-      .upsert(
-        {
-          sale_id: session.saleId,
-          user_id: user.id,
-          plan: 'match_unique',
-          email: user.email,
-          amount: PRIX_MATCH_UNIQUE,
-          match_key: matchKey,
-          equipe1_nom: String(body?.equipe1Nom ?? '').slice(0, 80) || null,
-          equipe2_nom: String(body?.equipe2Nom ?? '').slice(0, 80) || null,
-          pays: pays.code,
-          pays_source: pays.source,
-          ip_acheteur: ip ?? null,
-        },
-        { onConflict: 'sale_id' }
-      );
-
-    if (error) {
-      // Sans cette trace, le webhook ne saura pas quel match débloquer. On
-      // refuse donc l'achat plutôt que d'encaisser sans pouvoir livrer.
-      console.error("Intention d'achat de match non enregistrée :", session.saleId, error.message);
-      return NextResponse.json(
-        { error: "Impossible de préparer le paiement. Réessayez dans un instant." },
-        { status: 500 }
-      );
-    }
-  }
-
-  console.log(
-    `[PAIEMENT] Match ${matchKey} — ${PRIX_MATCH_UNIQUE} FCFA — pays ${pays.code} (source : ${pays.source}).`
-  );
-
-  return NextResponse.json({ checkoutUrl: session.checkoutUrl, saleId: session.saleId });
-}

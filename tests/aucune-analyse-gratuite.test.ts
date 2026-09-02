@@ -37,12 +37,16 @@ const sansCommentaires = (s: string) =>
 const route = lire('src/app/api/analyze/route.ts');
 const routeNue = sansCommentaires(route);
 
-test('★ ACQUIS — deux portes, et pas une de plus', () => {
+test('★ ACQUIS — une seule porte : l’abonnement', () => {
+  // Il y en a eu trois. Deux ont été retirées le 2 septembre 2026, le même
+  // soir, par le propriétaire : l'analyse offerte, et l'achat à l'unité à
+  // 600 FCFA. Il ne reste que les trois abonnements — 2 000, 5 000, 15 000.
   assert.match(
     routeNue,
-    /const aDroitAuComplet =\s*guard\.entitlements\.premium \|\| \(await matchDebloque\(guard\.user\.id, team1\.id, team2\.id\)\);/,
+    /const aDroitAuComplet = guard\.entitlements\.premium;/,
     'Le droit à l’analyse complète a changé de forme : vérifier qu’aucune ouverture gratuite n’a été ajoutée.'
   );
+  assert.doesNotMatch(routeNue, /matchDebloque/, 'L’achat à l’unité est revenu ouvrir l’analyse.');
 });
 
 test('★ ACQUIS — aucune trace d’essai offert ne subsiste', () => {

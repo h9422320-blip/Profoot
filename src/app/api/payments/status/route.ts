@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionEntitlements, PLANS, UNLIMITED } from '@/lib/subscription';
 import { getQuotaState } from '@/lib/analysis-quota';
-import { matchDebloqueParCle } from '@/lib/match-unique';
 import { lireOffres } from '@/lib/offres';
 
 /**
@@ -18,14 +17,6 @@ export async function GET(req: Request) {
     }
 
     const quota = await getQuotaState(user.id, entitlements);
-
-    // Un achat a l unite ne rend pas premium : sans cette reponse, la page de
-    // retour apres paiement attendrait indefiniment un abonnement qui ne
-    // viendra jamais, et l acheteur croirait avoir paye pour rien.
-    const cle = new URL(req.url).searchParams.get('match');
-    const matchDebloqueDemande = cle
-      ? await matchDebloqueParCle(user.id, cle)
-      : null;
 
     // La MOINS CHÈRE des offres qui ouvrent l'Agent VIP.
     //
@@ -49,7 +40,6 @@ export async function GET(req: Request) {
         dureeJours: offreVip.dureeJours,
       },
       premium: entitlements.premium,
-      matchDebloque: matchDebloqueDemande,
       vip: entitlements.vip,
       plan: entitlements.plan,
       // ── L'OFFRE QUE L'ABONNÉ A DÉJÀ, POUR POUVOIR LA RECHARGER ──────────

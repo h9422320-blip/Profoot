@@ -91,7 +91,7 @@ test('★ ACQUIS — le navigateur n’appelle plus une adresse nommant Chariow'
   for (const page of [
     'src/app/(dashboard)/pricing/PricingClient.tsx',
     'src/app/(dashboard)/analyze/AnalyzeClient.tsx',
-    'src/app/(dashboard)/analyze/PaywallDeuxChemins.tsx',
+    'src/app/(dashboard)/analyze/MurAbonnement.tsx',
     'src/app/(dashboard)/expert/page.tsx',
     'src/app/(dashboard)/payment-success/page.tsx',
   ]) {

@@ -40,7 +40,6 @@ import { createAdminClient } from '@/lib/supabase-admin';
 import { listRecentSales, type ChariowSale } from '@/lib/chariow';
 import { activateSubscriptionFromSale } from '@/lib/subscription-activation';
 import { trouverAcheteur, marquerIntentionHonoree, intentionMatch } from '@/lib/payment-intents';
-import { debloquerMatch } from '@/lib/match-unique';
 
 export interface ResultatReconciliation {
   ventesExaminees: number;
@@ -101,19 +100,14 @@ export async function reconcilierVentes(limiteJours = 7): Promise<ResultatReconc
         continue;
       }
 
-      // Un achat de match à l'unité n'ouvre pas un abonnement : même aiguillage
-      // que le webhook, sinon ces achats-là ne seraient jamais rattrapés.
+      // ── UNE VENTE À L'UNITÉ NE DEVIENT JAMAIS UN ABONNEMENT ──────────
+      //
+      // L'achat à l'unité a été retiré du catalogue le 2 septembre 2026. La
+      // reconnaissance reste : sans elle, une vieille vente à 600 FCFA
+      // tomberait dans la branche d'abonnement et ouvrirait trente jours
+      // d'accès contre 600 francs encaissés.
       const achatMatch = await intentionMatch(admin, vente.id);
       if (achatMatch) {
-        await debloquerMatch({
-          userId: acheteur.userId,
-          matchKey: achatMatch.matchKey,
-          saleId: vente.id,
-          equipe1Nom: achatMatch.equipe1Nom,
-          equipe2Nom: achatMatch.equipe2Nom,
-          montant: vente.amount?.value ?? null,
-          devise: vente.amount?.currency ?? 'XOF',
-        });
         await marquerIntentionHonoree(admin, vente.id);
         resultat.reparees.push({
           saleId: vente.id,

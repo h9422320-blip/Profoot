@@ -4,7 +4,6 @@ import { createAdminClient } from '@/lib/supabase-admin';
 import { listCompletedSalesByEmail } from '@/lib/chariow';
 import { activateSubscriptionFromSale } from '@/lib/subscription-activation';
 import { trouverAcheteur, marquerIntentionHonoree, intentionMatch } from '@/lib/payment-intents';
-import { debloquerMatch } from '@/lib/match-unique';
 
 /**
  * Réconciliation : filet de sécurité si un webhook a été manqué (panne,
@@ -46,20 +45,21 @@ export async function POST() {
         continue;
       }
 
-      // Meme aiguillage que le webhook : sans lui, un achat de match dont la
-      // notification s est perdue ne serait jamais rattrape par ce filet.
+      // ── UNE VENTE À L'UNITÉ NE DEVIENT JAMAIS UN ABONNEMENT ──────────
+      //
+      // L'achat à l'unité a été retiré du catalogue le 2 septembre 2026 : plus
+      // aucune intention de ce type ne peut être créée. Mais la RECONNAISSANCE
+      // reste, et elle est indispensable.
+      //
+      // Sans elle, une vieille vente à 600 FCFA arrivant en retard tomberait
+      // dans la branche suivante et ouvrirait un abonnement de trente jours.
+      // On offrirait 2 000 FCFA de service contre 600 FCFA encaissés, sur une
+      // rencontre jouée depuis des semaines.
+      //
+      // On la reconnaît donc, et on passe : la vente est close, rien à livrer.
       const achatMatch = await intentionMatch(admin, sale.id);
       if (achatMatch) {
-        const r = await debloquerMatch({
-          userId: user.id,
-          matchKey: achatMatch.matchKey,
-          saleId: sale.id,
-          equipe1Nom: achatMatch.equipe1Nom,
-          equipe2Nom: achatMatch.equipe2Nom,
-          montant: sale.amount?.value ?? null,
-          devise: sale.amount?.currency ?? 'XOF',
-        });
-        if (r.debloque) await marquerIntentionHonoree(admin, sale.id);
+        await marquerIntentionHonoree(admin, sale.id);
         continue;
       }
 

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 const lire = (p: string) => fs.readFileSync(p, 'utf8');
 
-const PAYWALL = 'src/app/(dashboard)/analyze/PaywallDeuxChemins.tsx';
+const PAYWALL = 'src/app/(dashboard)/analyze/MurAbonnement.tsx';
 const TARIFS = 'src/app/(dashboard)/pricing/PricingClient.tsx';
 
 /**
@@ -23,27 +23,37 @@ const TARIFS = 'src/app/(dashboard)/pricing/PricingClient.tsx';
  * d'analyse contre 900 sur les tarifs. La moitié des acheteurs n'avaient aucune
  * aide, et aucun d'eux n'apparaissait dans le tunnel.
  */
-test('★ ACQUIS — le paywall montre la notice de paiement', () => {
+test('★ ACQUIS — le mur d abonnement n a PAS de caisse a lui', () => {
+  // Il a eu la sienne jusqu'au 2 septembre 2026, pour vendre un match seul a
+  // 600 FCFA. Le proprietaire a retire cette offre du catalogue : deux ventes
+  // en tout, les 13 aout, par la meme personne.
+  //
+  // Le mur envoie desormais lire les prix, et rien d'autre. La notice de
+  // paiement, la detection du pays et l'appel a la caisse vivent sur /pricing,
+  // en UN SEUL exemplaire — deux chemins d'achat a maintenir d'accord entre eux
+  // finissent toujours par diverger.
+  //
+  // Benefice mesurable au passage : les quarante-huit kilo-octets de la table
+  // des moyens de paiement ne partent plus du tout dans le telephone des
+  // visiteurs gratuits, qui sont l'ecrasante majorite.
   const src = lire(PAYWALL);
 
   assert.ok(
-    /NoticePaiement/.test(src),
-    "Le paywall renvoie de nouveau vers Chariow sans explication. Un acheteur à " +
-      "Abidjan y arrive sans savoir qu'il peut payer avec Wave ou Orange Money."
+    !/NoticePaiement/.test(src),
+    'Le mur a de nouveau sa propre notice de paiement : la caisse doit rester sur /pricing.'
   );
-
-  // Chargée à la demande : ce paywall s'affiche à CHAQUE visiteur gratuit, et
-  // la table des moyens de paiement pèse quarante-huit kilo-octets.
   assert.ok(
-    /dynamic\(\(\) => import\("@\/components\/NoticePaiement"\)/.test(src),
-    'La notice est de nouveau importée en dur : ses quarante-huit kilo-octets ' +
-      'partiraient dans le téléphone de chaque visiteur gratuit, y compris ceux ' +
-      'qui ne cliquent jamais.'
+    !src.includes('/api/paiement/caisse'),
+    'Le mur appelle de nouveau la caisse directement.'
+  );
+  assert.ok(
+    src.includes('href="/pricing"'),
+    'Le mur ne mene plus a la page des tarifs : le visiteur gratuit n a plus aucune sortie.'
   );
 });
 
-test('★ ACQUIS — les deux portes d achat comptent leurs étapes', () => {
-  for (const chemin of [PAYWALL, TARIFS]) {
+test('★ ACQUIS — la page des tarifs compte ses étapes', () => {
+  for (const chemin of [TARIFS]) {
     const src = lire(chemin);
 
     assert.ok(
@@ -67,28 +77,6 @@ test('★ ACQUIS — les deux portes d achat comptent leurs étapes', () => {
   }
 });
 
-/**
- * ── LE PAYWALL VEND DEUX CHOSES, ET ELLES NE SE MÉLANGENT PAS ────────────
- *
- * Un match seul à 600 FCFA, et l'abonnement à partir de 2 000. Ni le même prix,
- * ni le même acheteur. Les compter ensemble ferait croire à un seul tunnel là
- * où il y en a deux.
- */
-test('★ ACQUIS — le match seul et l abonnement sont comptés séparément', () => {
-  const src = lire(PAYWALL);
-
-  assert.ok(
-    src.includes("'match-unique'"),
-    "L'achat d'un match seul n'est plus étiqueté : il se confondrait avec " +
-      "l'abonnement, qui n'a ni le même prix ni le même acheteur."
-  );
-
-  assert.ok(
-    src.includes("'vers-tarifs'"),
-    "Le départ vers la page des tarifs n'est plus compté. On ignorerait combien " +
-      'de gens préfèrent l\'abonnement au match seul.'
-  );
-});
 
 /**
  * ── LES ÉTAPES NE SONT PAS DES PAGES ──────────────────────────────────────

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import PaywallDeuxChemins from "./PaywallDeuxChemins";
+import MurAbonnement from "./MurAbonnement";
 import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw, Lock, ArrowRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
@@ -2147,13 +2147,7 @@ export default function AnalyzePage({
                      pendant tout le défilement de la zone floutée. Un enfant de
                      conteneur absolu ne peut PAS être collant, d'où ce montage. */
                   <div className="sticky top-[32vh] z-30 h-0 px-4">
-                    <PaywallDeuxChemins
-                      equipe1Id={result.matchUnique?.equipe1Id ?? ''}
-                      equipe2Id={result.matchUnique?.equipe2Id ?? ''}
-                      equipe1Nom={result.matchUnique?.equipe1Nom ?? ''}
-                      equipe2Nom={result.matchUnique?.equipe2Nom ?? ''}
-                      prixMatch={result.matchUnique?.prix ?? 600}
-                      achatUniteDisponible={!!result.matchUnique?.disponible}
+                    <MurAbonnement
                       prixOffreComplete={offre.prixXof}
                       quotaOffreComplete={offre.analyses}
                     />

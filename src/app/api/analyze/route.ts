@@ -3,7 +3,6 @@ import { absencesRetenues, ligneAbsences } from "@/lib/absences";
 import { MODELES_GEMINI } from "@/lib/gemini-models";
 import { genererAnalyseJSON } from "@/lib/analyse-modele";
 import { compterTentative, messageAttente } from "@/lib/limite-partagee";
-import { PRIX_MATCH_UNIQUE, matchDebloque, matchUniqueDisponible } from "@/lib/match-unique";
 import { openRouterDisponible } from "@/lib/openrouter";
 import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, rembourserAnalyse, type QuotaState } from "@/lib/analysis-quota";
@@ -621,27 +620,35 @@ async function analyser(req: Request, billet: BilletQuota) {
   /**
    * A-t-il droit à l'analyse complète de CE match ?
    *
-   * Deux titres y donnent accès, et ils donnent exactement le même contenu :
-   * un abonnement en cours, ou l'achat de ce match à l'unité. Le second est
-   * définitif et ne concerne que cette rencontre.
+   * ── UNE SEULE PORTE : L'ABONNEMENT ────────────────────────────────────
    *
-   * Déterminé ici, une fois pour toutes : ce drapeau décide de ce qu'on demande
-   * au modèle, de l'entrée de cache utilisée, et de ce qu'on renvoie. Les trois
-   * DOIVENT s'accorder — sinon une version réduite finirait chez quelqu'un qui
-   * a payé.
+   * Il y en a eu trois. Deux ont été retirées le 2 septembre 2026, le même
+   * soir, par le propriétaire :
+   *
+   *   • L'ANALYSE OFFERTE — une analyse complète donnée à tout compte
+   *     gratuit. Elle a servi 362 fois en dix-neuf heures. Un abonné qui
+   *     découvre qu'un compte gratuit obtient la même chose que lui conclut
+   *     que payer ne sert à rien : ce n'était pas un manque à gagner sur les
+   *     non-payeurs, c'était une attaque contre ceux qui avaient déjà payé.
+   *
+   *   • L'ACHAT À L'UNITÉ, 600 FCFA le match. Supprimé du catalogue par le
+   *     propriétaire. Deux ventes en tout, les 13 août, sur des rencontres
+   *     jouées depuis longtemps.
+   *
+   * Il reste les trois abonnements — 2 000, 5 000 et 15 000 FCFA — et rien
+   * d'autre.
+   *
+   * NE RIEN AJOUTER ICI. Toute idée d'ouverture — essai, démonstration,
+   * geste commercial, « juste pour montrer la valeur » — est une DÉCISION
+   * COMMERCIALE. Elle appartient au propriétaire, elle ne se prend pas dans
+   * un fichier de code, et elle ne se déduit pas d'un raisonnement sur la
+   * conversion.
+   *
+   * Ce drapeau décide de ce qu'on demande au modèle, de l'entrée de cache
+   * utilisée, et de ce qu'on renvoie. Les trois DOIVENT s'accorder — sinon
+   * une version réduite finirait chez quelqu'un qui a payé.
    */
-  // ── IL N'Y A QUE DEUX PORTES, ET C'EST DÉFINITIF ──────────────────────
-  //
-  // Une troisième a existé le 2 septembre 2026 : une analyse complète offerte
-  // à tout compte gratuit, une fois. Elle a servi 336 fois en dix-neuf heures
-  // avant que le propriétaire ne la voie et ne la fasse retirer le soir même.
-  //
-  // NE PAS LA REMETTRE. Le contenu payant ne s'ouvre que contre un paiement :
-  // un abonnement en cours, ou l'achat de cette rencontre à l'unité. Toute
-  // autre idée d'ouverture — essai, démonstration, geste commercial — se
-  // décide par le propriétaire, jamais dans ce fichier.
-  const aDroitAuComplet =
-    guard.entitlements.premium || (await matchDebloque(guard.user.id, team1.id, team2.id));
+  const aDroitAuComplet = guard.entitlements.premium;
 
   const estApercuGlobal = !aDroitAuComplet;
 
@@ -726,17 +733,6 @@ async function analyser(req: Request, billet: BilletQuota) {
         : {
             ...(await toTeaser(data, team1.name, team2.name)),
             quota,
-            // L offre a l unite est decrite ICI et nulle part ailleurs : le
-            // prix et l identifiant du produit vivent cote serveur, et le
-            // navigateur ne doit pas avoir a importer ce module.
-            matchUnique: {
-              disponible: matchUniqueDisponible(),
-              prix: PRIX_MATCH_UNIQUE,
-              equipe1Id: String(team1.id),
-              equipe2Id: String(team2.id),
-              equipe1Nom: String(team1.name ?? ''),
-              equipe2Nom: String(team2.name ?? ''),
-            },
           }
     );
   };

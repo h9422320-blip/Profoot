@@ -37,7 +37,7 @@ const lire = (chemin: string) => readFileSync(join(RACINE, chemin), 'utf8');
 
 const TARIFS = 'src/app/(dashboard)/pricing/PricingClient.tsx';
 const NOTICE = 'src/components/NoticePaiement.tsx';
-const PAYWALL = 'src/app/(dashboard)/analyze/PaywallDeuxChemins.tsx';
+const PAYWALL = 'src/app/(dashboard)/analyze/MurAbonnement.tsx';
 
 /** Le bloc de définition d'une offre, du début de sa clé à la suivante. */
 function blocOffre(src: string, cle: string): string {
@@ -162,12 +162,7 @@ test('★ ACQUIS — le rappel ne s affiche QUE pour le mobile money, et avec un
   );
 });
 
-test('★ ACQUIS — les deux portes d achat transmettent le vrai montant', () => {
-  assert.ok(
-    lire(PAYWALL).includes('montantXof={prixMatch}'),
-    'Le paywall ne transmet plus le prix du match à la notice.'
-  );
-
+test('★ ACQUIS — la page des tarifs transmet le vrai montant', () => {
   assert.ok(
     lire(TARIFS).includes('montantXof={offres[noticePour]?.prixBrut}'),
     'La page des tarifs ne transmet plus le montant. Il doit venir du prix ' +

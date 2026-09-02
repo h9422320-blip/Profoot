@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { ChariowSale } from '@/lib/chariow';
-import { debloquerMatch } from '@/lib/match-unique';
 import { activateSubscriptionFromSale } from '@/lib/subscription-activation';
 import { trouverAcheteur, marquerIntentionHonoree, intentionMatch } from '@/lib/payment-intents';
 
@@ -132,23 +131,21 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true, status: 'pending' });
       }
 
-      const resultat = await debloquerMatch({
-        userId: acheteur.userId,
-        matchKey: achatMatch.matchKey,
-        saleId: sale.id,
-        equipe1Nom: achatMatch.equipe1Nom,
-        equipe2Nom: achatMatch.equipe2Nom,
-        montant: sale.amount?.value ?? null,
-        devise: sale.amount?.currency ?? 'XOF',
-      });
-
-      if (!resultat.debloque) {
-        console.error(`Match non débloqué pour la vente ${sale.id} : ${resultat.raison}`);
-        return NextResponse.json({ error: resultat.raison }, { status: 422 });
-      }
-
+      // ── UNE VENTE À L'UNITÉ NE DEVIENT JAMAIS UN ABONNEMENT ────────────
+      //
+      // L'achat à l'unité a été retiré du catalogue le 2 septembre 2026 : plus
+      // aucune intention de ce type ne peut être créée. Mais la RECONNAISSANCE
+      // reste, et elle est indispensable.
+      //
+      // Sans elle, une vieille vente à 600 FCFA arrivant en retard tomberait
+      // dans l activation d abonnement et ouvrirait un abonnement de
+      // trente jours : 2 000 FCFA de service offerts contre 600 encaissés, sur
+      // une rencontre jouée depuis des semaines.
+      //
+      // On la reconnaît, on la marque honorée, et on accuse réception — sans
+      // quoi la boutique réessaierait pendant des heures.
       await marquerIntentionHonoree(admin, sale.id);
-      return NextResponse.json({ received: true, status: 'match_debloque' });
+      return NextResponse.json({ received: true, status: 'match_unique_retire' });
     }
 
     const result = await activateSubscriptionFromSale(admin, sale, acheteur.userId);

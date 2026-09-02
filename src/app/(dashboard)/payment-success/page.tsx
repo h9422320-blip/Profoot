@@ -49,12 +49,9 @@ export default function PaymentSuccessPage() {
     setLienAnalyse(destination);
 
     const checkStatus = async (): Promise<boolean> => {
-      const url = cleMatch
-        ? `/api/payments/status?match=${encodeURIComponent(cleMatch)}`
-        : '/api/payments/status';
-      const res = await fetch(url);
+      const res = await fetch('/api/payments/status');
       const data = await res.json();
-      return cleMatch ? !!data.matchDebloque : !!data.premium;
+      return !!data.premium;
     };
 
     // ── L'ATTENTE N'EST PLUS LA MÊME DEPUIS MAKETOU ─────────────────────────

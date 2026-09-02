@@ -30,7 +30,7 @@ const RACINE = join(process.cwd(), 'src');
 const lire = (chemin: string) => readFileSync(join(RACINE, chemin), 'utf8');
 
 const NOTICE = 'components/NoticePaiement.tsx';
-const PAYWALL = 'app/(dashboard)/analyze/PaywallDeuxChemins.tsx';
+const PAYWALL = 'app/(dashboard)/analyze/MurAbonnement.tsx';
 const TARIFS = 'app/(dashboard)/pricing/PricingClient.tsx';
 const MESURE = 'lib/mesure-visites.ts';
 
@@ -56,11 +56,23 @@ test('★ ACQUIS — les trois sorties de la notice portent le nom de l’offre'
   );
 });
 
-test('★ ACQUIS — les deux portes d’achat transmettent leur clé d’offre', () => {
+/**
+ * ── LE MUR NE VEND PLUS RIEN LUI-MÊME ────────────────────────────────────
+ *
+ * Il a proposé deux issues jusqu'au 2 septembre 2026 : débloquer LA rencontre
+ * pour 600 FCFA, ou prendre un abonnement. Le propriétaire a retiré le premier
+ * du catalogue — il avait produit DEUX ventes en tout, les 13 août, par la même
+ * personne.
+ *
+ * Le mur ne fait donc plus qu'une chose : envoyer lire les prix. La notice de
+ * paiement, la détection du pays et l'appel à la caisse vivent sur /pricing, en
+ * un seul exemplaire. Ces tests protègent ce qui reste : une seule porte, et le
+ * comptage qui la distingue.
+ */
+test('★ ACQUIS — la page des tarifs transmet sa clé d’offre', () => {
   assert.ok(
-    lire(PAYWALL).includes('cleOffre="match-unique"'),
-    'Le paywall ne transmet plus sa clé d’offre à la notice : les sorties du ' +
-      'match seul se confondraient avec celles des abonnements.'
+    !lire(PAYWALL).includes('NoticePaiement'),
+    'Le mur a de nouveau sa propre caisse : elle doit vivre sur /pricing, en un seul exemplaire.'
   );
 
   assert.ok(
