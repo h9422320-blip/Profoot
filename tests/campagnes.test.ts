@@ -289,36 +289,6 @@ test('★ ACQUIS — la simulation n’est pas bridée par le budget', () => {
   assert.match(diffusion, /if \(!options\.simulation\) \{\s*const dejaPartis = await envoyesAujourdhui\(\)/);
 });
 
-// ── LE PIÈGE DU PAYS À LA CAISSE ───────────────────────────────────────────
-
-test('★ ACQUIS — la notice prévient du pays avant d’envoyer à la caisse', () => {
-  // La boutique MakeTou est guinéenne. Sa page de paiement s'ouvre sur
-  // « Guinea » quel que soit le visiteur, et affiche donc :
-  //
-  //     ProFoot AI — Accès Essentiel : 31 242 GNF
-  //
-  // Vérifié le 2 septembre 2026 : en passant le pays à la Côte d'Ivoire sur
-  // cette même page, le prix devient « 2 000 F CFA ». Le montant prélevé est
-  // le bon — c'est l'affichage qui trompe.
-  //
-  // Un acheteur à Abidjan à qui l'on vient d'annoncer 2 000 FCFA lit
-  // « 31 242 », quinze fois le prix, et s'en va. Sur 1 301 personnes parties
-  // en caisse, 469 ont payé ; 244 ont essayé au moins deux fois sans jamais
-  // aboutir, l'une d'elles dix-neuf fois.
-  //
-  // Aucun paramètre d'adresse ne pré-choisit le pays — ?country=CI, ?pays=CI
-  // et ?country_code=CI ont tous été essayés, tous rendent la page en GNF.
-  // Cette notice est donc le SEUL endroit où l'acheteur peut encore être
-  // prévenu.
-  const notice = sansCommentaires(lire('src/components/NoticePaiement.tsx'));
-  assert.match(
-    notice,
-    /choisissez d&apos;abord votre pays/i,
-    'L’avertissement sur le pays a disparu de la notice.'
-  );
-  assert.match(notice, /31 242 GNF/, 'L’exemple chiffré a disparu : « francs guinéens » seul ne parle à personne.');
-});
-
 // ── LES COURRIELS PARTENT SANS DÉPENDRE D'UNE TÂCHE PLANIFIÉE ──────────────
 
 test('★ ACQUIS — le déclencheur vit sur la route la plus fréquentée', () => {
@@ -369,4 +339,43 @@ test('★ ACQUIS — les trois rendez-vous couvrent matin, réveil et soir', () 
   assert.match(d, /campagne: 'matin', debut: 6, fin: 10/, 'La fenêtre du matin a changé.');
   assert.match(d, /campagne: 'reveil', debut: 10, fin: 13/, 'La fenêtre du réveil a changé.');
   assert.match(d, /campagne: 'soir', debut: 21, fin: 24/, 'La fenêtre du soir a changé.');
+});
+
+// ── CE QU'ON VOIT SUR UNE BOUTIQUE DÉPEND D'OÙ L'ON REGARDE ────────────────
+
+test('★ ACQUIS — la notice n’avertit PAS d’un problème de monnaie', () => {
+  // Un avertissement rouge a vécu ici deux heures, le 2 septembre 2026 :
+  // « la page suivante s'ouvre sur la Guinée et affiche 31 242 GNF ».
+  //
+  // C'était faux. En inspectant la boutique on y avait lu « Guinea » et
+  // « 31 242 GNF », et on en avait conclu qu'elle imposait sa monnaie à tous.
+  // Il manquait une vérification d'une ligne : d'où venait la connexion qui
+  // inspectait ? D'une IP guinéenne — 197.149.245.9, à Beyla.
+  //
+  // MakeTou détecte correctement le pays. Vérifié en forçant son cookie :
+  //
+  //     COUNTRY_V3 = GN  ->  Guinea         ->  31 242 GNF
+  //     COUNTRY_V3 = CI  ->  Côte d'Ivoire  ->   2 000 F CFA
+  //
+  // Un acheteur à Abidjan voit son prix, dans sa monnaie, sans rien faire.
+  // L'avertissement lui annonçait un problème inexistant — et semer le doute
+  // sur le prix à l'instant du paiement est exactement ce qu'on voulait éviter.
+  const notice = lire('src/components/NoticePaiement.tsx');
+  const rendu = notice.slice(notice.indexOf('return createPortal('));
+  assert.doesNotMatch(
+    rendu,
+    /31 242 GNF/,
+    'L’avertissement sur les francs guinéens est revenu dans l’affichage : il est FAUX pour un acheteur hors de Guinée.'
+  );
+  assert.doesNotMatch(
+    rendu,
+    /choisissez d&apos;abord votre pays/i,
+    'La notice demande de nouveau de choisir le pays : la boutique le détecte déjà.'
+  );
+  // La leçon reste écrite dans le fichier, pour que personne ne la refasse.
+  assert.match(
+    notice,
+    /197\.149\.245\.9/,
+    'Le récit de l’erreur a disparu : sans lui, le même avertissement sera réécrit.'
+  );
 });

@@ -24,25 +24,32 @@ import { signalerEtape } from './etapes-vente';
  * La dernière occasion de le rassurer est donc chez nous, à la seconde où il
  * clique. Cette fenêtre lui dit, avant de partir, ce qu'il va trouver.
  *
- * ── CE QUE CETTE FENÊTRE COÛTE QUAND ELLE SE TROMPE DE BOUTIQUE ───────────
+ * ── CE QU'ELLE N'A PAS À EXPLIQUER : LA MONNAIE ───────────────────────────
  *
- * Elle a décrit Chariow pendant les cinq jours qui ont suivi le passage à
- * MakeTou. Or MakeTou est guinéenne : sa page s'ouvre sur « Guinea » et affiche
- * le prix en francs guinéens — 31 242 GNF pour l'offre à 2 000 FCFA.
+ * Un avertissement rouge a vécu ici pendant deux heures, le 2 septembre 2026.
+ * Il disait à l'acheteur : « la page suivante s'ouvre sur la Guinée et affiche
+ * 31 242 GNF, choisissez d'abord votre pays ».
  *
- * Relevé le 2 septembre 2026, sur l'ensemble du parcours :
+ * C'ÉTAIT FAUX, et l'erreur mérite d'être racontée parce qu'elle est facile à
+ * refaire. En ouvrant la boutique pour l'inspecter, on y a lu « Guinea » et
+ * « 31 242 GNF » — et on en a conclu que la boutique, guinéenne, imposait sa
+ * monnaie à tout le monde. La vérification manquait d'une ligne : d'où venait
+ * la connexion qui inspectait ? D'une adresse IP guinéenne, 197.149.245.9,
+ * à Beyla.
  *
- *     3 262   arrivent sur les tarifs
- *     2 328   cliquent une offre
- *     1 301   partent en caisse
- *       469   paient réellement
+ * MakeTou n'imposait rien. Il détectait correctement le pays et affichait la
+ * monnaie locale. Vérifié en forçant son cookie `COUNTRY_V3` :
  *
- * Et 244 personnes ont essayé au moins deux fois sans jamais aboutir — l'une
- * d'elles dix-neuf fois, dont deux à 15 000 FCFA. Ce ne sont pas des hésitants.
+ *     COUNTRY_V3 = GN  →  Guinea         →  31 242 GNF
+ *     COUNTRY_V3 = CI  →  Côte d'Ivoire  →   2 000 F CFA
  *
- * Quand la boutique change, CETTE FENÊTRE CHANGE AVEC ELLE. C'est le dernier
- * écran qui nous appartienne, et le seul endroit où un défaut de la caisse
- * puisse encore être rattrapé.
+ * Un acheteur à Abidjan voit donc son prix, dans sa monnaie, sans rien faire.
+ * L'avertissement lui aurait annoncé un problème qui n'existe pas — et semer
+ * le doute sur le prix à l'instant du paiement est exactement ce qu'on essayait
+ * d'éviter.
+ *
+ * NE PAS LE REMETTRE sans avoir d'abord vérifié depuis une adresse du pays
+ * concerné. Ce que l'on voit sur une boutique dépend d'où l'on regarde.
  *
  * ── ELLE NE RETIENT PERSONNE ──────────────────────────────────────────────
  *
@@ -412,54 +419,6 @@ export default function NoticePaiement({
             </div>
           )}
 
-          {/* ── LE PIÈGE DU PAYS, ET IL COÛTE PLUS CHER QUE TOUT LE RESTE ──
-              La boutique MakeTou est guinéenne. Sa page de paiement s'ouvre sur
-              « Guinea » quel que soit le visiteur, et affiche donc le prix en
-              francs guinéens :
-
-                  Accès Essentiel — 31 242 GNF
-
-              Vérifié le 2 septembre 2026 : en changeant le pays pour la Côte
-              d'Ivoire sur cette même page, le prix devient « 2 000 F CFA ». Le
-              montant prélevé est le bon ; c'est l'affichage qui trompe.
-
-              Sauf qu'un acheteur à Abidjan à qui l'on vient d'annoncer
-              2 000 FCFA lit « 31 242 » — quinze fois le prix — et s'en va.
-
-              Ce que ça coûte, mesuré le même jour : sur 1 301 personnes parties
-              en caisse, 469 ont payé. 244 ont essayé au moins deux fois sans
-              jamais aboutir, l'une d'elles DIX-NEUF fois. Au total,
-              9 569 600 FCFA d'intentions de paiement jamais encaissées.
-
-              Aucun paramètre d'adresse ne permet de pré-choisir le pays : ni
-              ?country=CI, ni ?pays=CI, ni ?country_code=CI — tous essayés, tous
-              renvoient la page en GNF. La sélection se fait uniquement à
-              l'écran, chez eux.
-
-              Le seul endroit où l'on peut encore prévenir l'acheteur est donc
-              ici, à la seconde où il part. Ce n'est pas un pansement élégant :
-              c'est le seul point du parcours qui nous appartienne encore. */}
-          <div className="mt-4 flex items-start gap-2.5 rounded-[14px] border border-[#F87171]/30 bg-[#F87171]/[0.09] px-3.5 py-3">
-            <Globe className="w-4 h-4 text-[#FCA5A5] shrink-0 mt-[2px]" />
-            <p className="text-[12.5px] text-white/85 leading-relaxed">
-              <strong className="text-[#FCA5A5]">
-                Sur la page suivante, choisissez d&apos;abord votre pays.
-              </strong>{' '}
-              Elle s&apos;ouvre sur la Guinée et affiche le prix en francs
-              guinéens (par exemple <strong>31 242 GNF</strong>). Dès que vous
-              sélectionnez le vôtre, le vrai prix s&apos;affiche
-              {Number.isFinite(montantXof) && (montantXof as number) > 0 ? (
-                <>
-                  {' '}
-                  :{' '}
-                  <strong className="text-white">
-                    {(montantXof as number).toLocaleString('fr-FR')} FCFA
-                  </strong>
-                </>
-              ) : null}
-              .
-            </p>
-          </div>
 
           {/* ── Le bouton ───────────────────────────────────────────────── */}
           <button
