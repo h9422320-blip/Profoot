@@ -1274,7 +1274,8 @@ export function calculerScoreProbable(
    * meilleure victoire ne le devance pas nettement, on garde le nul.
    */
   const grilleDitNul = meilleurGlobal.buts1 === meilleurGlobal.buts2;
-  const nulPasDetrone = meilleureVictoire - pn < ECART_DOMINATION;
+  const MARGE_NUL_CONSERVE = Number(process.env.BANC_NUL_CONSERVE) || 1;
+  const nulPasDetrone = meilleureVictoire - pn < MARGE_NUL_CONSERVE;
 
   const issueVisee: 'victoire1' | 'nul' | 'victoire2' =
     deuxVictoiresAegalite || nulDomine || (grilleDitNul && nulPasDetrone)

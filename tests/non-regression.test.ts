@@ -72,18 +72,40 @@ test('aucun score ne domine plus de 40 % des pronostics', () => {
 test('les scores de parité restent possibles', () => {
   // 1-1 est l'un des scores les plus fréquents du football réel. Un moteur qui
   // ne le produit jamais est faux, quelle que soit sa justesse par ailleurs.
-  const PROFILS = [0.9, 1.1, 1.3, 1.5];
-  let nuls = 0, total = 0;
+  //
+  // ── POURQUOI LE BALAYAGE EST LARGE, ET PLUS SEULEMENT « IDENTIQUE » ────
+  //
+  // Ce test comparait deux équipes aux statistiques RIGOUREUSEMENT identiques.
+  // Or l'avantage du terrain s'applique quand même : sur ces affiches-là, celle
+  // qui reçoit ressort favorite de dix-sept points (45 contre 28). Y annoncer un
+  // nul reviendrait à contredire les probabilités affichées juste à côté —
+  // exactement ce qu'on a passé deux jours à corriger.
+  //
+  // Le 3 septembre 2026, l'ancienne formulation obligeait à conserver le nul
+  // dès que la meilleure victoire ne le devançait pas de huit points. Résultat
+  // mesuré : 175 cas sur 4 096 affichaient « 1-1 » sous des probabilités du
+  // type 43 / 39 / 18. Le remède était pire que le mal.
+  //
+  // Le nul doit donc sortir là où il est JUSTE : quand les deux victoires sont
+  // à égalité. On le vérifie sur un balayage large, qui contient ces cas-là.
+  const PROFILS = [0.7, 0.9, 1.1, 1.3, 1.5, 1.9];
+  let nuls = 0;
+  let total = 0;
 
-  for (const m of PROFILS)
-    for (const e of PROFILS) {
-      // Deux équipes de force identique : le nul doit pouvoir sortir.
-      const r = calculerScoreProbable(stats(m, e), stats(m, e), true, false);
-      if (r.buts1 === r.buts2) nuls++;
-      total++;
-    }
+  for (const m1 of PROFILS)
+    for (const e1 of PROFILS)
+      for (const m2 of PROFILS)
+        for (const e2 of PROFILS) {
+          const r = calculerScoreProbable(stats(m1, e1), stats(m2, e2), true, false);
+          if (r.buts1 === r.buts2) nuls++;
+          total++;
+        }
 
-  assert.ok(nuls > 0, `Aucun nul sur ${total} affiches entre équipes identiques.`);
+  assert.ok(
+    nuls > 0,
+    `Aucun nul sur ${total} affiches. Le moteur ne produit plus jamais de score ` +
+      `de parité — c'est faux, quelle que soit sa justesse par ailleurs.`
+  );
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
