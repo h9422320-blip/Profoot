@@ -973,13 +973,56 @@ export function calculerScoreProbable(
    * 43 % et les nuls entre équipes égales disparaissaient. Le banc importe
    * désormais cette fonction-ci — toute valeur retenue vient de lui.
    */
-  const REGLE_SCORE = process.env.BANC_REGLE_SCORE || 'sommet';
+  const REGLE_SCORE = process.env.BANC_REGLE_SCORE || 'domination';
+
+  /**
+   * ── QUAND UNE ÉQUIPE DOMINE, LE SCORE DOIT LE DIRE ──────────────────────
+   *
+   * Le sommet de la grille est un PLANCHER : il rend l'entier juste en dessous
+   * de l'espérance. Barcelone attendu à 2,74 buts contre Villarreal y ressort à
+   * 2 — d'où « 2-1 » sur une affiche que le calcul voit à 2,74 contre 1,07.
+   *
+   * Sur un match serré, ce plancher est sans conséquence : entre 1,5 et 1,3, le
+   * score le plus probable est bien 1-1 ou 2-1, et l'arrondi n'apporte rien —
+   * mesuré, il fait même perdre cinq points de justesse sur l'issue.
+   *
+   * Sur une affiche DÉSÉQUILIBRÉE, il coûte un but au favori à chaque fois.
+   * C'est ce qui empêchait les 3-0, 3-1, 4-1 d'apparaître.
+   *
+   * On arrondit donc les buts attendus UNIQUEMENT quand l'écart entre les deux
+   * équipes est franc. Ailleurs, le sommet garde la main.
+   *
+   * ── LE SEUIL, MESURÉ SUR 2 305 RENCONTRES ───────────────────────────────
+   *
+   *     seuil      issue    exact   scores   score dominant   deux premiers
+   *     sommet    49,0 %   10,6 %     13     1-0 à 22,5 %        43 %
+   *      0,9      49,0 %   10,1 %     18     2-1 à 30,0 %        49 %
+   *      1,3      49,0 %   10,4 %     17     2-1 à 23,2 %        46 %
+   *      1,6      49,0 %   10,1 %     17     1-0 à 22,5 %        44 %
+   *
+   * À 0,9 le seuil mord sur le milieu de tableau : deux équipes séparées d'un
+   * but ne sont pas une grosse affiche, et l'arrondi y remonte le 2-1 à 30 %.
+   *
+   * À 1,6 il ne touche que les vraies dominations. La justesse sur l'issue ne
+   * bouge pas d'un centième, la concentration reste celle du sommet — et le
+   * moteur gagne quatre scores distincts, dont ceux qui manquaient : 3-1 à 4 %,
+   * 2-0 à 8 %, 1-3 à 1 %.
+   */
+  const ECART_DOMINATION_BUTS =
+    Number(process.env.BANC_ECART_BUTS) || 1.6;
+  const dominationFranche =
+    Math.abs(butsAttendus1 - butsAttendus2) >= ECART_DOMINATION_BUTS;
 
   let meilleur:
     | typeof meilleurGlobal
     | { buts1: number; buts2: number; proba: number };
 
-  if (REGLE_SCORE === 'sommet') {
+  // « domination » : le sommet partout, sauf sur les affiches déséquilibrées
+  // où l'on arrondit les buts attendus. C'est la règle de production.
+  const parLeSommet =
+    REGLE_SCORE === 'sommet' || (REGLE_SCORE === 'domination' && !dominationFranche);
+
+  if (parLeSommet) {
     meilleur =
       issueDuScoreNaturel === issueRetenue ||
       avanceDeLIssue < ECART_DOMINATION ||
@@ -999,7 +1042,10 @@ export function calculerScoreProbable(
     const trancheNet =
       !vainqueurNonDepartage && avanceDeLIssue >= ECART_DOMINATION;
 
-    if (REGLE_SCORE === 'accorde' && trancheNet) {
+    // Sur une affiche déséquilibrée, l'arrondi désigne déjà le bon vainqueur —
+    // sauf accident d'arrondi (2,49 contre 1,51 donnerait 2-2). On remet alors
+    // le score d'accord avec les probabilités, en AJOUTANT un but au favori.
+    if ((REGLE_SCORE === 'accorde' || REGLE_SCORE === 'domination') && trancheNet) {
       if (issueRetenue === 'victoire1' && b1 <= b2) b1 = Math.min(BUTS_MAX, b2 + 1);
       else if (issueRetenue === 'victoire2' && b2 <= b1) b2 = Math.min(BUTS_MAX, b1 + 1);
       else if (issueRetenue === 'nul' && b1 !== b2) {

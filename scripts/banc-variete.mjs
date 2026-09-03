@@ -324,8 +324,9 @@ for (const m of rencontres) {
       );
       const iss = vraie.buts1 > vraie.buts2 ? 1 : vraie.buts1 === vraie.buts2 ? 0 : 2;
       noter('PRODUCTION sommet', m, { score: [vraie.buts1, vraie.buts2], probas: [vraie.probaVictoire1/100, vraie.probaNul/100, vraie.probaVictoire2/100], issue: iss });
-      for (const seuil of [8, 15, 30, 100]) {
-        process.env.BANC_ECART_DOMINATION = String(seuil);
+      for (const seuil of [0.9, 1.3, 1.6, 2.0]) {
+        process.env.BANC_REGLE_SCORE = 'domination';
+        process.env.BANC_ECART_BUTS = String(seuil);
         const v2 = calculerScoreProbable(
           { butsMarques: ea.pour, butsEncaisses: ea.contre, matchsJoues: ea.j },
           { butsMarques: eb.pour, butsEncaisses: eb.contre, matchsJoues: eb.j },
@@ -334,9 +335,9 @@ for (const m of rencontres) {
             equipe2: { attaque: fb.att, defense: fb.def, matchs: eb.j },
             butsDomicile: moy.dom, butsExterieur: moy.ext }
         );
-        delete process.env.BANC_ECART_DOMINATION;
+        delete process.env.BANC_REGLE_SCORE; delete process.env.BANC_ECART_BUTS;
         const i2 = v2.buts1 > v2.buts2 ? 1 : v2.buts1 === v2.buts2 ? 0 : 2;
-        noter('PRODUCTION seuil=' + seuil, m, { score: [v2.buts1, v2.buts2], probas: [v2.probaVictoire1/100, v2.probaNul/100, v2.probaVictoire2/100], issue: i2 });
+        noter('ecart>=' + seuil, m, { score: [v2.buts1, v2.buts2], probas: [v2.probaVictoire1/100, v2.probaNul/100, v2.probaVictoire2/100], issue: i2 });
       }
     }
     process.env.BANC_AMORTISSEMENT = '6';
@@ -394,7 +395,7 @@ for (const [nom, s] of Object.entries(resultats)) {
 }
 
 // ── LE DÉTAIL DE LA RÉPARTITION, POUR LES DEUX VARIANTES QUI COMPTENT ──────
-for (const nom of ['PRODUCTION sommet', 'PRODUCTION seuil=15', 'PRODUCTION seuil=100']) {
+for (const nom of ['PRODUCTION sommet', 'ecart>=1.3', 'ecart>=1.6']) {
   const s = resultats[nom];
   if (!s) continue;
   const tri = [...s.scores].sort((a, b) => b[1] - a[1]).slice(0, 10);
