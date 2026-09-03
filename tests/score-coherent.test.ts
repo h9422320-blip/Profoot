@@ -265,3 +265,34 @@ test('★ ACQUIS — le remplaçant garde le vainqueur annoncé', () => {
       `${r.probaVictoire1}/${r.probaNul}/${r.probaVictoire2}.`
   );
 });
+
+test('★ ACQUIS — relire un match ne le refait jamais payer', async () => {
+  // Un client l'a écrit le 3 septembre 2026 :
+  //
+  //   « après mon achat j'ai analysé 10 matchs, normalement il doit me rester
+  //     encore 10 matchs puisque c'est l'abonnement de 2000f, et le lendemain
+  //     je suis revenu revoir le même match et ça m'a fait un match de moins »
+  //
+  // Il avait raison, et il a été le seul à le dire. La clé de décompte
+  // contenait le jour : revenir le lendemain produisait une clé neuve, donc un
+  // second prélèvement — alors que le pronostic est FIGÉ et que la page rendue
+  // était rigoureusement identique.
+  //
+  // Mesuré sur les 8 760 décomptes : 141 clients facturés deux fois, 309
+  // analyses perdues.
+  const { buildMatchKey } = await import('../src/lib/analysis-quota');
+
+  assert.doesNotMatch(
+    buildMatchKey('lille', 'toulouse'),
+    /\d{4}-\d{2}-\d{2}/,
+    'La clé de décompte contient de nouveau une date : relire un match le ' +
+      'lendemain le refera payer.'
+  );
+
+  // L'ordre reste normalisé : une rencontre est une rencontre.
+  assert.equal(
+    buildMatchKey('lille', 'toulouse'),
+    buildMatchKey('toulouse', 'lille'),
+    '« PSG vs OM » et « OM vs PSG » ne sont plus reconnus comme la même rencontre.'
+  );
+});

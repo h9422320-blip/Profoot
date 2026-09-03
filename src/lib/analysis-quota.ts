@@ -41,13 +41,43 @@ function emptyState(limit: number): QuotaState {
   };
 }
 
-/** Clé identifiant un match analysé un jour donné. */
+/**
+ * Clé identifiant UNE rencontre, pour toute la durée de l'abonnement.
+ *
+ * ── LA DATE EN FAISAIT PAYER DEUX ─────────────────────────────────────────
+ *
+ * Elle contenait le jour : `lille__toulouse__2026-09-01`. Revenir voir la même
+ * analyse le lendemain produisait `lille__toulouse__2026-09-02`, une clé neuve,
+ * donc un second prélèvement sur le compteur.
+ *
+ * Un client l'a écrit lui-même le 3 septembre 2026 :
+ *
+ *     « après mon achat j'ai analysé 10 matchs, normalement il doit me rester
+ *       encore 10 matchs puisque c'est l'abonnement de 2000f, et le lendemain
+ *       je suis revenu revoir le même match et ça m'a fait un match de moins »
+ *
+ * Il avait raison, et il a été le seul à le dire. Mesuré sur l'ensemble des
+ * 8 760 décomptes : **141 clients facturés deux fois, 309 analyses perdues.**
+ *
+ * ── POURQUOI C'ÉTAIT INDÉFENDABLE ────────────────────────────────────────
+ *
+ * Le pronostic est FIGÉ par rencontre : revenir le lendemain rend exactement
+ * le même score, le même texte, les mêmes probabilités. On facturait une
+ * seconde fois la relecture d'une page déjà payée.
+ *
+ * ── CE QU'ON PERD, ET C'EST ACCEPTABLE ───────────────────────────────────
+ *
+ * Deux équipes qui se rencontrent DEUX FOIS à l'intérieur d'une même période
+ * de trente jours — un match aller et son retour, ou une coupe — ne comptent
+ * désormais que pour une analyse. C'est rare, et infiniment moins grave que
+ * de reprendre une analyse à quelqu'un qui relit la sienne.
+ *
+ * L'ordre reste normalisé : « PSG vs OM » et « OM vs PSG » sont la même
+ * rencontre, donc un seul décompte.
+ */
 export function buildMatchKey(team1Id: string, team2Id: string): string {
-  const day = new Date().toISOString().slice(0, 10);
-  // Ordre normalisé : analyser « PSG vs OM » puis « OM vs PSG » le même jour
-  // reste une seule et même analyse, donc un seul décompte.
   const [a, b] = [String(team1Id), String(team2Id)].sort();
-  return `${a}__${b}__${day}`;
+  return `${a}__${b}`;
 }
 
 /** État du quota d'un utilisateur, calculé côté serveur. */
