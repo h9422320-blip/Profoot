@@ -306,7 +306,7 @@ for (const m of rencontres) {
 
   if (a && b && a.j >= HISTORIQUE_MINIMUM && b.j >= HISTORIQUE_MINIMUM) {
     // La VRAIE fonction de production, avec les forces du banc.
-    for (const K of [0, 3, 6]) {
+    for (const K of [3]) {
       process.env.BANC_AMORTISSEMENT = String(K);
       etat.invalider();
       const f = etat.forces();
@@ -323,11 +323,21 @@ for (const m of rencontres) {
           butsDomicile: moy.dom, butsExterieur: moy.ext }
       );
       const iss = vraie.buts1 > vraie.buts2 ? 1 : vraie.buts1 === vraie.buts2 ? 0 : 2;
-      noter('PRODUCTION K=' + K, m, {
-        score: [vraie.buts1, vraie.buts2],
-        probas: [vraie.probaVictoire1 / 100, vraie.probaNul / 100, vraie.probaVictoire2 / 100],
-        issue: iss,
-      });
+      noter('PRODUCTION sommet', m, { score: [vraie.buts1, vraie.buts2], probas: [vraie.probaVictoire1/100, vraie.probaNul/100, vraie.probaVictoire2/100], issue: iss });
+      for (const seuil of [8, 15, 30, 100]) {
+        process.env.BANC_ECART_DOMINATION = String(seuil);
+        const v2 = calculerScoreProbable(
+          { butsMarques: ea.pour, butsEncaisses: ea.contre, matchsJoues: ea.j },
+          { butsMarques: eb.pour, butsEncaisses: eb.contre, matchsJoues: eb.j },
+          true, false, undefined,
+          { equipe1: { attaque: fa.att, defense: fa.def, matchs: ea.j },
+            equipe2: { attaque: fb.att, defense: fb.def, matchs: eb.j },
+            butsDomicile: moy.dom, butsExterieur: moy.ext }
+        );
+        delete process.env.BANC_ECART_DOMINATION;
+        const i2 = v2.buts1 > v2.buts2 ? 1 : v2.buts1 === v2.buts2 ? 0 : 2;
+        noter('PRODUCTION seuil=' + seuil, m, { score: [v2.buts1, v2.buts2], probas: [v2.probaVictoire1/100, v2.probaNul/100, v2.probaVictoire2/100], issue: i2 });
+      }
     }
     process.env.BANC_AMORTISSEMENT = '6';
     etat.invalider();
@@ -384,7 +394,7 @@ for (const [nom, s] of Object.entries(resultats)) {
 }
 
 // ── LE DÉTAIL DE LA RÉPARTITION, POUR LES DEUX VARIANTES QUI COMPTENT ──────
-for (const nom of ['PRODUCTION K=6', 'PRODUCTION K=3', 'PRODUCTION K=0']) {
+for (const nom of ['PRODUCTION sommet', 'PRODUCTION seuil=15', 'PRODUCTION seuil=100']) {
   const s = resultats[nom];
   if (!s) continue;
   const tri = [...s.scores].sort((a, b) => b[1] - a[1]).slice(0, 10);

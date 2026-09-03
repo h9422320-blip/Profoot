@@ -877,7 +877,39 @@ export function calculerScoreProbable(
   // Quatre : le seuil le plus bas qui laisse encore sortir un score de parité
   // entre deux équipes de force égale. Voir juste au-dessus pour le rejeu qui
   // l'a fixé, et pour ce qui a été essayé puis refusé.
-  const ECART_DOMINATION = 4;
+  /**
+   * ── REMONTÉ DE QUATRE À HUIT LE 3 SEPTEMBRE 2026 ────────────────────────
+   *
+   * Ce seuil décide quand on ABANDONNE le score le plus probable de la grille
+   * pour aller chercher le meilleur score de l'issue annoncée. Plus il est bas,
+   * plus souvent un 1-1 naturel devient un 2-1.
+   *
+   * C'est lui qui produisait la plupart des 2-1. Relevé sur les 317 rencontres
+   * à venir : parmi les 121 qui donnaient 2-1, l'écart médian de buts attendus
+   * n'était que de 0,44 — le score naturel de ces matchs est 1-1, et le seuil
+   * le poussait à 2-1.
+   *
+   * Mesuré sur 2 305 rencontres, banc branché sur cette fonction :
+   *
+   *     seuil    issue    exact   score dominant   deux premiers
+   *        4    49,5 %   10,5 %   1-0 à 24,9 %        45 %
+   *        8    49,0 %   10,6 %   1-0 à 22,5 %        43 %
+   *       15    46,8 %   11,1 %   1-1 à 21,6 %        40 %
+   *       30    41,3 %   12,1 %   1-1 à 50,6 %        63 %
+   *
+   * Huit est retenu : meilleur sur le score exact, moins concentré, et une
+   * demi-unité d'issue — soit à l'intérieur du bruit.
+   *
+   * Quinze donnerait la répartition la plus plate jamais obtenue (aucun score
+   * au-dessus de 22 %) mais coûte 2,7 points d'issue, et l'issue est le chiffre
+   * annoncé publiquement sur le mur des preuves. Ce compromis-là appartient au
+   * propriétaire, pas à ce fichier.
+   *
+   * Au-delà de trente le moteur s'effondre sur le nul : 1-1 une fois sur deux.
+   *
+   * `BANC_ECART_DOMINATION` n'existe QUE pour le banc.
+   */
+  const ECART_DOMINATION = Number(process.env.BANC_ECART_DOMINATION) || 8;
 
   /**
    * ── ON N'ANNONCE PAS UN VAINQUEUR QUE LE CALCUL N'A PAS DÉPARTAGÉ ────────
@@ -920,12 +952,69 @@ export function calculerScoreProbable(
     (issueRetenue === 'victoire1' || issueRetenue === 'victoire2') &&
     Math.abs(pv1 - pv2) < ECART_INDECIS;
 
-  const meilleur =
-    issueDuScoreNaturel === issueRetenue ||
-    avanceDeLIssue < ECART_DOMINATION ||
-    vainqueurNonDepartage
-      ? meilleurGlobal
-      : meilleurParIssue[issueRetenue];
+  /**
+   * ── LE SOMMET DE LA GRILLE EST UN PLANCHER ──────────────────────────────
+   *
+   * Le score le plus probable d'une loi de Poisson est l'entier juste EN
+   * DESSOUS de son espérance. Une équipe attendue à 2,74 buts y ressort à 2 ;
+   * à 3,74 buts, à 3. On perd un demi-but par équipe, à chaque match.
+   *
+   * Relevé le 3 septembre 2026 sur les 317 rencontres à venir : le 2-1 pesait
+   * 38 % à lui seul. Barcelone — Villarreal, attendu à 2,74 contre 1,07,
+   * ressortait « 2-1 » alors que le calcul dit 3-1.
+   *
+   * ── LA RÈGLE EST CHOISIE PAR MESURE, PLUS À LA MAIN ─────────────────────
+   *
+   * `BANC_REGLE_SCORE` n'existe QUE pour le banc d'essai. En production la
+   * variable n'est pas posée et la valeur retenue est celle écrite ici.
+   *
+   * Une règle réglée sur un banc qui réimplémentait le moteur a déjà été
+   * essayée, et refusée par les tests de non-régression : le 2-1 remontait à
+   * 43 % et les nuls entre équipes égales disparaissaient. Le banc importe
+   * désormais cette fonction-ci — toute valeur retenue vient de lui.
+   */
+  const REGLE_SCORE = process.env.BANC_REGLE_SCORE || 'sommet';
+
+  let meilleur:
+    | typeof meilleurGlobal
+    | { buts1: number; buts2: number; proba: number };
+
+  if (REGLE_SCORE === 'sommet') {
+    meilleur =
+      issueDuScoreNaturel === issueRetenue ||
+      avanceDeLIssue < ECART_DOMINATION ||
+      vainqueurNonDepartage
+        ? meilleurGlobal
+        : meilleurParIssue[issueRetenue];
+  } else {
+    // ── ARRONDI : on rend au favori les buts qu'il est censé marquer ──────
+    const borne = (v: number) => Math.max(0, Math.min(BUTS_MAX, Math.round(v)));
+    let b1 = borne(butsAttendus1);
+    let b2 = borne(butsAttendus2);
+
+    // On ne remet le score d'accord avec les probabilités QUE lorsqu'elles ont
+    // réellement tranché. Sinon l'arrondi décide seul — c'est ce qui préserve
+    // les scores de parité entre deux équipes de même force, et ce que la
+    // première tentative avait détruit en forçant l'issue à tous les coups.
+    const trancheNet =
+      !vainqueurNonDepartage && avanceDeLIssue >= ECART_DOMINATION;
+
+    if (REGLE_SCORE === 'accorde' && trancheNet) {
+      if (issueRetenue === 'victoire1' && b1 <= b2) b1 = Math.min(BUTS_MAX, b2 + 1);
+      else if (issueRetenue === 'victoire2' && b2 <= b1) b2 = Math.min(BUTS_MAX, b1 + 1);
+      else if (issueRetenue === 'nul' && b1 !== b2) {
+        b1 = b2 = borne((butsAttendus1 + butsAttendus2) / 2);
+      }
+    }
+
+    meilleur = {
+      buts1: b1,
+      buts2: b2,
+      // La probabilité affichée est celle du score RÉELLEMENT annoncé, relue
+      // dans la même grille — jamais celle d'un score qu'on n'affiche plus.
+      proba: p1[b1] * p2[b2] * correctionPetitsScores(b1, b2, butsAttendus1, butsAttendus2),
+    };
+  }
 
   // ── CONFIANCE ──────────────────────────────────────────────────────────────
   //
