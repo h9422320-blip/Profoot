@@ -6,6 +6,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 
 import Script from "next/script";
 import { classesPolices } from "./polices";
+import RecuperationChargement from "@/components/RecuperationChargement";
 import SignalReact from "@/components/SignalReact";
 import MesureVisite from "@/components/MesureVisite";
 import { Analytics } from "@vercel/analytics/react";
@@ -312,6 +313,13 @@ export default function RootLayout({
         <ThemeProvider>
           <LanguageProvider>
             {children}
+            {/* ── LE RATTRAPAGE D'UN MORCEAU DE CODE MANQUANT ─────────────
+                Posé à la racine, donc actif sur TOUTES les pages : le défaut
+                frappe partout, et le plus souvent sur l'écran d'analyse au
+                moment où le résultat s'affiche.
+                Il n'affiche rien et n'écoute que deux évènements de fenêtre —
+                le coût est nul pour un visiteur dont la page va bien. */}
+            <RecuperationChargement />
             <SignalReact />
             {/* La mesure maison : quelle page, combien de temps, où l'on ferme.
                 Elle n'envoie rien de personnel et n'attend aucune réponse — le
