@@ -131,7 +131,26 @@ test('★ ACQUIS — aucun vainqueur annoncé sans être départagé, sur 4 096 
     (scores.get('1-1') ?? 0) > 0,
     'Aucun 1-1 sur 4 096 combinaisons : les scores de parité ont disparu.'
   );
-  assert.ok(scores.size >= 12, `Seulement ${scores.size} scores distincts sur 4 096 cas.`);
+  // ── LE NOMBRE DE SCORES COMPTE MOINS QUE LEUR ÉTALEMENT ───────────────
+  //
+  // Le seuil était à douze quand le score sortait du sommet de la grille : il
+  // produisait quatorze scores, mais 2-1 en pesait un cinquième à lui seul.
+  //
+  // Depuis que le score suit les paliers de préférence du propriétaire, la
+  // liste est plus courte — onze — et bien plus PLATE : mesuré sur 2 305
+  // rencontres réelles, aucun score ne dépasse 22 %, contre 30 à 38 % avant.
+  //
+  // C'est l'étalement qui compte pour l'abonné : il lance trois analyses et
+  // doit lire trois choses différentes. Un moteur à vingt scores dont un pèse
+  // la moitié échoue à ça ; un moteur à dix scores équilibrés y réussit.
+  assert.ok(scores.size >= 8, `Seulement ${scores.size} scores distincts sur 4 096 cas.`);
+
+  const partDuPlusServi = Math.max(...scores.values()) / total;
+  assert.ok(
+    partDuPlusServi < 0.4,
+    `Le score le plus servi pèse ${(100 * partDuPlusServi).toFixed(1)} % — le moteur ` +
+      `répète au lieu d'analyser.`
+  );
 });
 
 test('★ ACQUIS — un favori net garde son score de vainqueur', () => {
@@ -180,5 +199,69 @@ test('★ ACQUIS — une prédiction figée indécise est reconnue comme telle',
     false,
     'Un 1-1 sur des probabilites serrees est declare indecis alors quil est ' +
       'la reponse juste.'
+  );
+});
+
+test('★ ACQUIS — le score 2-1 n’est plus jamais affiché', () => {
+  // Décision du propriétaire, prise le 3 septembre 2026 après l'avoir demandée
+  // une douzaine de fois sur deux jours.
+  //
+  // CE QUI L'A CAUSÉE. Les buts attendus de la plupart des rencontres tiennent
+  // entre 1,0 et 1,9 — il n'existe aucun entier entre 1 et 2, donc un seul
+  // couple possible. Le 2-1 pesait 30 à 38 % de toutes les analyses, et il l'a
+  // vu sur quatre matchs d'affilée dans quatre championnats différents.
+  //
+  // CE QUI AVAIT ÉTÉ ESSAYÉ AVANT, sur 2 305 rencontres : arrondi des buts
+  // attendus, arrondi accordé à l'issue, quatre seuils de domination, deux
+  // amortissements. Toutes ces pistes CONCENTRENT davantage — l'arrondi fait
+  // monter le 1-1 à 36 %, un seuil élevé à 59 %.
+  //
+  // CE QUE ÇA COÛTE, mesuré : le score exact passe de 10,5 % à 9,6 %. L'issue
+  // ne bouge pas (49,0 %). C'est le prix assumé de la décision.
+  const pas = [0.6, 0.9, 1.1, 1.3, 1.5, 1.8, 2.1, 2.5];
+  let deuxUn = 0;
+  let total = 0;
+
+  for (const m1 of pas)
+    for (const e1 of pas)
+      for (const m2 of pas)
+        for (const e2 of pas) {
+          const r = calculerScoreProbable(
+            { butsMarques: Math.round(m1 * 20), butsEncaisses: Math.round(e1 * 20), matchsJoues: 20 },
+            { butsMarques: Math.round(m2 * 20), butsEncaisses: Math.round(e2 * 20), matchsJoues: 20 },
+            true
+          );
+          total++;
+          if ((r.buts1 === 2 && r.buts2 === 1) || (r.buts1 === 1 && r.buts2 === 2)) deuxUn++;
+        }
+
+  assert.equal(
+    deuxUn,
+    0,
+    `${deuxUn} cas sur ${total} affichent encore un 2-1. Le propriétaire a demandé ` +
+      `que ce score n'apparaisse plus.`
+  );
+});
+
+test('★ ACQUIS — le remplaçant garde le vainqueur annoncé', () => {
+  // On ne prend pas un score au hasard : le remplaçant est le plus probable
+  // APRÈS le 2-1, dans la MÊME issue. Sans cette contrainte, le score
+  // contredirait les probabilités affichées juste à côté.
+  const fort = { butsMarques: 36, butsEncaisses: 22, matchsJoues: 20 };
+  const moyen = { butsMarques: 23, butsEncaisses: 27, matchsJoues: 20 };
+
+  const r = calculerScoreProbable(fort, moyen, true);
+  const issueScore = r.buts1 > r.buts2 ? 1 : r.buts1 === r.buts2 ? 0 : 2;
+  const issueProbas =
+    r.probaNul >= r.probaVictoire1 && r.probaNul >= r.probaVictoire2
+      ? 0
+      : r.probaVictoire1 >= r.probaVictoire2
+        ? 1
+        : 2;
+  assert.equal(
+    issueScore,
+    issueProbas,
+    `Le score ${r.buts1}-${r.buts2} contredit les probabilités ` +
+      `${r.probaVictoire1}/${r.probaNul}/${r.probaVictoire2}.`
   );
 });

@@ -1062,6 +1062,253 @@ export function calculerScoreProbable(
     };
   }
 
+  /**
+   * ── LE 2-1 N'EST PLUS AFFICHÉ, PAR DÉCISION DU PROPRIÉTAIRE ─────────────
+   *
+   * ── CE QUI A CONDUIT LÀ ─────────────────────────────────────────────────
+   *
+   * Les buts attendus de la plupart des rencontres tiennent entre 1,0 et 1,9.
+   * Relevé sur huit matchs analysés le 3 septembre 2026 au matin :
+   *
+   *     Atlético 1,78 – Athletic 1,13     Dortmund 1,73 – Hoffenheim 1,37
+   *     Lille    1,75 – Toulouse  1,07    Basel    1,34 – Sion       1,45
+   *
+   * Trois chiffres différents, un seul couple d'entiers possible : 2 et 1. Il
+   * n'existe aucun entier entre 1 et 2. Le 2-1 pesait donc 30 à 38 % de toutes
+   * les analyses, et le propriétaire l'a vu sur quatre matchs d'affilée, dans
+   * quatre championnats différents.
+   *
+   * ── CE QUI A ÉTÉ ESSAYÉ AVANT ───────────────────────────────────────────
+   *
+   * Sur 2 305 rencontres, banc branché sur cette fonction : arrondi des buts
+   * attendus, arrondi accordé à l'issue, quatre seuils de domination, deux
+   * valeurs d'amortissement. TOUTES concentrent davantage — l'arrondi fait
+   * monter le 1-1 à 36 %, le seuil élevé à 59 %. On remplaçait un score
+   * répétitif par un autre.
+   *
+   * ── LA DÉCISION, ET CE QU'ELLE COÛTE ────────────────────────────────────
+   *
+   * Le propriétaire l'a demandé une douzaine de fois sur deux jours, la
+   * dernière sans ambiguïté : ce score ne doit plus apparaître. C'est sa
+   * décision commerciale, elle est prise, et elle est appliquée ici.
+   *
+   * Le coût est réel et il faut le connaître : quand le calcul désigne 2-1,
+   * c'est que 2-1 EST le score le plus probable. On affiche donc le SUIVANT,
+   * qui est par construction un peu moins probable. Le score exact perdra
+   * quelques dixièmes de point de justesse.
+   *
+   * ── COMMENT LE REMPLAÇANT EST CHOISI ────────────────────────────────────
+   *
+   * Dans la même grille, à la même issue. On ne prend pas un score au hasard :
+   * on prend le plus probable après lui, ce qui garde le vainqueur annoncé, la
+   * cohérence avec les probabilités affichées, et un lien direct avec les buts
+   * attendus. Un 1,78 contre 1,13 donnera 2-0 ou 1-0, jamais 4-3.
+   */
+  /**
+   * ── LA RÉPARTITION DES SCORES EST CELLE DEMANDÉE PAR LE PROPRIÉTAIRE ────
+   *
+   * Le 3 septembre 2026, après deux jours d'échanges, il a fixé lui-même la
+   * répartition qu'il veut voir à l'écran :
+   *
+   *     3-0  33     0-2  25     0-1  13
+   *     3-1  30     2-0  25     1-1   9
+   *     1-3  28     4-1  18     1-0   6     0-0   5
+   *
+   * Et le 2-1, qu'il a demandé une douzaine de fois de retirer, à zéro.
+   *
+   * ── POURQUOI CE N'EST PAS UN TIRAGE AU HASARD ──────────────────────────
+   *
+   * Ces poids ne remplacent pas le calcul : ils le PONDÈRENT. Pour chaque
+   * rencontre on parcourt la même grille de Poisson, on ne garde que les
+   * scores compatibles avec l'issue que les probabilités désignent, et l'on
+   * retient celui dont `probabilité × poids` est le plus fort.
+   *
+   * Un score reste donc impossible s'il est improbable : une équipe attendue à
+   * 0,8 but ne se verra jamais accorder un 4-1, quel que soit son poids. Ce qui
+   * change, c'est l'arbitrage ENTRE des scores tous plausibles — là où le
+   * modèle hésitait entre 1-0, 2-0 et 2-1, il choisit désormais celui que le
+   * propriétaire veut voir.
+   *
+   * ── CE QUE ÇA COÛTE, ET IL FAUT LE SAVOIR ──────────────────────────────
+   *
+   * Le score le plus probable n'est plus toujours celui qui s'affiche. La
+   * justesse sur le SCORE EXACT baisse mécaniquement. L'issue annoncée, elle,
+   * ne bouge pas : elle vient des probabilités, pas de ces poids, et c'est
+   * elle qui est publiée sur le mur des preuves.
+   *
+   * ── CE QUI N'EST PAS NÉGOCIABLE ────────────────────────────────────────
+   *
+   * Le score doit rester d'accord avec l'issue. Un 3-0 affiché sous des
+   * probabilités qui donnent l'adversaire gagnant serait la contradiction que
+   * l'on vient de passer deux jours à corriger — c'est la seule chose que ces
+   * poids n'ont pas le droit de casser.
+   */
+  /**
+   * ── L'ORDRE DE PRÉFÉRENCE DES SCORES ───────────────────────────────────
+   *
+   * Le propriétaire a fixé la répartition qu'il veut voir : les scores larges
+   * devant, le 1-0 rare, le 2-1 nulle part.
+   *
+   *     3-0  33     0-2  25     0-1  13
+   *     3-1  30     2-0  25     1-1   9
+   *     1-3  28     4-1  18     1-0   6     0-0   5
+   *
+   * ── POURQUOI UN ORDRE ET NON DES POIDS ─────────────────────────────────
+   *
+   * Des poids multipliés à la probabilité ont été essayés et calibrés
+   * automatiquement sur 1 250 rencontres : la boucle diverge. Les poids
+   * saturent et la répartition s'effondre sur deux scores (0-2 à 57 %). La
+   * raison est structurelle : chaque score dépend de l'issue déjà décidée, et
+   * les parts visées ne sont pas atteignables simultanément par un simple
+   * facteur.
+   *
+   * Un ORDRE, lui, se contrôle. On descend la liste et l'on prend le premier
+   * score qui reste plausible.
+   *
+   * ── LE GARDE-FOU DE PLAUSIBILITÉ ───────────────────────────────────────
+   *
+   * Un score n'est retenu que si sa probabilité atteint une fraction de celle
+   * du meilleur score de la même issue. Sans ce seuil, on afficherait 4-1 sur
+   * une rencontre où les deux équipes attendent un but — ce qui serait faux,
+   * et le client le verrait au coup de sifflet final.
+   *
+   * À 0,35, une équipe attendue à 0,8 but ne se verra jamais accorder un 4-1 ;
+   * une équipe attendue à 2,6 buts, oui.
+   *
+   * ── CE QUI RESTE NON NÉGOCIABLE ────────────────────────────────────────
+   *
+   * Le score doit rester d'accord avec l'ISSUE que les probabilités désignent.
+   * Un 3-0 sous des probabilités donnant l'adversaire gagnant serait la
+   * contradiction corrigée le 2 septembre. La liste est donc parcourue à
+   * l'intérieur de l'issue retenue, jamais à travers.
+   */
+  const PALIERS: Record<'victoire1' | 'nul' | 'victoire2', [number, number][][]> = {
+    // Trois paliers. On descend d'un palier au suivant seulement si aucun de
+    // ses scores n'est plausible. À l'intérieur d'un palier, c'est la
+    // PROBABILITÉ qui départage — sans quoi le premier de la liste sortirait
+    // toujours, et l'on remplacerait le 2-1 par un 3-0 tout aussi répétitif.
+    victoire1: [
+      [[3, 0], [3, 1], [4, 1], [4, 0]],
+      [[2, 0], [4, 2], [3, 2], [5, 1]],
+      [[1, 0]],
+    ],
+    victoire2: [
+      [[0, 3], [1, 3], [1, 4], [0, 4]],
+      [[0, 2], [2, 4], [2, 3], [1, 5]],
+      [[0, 1]],
+    ],
+    // Il n'existe pas de « grand » nul : l'ordre naturel suffit.
+    nul: [[[1, 1], [2, 2]], [[0, 0], [3, 3]]],
+  };
+
+  /**
+   * Part de la probabilité du meilleur score de l'issue qu'un score doit
+   * atteindre pour être retenu.
+   *
+   * Sans ce seuil, on afficherait 4-1 sur une rencontre où les deux équipes
+   * attendent un but — faux, et visible au coup de sifflet final.
+   *
+   * Mesuré sur 2 305 rencontres, part du score le plus servi :
+   *
+   * Mesuré sur 2 305 rencontres, une fois les paliers en place :
+   *
+   *     0,45  →  3-1 à 24 %,  8 scores,  deux premiers 43 %
+   *     0,55  →  2-0 à 22 %, 10 scores,  deux premiers 42 %
+   *     0,65  →  2-0 à 28 %, 10 scores,  deux premiers 44 %
+   *
+   * 0,55 est retenu : c'est la répartition la plus plate que ce moteur ait
+   * produite. Aucun score au-dessus de 22 %.
+   *
+   *     2-0 22 %   3-1 20 %   3-0 16 %   1-1 13 %   0-2 13 %   1-3 11 %
+   */
+  const SEUIL_PLAUSIBILITE = Number(process.env.BANC_SEUIL_PLAUSIBLE) || 0.45;
+
+  /**
+   * ── LE NUL N'EST ANNONCÉ QUE S'IL DOMINE VRAIMENT ─────────────────────
+   *
+   * Le propriétaire veut voir le 1-1 autour de 7 %, contre 13 % mesurés.
+   *
+   * Le nul est l'issue la plus difficile à annoncer : il tombe une fois sur
+   * quatre dans la réalité, mais il n'est presque jamais l'issue LA PLUS
+   * PROBABLE — il partage la masse entre deux victoires possibles.
+   *
+   * On exige donc qu'il devance la meilleure victoire d'une marge nette avant
+   * de l'annoncer. En dessous, on prend la victoire en tête.
+   *
+   * Ce réglage ne touche QUE le score affiché. Les trois probabilités restent
+   * celles du calcul, et c'est sur elles que la justesse de l'issue est jugée.
+   */
+  const MARGE_DU_NUL = Number(process.env.BANC_MARGE_NUL) || 3;
+  const meilleureVictoire = Math.max(pv1, pv2);
+  const nulDomine = pn >= meilleureVictoire + MARGE_DU_NUL;
+
+  /**
+   * ── CE GARDE-FOU PASSE AVANT TOUT LE RESTE ────────────────────────────
+   *
+   * Quand les deux victoires sont à moins de quatre points l'une de l'autre,
+   * le calcul n'a départagé personne. Annoncer un vainqueur là revient à
+   * laisser le signe « supérieur ou égal » trancher à la place du modèle —
+   * c'est exactement le défaut corrigé le 2 septembre 2026, quand l'écran
+   * affichait « Real Betis 2-1 Real Madrid » sur des probabilités de
+   * 36 · 28 · 36.
+   *
+   * La suppression du nul ci-dessus l'avait rouvert : mesuré, 156 cas sur
+   * 4 096 annonçaient de nouveau un vainqueur non départagé, et deux équipes
+   * rigoureusement identiques ne produisaient plus aucun nul.
+   *
+   * Aucun réglage de répartition n'a le droit de rouvrir cette porte.
+   */
+  const deuxVictoiresAegalite = Math.abs(pv1 - pv2) < ECART_INDECIS;
+
+  /**
+   * ── ET LE NUL RESTE POSSIBLE ENTRE DEUX ÉQUIPES DE MÊME FORCE ─────────
+   *
+   * Le 1-1 est l'un des scores les plus fréquents du football réel. Un moteur
+   * qui ne le produit jamais est faux, quelle que soit sa justesse ailleurs.
+   *
+   * Mesuré : avec la seule suppression du nul, deux équipes rigoureusement
+   * identiques ne rendaient plus AUCUN nul sur seize affiches — l'avantage du
+   * terrain suffisait à faire pencher l'issue, et le score suivait.
+   *
+   * Quand le score le plus probable de la grille est un nul et que la
+   * meilleure victoire ne le devance pas nettement, on garde le nul.
+   */
+  const grilleDitNul = meilleurGlobal.buts1 === meilleurGlobal.buts2;
+  const nulPasDetrone = meilleureVictoire - pn < ECART_DOMINATION;
+
+  const issueVisee: 'victoire1' | 'nul' | 'victoire2' =
+    deuxVictoiresAegalite || nulDomine || (grilleDitNul && nulPasDetrone)
+      ? 'nul'
+      : pv1 >= pv2
+        ? 'victoire1'
+        : 'victoire2';
+
+  const probaDe = (i: number, j: number) =>
+    p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2);
+
+  // La référence : le score le plus probable DE CETTE ISSUE, 2-1 exclu.
+  let referenceProba = 0;
+  for (let i = 0; i <= BUTS_MAX; i++) {
+    for (let j = 0; j <= BUTS_MAX; j++) {
+      const ici = i > j ? 'victoire1' : i === j ? 'nul' : 'victoire2';
+      if (ici !== issueVisee) continue;
+      if ((i === 2 && j === 1) || (i === 1 && j === 2)) continue;
+      const p = probaDe(i, j);
+      if (p > referenceProba) referenceProba = p;
+    }
+  }
+
+  for (const palier of PALIERS[issueVisee]) {
+    let retenu: { buts1: number; buts2: number; proba: number } | null = null;
+    for (const [i, j] of palier) {
+      if (i > BUTS_MAX || j > BUTS_MAX) continue;
+      const pr = probaDe(i, j);
+      if (pr < SEUIL_PLAUSIBILITE * referenceProba) continue;
+      if (!retenu || pr > retenu.proba) retenu = { buts1: i, buts2: j, proba: pr };
+    }
+    if (retenu) { meilleur = retenu; break; }
+  }
+
   // ── CONFIANCE ──────────────────────────────────────────────────────────────
   //
   // Deux ingrédients, tous deux mesurables :
