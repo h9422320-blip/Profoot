@@ -2074,6 +2074,64 @@ export default function AnalyzePage({
                   </div>
                 </div>
 
+                {/* ── QUAND LA FORME ET LE SCORE NE DISENT PAS LA MÊME CHOSE ──
+                    Relevé le 3 septembre 2026 sur quinze analyses réelles : deux
+                    affichaient une équipe « EN GRANDE FORME » et la donnaient
+                    perdante, sans un mot d'explication.
+
+                        Real Madrid 2-1 Real Betis   Betis 5 victoires sur 5
+                        Ipswich 1-2 Liverpool        Ipswich 4 victoires sur 5
+
+                    Les deux chiffres sont justes, et ils ne mesurent pas la même
+                    chose. L'étiquette compte les victoires des cinq derniers
+                    matchs, TOUTES COMPÉTITIONS, sans regarder contre qui. Le
+                    score vient des buts attendus, eux ajustés à la qualité de
+                    l'adversaire. Une équipe qui gagne cinq fois contre des
+                    adversaires modestes affiche donc « grande forme » et reste
+                    en dessous.
+
+                    Un client qui lit « 5 victoires » au-dessus d'une défaite
+                    annoncée conclut que l'application se contredit — et il a
+                    raison tant que personne ne lui explique. */}
+                {(() => {
+                  const d1 = dynamique(matchsRecents(result, 'team1'));
+                  const d2 = dynamique(matchsRecents(result, 'team2'));
+                  const enForme = (d: { ligne1: string }) => d.ligne1 === 'En grande';
+                  const xg1 = Number(result.predictions?.expectedGoals?.team1);
+                  const xg2 = Number(result.predictions?.expectedGoals?.team2);
+                  const buts1 = Number(result.predictedScore?.team1Goals);
+                  const buts2 = Number(result.predictedScore?.team2Goals);
+                  if (![xg1, xg2, buts1, buts2].every(Number.isFinite)) return null;
+
+                  // Le déséquilibre : celui qui enchaîne les victoires est donné
+                  // perdant, et l'autre n'est pas dans le même état de forme.
+                  const lese =
+                    buts1 < buts2 && enForme(d1) && !enForme(d2)
+                      ? { nom: getClub(team1!).name, sien: xg1, autre: xg2, adv: getClub(team2!).name }
+                      : buts2 < buts1 && enForme(d2) && !enForme(d1)
+                        ? { nom: getClub(team2!).name, sien: xg2, autre: xg1, adv: getClub(team1!).name }
+                        : null;
+                  if (!lese) return null;
+
+                  return (
+                    <div className="mb-4 rounded-[16px] border border-amber-400/25 bg-amber-400/[0.07] px-4 py-3">
+                      <p className="text-[12.5px] text-white/85 leading-relaxed">
+                        <strong className="text-amber-300">{lese.nom} enchaîne les victoires</strong>, et
+                        l&apos;estimation donne pourtant {lese.adv} devant. La série compte les
+                        résultats des cinq derniers matchs, toutes compétitions ; l&apos;estimation,
+                        elle, tient compte du niveau des adversaires rencontrés.
+                      </p>
+                      <p className="text-[12px] text-white/55 leading-relaxed mt-2">
+                        Sur ce match, les buts attendus ressortent à{' '}
+                        <strong className="text-white/80">{lese.sien.toFixed(2)}</strong> pour{' '}
+                        {lese.nom} contre{' '}
+                        <strong className="text-white/80">{lese.autre.toFixed(2)}</strong> pour{' '}
+                        {lese.adv}.
+                      </p>
+                    </div>
+                  );
+                })()}
+
                 <button onClick={() => setShowGlobalForm(!showGlobalForm)} className="w-full bg-transparent border border-[#10B981]/20 hover:bg-[#10B981]/10 text-[#10B981] text-[12px] font-semibold py-3 rounded-[14px] transition-all">
                   Voir la forme en ligue
                 </button>
