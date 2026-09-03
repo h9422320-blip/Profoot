@@ -188,7 +188,7 @@ const AMORTISSEMENT = (() => {
  * le troisième match : 3/(3+3) = 50 %, contre 13 % auparavant. À dix journées,
  * 77 %.
  */
-const LENTEUR_BASCULE = 3;
+const LENTEUR_BASCULE = Number(process.env.BANC_LENTEUR) || 3;
 
 /**
  * Part des buts attendus dans la force d'une équipe.

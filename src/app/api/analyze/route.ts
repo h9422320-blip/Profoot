@@ -1501,7 +1501,7 @@ async function analyser(req: Request, billet: BilletQuota) {
     // l'intérêt de la figer. Seules les indécises — deux victoires à moins de
     // quatre points l'une de l'autre — sont remplacées, et uniquement quand le
     // calcul du jour, lui, a tranché.
-    const aRemplacer =
+    const indeciseDevenueNette =
       !!deja &&
       predictionIndecise(deja) &&
       !predictionIndecise({
@@ -1510,6 +1510,53 @@ async function analyser(req: Request, billet: BilletQuota) {
         buts1: scoreCalcule.buts1,
         buts2: scoreCalcule.buts2,
       });
+
+    /**
+     * ── UNE PRÉDICTION FIGÉE TROP TÔT N'EST PAS UN PRONOSTIC ──────────────
+     *
+     * Le principe reste : un pronostic ne bouge pas. Deux abonnés du même match
+     * doivent lire la même chose. Mais il ne vaut QUE si la prédiction a été
+     * calculée sur quelque chose.
+     *
+     * Relevé le 3 septembre 2026 à 2 h du matin. Valencia — Barcelone était
+     * figé depuis des jours avec :
+     *
+     *     buts attendus  1,14  contre  1,96   →  1-2
+     *
+     * Le même calcul, refait à l'instant sur les forces du jour :
+     *
+     *     buts attendus  0,67  contre  2,58   →  1-3
+     *
+     * Rien n'avait changé dans le code entre les deux : ce sont les FORCES du
+     * championnat qui s'étaient affinées, Barcelone ayant marqué douze buts en
+     * trois journées. La ligne figée servait une photographie de la deuxième
+     * journée, indéfiniment.
+     *
+     * ── LA RÈGLE : ON FIGE QUAND ÇA COMPTE, PAS AVANT ─────────────────────
+     *
+     * À plus de vingt-quatre heures du coup d'envoi, la prédiction se rafraîchit
+     * dès qu'elle a plus de douze heures. Dans les vingt-quatre dernières
+     * heures — quand les gens comparent, partagent et jugent — elle ne bouge
+     * plus du tout.
+     *
+     * Le mur des preuves n'est pas touché : il ne lit que des rencontres
+     * TERMINÉES, dont la prédiction était figée depuis la veille au moins.
+     */
+    const HEURES_AVANT_GEL_DEFINITIF = 24;
+    const HEURES_DE_FRAICHEUR = 12;
+
+    const coupDenvoi = fixtureDeReference?.fixture?.date
+      ? new Date(fixtureDeReference.fixture.date).getTime()
+      : null;
+    const figeeDepuis = deja?.calculeeLe ? Date.now() - new Date(deja.calculeeLe).getTime() : 0;
+
+    const tropLoinPourEtreFigee =
+      !!deja &&
+      !!coupDenvoi &&
+      coupDenvoi - Date.now() > HEURES_AVANT_GEL_DEFINITIF * 3_600_000 &&
+      figeeDepuis > HEURES_DE_FRAICHEUR * 3_600_000;
+
+    const aRemplacer = indeciseDevenueNette || tropLoinPourEtreFigee;
 
     if (aRemplacer && fixtureDeReference?.fixture?.id && !matchDirect) {
       const e1Domicile = equipe1AJoueADomicile === true;
