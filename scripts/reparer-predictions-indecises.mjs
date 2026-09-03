@@ -64,13 +64,13 @@ const { calculerScoreProbable, competitionPeuFiable } = await jiti.import('../sr
 const { lireForcesLigue } = await jiti.import('../src/lib/forces-equipes.ts');
 
 const sb = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { persistSession: false } }
 );
 
-const CLE = process.env.API_FOOTBALL_KEY!;
-async function api(chemin: string): Promise<any> {
+const CLE = process.env.API_FOOTBALL_KEY;
+async function api(chemin) {
   const r = await fetch('https://v3.football.api-sports.io/' + chemin, {
     headers: { 'x-apisports-key': CLE },
   });
@@ -79,27 +79,41 @@ async function api(chemin: string): Promise<any> {
 }
 
 /** Le même critère que `predictionIndecise`, rejoué sur la ligne brute. */
-const indecise = (p: any) =>
+const indecise = (p) =>
   Number(p.buts_domicile) !== Number(p.buts_exterieur) &&
   Math.abs(Number(p.proba_domicile) - Number(p.proba_exterieur)) < 4;
 
 // ── 1. LES LIGNES À EXAMINER ────────────────────────────────────────────────
-const toutes: any[] = [];
+const toutes = [];
 for (let depart = 0; depart < 100_000; depart += 1000) {
   const { data, error } = await sb.from('predictions_match').select('*').range(depart, depart + 999);
   if (error) throw new Error(error.message);
   toutes.push(...(data ?? []));
   if (!data || data.length < 1000) break;
 }
-const aReparer = toutes.filter(indecise);
-console.log(`${toutes.length} prédictions figées, dont ${aReparer.length} indécises.\n`);
+// ── QUE RECALCULE-T-ON ? ────────────────────────────────────────────────
+//
+// Par defaut : TOUTE ligne figee avant le changement de moteur. Le 2 septembre
+// 2026, l'amortissement est passe de 6 a 0 ; les 1 021 lignes deja en base
+// avaient ete calculees avec l'ancien reglage et rejouaient leur ancien score.
+// Le proprietaire a lance trois analyses sur trois grands clubs et lu trois
+// fois 2-1 — parce que ces trois matchs etaient figes depuis 75 a 122 heures.
+//
+// L option --indecises restreint aux seules lignes ou aucun vainqueur n avait
+// ete departage : c est le comportement du premier passage.
+const AVANT = process.env.AVANT_LE || '2026-09-02T21:00:00Z';
+const SEULEMENT_INDECISES = process.argv.includes('--indecises');
+const aReparer = SEULEMENT_INDECISES
+  ? toutes.filter(indecise)
+  : toutes.filter((p) => new Date(p.calculee_le).getTime() < new Date(AVANT).getTime());
+console.log(`${toutes.length} prédictions figées, dont ${aReparer.length} à examiner.\n`);
 
 // ── 2. RÉSERVES PARTAGÉES ───────────────────────────────────────────────────
-const statsCache = new Map<string, any>();
-const classementCache = new Map<string, any[]>();
-const forcesCache = new Map<string, any>();
+const statsCache = new Map();
+const classementCache = new Map();
+const forcesCache = new Map();
 
-async function stats(ligue: number, saison: number, equipe: number) {
+async function stats(ligue, saison, equipe) {
   const cle = `${ligue}:${saison}:${equipe}`;
   if (!statsCache.has(cle)) {
     statsCache.set(cle, await api(`teams/statistics?league=${ligue}&season=${saison}&team=${equipe}`));
@@ -107,16 +121,16 @@ async function stats(ligue: number, saison: number, equipe: number) {
   return statsCache.get(cle);
 }
 
-async function classement(ligue: number, saison: number) {
+async function classement(ligue, saison) {
   const cle = `${ligue}:${saison}`;
   if (!classementCache.has(cle)) {
     const r = await api(`standings?league=${ligue}&season=${saison}`);
     classementCache.set(cle, r?.[0]?.league?.standings?.[0] ?? []);
   }
-  return classementCache.get(cle)!;
+  return classementCache.get(cle);
 }
 
-async function forces(ligue: number, saison: number) {
+async function forces(ligue, saison) {
   const cle = `${ligue}:${saison}`;
   if (!forcesCache.has(cle)) {
     forcesCache.set(cle, await lireForcesLigue(ligue, saison).catch(() => null));
@@ -125,16 +139,8 @@ async function forces(ligue: number, saison: number) {
 }
 
 // ── 3. EXAMEN LIGNE PAR LIGNE ───────────────────────────────────────────────
-type Verdict = {
-  ligne: any;
-  etat: 'a-ecrire' | 'deja-joue' | 'donnees-absentes' | 'inchange';
-  avant: string;
-  apres?: string;
-  nouveau?: any;
-  detail?: string;
-};
 
-const verdicts: Verdict[] = [];
+const verdicts = [];
 
 for (const p of aReparer) {
   const avant = `${p.domicile_nom} ${p.buts_domicile}-${p.buts_exterieur} ${p.exterieur_nom} (${p.proba_domicile}/${p.proba_nul}/${p.proba_exterieur})`;
@@ -170,14 +176,14 @@ for (const p of aReparer) {
     forces(ligue, saison),
   ]);
 
-  const brut = (s: any) => ({
+  const brut = (s) => ({
     butsMarques: Number(s?.goals?.for?.total?.total ?? 0),
     butsEncaisses: Number(s?.goals?.against?.total?.total ?? 0),
     matchsJoues: Number(s?.fixtures?.played?.total ?? 0),
   });
 
-  const rang = (id: number) => {
-    const r = table.find((x: any) => x.team?.id === id);
+  const rang = (id) => {
+    const r = table.find((x) => x.team?.id === id);
     return r ? { rang: r.rank, points: r.points, total: table.length } : null;
   };
 
@@ -193,8 +199,8 @@ for (const p of aReparer) {
     brut(sExt),
     true, // l'équipe 1 est celle qui reçoit : c'est l'orientation officielle de la table
     competitionPeuFiable(fixture.league?.name ?? null),
-    { equipe1: rang(domId) as any, equipe2: rang(extId) as any },
-    forcesDuMatch as any
+    { equipe1: rang(domId), equipe2: rang(extId) },
+    forcesDuMatch
   );
 
   const apres = `${p.domicile_nom} ${r.buts1}-${r.buts2} ${p.exterieur_nom} (${r.probaVictoire1}/${r.probaNul}/${r.probaVictoire2})`;
@@ -212,7 +218,7 @@ for (const p of aReparer) {
 }
 
 // ── 4. BILAN ────────────────────────────────────────────────────────────────
-const par = (e: Verdict['etat']) => verdicts.filter((v) => v.etat === e);
+const par = (e) => verdicts.filter((v) => v.etat === e);
 console.log(`À RÉÉCRIRE ......... ${par('a-ecrire').length}`);
 console.log(`DÉJÀ JOUÉS, INTOUCHÉS ${par('deja-joue').length}`);
 console.log(`DONNÉES ABSENTES ... ${par('donnees-absentes').length}`);

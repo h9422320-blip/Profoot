@@ -154,7 +154,41 @@ const AMORTISSEMENT = (() => {
  * performance sur le score exact, et il laisse la saison en cours reprendre la
  * main progressivement plutôt que d'un coup.
  */
-const LENTEUR_BASCULE = 20;
+/**
+ * ── VINGT ÉTAIT LA VRAIE CAUSE DES SCORES IDENTIQUES ─────────────────────
+ *
+ * Relevé le 2 septembre 2026, quand les championnats avaient joué TROIS
+ * journées :
+ *
+ *     poids = 3 / (3 + 20) = 0,13
+ *
+ * Les dix buts du Real Madrid en trois matchs comptaient pour treize pour cent.
+ * Les quatre-vingt-sept restants venaient de la saison passée. Conséquence
+ * mesurée sur les forces réellement servies ce jour-là : la meilleure attaque
+ * de Premier League ressortait à 1,38 fois la moyenne — quand Manchester City
+ * en marque deux fois autant.
+ *
+ * Trois grands clubs analysés d'affilée — Barcelone, Real Madrid, Paris —
+ * rendaient tous les trois « 2-1 ».
+ *
+ * ── POURQUOI TROIS, ET NON ZÉRO ─────────────────────────────────────────
+ *
+ * Sur 2 305 rencontres, banc branché sur la VRAIE fonction de score :
+ *
+ *     K = 6   issue 49,7 %   12 scores   2-1 dans 23 %
+ *     K = 3   issue 49,5 %   13 scores   2-1 dans 20 %
+ *     K = 0   issue 48,6 %   15 scores   2-1 dans 16 %
+ *
+ * Zéro efface complètement la saison passée. Aux première et deuxième journées,
+ * c'est pourtant la SEULE chose qu'on sache d'une équipe : un club qui perd son
+ * match d'ouverture deviendrait le pire du championnat. Le banc ne l'a jamais
+ * mesuré — il exige cinq matchs joués avant de prédire.
+ *
+ * Trois garde ce garde-fou tout en rendant la saison en cours majoritaire dès
+ * le troisième match : 3/(3+3) = 50 %, contre 13 % auparavant. À dix journées,
+ * 77 %.
+ */
+const LENTEUR_BASCULE = 3;
 
 /**
  * Part des buts attendus dans la force d'une équipe.
