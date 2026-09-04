@@ -129,3 +129,85 @@ test('★ ACQUIS — la section reste muette quand elle n’a rien à dire', () 
     'L’avertissement a disparu : une fiabilité élevée n’est pas une promesse.'
   );
 });
+
+// ── LE PRIX NE S'AFFICHE PLUS AVANT L'ENVIE ────────────────────────────────
+
+test('★ ACQUIS — le mur de paiement n’annonce AUCUN montant', () => {
+  /*
+   * Sous le bouton « Débloquer l'analyse complète », le mur affichait
+   * « À partir de 2 000 FCFA / mois — 20 analyses complètes ».
+   *
+   * Décision du propriétaire, le 4 septembre 2026 : un prix lu à cet instant
+   * précis fait renoncer avant même d'avoir regardé ce qu'on achète. La
+   * personne vient de découvrir qu'une analyse existe, elle n'a pas encore vu
+   * ce qu'elle contient — et on lui présente une addition.
+   *
+   * Le montant ne disparaît pas, il change de place : la page des offres le
+   * porte, avec ce que chaque offre donne. Le prix arrive APRÈS l'envie.
+   */
+  const mur = sansCommentaires(lire('src/app/(dashboard)/analyze/MurAbonnement.tsx'));
+  assert.doesNotMatch(
+    mur,
+    /À partir de/,
+    'La mention de prix est revenue sous le bouton : elle fait renoncer avant la page des offres.'
+  );
+  assert.doesNotMatch(
+    mur,
+    /FCFA \/ mois/,
+    'Un montant mensuel s’affiche de nouveau sur le mur de paiement.'
+  );
+  assert.doesNotMatch(
+    mur,
+    /prixOffreComplete\.toLocaleString/,
+    'Le prix est de nouveau rendu par le mur.'
+  );
+  // Le bouton, lui, doit rester : c'est le seul chemin vers les offres.
+  assert.match(mur, /Débloquer l&apos;analyse complète/, 'Le bouton d’accès aux offres a disparu.');
+});
+
+// ── LES ÉCUSSONS PORTENT LA LIGNE, PAS LES NOMS ────────────────────────────
+
+test('★ ACQUIS — la sélection affiche les écussons, jamais les noms de clubs', () => {
+  /*
+   * Deux noms de clubs sur une même ligne cassent l'alignement dès que l'un
+   * fait vingt caractères et l'autre six. À l'écusson, chaque ligne fait la
+   * même largeur, l'œil descend la colonne sans accrocher, et six rencontres
+   * tiennent dans la place qu'en occupaient trois.
+   *
+   * Les noms restent dans `alt` et `title` : lus par les lecteurs d'écran,
+   * affichés au survol. Ils ne doivent simplement pas s'imprimer dans la
+   * ligne.
+   */
+  // On vise le nom RENDU COMME TEXTE — donc précédé d'un « > » de fin de
+  // balise. « alt={e.name} » et « title={e.name} » sont au contraire
+  // souhaités : ils portent le nom pour les lecteurs d'écran et le survol.
+  assert.doesNotMatch(
+    ecran,
+    />\s*\{\s*(m\.dom\.name|m\.ext\.name|e\.name)\s*\}/,
+    'Un nom de club est de nouveau imprimé dans la ligne : l’alignement des colonnes est perdu.'
+  );
+  assert.match(ecran, /alt=\{e\.name\}/, 'Les écussons ont perdu leur texte de remplacement.');
+  assert.match(
+    ecran,
+    /grid-cols-\[46px_84px_1fr\]/,
+    'La grille à colonnes fixes a sauté : le taux et les écussons ne tomberont plus au même endroit d’une ligne à l’autre.'
+  );
+});
+
+test('★ ACQUIS — le titre reste dans le vocabulaire de l’analyse', () => {
+  /*
+   * Il disait « les matchs les plus sûrs ». La formule se lit aussi comme
+   * celle d'une maison de jeu, et ce projet a perdu sa boutique en août 2026
+   * sur un contrôle « produits interdits : paris sportifs, jeux de hasard ».
+   * « Mieux cernés » dit la même chose dans le vocabulaire de l'analyse.
+   */
+  assert.match(ecran, /Les matchs les mieux cernés/, 'Le titre a changé.');
+  assert.doesNotMatch(ecran, /les plus sûrs/i, 'Le titre est revenu à une formule de maison de jeu.');
+  for (const mot of ['pari', 'parier', 'miser', 'cote', 'gain']) {
+    assert.doesNotMatch(
+      ecran,
+      new RegExp(`\b${mot}`, 'i'),
+      `Le mot « ${mot} » est apparu dans la section : c'est exactement ce qu'un contrôle cherche.`
+    );
+  }
+});

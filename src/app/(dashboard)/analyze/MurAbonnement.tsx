@@ -40,8 +40,9 @@ import { signalerEtape } from '@/components/etapes-vente';
  * maintenir d'accord entre eux.
  */
 export default function MurAbonnement({
-  prixOffreComplete,
-  quotaOffreComplete,
+  // Reçues et volontairement NON affichées — voir le bloc supprimé plus bas.
+  prixOffreComplete: _prixOffreComplete,
+  quotaOffreComplete: _quotaOffreComplete,
 }: {
   /** Prix de l'offre d'entrée, tel que réglé dans l'administration. */
   prixOffreComplete: number;
@@ -90,19 +91,25 @@ export default function MurAbonnement({
         🔒 Débloquer l&apos;analyse complète
       </Link>
 
-      {/* Le prix est annoncé ICI, sous le bouton, et pas dessus. Un bouton qui
-          porte un montant se lit comme un prélèvement immédiat ; celui-ci ne
-          fait qu'ouvrir la page des tarifs. */}
-      <p className="text-[11.5px] text-white/55 mt-3 text-center leading-relaxed">
-        À partir de{' '}
-        <strong className="text-white">
-          {prixOffreComplete.toLocaleString('fr-FR')} FCFA / mois
-        </strong>{' '}
-        —{' '}
-        {quotaOffreComplete === null
-          ? 'analyses illimitées'
-          : `${quotaOffreComplete} analyses complètes`}
-      </p>
+      {/* ── PLUS AUCUN MONTANT ICI ────────────────────────────────────────
+          Cette ligne annonçait « À partir de 2 000 FCFA / mois — 20 analyses
+          complètes », juste sous le bouton.
+
+          Décision du propriétaire, le 4 septembre 2026 : un prix lu à cet
+          instant précis fait renoncer avant même d'avoir regardé ce qu'on
+          achète. La personne vient de découvrir qu'une analyse existe, elle
+          n'a pas encore vu ce qu'elle contient — et on lui présente une
+          addition. Elle referme.
+
+          Le montant ne disparaît pas, il change de place : elle clique, elle
+          arrive sur la page des offres, et elle y voit les trois tarifs avec
+          ce que chacun donne. Le prix arrive alors APRÈS l'envie, et non
+          avant.
+
+          Les deux valeurs continuent d'être transmises par l'écran d'analyse :
+          elles ne servent plus à l'affichage, mais les retirer imposerait de
+          toucher à la chaîne de props pour un gain nul, et il faudrait tout
+          rebrancher le jour où l'on voudrait les remontrer. */}
     </div>
   );
 }
