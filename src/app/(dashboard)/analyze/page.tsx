@@ -4,6 +4,7 @@ import SectionPreuves from "@/components/preuves/SectionPreuves";
 import { lireOffre } from "@/lib/offres";
 import { UNLIMITED } from "@/lib/subscription";
 import { matchsDuJour } from "@/lib/grands-matchs-du-jour";
+import { lireSelectionDuJour } from "@/lib/selection-du-jour";
 
 /**
  * La page d'analyse.
@@ -53,6 +54,16 @@ export default async function AnalyzePage() {
   // fournisseur elle revient vide, et les deux sélecteurs restent entiers.
   const journee = await matchsDuJour();
 
+  // ── LES MATCHS OÙ L'APPLICATION EST LA MEILLEURE ──────────────────────
+  //
+  // Lue ici, sur le serveur, comme la liste du jour et pour la même raison :
+  // le quota du fournisseur est la ressource la plus rare du projet, et un
+  // appel par visiteur sur la page la plus consultée l'épuiserait.
+  //
+  // Elle vient d'une réserve d'une heure et ne fait jamais échouer la page :
+  // en cas de panne, elle revient vide et la section ne s'affiche pas.
+  const selection = await lireSelectionDuJour();
+
   return (
     <AnalyzeClient
       offreEntree={{
@@ -61,6 +72,7 @@ export default async function AnalyzePage() {
         analyses: essentiel.limiteAnalyses === UNLIMITED ? null : essentiel.limiteAnalyses,
       }}
       matchsDuJour={journee}
+      selectionSure={selection}
       preuves={
         <Suspense fallback={null}>
           <SectionPreuves />

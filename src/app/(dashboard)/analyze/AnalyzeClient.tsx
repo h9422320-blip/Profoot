@@ -13,6 +13,7 @@ import { fuseauDuNavigateur } from "@/lib/pays-acheteur";
 import { reserverOngletPaiement, partirPayer, libererOnglet } from "@/lib/depart-paiement";
 import { heureLocale, dateLongueLocale, jourEtMoisLocaux } from "@/lib/heure-locale";
 import type { MatchDuJour } from "@/lib/grands-matchs-du-jour";
+import type { MatchSelectionne } from "@/lib/selection-du-jour";
 
 /**
  * La notice est chargee A LA DEMANDE, comme sur le paywall et les tarifs.
@@ -31,6 +32,7 @@ const NoticePaiement = chargerADemande(() => import("@/components/NoticePaiement
  * résultat, et la page d'analyse est la plus visitée du site.
  */
 const MatchsDuJour = chargerADemande(() => import("./MatchsDuJour"), { ssr: false });
+const SelectionSure = chargerADemande(() => import("./SelectionSure"), { ssr: false });
 
 // Extract future matches for the "Prochains matchs" list
 const futureMatches = matches.filter(m => m.status === "upcoming");
@@ -559,6 +561,7 @@ export default function AnalyzePage({
   preuves,
   offreEntree,
   matchsDuJour,
+  selectionSure,
 }: {
   preuves?: React.ReactNode;
   offreEntree?: OffreEntree;
@@ -570,6 +573,7 @@ export default function AnalyzePage({
    * rare du projet, et la page d'analyse est la plus consultée du site.
    */
   matchsDuJour?: { matchs: MatchDuJour[]; aujourdhui: boolean };
+  selectionSure?: { matchs: MatchSelectionne[]; aujourdhui: boolean };
 }) {
   const offre = offreEntree ?? { libelle: "Essentiel", prixXof: 2000, analyses: 20 };
   const prixOffre = offre.prixXof.toLocaleString("fr-FR");
@@ -1257,6 +1261,24 @@ export default function AnalyzePage({
               qu'il n'y a pas de grand match. Une section qui disparaît en
               silence ne se distingue pas d'une fonctionnalité absente — on ne
               sait pas s'il n'y a rien à montrer, ou si quelque chose est cassé. */}
+          {/* ── LA SÉLECTION PASSE DEVANT LE CARROUSEL ──────────────────
+              Le carrousel propose les grands matchs ; celle-ci propose les
+              matchs OÙ L'ON EST BON, ce qui n'est pas la même chose et vaut
+              d'être vu en premier. Un abonné qui commence par là vit
+              l'application à 70-75 % de réussite au lieu de 56 %.
+
+              Elle disparaît pendant l'analyse, comme le carrousel : proposer
+              un autre match à quelqu'un qui attend le sien l'inviterait à
+              perdre celui-là. */}
+          {!analyzing && (
+            <SelectionSure
+              matchs={selectionSure?.matchs ?? []}
+              aujourdhui={selectionSure?.aujourdhui ?? true}
+              onChoisir={choisirMatchDuJour}
+              desactive={analyzing}
+            />
+          )}
+
           {!analyzing && (
             <div className="w-full mt-4">
               <MatchsDuJour
