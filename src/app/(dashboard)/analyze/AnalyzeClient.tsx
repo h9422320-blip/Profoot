@@ -2570,12 +2570,51 @@ export default function AnalyzePage({
                       <p className="text-[9px] text-white/40 uppercase tracking-widest font-black mt-0.5">Moteurs FBref & StatsBomb</p>
                     </div>
                   </div>
-                  <div className="space-y-8 mt-6 px-1">
-                    <ModernMetricBar label="Possession Moyenne" description="Pourcentage de contrôle du ballon estimé" val1={result.advancedMetrics.possession.team1} val2={result.advancedMetrics.possession.team2} suffix="%" />
-                    <ModernMetricBar label="Expected Goals (xG)" description="Buts Attendus : Qualité des occasions créées" val1={result.advancedMetrics.xG.team1} val2={result.advancedMetrics.xG.team2} />
-                    <ModernMetricBar label="Expected Threat (xT)" description="Menace Attendue : Danger généré par les passes" val1={result.advancedMetrics.xT.team1} val2={result.advancedMetrics.xT.team2} />
-                    <ModernMetricBar label="Pressing (PPDA)" description="Plus ce chiffre est BAS, plus l'équipe presse haut et fort" val1={result.advancedMetrics.ppda.team1} val2={result.advancedMetrics.ppda.team2} invertColors={true} />
-                  </div>
+                  {/* ── UNE VALEUR DE REPLI NE S'AFFICHE PAS COMME UNE MESURE ─
+                      Quand le fournisseur ne donne pas la possession, le serveur
+                      retombe sur « 50 ». Quand il ne donne pas le pressing, sur
+                      « 10 ». Ces valeurs partaient ensuite à l'écran sous le
+                      titre « Moteurs FBref & StatsBomb », comme si elles avaient
+                      été mesurées.
+
+                      Mesuré le 4 septembre 2026 sur les 4 423 analyses qui
+                      portent ce bloc : 2 594 affichaient « 50 % / 50 % », soit
+                      58,6 %. Inter Milan contre Real Madrid en faisait partie —
+                      juste sous un texte qui explique lequel des deux confisque
+                      le ballon. L'abonné lit alors deux choses contradictoires
+                      dans le même écran, et c'est le chiffre qui a l'air faux.
+
+                      On ne remplace rien et on n'invente rien : la ligne
+                      concernée disparaît, les lignes réellement mesurées
+                      restent. Un bloc entièrement en repli ne s'affiche plus. */}
+                  {(() => {
+                    const m = result.advancedMetrics;
+                    const nombre = (v: any) => (typeof v === 'number' ? v : Number(v));
+                    // Le repli du serveur, reconnaissable à sa valeur exacte des
+                    // deux côtés à la fois.
+                    const possessionMesuree = !(nombre(m.possession?.team1) === 50 && nombre(m.possession?.team2) === 50);
+                    const pressingMesure = !(nombre(m.ppda?.team1) === 10 && nombre(m.ppda?.team2) === 10);
+                    // En repli, la menace attendue recopie les buts attendus :
+                    // deux lignes identiques présentées comme deux mesures.
+                    const menaceMesuree =
+                      nombre(m.xT?.team1) !== nombre(m.xG?.team1) || nombre(m.xT?.team2) !== nombre(m.xG?.team2);
+                    const lignes = [possessionMesuree, true, menaceMesuree, pressingMesure].filter(Boolean).length;
+                    if (lignes <= 1) return null;
+                    return (
+                      <div className="space-y-8 mt-6 px-1">
+                        {possessionMesuree && (
+                          <ModernMetricBar label="Possession Moyenne" description="Pourcentage de contrôle du ballon estimé" val1={m.possession.team1} val2={m.possession.team2} suffix="%" />
+                        )}
+                        <ModernMetricBar label="Expected Goals (xG)" description="Buts Attendus : Qualité des occasions créées" val1={m.xG.team1} val2={m.xG.team2} />
+                        {menaceMesuree && (
+                          <ModernMetricBar label="Expected Threat (xT)" description="Menace Attendue : Danger généré par les passes" val1={m.xT.team1} val2={m.xT.team2} />
+                        )}
+                        {pressingMesure && (
+                          <ModernMetricBar label="Pressing (PPDA)" description="Plus ce chiffre est BAS, plus l'équipe presse haut et fort" val1={m.ppda.team1} val2={m.ppda.team2} invertColors={true} />
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
