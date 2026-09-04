@@ -1034,6 +1034,7 @@ export default function AnalyzePage({
                 ? `${data.predictedScore.team1Goals} - ${data.predictedScore.team2Goals}`
                 : null,
             confidence: data.confidence || (data.isFinished ? 100 : 85),
+            fiabilite: data.fiabilite ?? null,
             summary: data.quickSummary || data.summary || "Analyse tactique complète générée par l'IA ProFoot.",
             winProb: data.winProb,
             drawProb: data.drawProb,
@@ -2237,8 +2238,64 @@ export default function AnalyzePage({
                 </div>
               )}
 
-              {/* Confiance - EXACT VISIFOOT STYLE */}
-              {result.confidence && (
+              {/* ── LA FIABILITÉ MESURÉE, ET NON PLUS UNE NOTE INTERNE ──────
+                  Ce bloc affichait « Confiance de l'IA : Très élevée » sur 89 %
+                  des analyses — 2 555 sur 2 854 — pour 49,8 % de réussite
+                  réelle. Il ne mentait pas : il mesurait la SOLIDITÉ de
+                  l'analyse, la quantité de données disponibles. Mais aucun
+                  client ne fait cette distinction. Il lit « Très élevée », il
+                  comprend « ce pronostic est sûr », et une fois sur deux il se
+                  trompe. De là viennent les « profoot AI nous envoie en
+                  brousse » sous les publications, et ce message d'un abonné le
+                  4 septembre 2026 : « les deux jours là, ils ratent beaucoup ».
+
+                  Or le moteur SAIT se juger. Mesuré sur les rencontres déjà
+                  jouées : 33,6 % de réussite sur un match serré, 69,1 % sur un
+                  favori écrasant. Du simple au double — et cette information
+                  existait déjà, sans être dite à personne.
+
+                  On affiche donc un fait vérifiable : ce que l'application a
+                  réellement fait sur ce type de match, et sur combien de
+                  rencontres. La barre suit ce taux réel.
+
+                  Quand la matière manque, le serveur rend « null » et l'on
+                  retombe exactement sur l'affichage d'avant : on ne remplace
+                  jamais un chiffre honnête par un chiffre inventé. */}
+              {result.fiabilite ? (
+                <div className="bg-[#1d2f3a]/70 border border-white/10 rounded-[20px] p-4 space-y-2 mt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">🎯</span>
+                    <h5 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Fiabilité mesurée</h5>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="h-3 flex-1 bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-1000 ${
+                          result.fiabilite.taux >= 60
+                            ? 'bg-gradient-to-r from-[#10B981] to-[#2DD4BF]'
+                            : result.fiabilite.taux >= 45
+                              ? 'bg-gradient-to-r from-amber-500 to-amber-300'
+                              : 'bg-gradient-to-r from-orange-600 to-orange-400'
+                        }`}
+                        style={{ width: `${result.fiabilite.taux}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-black text-white shrink-0">
+                      {result.fiabilite.taux} %
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-white/60 font-semibold pt-1 leading-relaxed">
+                    {result.fiabilite.famille} : sur les {result.fiabilite.matchs.toLocaleString('fr-FR')} rencontres
+                    de ce type déjà jouées{result.fiabilite.ligue ? ` en ${result.fiabilite.ligue}` : ''},
+                    l&apos;IA a trouvé le bon résultat {result.fiabilite.taux} fois sur 100.
+                  </p>
+                  {result.fiabilite.taux < 45 && (
+                    <p className="text-[10.5px] text-orange-300/80 font-bold leading-relaxed">
+                      Match difficile à prévoir : les deux équipes se tiennent de trop près.
+                    </p>
+                  )}
+                </div>
+              ) : result.confidence ? (
                 <div className="bg-[#1d2f3a]/70 border border-white/10 rounded-[20px] p-4 space-y-2 mt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-lg">🎯</span>
@@ -2254,7 +2311,7 @@ export default function AnalyzePage({
                   </div>
                   <p className="text-[10px] text-white/40 font-semibold pt-1">Niveau de confiance basé sur la qualité des données disponibles.</p>
                 </div>
-              )}
+              ) : null}
 
               {/* PAYWALL WRAPPER BEGIN */}
               {/* Rien n'est coupé : TOUTE l'analyse premium reste dans le flux,

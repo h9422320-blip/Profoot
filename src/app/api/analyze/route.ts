@@ -9,6 +9,7 @@ import { consumeAnalysis, buildMatchKey, rembourserAnalyse, type QuotaState } fr
 import { toTeaser } from "@/lib/analysis-teaser";
 import { lireReserve, ecrireReserve } from "@/lib/api-football";
 import { lireCalibrages, facteursPour } from "@/lib/calibrage";
+import { lireReleve, fiabilitePour } from "@/lib/fiabilite-apprise";
 import { composerApercu as composerApercuVendeur } from "@/lib/apercu-vendeur";
 import { scenarioGabarit } from "@/lib/apercu-ia";
 import { clubs } from "@/lib/data";
@@ -1626,6 +1627,11 @@ async function analyser(req: Request, billet: BilletQuota) {
    * le texte et le score pourraient se contredire, et le 2-1 reviendrait par la
    * fenêtre. Sert aussi bien quand le modèle répond que quand il échoue.
    */
+  // Lu ICI, et non dans `imposerChiffresCalcules` : cette fonction n'est pas
+  // asynchrone, et le relevé se lit une seule fois par analyse — il est de
+  // toute façon servi depuis la réserve six heures durant.
+  const releveFiabilite = await lireReleve();
+
   const imposerChiffresCalcules = (donnees: any) => {
     const raison =
       typeof donnees?.predictedScore?.reasoning === 'string' && donnees.predictedScore.reasoning.trim()
@@ -1644,6 +1650,23 @@ async function analyser(req: Request, billet: BilletQuota) {
     donnees.confidence = scoreCalcule.donneesInsuffisantes
       ? scoreCalcule.confiance
       : bornerConfiance(scoreCalcule.confiance);
+
+    // ── CE QUE L'APPLICATION A RÉELLEMENT FAIT SUR CE TYPE DE MATCH ───────
+    //
+    // Pas une note interne : un fait vérifiable, mesuré sur les rencontres
+    // déjà jouées et confrontées à leur pronostic. Un match serré est juste
+    // dans 33,6 % des cas, un favori écrasant dans 69,1 % — et jusqu'ici les
+    // deux s'affichaient « Confiance : Très élevée ».
+    //
+    // Rend `null` quand la matière manque, et l'écran n'affiche alors rien de
+    // plus : on ne remplace pas un chiffre honnête par un chiffre inventé.
+    donnees.fiabilite = fiabilitePour(
+      releveFiabilite,
+      scoreCalcule.probaVictoire1,
+      scoreCalcule.probaNul,
+      scoreCalcule.probaVictoire2,
+      nomCompetition
+    );
 
     donnees.predictions = {
       ...(donnees.predictions ?? {}),
