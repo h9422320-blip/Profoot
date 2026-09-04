@@ -55,6 +55,19 @@ export default function HistoryPage() {
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
+  /**
+   * ── « PRO » N'EST PAS UN SYNONYME DE « A PAYÉ » ──────────────────────
+   *
+   * Le badge sous le nom se posait sur `isPro`, qui vaut vrai dès qu'un
+   * accès payant est ouvert — quel qu'il soit. Un abonné Essentiel à
+   * 2 000 FCFA se voyait donc annoncer « Pro », l'offre à 5 000 qui donne
+   * cinquante analyses : de quoi réclamer trente analyses qu'il n'a pas
+   * achetées. Et un VIP Annuel à 15 000, l'offre la plus chère, se voyait
+   * rétrograder au même « Pro » que les autres.
+   *
+   * Le serveur nomme déjà l'offre exacte dans `planLabel`. On l'affiche.
+   */
+  const [nomOffre, setNomOffre] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -72,6 +85,7 @@ export default function HistoryPage() {
         const res = await fetch('/api/payments/status');
         const data = await res.json();
         setIsPro(data.isPro);
+        setNomOffre(data.premium ? (data.planLabel ?? null) : null);
       } catch { /* ignore */ }
 
       // 3. Charger l'historique depuis Supabase (priorité) puis localStorage (fallback)
@@ -212,7 +226,11 @@ export default function HistoryPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-bold text-white capitalize truncate">{userProfile?.email?.split('@')[0].replace('.', ' ') || "Utilisateur"}</h2>
-                  {isPro && <span className="bg-orange-500/20 text-orange-400 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-orange-500/20 shrink-0">Pro</span>}
+                  {isPro && (
+                    <span className="bg-orange-500/20 text-orange-400 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-orange-500/20 shrink-0">
+                      {nomOffre ?? 'Membre'}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-white/50 truncate mt-0.5">{userProfile?.email}</p>
               </div>
@@ -244,7 +262,11 @@ export default function HistoryPage() {
              <Link href="/pricing" className="w-full flex items-center justify-between p-4 bg-orange-500/10 hover:bg-orange-500/20 rounded-[20px] transition-colors border border-orange-500/20 group">
                 <div className="flex items-center gap-3">
                   <CreditCard className="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-bold text-orange-400">Accès Pro</span>
+                  {/* Ce lien mène aux tarifs : il disait « Accès Pro », le nom
+                      d'une offre précise, ce qui laissait croire à un statut. */}
+                  <span className="text-sm font-bold text-orange-400">
+                    {isPro ? 'Mon accès' : 'Voir les offres'}
+                  </span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-orange-400/50" />
              </Link>
