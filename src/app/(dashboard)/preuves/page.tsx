@@ -187,7 +187,7 @@ export default async function PagePreuves() {
         <p className="text-[12.5px] text-white/50 leading-relaxed max-w-prose">
           Chaque analyse ci-dessous a été produite par ProFoot AI{" "}
           <span className="text-white/75 font-semibold">avant le coup d&apos;envoi</span>, puis
-          confronté au résultat réel de la rencontre.
+          confrontée au résultat réel de la rencontre.
         </p>
       </header>
 

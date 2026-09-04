@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  MessageCircle, Mail, ChevronDown, HelpCircle,
+  Mail, ChevronDown, HelpCircle,
   CreditCard, Lock, Zap, RefreshCw, Users, AlertTriangle, ExternalLink
 } from "lucide-react";
 
@@ -131,41 +131,39 @@ export default function SupportPage() {
           </p>
         </div>
 
-        {/* Contact Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
-          {/* Chat Card */}
-          <div className="bg-gradient-to-br from-[#10b981]/10 to-[#10b981]/5 border border-[#10b981]/30 rounded-2xl p-8 hover:border-[#10b981]/50 transition-all group cursor-pointer"
-            onClick={() => {
-              // @ts-ignore
-              if (window.Tawk_API) window.Tawk_API.toggle();
-              else window.open("mailto:contactprofootai@gmail.com", "_blank");
-            }}
-          >
-            <div className="w-12 h-12 rounded-xl bg-[#10b981]/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <MessageCircle className="w-6 h-6 text-[#10b981]" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">Chat en direct</h3>
-            <p className="text-white/60 text-sm mb-4 leading-relaxed">
-              Parle directement avec notre équipe support. Réponse rapide pendant les heures ouvrables.
-            </p>
-            <span className="inline-flex items-center gap-2 text-[#10b981] font-semibold text-sm">
-              Ouvrir le chat →
-            </span>
-          </div>
+        {/* ── LA CARTE « CHAT EN DIRECT » PROMETTAIT CE QUI N'EXISTE PAS ────
+            Elle annonçait « Parle directement avec notre équipe support.
+            Réponse rapide pendant les heures ouvrables », et son clic
+            appelait `window.Tawk_API.toggle()`.
 
-          {/* Email Card */}
+            Vérifié le 4 septembre 2026 : le composant « TawkToChat » existe
+            dans le dépôt mais n'est monté par AUCUNE page. `Tawk_API` est
+            donc toujours `undefined`, et le clic retombait sur un `mailto:`
+            — qui, sur un téléphone sans application de courrier configurée,
+            ne fait rigoureusement rien.
+
+            C'est au pire moment que cette carte était lue. Sur la boutique,
+            trois avis du 28 août disent « Je deja paye », « Ya quoi »,
+            « J'ai payé déjà ». Ces personnes cherchaient quelqu'un à qui
+            parler ; on leur montrait un chat qui n'a jamais existé.
+
+            On ne remplace pas une promesse creuse par une autre : il reste
+            le canal qui fonctionne réellement, et il le dit franchement. */}
+        <div className="grid grid-cols-1 gap-5 mb-16">
           <a
             href="mailto:contactprofootai@gmail.com"
-            className="bg-white/[0.03] border border-white/10 rounded-2xl p-8 hover:border-white/20 hover:bg-white/[0.05] transition-all group"
+            className="bg-gradient-to-br from-[#10b981]/10 to-[#10b981]/5 border border-[#10b981]/30 rounded-2xl p-8 hover:border-[#10b981]/50 transition-all group"
           >
-            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <Mail className="w-6 h-6 text-white/70" />
+            <div className="w-12 h-12 rounded-xl bg-[#10b981]/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <Mail className="w-6 h-6 text-[#10b981]" />
             </div>
-            <h3 className="text-xl font-bold mb-2">Envoyer un e-mail</h3>
+            <h3 className="text-xl font-bold mb-2">Écrire à l&apos;équipe</h3>
             <p className="text-white/60 text-sm mb-4 leading-relaxed">
-              Pour les questions complexes ou les problèmes de paiement. Réponse sous 24-48h.
+              Pour un accès qui ne s&apos;ouvre pas, un paiement ou toute autre
+              question. Précisez l&apos;adresse e-mail utilisée pour payer : c&apos;est
+              elle qui permet de retrouver votre achat. Réponse sous 24 à 48 h.
             </p>
-            <span className="inline-flex items-center gap-2 text-white/70 font-semibold text-sm group-hover:text-white transition-colors">
+            <span className="inline-flex items-center gap-2 text-[#10b981] font-semibold text-sm">
               contactprofootai@gmail.com <ExternalLink className="w-3 h-3" />
             </span>
           </a>
