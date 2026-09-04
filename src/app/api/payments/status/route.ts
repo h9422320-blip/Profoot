@@ -71,6 +71,46 @@ export async function GET(req: Request) {
           prixXof: reglee?.prixXof ?? PLANS[cleCourante].amountXof,
         };
       })(),
+      /**
+       * ── L'OFFRE AU-DESSUS, PARCE QU'ON NE LA LUI PROPOSAIT JAMAIS ───────
+       *
+       * Le 4 septembre 2026, un client raconte son parcours : il avait pris
+       * l'Essentiel, l'avait rechargé une fois — donc quarante analyses dans
+       * le mois — et les avait toutes consommées. Son reproche n'était pas
+       * seulement d'être bloqué :
+       *
+       *     « le comble, c'est qu'ils ne m'ont pas proposé le quinze mille ni
+       *       les autres. Ils m'ont dit que je suis oblige d'attendre jusqu'au
+       *       vingt-quatre septembre. »
+       *
+       * Quelqu'un qui consomme quarante analyses par mois n'a plus rien à
+       * faire à 2 000 FCFA : le Pro lui en donne cinquante, le VIP annuel les
+       * lui donne toutes. L'écran ne lui tendait qu'un bouton — le sien — et
+       * un lien gris en bas de carte pour le reste.
+       *
+       * Le rang juste au-dessus, et lui seul : proposer trois offres à
+       * quelqu'un qui vient de heurter sa limite le renverrait à la
+       * comparaison qu'il a déjà faite en s'abonnant.
+       */
+      offreSuperieure: (() => {
+        const SUITE: Partial<Record<string, keyof typeof PLANS>> = {
+          ESSENTIAL: 'pro_monthly',
+          PRO: 'vip_yearly',
+        };
+        const suivante = SUITE[entitlements.plan];
+        if (!suivante || !entitlements.premium) return null;
+        const reglee = offres?.[suivante];
+        const analyses = reglee?.limiteAnalyses ?? PLANS[suivante].analysisLimit;
+        return {
+          cle: suivante,
+          libelle: PLANS[suivante].label,
+          prixXof: reglee?.prixXof ?? PLANS[suivante].amountXof,
+          // `null` = illimité. Le navigateur ne reçoit jamais `Infinity` :
+          // JSON le transforme en `null` de toute façon, autant que ce soit
+          // explicite et lisible à la lecture.
+          analyses: analyses === UNLIMITED ? null : analyses,
+        };
+      })(),
       planLabel:
         entitlements.plan === 'FREE'
           ? 'Gratuit'

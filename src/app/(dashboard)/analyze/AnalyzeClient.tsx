@@ -689,8 +689,27 @@ export default function AnalyzePage({
    * inchangee — son compteur ne repartirait pas et son argent serait perdu.
    */
   const [offreActuelle, setOffreActuelle] = useState<{ cle: string; libelle: string; prixXof: number } | null>(null);
-  /** Vrai quand la notice de rechargement est ouverte. */
-  const [noticeRecharge, setNoticeRecharge] = useState(false);
+  /**
+   * ── ET CELLE DU RANG AU-DESSUS ────────────────────────────────────────
+   *
+   * « Le comble, c'est qu'ils ne m'ont pas proposé le quinze mille » — un
+   * client, le 4 septembre 2026, après avoir consommé quarante analyses dans
+   * le mois. Recharger l'Essentiel une troisième fois n'était pas ce qu'il
+   * lui fallait, et c'était pourtant le seul bouton de l'écran.
+   *
+   * `analyses` vaut `null` quand l'offre est illimitée.
+   */
+  const [offreSuperieure, setOffreSuperieure] = useState<
+    { cle: string; libelle: string; prixXof: number; analyses: number | null } | null
+  >(null);
+  /**
+   * L'offre que la notice de paiement est en train de proposer — la sienne ou
+   * celle du dessus. Ce fut longtemps un simple booléen : il ne pouvait alors
+   * en désigner qu'une, et c'était toujours la même.
+   */
+  const [noticeRecharge, setNoticeRecharge] = useState<
+    { cle: string; libelle: string; prixXof: number } | null
+  >(null);
   const [rechargeEnCours, setRechargeEnCours] = useState(false);
 
   /**
@@ -709,7 +728,7 @@ export default function AnalyzePage({
    * visitee du site — couterait un appel pour la quasi-totalite des visiteurs
    * qui ne rechargeront jamais.
    */
-  const paysRecharge = usePaysAcheteur(noticeRecharge);
+  const paysRecharge = usePaysAcheteur(noticeRecharge !== null);
   // Consommation d'analyses telle que renvoyée par le serveur.
   const [quota, setQuota] = useState<{
     used: number; limit: number | null; remaining: number | null;
@@ -801,6 +820,7 @@ export default function AnalyzePage({
         setIsPremium(!!data.premium);
         if (data.analyses) setQuota(data.analyses);
         setOffreActuelle(data.offreActuelle ?? null);
+        setOffreSuperieure(data.offreSuperieure ?? null);
       } catch {
         setIsPremium(false);
       }
@@ -823,8 +843,11 @@ export default function AnalyzePage({
    * les mêmes étapes de mesure que sur le paywall et la page des tarifs.
    */
   const rechargerAcces = async (paysChoisi: string | null) => {
+    // L'offre vient de la notice ouverte, et non plus de `offreActuelle` :
+    // c'est ce qui permet de vendre le rang au-dessus depuis le même écran.
+    const offreActuelle = noticeRecharge;
     if (!offreActuelle) return;
-    setNoticeRecharge(false);
+    setNoticeRecharge(null);
     setRechargeEnCours(true);
     // Réservé dans la foulée du clic : un onglet ouvert après l'appel réseau
     // serait bloqué par le navigateur.
@@ -1344,14 +1367,14 @@ export default function AnalyzePage({
               mesure. Elle n'existe que pendant le clic — sa table des 243 pays
               pèse quarante-huit kilo-octets, et la page d'analyse est la plus
               visitée du site. */}
-          {noticeRecharge && offreActuelle && (
+          {noticeRecharge && (
             <NoticePaiement
               paysDetecte={paysRecharge}
-              libelleOffre={`${offreActuelle.libelle} — ${offreActuelle.prixXof.toLocaleString('fr-FR')} FCFA`}
-              cleOffre={offreActuelle.cle}
-              montantXof={offreActuelle.prixXof}
+              libelleOffre={`${noticeRecharge.libelle} — ${noticeRecharge.prixXof.toLocaleString('fr-FR')} FCFA`}
+              cleOffre={noticeRecharge.cle}
+              montantXof={noticeRecharge.prixXof}
               onContinuer={(paysRetenu) => rechargerAcces(paysRetenu)}
-              onFermer={() => setNoticeRecharge(false)}
+              onFermer={() => setNoticeRecharge(null)}
             />
           )}
 
@@ -1423,7 +1446,7 @@ export default function AnalyzePage({
                 type="button"
                 onClick={() => {
                   signalerEtape('offre-cliquee', offreActuelle.cle);
-                  setNoticeRecharge(true);
+                  setNoticeRecharge(offreActuelle);
                 }}
                 disabled={rechargeEnCours}
                 className="mt-2.5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-warning px-5 text-[11.5px] font-black uppercase tracking-widest text-black transition-all active:scale-95 disabled:cursor-wait disabled:opacity-60"
@@ -1490,7 +1513,7 @@ export default function AnalyzePage({
                     type="button"
                     onClick={() => {
                       signalerEtape('offre-cliquee', offreActuelle.cle);
-                      setNoticeRecharge(true);
+                      setNoticeRecharge(offreActuelle);
                     }}
                     disabled={rechargeEnCours}
                     className="mt-3 w-full max-w-[300px] bg-warning hover:bg-warning/90 active:scale-95 text-black font-bold py-3.5 px-6 rounded-full transition-all flex items-center justify-center gap-2 text-[12px] uppercase tracking-widest disabled:opacity-60 disabled:cursor-wait min-h-[52px]"
@@ -1511,6 +1534,49 @@ export default function AnalyzePage({
                   <p className="text-[10.5px] text-white/35 mt-1 leading-relaxed">
                     Vos {quota?.limit ?? ''} analyses repartent immédiatement.
                   </p>
+
+                  {/* ── L'OFFRE AU-DESSUS, PROPOSÉE ET NON PLUS SOUS-ENTENDUE ─
+                      Cet écran ne tendait qu'un bouton : recharger la même
+                      offre. Le reste tenait dans un lien gris souligné, en bas
+                      de carte, que personne ne lit après avoir heurté sa
+                      limite.
+
+                      Un client l'a dit le 4 septembre 2026 : « le comble,
+                      c'est qu'ils ne m'ont pas proposé le quinze mille ». Il
+                      avait déjà rechargé une fois — quarante analyses dans le
+                      mois — et l'application lui reproposait 2 000 FCFA.
+
+                      Celui qui vide son compteur est précisément celui à qui
+                      l'offre supérieure sert. Elle a donc son propre bouton,
+                      avec ce qu'elle donne écrit dessus. */}
+                  {offreSuperieure && (
+                    <div className="w-full max-w-[300px] mt-1">
+                      <div className="flex items-center gap-2.5 my-1">
+                        <div className="h-px flex-1 bg-white/10" />
+                        <span className="text-[9.5px] font-black uppercase tracking-[0.15em] text-white/25">
+                          ou
+                        </span>
+                        <div className="h-px flex-1 bg-white/10" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          signalerEtape('offre-cliquee', offreSuperieure.cle);
+                          setNoticeRecharge(offreSuperieure);
+                        }}
+                        disabled={rechargeEnCours}
+                        className="w-full inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-5 text-[11.5px] font-black uppercase tracking-widest text-primary transition-all active:scale-95 hover:bg-primary/20 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        Passer au {offreSuperieure.libelle} — {offreSuperieure.prixXof.toLocaleString('fr-FR')} FCFA
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                      <p className="text-[10.5px] text-white/35 mt-1.5 leading-relaxed">
+                        {offreSuperieure.analyses === null
+                          ? 'Analyses illimitées pendant un an.'
+                          : `${offreSuperieure.analyses} analyses par mois, au lieu de ${quota?.limit ?? ''}.`}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Celui qui veut comparer garde son chemin, en second. */}
                   <Link

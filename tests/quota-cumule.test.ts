@@ -163,3 +163,73 @@ test('★ ACQUIS — le client à sec n’est plus renvoyé à la fin du mois', 
     'La date de remise à zéro repasse avant le rechargement : elle se lit comme une attente obligatoire.'
   );
 });
+
+// ── ET L'OFFRE AU-DESSUS, QU'ON NE LUI PROPOSAIT JAMAIS ───────────────────
+//
+// Le même client, le même jour : « le comble, c'est qu'ils ne m'ont pas
+// proposé le quinze mille ni les autres ». Il avait pris l'Essentiel, l'avait
+// rechargé une fois — quarante analyses dans le mois — et les avait toutes
+// consommées. L'écran de limite atteinte ne lui tendait qu'un bouton, le
+// sien, à 2 000 FCFA ; le reste tenait dans un lien gris souligné.
+//
+// Celui qui vide son compteur est justement celui à qui l'offre supérieure
+// sert. Elle doit donc être PROPOSÉE, pas sous-entendue.
+
+test('★ ACQUIS — le serveur nomme l’offre du rang au-dessus', () => {
+  const s = sansCommentaires(lire('src/app/api/payments/status/route.ts'));
+  assert.match(s, /offreSuperieure:/, 'L’offre supérieure n’est plus transmise au navigateur.');
+  assert.match(
+    s,
+    /ESSENTIAL: 'pro_monthly'/,
+    'Un abonné Essentiel ne se voit plus proposer le Pro.'
+  );
+  assert.match(
+    s,
+    /PRO: 'vip_yearly'/,
+    'Un abonné Pro ne se voit plus proposer le VIP annuel.'
+  );
+  // Un VIP n'a rien au-dessus : la table s'arrête là, et `null` est rendu.
+  assert.doesNotMatch(s, /VIP: '/, 'Une offre a été inventée au-dessus du VIP annuel.');
+});
+
+test('★ ACQUIS — l’écran de limite atteinte propose la montée en gamme', () => {
+  const s = sansCommentaires(lire('src/app/(dashboard)/analyze/AnalyzeClient.tsx'));
+
+  assert.match(
+    s,
+    /setOffreSuperieure\(data\.offreSuperieure \?\? null\);/,
+    'L’écran ne lit plus l’offre supérieure envoyée par le serveur.'
+  );
+  assert.match(
+    s,
+    /Passer au \{offreSuperieure\.libelle\}/,
+    'Le bouton de montée en gamme a disparu de la carte « limite atteinte ».'
+  );
+  assert.match(
+    s,
+    /setNoticeRecharge\(offreSuperieure\);/,
+    'Le bouton de montée en gamme n’ouvre plus le paiement de CETTE offre.'
+  );
+});
+
+test('★ ACQUIS — la notice de paiement porte l’offre réellement choisie', () => {
+  // Elle a longtemps été commandée par un booléen : elle ne pouvait alors
+  // désigner qu'une seule offre, toujours la même. Deux boutons partagent
+  // désormais ce chemin, et c'est le second qui ne doit pas vendre le premier.
+  const s = sansCommentaires(lire('src/app/(dashboard)/analyze/AnalyzeClient.tsx'));
+  assert.doesNotMatch(
+    s,
+    /setNoticeRecharge\(true\)/,
+    'La notice est redevenue un booléen : les deux boutons vendraient la même offre.'
+  );
+  assert.match(
+    s,
+    /cleOffre=\{noticeRecharge\.cle\}/,
+    'La notice ne transmet plus l’offre qui a été cliquée.'
+  );
+  assert.match(
+    s,
+    /const offreActuelle = noticeRecharge;/,
+    'Le paiement est repassé sur l’offre en cours au lieu de celle qui a été choisie.'
+  );
+});

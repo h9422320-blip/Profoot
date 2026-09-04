@@ -49,7 +49,15 @@ test('★ ACQUIS — le rappel emprunte le MÊME chemin d’achat que la carte d
   assert.ok(debut > 0, 'Le bloc de rappel est introuvable.');
   const bloc = s.slice(debut, debut + 1800);
   assert.match(bloc, /signalerEtape\('offre-cliquee', offreActuelle\.cle\)/, 'L’étape de mesure a sauté.');
-  assert.match(bloc, /setNoticeRecharge\(true\)/, 'Le rappel n’ouvre plus la notice de paiement.');
+  // La notice a cessé d'être un booléen le 4 septembre 2026 : elle porte
+  // désormais l'offre cliquée, parce que la carte de limite atteinte vend
+  // aussi le rang au-dessus. Le rappel, lui, propose toujours SON offre —
+  // c'est « offreActuelle » qui le garantit ici.
+  assert.match(
+    bloc,
+    /setNoticeRecharge\(offreActuelle\)/,
+    'Le rappel n’ouvre plus la notice de paiement sur l’offre en cours.'
+  );
   assert.match(bloc, /offreActuelle\.prixXof/, 'Le rappel n’affiche plus le prix de SON offre.');
   assert.doesNotMatch(bloc, /fetch\(/, 'Le rappel parle au serveur de son côté : ce n’est plus le même chemin.');
   assert.match(bloc, /min-h-\[44px\]/, 'Le bouton passe sous la taille d’une zone de tap confortable.');
