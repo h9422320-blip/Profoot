@@ -364,8 +364,27 @@ export async function jugerRencontresTerminees(
   // lignes sans le dire. Les pronostics les plus anciens n'étaient donc jamais
   // confrontés à leur résultat, et la boucle apprenait d'une fenêtre glissante
   // qu'elle croyait complète.
+  // ── LES PLUS ANCIENNES D'ABORD, ET C'EST TOUT LE SUJET ──────────────────
+  //
+  // Ce tri était DESCENDANT. La boucle commençait donc par les pronostics
+  // qu'on vient d'écrire — ceux des matchs de ce soir et de demain, qui ne
+  // sont pas joués. Le fournisseur répondait « NS », rien n'était retenu, et
+  // le plafond de `appelsMax` était atteint avant d'avoir approché un seul
+  // match terminé.
+  //
+  // Mesuré le 4 septembre 2026 : « 40 rencontres examinées, 0 jugée ». Et pas
+  // seulement ce jour-là — le DERNIER jugement écrit datait du 21 août, celui
+  // de l'amorçage. Depuis, la file s'était remplie par le haut et la boucle
+  // butait dessus, quinze jours durant, sans qu'aucune erreur ne soit levée :
+  // « 0 jugée » n'est pas une panne, c'est une phrase.
+  //
+  // Pendant ce temps, 1 028 rencontres attendaient d'être apprises.
+  //
+  // En remontant du plus ancien, on tombe sur des matchs joués depuis
+  // longtemps, dont le résultat est acquis. Ce qui n'est pas encore terminé
+  // reste dans la file et sera repris au passage suivant.
   const predictions = await lireTout((de, a) =>
-    sb.from('predictions_match').select('*').order('calculee_le', { ascending: false }).range(de, a),
+    sb.from('predictions_match').select('*').order('calculee_le', { ascending: true }).range(de, a),
     6000
   );
 
@@ -379,8 +398,24 @@ export async function jugerRencontresTerminees(
   );
   const dejaJuges = new Set(connus.map((j) => Number(j.fixture_id)));
 
+  // ── ON NE DEMANDE PAS UN RÉSULTAT QUI N'EXISTE PAS ENCORE ───────────────
+  //
+  // Une analyse écrite il y a moins de deux jours porte presque toujours sur
+  // un match à venir. L'interroger ne peut rien rendre d'autre que « NS », et
+  // chaque lot coûte une requête sur le quota du fournisseur — le bien le plus
+  // rare du projet. Ces pronostics ne sont pas perdus : ils remontent d'
+  // eux-mêmes dans la file en vieillissant.
+  const DELAI_DE_GRACE_MS = 48 * 60 * 60 * 1000;
+  const limite = Date.now() - DELAI_DE_GRACE_MS;
+
   const aExaminer = predictions
     .filter((p: any) => p.fixture_id && !dejaJuges.has(Number(p.fixture_id)))
+    .filter((p: any) => {
+      const quand = Date.parse(p.calculee_le);
+      // Une date illisible ne doit pas écarter la ligne : mieux vaut une
+      // requête de trop qu'un pronostic jamais confronté à son résultat.
+      return !Number.isFinite(quand) || quand <= limite;
+    })
     .slice(0, appelsMax * 20);
 
   if (!aExaminer.length) return { examinees: 0, jugees: 0, deja: dejaJuges.size };
