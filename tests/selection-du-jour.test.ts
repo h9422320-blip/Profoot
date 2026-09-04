@@ -189,7 +189,7 @@ test('★ ACQUIS — la sélection affiche les écussons, jamais les noms de clu
   assert.match(ecran, /alt=\{e\.name\}/, 'Les écussons ont perdu leur texte de remplacement.');
   assert.match(
     ecran,
-    /grid-cols-\[46px_84px_1fr\]/,
+    /grid-cols-\[42px_76px_1fr\]/,
     'La grille à colonnes fixes a sauté : le taux et les écussons ne tomberont plus au même endroit d’une ligne à l’autre.'
   );
 });

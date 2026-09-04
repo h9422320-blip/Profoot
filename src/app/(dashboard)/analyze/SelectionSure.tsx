@@ -118,7 +118,7 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
                   ext: m.ext,
                 })
               }
-              className={`group grid w-full grid-cols-[46px_84px_1fr] items-center gap-3 rounded-[14px] border border-white/[0.07] ${ton.fond} px-3 py-2.5 text-left transition-all hover:border-white/20 hover:bg-white/[0.04] active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-50`}
+              className={`group grid w-full grid-cols-[42px_76px_1fr] items-center gap-2.5 rounded-[14px] border border-white/[0.07] ${ton.fond} px-2.5 py-2.5 text-left transition-all hover:border-white/20 hover:bg-white/[0.04] active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-50`}
             >
               {/* Le taux, première colonne : c'est la raison d'être de la ligne. */}
               <div className="flex items-baseline justify-start gap-[1px]">
@@ -129,11 +129,11 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
               </div>
 
               {/* Les deux écussons, deuxième colonne, largeur fixe. */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {[m.dom, m.ext].map((e, i) => (
                   <div
                     key={i}
-                    className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-white/[0.06] ring-1 ${ton.anneau} transition-transform group-hover:scale-105`}
+                    className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-white ring-1 ${ton.anneau} transition-transform group-hover:scale-105`}
                   >
                     {e.logo ? (
                       <img
@@ -146,7 +146,7 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
                     ) : (
                       // Un écusson manquant ne doit pas laisser un trou : les
                       // deux premières lettres suffisent à tenir la ligne.
-                      <span className="text-[11px] font-black text-white/70">
+                      <span className="text-[11px] font-black text-[#101c24]">
                         {e.name.slice(0, 2).toUpperCase()}
                       </span>
                     )}
@@ -156,17 +156,18 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
 
               {/* Le contexte, troisième colonne : elle seule s'étire. */}
               <div className="min-w-0">
-                <p className="truncate text-[12px] font-bold leading-tight text-white/90">
+                {/* Le championnat SEUL sur la première ligne : accolé à
+                    l'heure, il se faisait couper au tiers sur un téléphone de
+                    375 pixels — « Primeira Liga · … ». */}
+                <p className="truncate text-[12.5px] font-bold leading-tight text-white/90">
                   {m.championnat}
-                  {m.kickoffISO ? (
-                    <span className="font-semibold text-white/45"> · {heureLocale(m.kickoffISO)}</span>
-                  ) : null}
                 </p>
-                {/* Le nombre de rencontres est ce qui rend le taux crédible :
-                    sans lui, « 77 % » n'est qu'une affirmation de plus. */}
-                <p className="truncate text-[10px] leading-tight text-white/35 mt-[3px]">
-                  {m.mesureeSur.toLocaleString('fr-FR')} rencontres analysées
-                  {m.ligueMesuree ? ` en ${m.ligueMesuree}` : ''}
+                {/* L'heure rejoint le nombre de rencontres, qui est ce qui rend
+                    le taux crédible : sans lui, « 77 % » n'est qu'une
+                    affirmation de plus. Le championnat n'y est pas répété. */}
+                <p className="truncate text-[10.5px] leading-tight text-white/40 mt-[3px]">
+                  {m.kickoffISO ? `${heureLocale(m.kickoffISO)} · ` : ''}
+                  {m.mesureeSur.toLocaleString('fr-FR')} rencontres mesurées
                 </p>
               </div>
             </button>
