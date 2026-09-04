@@ -92,3 +92,34 @@ test('★ ACQUIS — le seuil de matière protège toujours l’apprentissage', 
   assert.match(calibrage, /const FACTEUR_MIN = 0\.8/, 'La borne basse des facteurs a sauté.');
   assert.match(calibrage, /const FACTEUR_MAX = 1\.25/, 'La borne haute des facteurs a sauté.');
 });
+
+// ── LA MATIÈRE QUI NE SE RATTRAPE PAS ──────────────────────────────────────
+
+test('★ ACQUIS — les cotes du marché se relèvent dans l’entretien porté par les visites', () => {
+  /*
+   * Les cotes des bookmakers sont le meilleur prédicteur public du football,
+   * et le fournisseur NE LES CONSERVE PAS : vérifié le 24 août 2026, les cotes
+   * du 23 rendaient dix matchs, celles du 16 plus rien. Une journée non
+   * relevée est perdue pour toujours.
+   *
+   * Le relevé n'était appelé que par la tâche planifiée, qui ne part pas sur
+   * cet hébergement. Constaté le 4 septembre 2026 : les 797 rencontres en
+   * réserve portaient TOUTES la date d'écriture du 28 août. Huit jours de
+   * mesure perdus, et le seuil de mille rencontres — celui que le propriétaire
+   * a fixé pour trancher entre le moteur et le marché — hors d'atteinte.
+   *
+   * Il doit donc vivre dans l'entretien déclenché par les visites, le seul qui
+   * s'exécute réellement tous les jours.
+   */
+  const entretien = sansCommentaires(lire('src/lib/entretien-quotidien.ts'));
+  assert.match(
+    entretien,
+    /'Relever les cotes du marché'/,
+    'Le relevé des cotes est sorti de l’entretien quotidien : chaque jour sans lui est perdu définitivement.'
+  );
+  assert.match(
+    entretien,
+    /const \{ releverCotes \} = await import\('\.\/cotes-marche'\)/,
+    'L’étape n’appelle plus le relevé.'
+  );
+});

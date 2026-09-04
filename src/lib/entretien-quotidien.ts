@@ -182,6 +182,36 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
     etapes
   );
 
+  // ── LE RELEVÉ DES COTES S'ÉTAIT ARRÊTÉ LE 28 AOÛT ───────────────────────
+  //
+  // Les cotes des bookmakers sont le meilleur prédicteur public du football :
+  // elles agrègent l'argent de milliers de parieurs et le travail de maisons
+  // qui en vivent. Elles sont la seule matière capable de dire, sans
+  // discussion, où notre moteur est en avance et où il se trompe.
+  //
+  // Et le fournisseur NE LES GARDE PAS : vérifié le 24 août 2026, les cotes
+  // du 23 rendaient dix matchs, celles du 16 plus rien. Chaque journée non
+  // relevée est donc perdue pour toujours — on ne pourra jamais revenir la
+  // chercher.
+  //
+  // Or ce relevé n'était appelé que par la tâche planifiée, qui ne part pas
+  // sur cet hébergement. Constaté le 4 septembre 2026 : les 797 rencontres
+  // en réserve portaient TOUTES la date d'écriture du 28 août. Huit jours
+  // perdus, et le seuil de mille rencontres — celui que le propriétaire a fixé
+  // pour trancher entre le moteur et le marché — restait hors d'atteinte.
+  //
+  // Il vit désormais ici, dans l'entretien porté par les visites, qui lui
+  // s'exécute réellement tous les jours.
+  await etape(
+    'Relever les cotes du marché',
+    async () => {
+      const { releverCotes } = await import('./cotes-marche');
+      const r = await releverCotes();
+      return `${r.matchs} rencontre(s) cotée(s) sur ${r.jours} journée(s), ${r.ligues} championnat(s)`;
+    },
+    etapes
+  );
+
   await etape(
     'Reconstruire le mur de preuves',
     async () => {
