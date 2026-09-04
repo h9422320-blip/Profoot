@@ -1456,12 +1456,21 @@ export default function AnalyzePage({
                 <h4 className="text-[13px] font-black text-white tracking-[0.1em] uppercase">
                   Limite mensuelle atteinte
                 </h4>
+                {/* ── NE PLUS LAISSER CROIRE QU'IL FAUT ATTENDRE ───────────
+                    Ce texte annonçait la date de remise à zéro AVANT de parler
+                    de rechargement. Un client l'a lu le 4 septembre 2026 et en
+                    a conclu, en écrivant à son parrain, qu'il devait « attendre
+                    jusqu'au 24 » — trois semaines sans rien acheter, alors que
+                    le bouton juste en dessous lui rendait ses analyses dans la
+                    minute.
+                    L'ordre est inversé : ce qu'il peut faire maintenant vient
+                    en premier, la date automatique n'est plus qu'un repli. */}
                 <p className="text-xs text-white/50 font-medium leading-relaxed max-w-[300px] mx-auto">
-                  Vous avez utilisé vos {quota?.limit ?? ''} analyses de ce mois.
+                  Vous avez utilisé vos {quota?.limit ?? ''} analyses.
+                  {' '}Rechargez votre accès : les analyses sont ajoutées immédiatement.
                   {quota?.periodEnd
-                    ? ` Votre compteur repart le ${new Date(quota.periodEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}.`
+                    ? ` Sinon, votre compteur repart seul le ${new Date(quota.periodEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}.`
                     : ''}
-                  {' '}Passez au VIP Annuel pour des analyses illimitées.
                 </p>
               </div>
 

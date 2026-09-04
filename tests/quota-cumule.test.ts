@@ -103,3 +103,63 @@ test('★ ACQUIS — la période de quota se calcule toujours par cycles', () =>
   const debut = currentPeriodStart(depuis, 30, new Date('2026-08-05T00:00:00.000Z'));
   assert.equal(debut.toISOString(), '2026-07-31T00:00:00.000Z');
 });
+
+// ── LA MOITIÉ QUI MANQUAIT : LE BOUTON ────────────────────────────────────
+//
+// Le serveur savait cumuler depuis le 29 août 2026. La page des tarifs, elle,
+// n'a jamais laissé personne recharger : `RANK[plan] >= RANK[tier]` grisait
+// l'offre en cours sous l'étiquette « Accès Actif ».
+//
+// Le 4 septembre 2026, un client l'écrit à l'influenceur qui l'avait amené :
+// « j'essaye de faire un abonnement de 2000 je n'arrive plus, il faut que
+// j'attende jusqu'au 24 ». Vingt jours d'attente imposés à quelqu'un qui
+// voulait payer le jour même — la règle du propriétaire, « même le même jour,
+// même cinquante fois », était appliquée par le serveur et refusée par
+// l'interface.
+//
+// Ces deux tests tiennent la porte ouverte.
+
+const TARIFS = 'src/app/(dashboard)/pricing/PricingClient.tsx';
+
+test('★ ACQUIS — l’offre en cours reste RACHETABLE sur la page des tarifs', () => {
+  const s = sansCommentaires(lire(TARIFS));
+
+  assert.match(
+    s,
+    /const couvertPar = \(tier: PlanTier\) => RANK\[plan\] > RANK\[tier\];/,
+    'La comparaison est redevenue « >= » : un abonné ne peut plus recharger son propre accès.'
+  );
+  assert.doesNotMatch(
+    s,
+    /RANK\[plan\] >= RANK\[tier\]/,
+    'Le verrou du 4 septembre 2026 est revenu.'
+  );
+
+  // Le bouton ne doit être éteint que par « couvert » (offre inférieure) ou
+  // « dejaVip » (illimité, rien à recharger). Jamais par l'égalité de niveau.
+  assert.match(
+    s,
+    /disabled=\{loadingPlan !== null \|\| checkingStatus \|\| couvert \|\| dejaVip\}/,
+    'La condition d’extinction du bouton a changé — vérifier qu’elle n’enferme pas de nouveau l’offre en cours.'
+  );
+  assert.match(
+    s,
+    /const renouvellement = plan === offre\.tier && plan !== 'FREE';/,
+    'Le cas du rachat de sa propre offre n’est plus distingué.'
+  );
+});
+
+test('★ ACQUIS — le client à sec n’est plus renvoyé à la fin du mois', () => {
+  // La date de remise à zéro venait AVANT la possibilité de recharger. C'est
+  // cette phrase-là, lue seule, qui a produit « il faut que j'attende ».
+  const s = sansCommentaires(lire('src/app/(dashboard)/analyze/AnalyzeClient.tsx'));
+  const bloc = s.slice(s.indexOf('Vous avez utilisé vos'));
+  const posRecharge = bloc.indexOf('Rechargez votre accès');
+  const posDate = bloc.indexOf('votre compteur repart');
+
+  assert.ok(posRecharge > 0, 'Le message ne propose plus de recharger.');
+  assert.ok(
+    posDate < 0 || posRecharge < posDate,
+    'La date de remise à zéro repasse avant le rechargement : elle se lit comme une attente obligatoire.'
+  );
+});

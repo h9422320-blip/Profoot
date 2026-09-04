@@ -344,10 +344,41 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
     }
   };
 
-  // Hiérarchie des offres : on ne propose pas d'acheter une offre déjà couverte
-  // par l offre en cours.
+  /**
+   * ── UN ABONNÉ NE POUVAIT PLUS RACHETER SON PROPRE ABONNEMENT ────────────
+   *
+   * Le 4 septembre 2026, un client écrit à l'influenceur qui l'avait amené :
+   *
+   *     « j'essaye de faire un abonnement de 2000 je n'arrive plus, il faut
+   *       que j'attende jusqu'au 24 »
+   *
+   * Il avait épuisé ses vingt analyses. Il en voulait vingt de plus, tout de
+   * suite. L'application lui répondait « Accès Actif », bouton grisé, et le
+   * renvoyait à la fin de sa période — vingt jours d'attente imposés à
+   * quelqu'un qui voulait payer le jour même.
+   *
+   * La comparaison était `>=` : l'offre en cours se couvrait elle-même.
+   *
+   * ── POURQUOI LE RACHAT EST SANS DANGER ─────────────────────────────────
+   *
+   * Rien d'autre n'était cassé. Le serveur sait déjà additionner deux achats
+   * du même niveau : `computeEntitlements` cumule le quota de TOUS les
+   * abonnements actifs (20 + 20 = 40), chaque vente porte sa propre référence
+   * et crée donc sa propre ligne, et l'échéance retenue est la plus lointaine.
+   * Le seul verrou était ce bouton.
+   *
+   * ── CE QUI RESTE INTERDIT, ET DOIT LE RESTER ───────────────────────────
+   *
+   * Acheter une offre INFÉRIEURE à celle en cours. Un abonné Pro qui prendrait
+   * l'Essentiel resterait Pro et n'y gagnerait qu'un quota — au prix fort. La
+   * comparaison stricte l'écarte toujours.
+   *
+   * Le VIP Annuel, lui, est illimité : le recharger n'ajoute aucune analyse.
+   * Le serveur le refuse déjà (`ALREADY_SUBSCRIBED`, /api/paiement/caisse), et
+   * le bouton reste donc éteint pour lui seul — voir `dejaVip` plus bas.
+   */
   const RANK: Record<PlanTier, number> = { FREE: 0, ESSENTIAL: 1, PRO: 2, VIP: 3 };
-  const couvertPar = (tier: PlanTier) => RANK[plan] >= RANK[tier];
+  const couvertPar = (tier: PlanTier) => RANK[plan] > RANK[tier];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 pb-20">
@@ -381,6 +412,10 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
           const reglee = offres[offre.cle];
           const Icone = offre.icone;
           const couvert = couvertPar(offre.tier);
+          // Son offre à lui : le bouton propose de la RECHARGER. Le VIP est le
+          // seul à ne rien gagner à racheter — son quota est déjà illimité.
+          const renouvellement = plan === offre.tier && plan !== 'FREE';
+          const dejaVip = renouvellement && offre.tier === 'VIP';
           const enCours = loadingPlan === offre.cle;
 
           // ── PLUS D'ENTRÉE ANIMÉE SUR TÉLÉPHONE ────────────────────────────
@@ -552,30 +587,46 @@ export default function PricingClient({ offres }: { offres: OffresAffichees }) {
                     avant le clic, et l'y répéter lève le dernier doute. */}
                 <button
                   onClick={() => handleSubscribe(offre.cle)}
-                  disabled={loadingPlan !== null || checkingStatus || couvert}
+                  disabled={loadingPlan !== null || checkingStatus || couvert || dejaVip}
                   className={`w-full min-h-[48px] py-3 rounded-[16px] font-black text-[13.5px] transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
-                    couvert
+                    couvert || dejaVip
                       ? 'bg-success/15 text-success cursor-not-allowed'
                       : offre.style.bouton
                   }`}
                 >
                   {checkingStatus ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : couvert ? (
+                  ) : couvert || dejaVip ? (
                     <>
-                      {plan === offre.tier ? 'Accès Actif' : 'Déjà inclus'}
+                      {dejaVip ? 'Accès Actif' : 'Déjà inclus'}
                       <Check className="w-4 h-4" />
                     </>
                   ) : enCours ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      {offre.cta}
+                      {/* « Recharger » et non « Choisir l'Essentiel » : il l'a
+                          déjà choisi. Ce qu'il vient faire ici, c'est en
+                          reprendre. */}
+                      {renouvellement ? 'Recharger' : offre.cta}
                       <span className="opacity-60">—</span>
                       <span>{reglee?.prix ?? offre.prix} FCFA</span>
                     </>
                   )}
                 </button>
+
+                {/* ── DIRE CE QUE LE RACHAT DONNE, ET QUAND ─────────────────
+                    Le client du 4 septembre a cru devoir attendre le 24. Cette
+                    ligne existe pour qu'aucun autre ne le croie : les analyses
+                    s'ajoutent à celles qui restent, l'échéance recule, et rien
+                    de ce qui a été payé n'est perdu en route. */}
+                {renouvellement && !dejaVip && (
+                  <p className="mt-2 text-center text-[11px] leading-snug text-success/80 font-semibold">
+                    Votre accès est actif. Recharger ajoute
+                    {reglee?.analyses ? ` ${reglee.analyses} analyses` : ' vos analyses'} immédiatement,
+                    sans attendre la fin de la période.
+                  </p>
+                )}
               </div>
               </div>
             </div>
