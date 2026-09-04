@@ -20,9 +20,16 @@ export async function GET(req: Request) {
 
     // La MOINS CHÈRE des offres qui ouvrent l'Agent VIP.
     //
-    // L'Agent VIP n'est plus réservé à l'offre annuelle : les trois offres y
-    // donnent accès. Une page qui continuerait d'annoncer « 30 000 FCFA/an »
-    // pour y entrer ferait fuir quelqu'un qui pouvait l'obtenir pour 2 000.
+    // ── ET DEPUIS LE 4 SEPTEMBRE 2026, IL N'Y EN A QU'UNE ─────────────────
+    //
+    // Décision du propriétaire : l'Agent VIP redevient le propre de l'accès
+    // annuel à 15 000 FCFA. L'Essentiel et le Pro n'y donnent plus droit, et
+    // les racheter n'y change rien.
+    //
+    // Ce calcul reste écrit ainsi — « la moins chère de celles qui l'ouvrent »
+    // — parce qu'il lit la table `offres`, réglable depuis /admin/offres. Il
+    // suivra donc le jour où la règle changera de nouveau, sans qu'on ait à
+    // revenir ici. Aujourd'hui, il désigne l'offre annuelle.
     const offres = await lireOffres().catch(() => null);
     const offreVip = offres
       ? (Object.values(offres)

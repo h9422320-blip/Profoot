@@ -33,15 +33,28 @@ export interface Entitlements {
 // `montantsPrecedents` conserve tous les tarifs jamais pratiqués. C'est ce qui
 // permet à un abonné ayant payé 3 000 FCFA d'être encore reconnu après le
 // passage à 2 000 : sans cette liste, son paiement deviendrait orphelin.
+//
+// ── `vip` : L'AGENT VIP EST RÉSERVÉ À L'OFFRE ANNUELLE ────────────────────
+//
+// Décision du propriétaire, le 4 septembre 2026 : l'Agent VIP n'appartient
+// qu'à l'accès à 15 000 FCFA par an. Ni l'Essentiel ni le Pro n'y donnent
+// droit, et les racheter n'y change rien — dix fois 2 000 FCFA ne font pas
+// un accès VIP.
+//
+// Le réglage vit dans la table `offres`, déjà mise à jour depuis
+// /admin/offres. Ces valeurs sont le REPLI quand cette table est injoignable :
+// les laisser à `true` rouvrait l'Agent VIP à tous les abonnés à la première
+// panne de lecture, en silence, et c'est le poste de dépense le plus cher de
+// l'application.
 export const PLANS = {
   essential_monthly: {
     amountXof: 2000, durationDays: 30, tier: 'ESSENTIAL' as PlanTier,
-    vip: true, analysisLimit: 20, label: 'Essentiel',
+    vip: false, analysisLimit: 20, label: 'Essentiel',
     montantsPrecedents: [9000, 3000],
   },
   pro_monthly: {
     amountXof: 5000, durationDays: 30, tier: 'PRO' as PlanTier,
-    vip: true, analysisLimit: 50, label: 'Pro',
+    vip: false, analysisLimit: 50, label: 'Pro',
     montantsPrecedents: [15000],
   },
   vip_yearly: {
