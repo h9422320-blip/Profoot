@@ -25,7 +25,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sigleClub, siglesDuMatch } from '../src/lib/sigles.ts';
+import { sigleClub, siglesDuMatch } from '../src/lib/sigles';
 
 test('★ ACQUIS — le nom se découpe sur les ESPACES', () => {
   // Le cas exact du signalement. Si l'antislash disparaît de nouveau, les deux
