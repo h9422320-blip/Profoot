@@ -33,7 +33,6 @@ const NoticePaiement = chargerADemande(() => import("@/components/NoticePaiement
  */
 const MatchsDuJour = chargerADemande(() => import("./MatchsDuJour"), { ssr: false });
 const SelectionSure = chargerADemande(() => import("./SelectionSure"), { ssr: false });
-const RappelAnalyse = chargerADemande(() => import("./RappelAnalyse"), { ssr: false });
 
 // Extract future matches for the "Prochains matchs" list
 const futureMatches = matches.filter(m => m.status === "upcoming");
@@ -1282,11 +1281,6 @@ export default function AnalyzePage({
               Elle disparaît pendant l'analyse, comme le carrousel : proposer
               un autre match à quelqu'un qui attend le sien l'inviterait à
               perdre celui-là. */}
-          {/* Une fois par mois, sous le bouton : ce que l'application fait,
-              et ce qu'elle ne fait pas. Voir le fichier pour le message client
-              qui l'a rendu nécessaire. */}
-          {!analyzing && <RappelAnalyse />}
-
           {!analyzing && (
             <SelectionSure
               matchs={selectionSure?.matchs ?? []}

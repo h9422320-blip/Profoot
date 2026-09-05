@@ -1,7 +1,7 @@
 /**
- * ★ ACQUIS — DIRE CE QU'ON VEND, DANS CHAQUE MESSAGE ET SUR L'ÉCRAN.
+ * ★ ACQUIS — DIRE CE QU'ON VEND, DANS CHAQUE MESSAGE ENVOYÉ.
  *
- * ── CE QUI A RENDU CES DEUX MENTIONS NÉCESSAIRES ──────────────────────────
+ * ── CE QUI A RENDU CETTE MENTION NÉCESSAIRE ───────────────────────────────
  *
  * 5 septembre 2026. Un membre répond au courriel du matin : « Oui mais je
  * commence trop à perdre de l'argent il faut améliorer vos analyses. » Il
@@ -19,9 +19,16 @@
  * interdits : paris sportifs, jeux de hasard ». Un échange pareil est
  * exactement la pièce qui déclenche le suivant.
  *
- * Ces deux mentions ne sont pas des formules pour se couvrir : elles disent
- * la vérité de ce qui est vendu, et elles sont ce qui permet de le démontrer.
- * Les retirer se paierait le jour d'un contrôle, pas avant.
+ * Cette mention n'est pas une formule pour se couvrir : elle dit la vérité de
+ * ce qui est vendu, et elle est ce qui permet de le démontrer, message après
+ * message.
+ *
+ * ── CE QUI A ÉTÉ RETIRÉ, ET PAR QUI ───────────────────────────────────────
+ *
+ * Un rappel du même esprit avait été posé sur l'écran d'analyse, une fois par
+ * mois et par personne. Le propriétaire l'a fait retirer le jour même, après
+ * l'avoir vu : c'est sa décision, et l'écran ne le porte plus. Les courriels,
+ * eux, le gardent — c'est là que la trace écrite existe.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,17 +40,9 @@ const sansCommentaires = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const campagnes = sansCommentaires(lire('src/lib/campagnes/index.ts'));
-const rappel = sansCommentaires(lire('src/app/(dashboard)/analyze/RappelAnalyse.tsx'));
-const ecran = sansCommentaires(lire('src/app/(dashboard)/analyze/AnalyzeClient.tsx'));
-
-// ── LES COURRIELS ──────────────────────────────────────────────────────────
 
 test('★ ACQUIS — aucune campagne ne part sans dire ce que sont nos analyses', () => {
-  assert.match(
-    campagnes,
-    /const MENTION =/,
-    'La mention a disparu des campagnes.'
-  );
+  assert.match(campagnes, /const MENTION =/, 'La mention a disparu des campagnes.');
   assert.match(
     campagnes,
     /outil d'analyse statistique du football/,
@@ -51,7 +50,7 @@ test('★ ACQUIS — aucune campagne ne part sans dire ce que sont nos analyses'
   );
   assert.match(
     campagnes,
-    /ne\s*'?\s*\+?\s*'?garantissent aucun résultat/,
+    /garantissent aucun résultat/,
     'La phrase qui refuse toute garantie a été retirée.'
   );
   // Elle vit DANS la signature : c'est ce qui la rend impossible à oublier,
@@ -70,48 +69,5 @@ test('★ ACQUIS — les cinq campagnes empruntent la même signature', () => {
   assert.ok(
     emprunts >= 5,
     `Seulement ${emprunts} campagne(s) empruntent la signature commune : les autres partiraient sans la mention.`
-  );
-});
-
-// ── L'ÉCRAN ────────────────────────────────────────────────────────────────
-
-test('★ ACQUIS — le rappel s’affiche sur l’écran d’analyse', () => {
-  assert.match(ecran, /<RappelAnalyse \/>/, 'Le rappel a été retiré de l’écran d’analyse.');
-  assert.match(
-    rappel,
-    /ne garantissent aucun résultat|ne garantissent aucun|garantissent aucun résultat/,
-    'Le rappel ne refuse plus toute garantie de résultat.'
-  );
-  assert.match(
-    rappel,
-    /N&apos;engagez jamais sur une analyse un argent dont vous avez besoin/,
-    'La mise en garde sur l’argent engagé a disparu.'
-  );
-});
-
-test('★ ACQUIS — le rappel revient, mais pas à chaque visite', () => {
-  // Affiché à chaque passage, il cesserait d'être lu au troisième et
-  // deviendrait un meuble. Jamais réaffiché, il ne toucherait que les
-  // nouveaux venus.
-  assert.match(
-    rappel,
-    /const UN_MOIS_MS = 30 \* 24 \* 60 \* 60 \* 1000/,
-    'La période de réaffichage a changé — vérifier qu’elle reste lisible.'
-  );
-  assert.match(
-    rappel,
-    /Date\.now\(\) - vu > UN_MOIS_MS/,
-    'Le rappel ne revient plus après un mois.'
-  );
-});
-
-test('★ ACQUIS — un stockage refusé fait afficher le rappel, jamais l’inverse', () => {
-  // Navigation privée, réglages stricts : sans repère lisible, on montre. Une
-  // fois de trop ne coûte rien ; une fois de moins coûte la mention.
-  const bloc = rappel.slice(rappel.indexOf('useEffect'), rappel.indexOf('if (!visible)'));
-  assert.match(
-    bloc,
-    /catch\s*\{[\s\S]*setVisible\(true\)/,
-    'Un stockage indisponible masque désormais le rappel.'
   );
 });
