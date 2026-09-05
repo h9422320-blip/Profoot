@@ -153,14 +153,52 @@ test('★ ACQUIS — le client à sec n’est plus renvoyé à la fin du mois', 
   // La date de remise à zéro venait AVANT la possibilité de recharger. C'est
   // cette phrase-là, lue seule, qui a produit « il faut que j'attende ».
   const s = sansCommentaires(lire('src/app/(dashboard)/analyze/AnalyzeClient.tsx'));
-  const bloc = s.slice(s.indexOf('Vous avez utilisé vos'));
-  const posRecharge = bloc.indexOf('Rechargez votre accès');
+  const bloc = s.slice(s.indexOf('analyses du mois qui sont épuisées'));
+  const posRecharge = bloc.indexOf('Rechargez');
   const posDate = bloc.indexOf('votre compteur repart');
 
   assert.ok(posRecharge > 0, 'Le message ne propose plus de recharger.');
   assert.ok(
     posDate < 0 || posRecharge < posDate,
     'La date de remise à zéro repasse avant le rechargement : elle se lit comme une attente obligatoire.'
+  );
+});
+
+test('★ ACQUIS — l’écran dit D’ABORD que l’accès payé reste ouvert', () => {
+  /*
+   * Le 5 septembre 2026, un client écrit qu'il a payé et n'a jamais reçu son
+   * accès. Vérification : accès Pro ouvert depuis le 28 août, connecté le matin
+   * même, cinquante analyses consommées dont trois une heure plus tôt. Il
+   * n'avait rien perdu.
+   *
+   * Ce qu'il avait vu, c'est l'écran de compteur épuisé — et cet écran ne
+   * disait NULLE PART que son accès tenait toujours. « Rechargez votre accès »
+   * se lit même comme « votre accès est fini, rachetez-en un ». Quelqu'un qui a
+   * payé cinq mille francs et lit cela conclut qu'on lui a repris son achat, et
+   * il écrit au support — ou il s'en va sans écrire.
+   *
+   * La phrase rassurante doit venir AVANT tout le reste.
+   */
+  const s = sansCommentaires(lire('src/app/(dashboard)/analyze/AnalyzeClient.tsx'));
+  assert.ok(
+    s.includes(
+      "Votre accès {libelleAcces ?? ''} reste ouvert jusqu&apos;au"
+    ),
+    'L’écran ne dit plus que l’accès payé reste ouvert : le client croira qu’on le lui a repris.'
+  );
+  assert.ok(
+    s.includes(
+      'setAccesOuvertJusquA(data.expiresAt ?? null)'
+    ),
+    'L’échéance de l’accès n’est plus lue : la phrase rassurante ne peut plus s’afficher.'
+  );
+
+  // Et elle passe AVANT l'annonce du compteur épuisé.
+  const posRassure = s.indexOf('reste ouvert jusqu&apos;au');
+  const posEpuise = s.indexOf('analyses du mois qui sont épuisées');
+  assert.ok(
+    posRassure > 0 && posRassure < posEpuise,
+    'La mauvaise nouvelle repasse avant la bonne.'
   );
 });
 

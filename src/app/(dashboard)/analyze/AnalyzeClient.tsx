@@ -609,6 +609,15 @@ export default function AnalyzePage({
    *
    * `analyses` vaut `null` quand l'offre est illimitée.
    */
+  /**
+   * Jusqu'à quand l'accès payé reste ouvert, et sous quel nom.
+   *
+   * Sert UNIQUEMENT à rassurer quelqu'un dont le compteur est à zéro : sans
+   * ces deux valeurs, l'écran ne pouvait pas lui dire que son accès tenait
+   * toujours, et il en concluait qu'on le lui avait repris.
+   */
+  const [accesOuvertJusquA, setAccesOuvertJusquA] = useState<string | null>(null);
+  const [libelleAcces, setLibelleAcces] = useState<string | null>(null);
   const [offreSuperieure, setOffreSuperieure] = useState<
     { cle: string; libelle: string; prixXof: number; analyses: number | null } | null
   >(null);
@@ -731,6 +740,8 @@ export default function AnalyzePage({
         if (data.analyses) setQuota(data.analyses);
         setOffreActuelle(data.offreActuelle ?? null);
         setOffreSuperieure(data.offreSuperieure ?? null);
+        setAccesOuvertJusquA(data.expiresAt ?? null);
+        setLibelleAcces(data.planLabel ?? null);
       } catch {
         setIsPremium(false);
       }
@@ -1417,9 +1428,35 @@ export default function AnalyzePage({
                     minute.
                     L'ordre est inversé : ce qu'il peut faire maintenant vient
                     en premier, la date automatique n'est plus qu'un repli. */}
+                {/* ── D'ABORD DIRE CE QUI N'EST PAS PERDU ──────────────────
+                    Le 5 septembre 2026, un client écrit qu'il a payé et n'a
+                    jamais reçu son accès. Vérification faite : son accès Pro
+                    était ouvert depuis le 28 août, il s'était connecté le matin
+                    même, et il avait consommé ses cinquante analyses — les trois
+                    dernières une heure plus tôt. Il n'avait rien perdu du tout.
+
+                    Ce qu'il avait vu, c'est cet écran. Et cet écran ne disait
+                    NULLE PART que son accès tenait toujours : « Rechargez votre
+                    accès » se lit même comme « votre accès est fini, rachetez-en
+                    un ». Un client qui a payé cinq mille francs et lit ça
+                    conclut qu'on lui a repris ce qu'il a acheté.
+
+                    La première phrase énonce donc ce qui est intact, avec le nom
+                    de l'accès et sa date de fin. La proposition de recharger ne
+                    vient qu'après. */}
+                {accesOuvertJusquA && (
+                  <p className="text-[12.5px] font-bold text-[#10B981] leading-relaxed max-w-[300px] mx-auto">
+                    Votre accès {libelleAcces ?? ''} reste ouvert jusqu&apos;au{' '}
+                    {new Date(accesOuvertJusquA).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'long',
+                    })}
+                    . Vous n&apos;avez rien perdu.
+                  </p>
+                )}
                 <p className="text-xs text-white/50 font-medium leading-relaxed max-w-[300px] mx-auto">
-                  Vous avez utilisé vos {quota?.limit ?? ''} analyses.
-                  {' '}Rechargez votre accès : les analyses sont ajoutées immédiatement.
+                  Ce sont vos {quota?.limit ?? ''} analyses du mois qui sont épuisées.
+                  {' '}Rechargez : les nouvelles s&apos;ajoutent immédiatement.
                   {quota?.periodEnd
                     ? ` Sinon, votre compteur repart seul le ${new Date(quota.periodEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}.`
                     : ''}
