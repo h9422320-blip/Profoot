@@ -98,13 +98,19 @@ const LIGUES = [
  * rencontres exigées. En dessous, la fiabilité retombe sur le chiffre global
  * et un match d'Eredivisie s'affiche au taux de tout le monde.
  *
+ * Trois saisons depuis le 5 septembre 2026 : sur deux, la Bundesliga et la
+ * Serie A ressortaient MEILLEURES en « tendance forte » qu'en « tendance très
+ * forte » — un classement à l'envers, impossible en soi, et donc le signe que
+ * trente à soixante-dix rencontres ne suffisent pas à départager deux tranches
+ * voisines.
+ *
  * L'ÉTAT DES ÉQUIPES EST CLOISONNÉ PAR SAISON, et c'est indispensable : une
  * équipe reléguée, un effectif refait, un entraîneur parti — les forces d'une
  * saison ne décrivent pas la suivante. Les mélanger reviendrait à prédire la
  * saison 2025 avec la moyenne de deux saisons, ce que la production ne fait
  * jamais.
  */
-const SAISONS = [2024, 2025];
+const SAISONS = [2023, 2024, 2025];
 const TERMINE = ['FT', 'AET', 'PEN'];
 
 /** Nombre de matchs déjà joués par équipe avant qu'on accepte de prédire. */
@@ -397,6 +403,15 @@ for (const m of rencontres) {
           issue_prevue: prevue,
           issue_reelle: reelle,
           issue_juste: prevue === reelle,
+          // ── DE QUOI CHERCHER D'AUTRES CRITÈRES ─────────────────────────
+          //
+          // Les probabilités seules ne discriminent plus en Bundesliga ni en
+          // Serie A : la tendance forte y vaut la tendance très forte. Ces
+          // trois valeurs permettent de chercher ailleurs — l'abondance de
+          // buts attendus, leur écart, la solidité défensive annoncée.
+          xg_domicile: vraie.butsAttendus1,
+          xg_exterieur: vraie.butsAttendus2,
+          confiance: vraie.confiance,
         });
       }
       for (const seuil of [0.9, 1.3, 1.6, 2.0]) {
