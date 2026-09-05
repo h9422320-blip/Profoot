@@ -202,6 +202,29 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
   //
   // Il vit désormais ici, dans l'entretien porté par les visites, qui lui
   // s'exécute réellement tous les jours.
+  // ── PRÉPARER CE QUE LA SÉLECTION POURRA PROPOSER DEMAIN ────────────────
+  //
+  // Elle ne classe que les rencontres dont les probabilités existent, donc
+  // celles que quelqu'un a déjà ouvertes. Mesuré le 5 septembre 2026 sur le
+  // programme du lendemain : 88 rencontres dans un grand championnat, 38
+  // calculées. La sélection choisissait parmi ce que les clients avaient
+  // ouvert la veille, et non parmi ce qui se joue.
+  //
+  // Placée APRÈS le relevé des cotes : celui-ci porte une matière qui se perd
+  // définitivement si on ne la prend pas le jour même, la préparation non.
+  await etape(
+    'Préparer les grands matchs à venir',
+    async () => {
+      const { precalculerGrandsMatchs } = await import('./precalcul-selection');
+      const r = await precalculerGrandsMatchs();
+      return (
+        `${r.calculees} calculée(s), ${r.dejaConnues} déjà connue(s) sur ${r.examinees} examinée(s)` +
+        (r.echecs ? ` — ${r.echecs} échec(s)` : '')
+      );
+    },
+    etapes
+  );
+
   await etape(
     'Relever les cotes du marché',
     async () => {
