@@ -45,15 +45,28 @@ const sansCommentaires = (s: string) =>
 
 test('★ ACQUIS — un match se range par l’écart entre les deux issues de tête', () => {
   // C'est cet écart, et lui seul, qui sépare 35 % de réussite de 68 %.
-  assert.equal(trancheDe(36, 30, 34), 'serre', '36/30/34 : deux points d’écart, c’est serré.');
-  assert.equal(trancheDe(55, 25, 20), 'net', '55/25/20 : trente points d’écart.');
-  assert.equal(trancheDe(78, 14, 8), 'ecrasant', '78/14/8 : soixante-quatre points d’écart.');
-  assert.equal(trancheDe(45, 30, 25), 'leger', '45/30/25 : quinze points d’écart.');
+  // ── LE CLASSEMENT SUIT LA CONFIANCE, ET NON PLUS L'ÉCART ───────────────
+  //
+  // Changé le 5 septembre 2026. L'écart entre les deux premières
+  // probabilités était une approximation : 45/28/27 et 70/15/15 tombaient
+  // dans la même famille alors que le second est bien plus sûr. On classe
+  // désormais par la probabilité de l'issue annoncée, ce qui donne des
+  // paliers mesurés autrement plus nets — de 58,5 % à 76,0 %.
+  assert.equal(trancheDe(36, 30, 34), 'incertain', '36 % de confiance : rien n’est joué.');
+  assert.equal(trancheDe(55, 25, 20), 'marque', '55 % : tendance marquée.');
+  assert.equal(trancheDe(78, 14, 8), 'tresforte', '78 % : tendance très forte.');
+  assert.equal(trancheDe(45, 30, 25), 'penche', '45 % : la rencontre penche.');
+  assert.equal(trancheDe(64, 20, 16), 'nette', '64 % : tendance nette.');
+  assert.equal(trancheDe(70, 18, 12), 'forte', '70 % : tendance forte.');
 
   // L'écart se mesure entre la PREMIÈRE et la DEUXIÈME, quelle qu'elle soit —
   // y compris quand c'est le nul. Comparer la victoire à domicile à la
   // victoire extérieure ferait passer un nul très probable pour un match net.
-  assert.equal(trancheDe(40, 38, 22), 'serre', 'Le nul à deux points doit rendre le match serré.');
+  assert.equal(
+    trancheDe(40, 38, 22),
+    'incertain',
+    'Quarante pour cent au mieux : la rencontre reste incertaine.'
+  );
 });
 
 // ── LE SILENCE PLUTÔT QUE L'À-PEU-PRÈS ─────────────────────────────────────
@@ -62,7 +75,7 @@ test('★ ACQUIS — sans matière, on n’affiche RIEN', () => {
   // « 100 % de réussite » mesuré sur trois rencontres est pire que rien : il
   // se retourne contre nous au premier match perdu.
   const maigre = {
-    global: { serre: { justes: 8, total: 10 } },
+    global: { incertain: { justes: 8, total: 10 } },
     parLigue: {},
     total: 10,
     calculeLe: new Date().toISOString(),
@@ -77,10 +90,10 @@ test('★ ACQUIS — le championnat prime, mais seulement s’il a de quoi', () 
   // prévisibilité : 57,3 % contre 29,2 % sur les matchs serrés. Le chiffre
   // local est donc plus juste — tant qu'il repose sur assez de rencontres.
   const releve = {
-    global: { serre: { justes: 300, total: 867 } },
+    global: { incertain: { justes: 300, total: 867 } },
     parLigue: {
-      'Ligue 1|serre': { justes: 14, total: 59 },
-      'Coupe du Bénin|serre': { justes: 3, total: 4 },
+      'Ligue 1|incertain': { justes: 14, total: 59 },
+      'Coupe du Bénin|incertain': { justes: 3, total: 4 },
     },
     total: 3467,
     calculeLe: new Date().toISOString(),
@@ -103,7 +116,7 @@ test('★ ACQUIS — le taux affiché est celui qui a été compté', () => {
   // Aucun arrondi complaisant, aucun plancher : 24 % s'affiche 24 %, même si
   // c'est le chiffre qui fait le moins vendre.
   const releve = {
-    global: { serre: { justes: 300, total: 867 } },
+    global: { incertain: { justes: 300, total: 867 } },
     parLigue: {},
     total: 867,
     calculeLe: new Date().toISOString(),

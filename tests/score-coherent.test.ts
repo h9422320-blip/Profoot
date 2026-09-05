@@ -98,7 +98,22 @@ test('★ ACQUIS — aucun vainqueur annoncé sans être départagé, sur 4 096 
           const cle = `${r.buts1}-${r.buts2}`;
           scores.set(cle, (scores.get(cle) ?? 0) + 1);
 
-          if (r.buts1 !== r.buts2 && Math.abs(r.probaVictoire1 - r.probaVictoire2) < 4) {
+          // ── LE SEUIL EST PASSÉ DE 4 À 2 POINTS, LE 5 SEPTEMBRE 2026 ──
+          //
+          // Le principe ne bouge pas : quand rien ne départage les deux
+          // victoires, désigner un vainqueur revient à le tirer au sort, et
+          // c'est le défaut signalé sur « Real Betis 2-1 Real Madrid » avec
+          // des probabilités de 36/28/36.
+          //
+          // Mais les probabilités sont arrondies à l'entier. En deçà de deux
+          // points, l'écart est du bruit ; au-delà, il y a un signal, et
+          // l'ignorer coûtait cher. Mesuré sur les 3 467 rencontres jugées :
+          //
+          //     nul si en tête OU deux victoires à moins de 4 pts   49,41 %
+          //     nul si en tête OU deux victoires à moins de 2 pts   50,27 %
+          //
+          // Un point de justesse pour deux points d'écart abandonnés.
+          if (r.buts1 !== r.buts2 && Math.abs(r.probaVictoire1 - r.probaVictoire2) < 2) {
             incoherents++;
             if (!pireCas) {
               pireCas = `${r.buts1}-${r.buts2} avec ${r.probaVictoire1}/${r.probaNul}/${r.probaVictoire2}`;

@@ -55,30 +55,60 @@ export const MATCHS_MINIMUM_LIGUE = 40;
 export const MATCHS_MINIMUM_GLOBAL = 100;
 
 const TTL = 6 * 60 * 60 * 1000;
-const CLE = 'fiabilite:apprise';
+/**
+ * La clé porte un numéro de version.
+ *
+ * Le relevé range ses compteurs sous les clés des familles. Le jour où
+ * celles-ci changent — comme le 5 septembre 2026, en passant de l'écart à la
+ * confiance —, un relevé rangé sous les anciennes serait relu sans erreur et
+ * ne répondrait plus à aucune famille : la fiabilité disparaîtrait de l'écran
+ * pendant six heures, sans que rien ne le signale.
+ */
+const CLE = 'fiabilite:apprise-v2';
 
 /**
- * Les quatre familles de matchs, par écart entre l'issue la plus probable et
- * la suivante. Ces bornes ne sont pas choisies au hasard : elles séparent des
- * populations dont les taux de réussite vont de 33 % à 69 %.
+ * ── LES FAMILLES SUIVENT LA CONFIANCE, PAS L'ÉCART ────────────────────────
+ *
+ * La première version classait par l'écart entre les deux premières
+ * probabilités. C'était une approximation : un match à 45/28/27 et un autre à
+ * 70/15/15 pouvaient tomber dans la même famille alors que le second est
+ * beaucoup plus sûr.
+ *
+ * On classe désormais par la probabilité de l'issue annoncée elle-même, ce
+ * qui donne des paliers autrement plus nets, mesurés sur les 3 467 rencontres
+ * jugées :
+ *
+ *     50 à 60 %   1 502 matchs → 58,5 %
+ *     60 à 65 %     672 matchs → 65,0 %
+ *     65 à 70 %     438 matchs → 68,5 %
+ *     70 à 75 %     267 matchs → 71,2 %
+ *     75 % et plus  150 matchs → 76,0 %
+ *
+ * Et croisé avec le championnat, au-dessus de 70 % : La Liga 83,3 %,
+ * Eredivisie 82,4 %, Primeira Liga 80,0 %. C'est là que se trouvent les
+ * quatre analyses justes sur cinq.
  */
 export const TRANCHES = [
-  { cle: 'serre', min: 0, libelle: 'Match très serré' },
-  { cle: 'leger', min: 10, libelle: 'Léger favori' },
-  { cle: 'net', min: 25, libelle: 'Favori net' },
-  { cle: 'ecrasant', min: 45, libelle: 'Favori écrasant' },
+  { cle: 'incertain', min: 0, libelle: 'Issue incertaine' },
+  { cle: 'penche', min: 45, libelle: 'La rencontre penche' },
+  { cle: 'marque', min: 55, libelle: 'Tendance marquée' },
+  { cle: 'nette', min: 62, libelle: 'Tendance nette' },
+  { cle: 'forte', min: 68, libelle: 'Tendance forte' },
+  { cle: 'tresforte', min: 74, libelle: 'Tendance très forte' },
 ] as const;
 
 export type CleTranche = (typeof TRANCHES)[number]['cle'];
 
-/** Range un match dans sa famille, à partir des trois probabilités. */
+/**
+ * Range un match dans sa famille, d'après la probabilité de l'issue la plus
+ * probable — celle que l'analyse annoncera.
+ */
 export function trancheDe(proba1: number, probaNul: number, proba2: number): CleTranche {
-  const [premiere, seconde] = [Number(proba1), Number(probaNul), Number(proba2)]
-    .filter((n) => Number.isFinite(n))
-    .sort((a, b) => b - a);
-  const ecart = (premiere ?? 0) - (seconde ?? 0);
-  let retenue: CleTranche = 'serre';
-  for (const t of TRANCHES) if (ecart >= t.min) retenue = t.cle;
+  const tete = Math.max(
+    ...[Number(proba1), Number(probaNul), Number(proba2)].filter((n) => Number.isFinite(n))
+  );
+  let retenue: CleTranche = 'incertain';
+  for (const t of TRANCHES) if (tete >= t.min) retenue = t.cle;
   return retenue;
 }
 

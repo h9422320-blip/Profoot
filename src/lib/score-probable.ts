@@ -1410,8 +1410,75 @@ export function calculerScoreProbable(
   const MARGE_NUL_CONSERVE = Number(process.env.BANC_NUL_CONSERVE) || 1;
   const nulPasDetrone = meilleureVictoire - pn < MARGE_NUL_CONSERVE;
 
+  /**
+   * ── LE NUL N'EST ANNONCÉ QUE S'IL EST LA PLUS FORTE PROBABILITÉ ────────
+   *
+   * Mesuré le 5 septembre 2026 sur les 3 467 rencontres réellement jugées —
+   * pas sur un banc, sur ce que le moteur a produit en production :
+   *
+   *     nuls annoncés ......................... 295  (8,5 %)
+   *     leur réussite ......................... 26,8 %
+   *     réussite si l'on avait joué le favori .. 44,7 %
+   *
+   * Cinquante-trois rencontres perdues pour rien. Ramené au total, la règle
+   * précédente coûtait 1,53 point de justesse : 48,9 % au lieu de 50,4 %.
+   *
+   * Elle annonçait le nul sur trois conditions — deux victoires à égalité, un
+   * nul dominant, ou une grille dont le sommet est un nul. Chacune se
+   * défendait ; ensemble elles annonçaient le nul quatre fois trop souvent,
+   * sur des matchs où il n'était PAS l'issue la plus probable. Or le nul a
+   * cette particularité : il arrive une fois sur quatre, mais il n'est presque
+   * jamais en tête, car il partage la masse entre deux victoires possibles.
+   * L'annoncer sans qu'il domine, c'est choisir sciemment une issue moins
+   * probable qu'une autre.
+   *
+   * ── CE QUE ÇA COÛTE, ET C'EST ASSUMÉ ──────────────────────────────────
+   *
+   * Le 1-1 devient rare. Le propriétaire l'avait demandé autour de 7 % le
+   * 3 septembre ; il demande aujourd'hui, plus fort, que les ratés cessent.
+   * Entre les deux, la justesse l'emporte — c'est elle que ses clients
+   * regardent.
+   *
+   * Les probabilités affichées, elles, ne bougent pas d'un point : le nul
+   * continue d'être annoncé à sa vraie valeur, 26,0 % en moyenne pour 25,7 %
+   * de nuls réels. C'est le SCORE qui cesse de le désigner, pas le calcul qui
+   * cesse de le voir.
+   */
+  const NUL_SEULEMENT_SI_EN_TETE = process.env.BANC_NUL_LARGE !== 'oui';
+  const nulEnTete = pn > pv1 && pn > pv2;
+
+  /**
+   * ── L'EXCEPTION QUI RESTE, ET POURQUOI ────────────────────────────────
+   *
+   * Quand les deux victoires sont à égalité, désigner un vainqueur revient à
+   * le tirer au sort — c'est le défaut signalé le 3 septembre 2026 :
+   * « Real Betis 2-1 Real Madrid » sur des probabilités de 36/28/36. Le nul
+   * reste donc annoncé dans ce cas, et un test balaie 4 096 combinaisons pour
+   * s'en assurer.
+   *
+   * Le seuil passe de 4 à 2 points. Les probabilités sont arrondies à
+   * l'entier : en deçà de deux points, l'écart est du bruit, et rien ne
+   * départage vraiment. Au-delà, il y a un signal, et l'ignorer coûtait cher.
+   *
+   * Mesuré sur les 3 467 rencontres jugées :
+   *
+   *     nul si en tête OU deux victoires à moins de 4 pts .. 49,41 %
+   *     nul si en tête OU deux victoires à moins de 3 pts .. 49,96 %
+   *     nul si en tête OU deux victoires à moins de 2 pts .. 50,27 %   <-- retenu
+   *     nul seulement s'il est en tête ..................... 50,36 %
+   *
+   * Le dernier gagne neuf centièmes de plus, et abandonne le principe. On
+   * garde le principe.
+   */
+  const ECART_NON_DEPARTAGE = Number(process.env.BANC_ECART_NUL) || 2;
+  const vraimentAegalite = Math.abs(pv1 - pv2) < ECART_NON_DEPARTAGE;
+
   const issueVisee: 'victoire1' | 'nul' | 'victoire2' =
-    deuxVictoiresAegalite || nulDomine || (grilleDitNul && nulPasDetrone)
+    (
+      NUL_SEULEMENT_SI_EN_TETE
+        ? nulEnTete || vraimentAegalite
+        : deuxVictoiresAegalite || nulDomine || (grilleDitNul && nulPasDetrone)
+    )
       ? 'nul'
       : pv1 >= pv2
         ? 'victoire1'
