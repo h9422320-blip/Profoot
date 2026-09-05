@@ -298,6 +298,17 @@ const noter = (nom, m, r) => {
   s.brier += Math.pow(r.probas[0] / t - reel[0], 2) + Math.pow(r.probas[1] / t - reel[1], 2) + Math.pow(r.probas[2] / t - reel[2], 2);
 };
 
+// ── EXPORT DES VERDICTS DE PRODUCTION ─────────────────────────────────────
+//
+// Le banc simule, journée après journée, ce que le moteur aurait dit en ne
+// connaissant que le passé. C'est donc une matière honnête — et la seule
+// disponible en volume pour les grands championnats, dont les jugements réels
+// ne comptent que quelques dizaines de rencontres à haute confiance.
+//
+// Écrite seulement sur demande : le banc reste d'abord un outil de mesure.
+const EXPORT = process.env.BANC_EXPORT_JUGEMENTS || '';
+const verdicts = [];
+
 let evalues = 0, butsReels = 0, nulsReels = 0;
 for (const m of rencontres) {
   const etat = etats.get(m.ligue) ?? new Etat();
@@ -324,6 +335,19 @@ for (const m of rencontres) {
       );
       const iss = vraie.buts1 > vraie.buts2 ? 1 : vraie.buts1 === vraie.buts2 ? 0 : 2;
       noter('PRODUCTION sommet', m, { score: [vraie.buts1, vraie.buts2], probas: [vraie.probaVictoire1/100, vraie.probaNul/100, vraie.probaVictoire2/100], issue: iss });
+      if (EXPORT) {
+        const reelle = m.bd > m.be ? 'domicile' : m.bd === m.be ? 'nul' : 'exterieur';
+        const prevue = vraie.buts1 > vraie.buts2 ? 'domicile' : vraie.buts1 === vraie.buts2 ? 'nul' : 'exterieur';
+        verdicts.push({
+          ligue: (LIGUES.find((x) => x.id === m.ligue) || {}).nom || String(m.ligue),
+          proba_domicile: vraie.probaVictoire1,
+          proba_nul: vraie.probaNul,
+          proba_exterieur: vraie.probaVictoire2,
+          issue_prevue: prevue,
+          issue_reelle: reelle,
+          issue_juste: prevue === reelle,
+        });
+      }
       for (const seuil of [0.9, 1.3, 1.6, 2.0]) {
         process.env.BANC_REGLE_SCORE = 'domination';
         process.env.BANC_ECART_BUTS = String(seuil);
@@ -371,6 +395,11 @@ for (const m of rencontres) {
 
   etat.ajouter(m);
   etat.invalider();
+}
+
+if (EXPORT) {
+  fs.writeFileSync(EXPORT, JSON.stringify(verdicts));
+  console.log(`${verdicts.length} verdict(s) écrit(s) dans ${EXPORT}`);
 }
 
 console.log(`Matchs évalués : ${evalues}`);

@@ -88,7 +88,7 @@ const TTL = 6 * 60 * 60 * 1000;
  * ne répondrait plus à aucune famille : la fiabilité disparaîtrait de l'écran
  * pendant six heures, sans que rien ne le signale.
  */
-const CLE = 'fiabilite:apprise-v4';
+const CLE = 'fiabilite:apprise-v5';
 
 /**
  * ── LES FAMILLES SUIVENT LA CONFIANCE, PAS L'ÉCART ────────────────────────
@@ -251,6 +251,64 @@ async function calculer(): Promise<Releve> {
   return { global, parLigue, total: jugements.length, calculeLe: new Date().toISOString() };
 }
 
+/**
+ * ── LA SECONDE SOURCE : LE BANC D'ESSAI ───────────────────────────────────
+ *
+ * Les jugements réels s'accumulent d'une quarantaine par jour, et les grands
+ * championnats n'y comptent que quelques dizaines de rencontres à haute
+ * confiance — trop peu pour distinguer une Liga à 86 % d'une Ligue 1 à 72 %.
+ *
+ * Le banc parcourt une saison entière journée après journée, en ne connaissant
+ * à chaque instant que le passé, et en appelant la VRAIE fonction de
+ * production. Il ajoute 2 305 verdicts.
+ *
+ * ── CE QUI AUTORISE DE LES MÉLANGER ───────────────────────────────────────
+ *
+ * Deux sources ne se fusionnent que si elles mesurent la même chose. Vérifié
+ * le 5 septembre 2026 :
+ *
+ *                        global   ≥ 62 %   ≥ 68 %   ≥ 74 %
+ *     banc (simulé)      50,2 %   67,1 %   72,8 %   76,5 %
+ *     jugements réels    48,9 %   66,1 %   70,3 %   75,6 %
+ *
+ * Un à deux points d'écart, dans la marge. Le banc est très légèrement plus
+ * optimiste : les taux affichés montent d'environ un point, et c'est le prix —
+ * assumé — de vingt-sept combinaisons qui deviennent mesurables, dont
+ * l'Eredivisie à 88,5 % et La Liga à 86,4 %.
+ *
+ * Publié par `scripts/publier-jugements-banc.mjs`, rarement : il décrit une
+ * saison achevée. Absent, tout fonctionne comme avant sur les seuls jugements
+ * réels.
+ */
+const CLE_BANC = 'fiabilite:banc-v1';
+
+async function lireBanc(): Promise<Pick<Releve, 'global' | 'parLigue'> | null> {
+  try {
+    const cache = await lireReserve<Releve>(CLE_BANC);
+    // On ignore `expiree` à dessein : ce relevé porte sur une saison finie et
+    // ne se périme pas. C'est le script qui le renouvelle, pas l'horloge.
+    return cache?.contenu?.global ? cache.contenu : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Additionne deux compteurs de la même clé. */
+function fusionner(
+  a: Record<string, { justes: number; total: number }>,
+  b: Record<string, { justes: number; total: number }> | undefined
+): Record<string, { justes: number; total: number }> {
+  if (!b) return a;
+  const sortie: Record<string, { justes: number; total: number }> = { ...a };
+  for (const [k, v] of Object.entries(b)) {
+    const connu = sortie[k];
+    sortie[k] = connu
+      ? { justes: connu.justes + v.justes, total: connu.total + v.total }
+      : { ...v };
+  }
+  return sortie;
+}
+
 /** Le relevé, depuis la réserve quand il est frais. */
 export async function lireReleve(): Promise<Releve | null> {
   try {
@@ -258,8 +316,16 @@ export async function lireReleve(): Promise<Releve | null> {
     if (cache && !cache.expiree) return cache.contenu;
 
     const releve = await calculer();
-    await ecrireReserve(CLE, releve, TTL);
-    return releve;
+    const banc = await lireBanc();
+    const complet = banc
+      ? {
+          ...releve,
+          global: fusionner(releve.global, banc.global),
+          parLigue: fusionner(releve.parLigue, banc.parLigue),
+        }
+      : releve;
+    await ecrireReserve(CLE, complet, TTL);
+    return complet;
   } catch (e: any) {
     console.warn('[FIABILITÉ] Relevé indisponible :', e?.message);
     // Une analyse ne doit JAMAIS échouer parce que ce chiffre manque : il
