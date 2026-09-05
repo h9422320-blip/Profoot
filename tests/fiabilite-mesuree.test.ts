@@ -94,6 +94,7 @@ test('★ ACQUIS — le championnat prime, mais seulement s’il a de quoi', () 
     global: { incertain: { justes: 300, total: 867 } },
     parLigue: {
       'Ligue 1|incertain': { justes: 14, total: 59 },
+      // Sous le seuil de vingt-cinq : doit rendre la main au chiffre global.
       'Coupe du Bénin|incertain': { justes: 3, total: 4 },
     },
     total: 3467,
@@ -110,7 +111,18 @@ test('★ ACQUIS — le championnat prime, mais seulement s’il a de quoi', () 
   assert.equal(repli?.ligue, null, 'Un championnat sans matière doit rendre la main au global.');
   assert.equal(repli?.matchs, 867);
 
-  assert.ok(MATCHS_MINIMUM_LIGUE >= 40, 'Le seuil par championnat est descendu sous quarante.');
+  // ── LE SEUIL EST PASSÉ DE 40 À 25, LE 5 SEPTEMBRE 2026 ────────────────
+  //
+  // Les familles sont exclusives : découpée ainsi, une ligue n'atteignait
+  // presque jamais quarante rencontres dans une seule d'entre elles. La
+  // mesure par championnat se fait désormais sur un palier CUMULÉ — toutes
+  // les rencontres au moins aussi sûres — ce qui donne bien plus de matière
+  // pour un même seuil : la Primeira Liga passe de 37 à 61 rencontres.
+  //
+  // Vingt-cinq suffisent alors, et c'est ce qui permet enfin de distinguer un
+  // championnat où l'application fait 80,3 % d'un autre où elle fait 61,5 % —
+  // dix-neuf points d'écart qu'on servait jusqu'ici sous le même chiffre.
+  assert.ok(MATCHS_MINIMUM_LIGUE >= 25, 'Le seuil par championnat est descendu sous vingt-cinq.');
 });
 
 test('★ ACQUIS — le taux affiché est celui qui a été compté', () => {

@@ -48,8 +48,32 @@
 import { createAdminClient } from './supabase-admin';
 import { lireReserve, ecrireReserve } from './api-football';
 
-/** En deçà, on ne descend pas au niveau du championnat. */
-export const MATCHS_MINIMUM_LIGUE = 40;
+/**
+ * ── LA MESURE PAR CHAMPIONNAT SE FAIT SUR UN PALIER CUMULÉ ────────────────
+ *
+ * Les familles sont exclusives : « tendance forte » ne contient pas
+ * « tendance très forte ». Découpée ainsi, une ligue n'atteint presque jamais
+ * assez de rencontres pour être mesurée à part — la Primeira Liga tombait à
+ * 37 matchs, la Premier League à 26.
+ *
+ * On mesure donc chaque championnat sur TOUTES les rencontres AU MOINS aussi
+ * sûres que celle qu'on regarde. À 68 % de confiance, la Primeira Liga passe
+ * ainsi de 37 à 61 rencontres, et le chiffre devient exploitable.
+ *
+ * Ce que ça révèle, mesuré le 5 septembre 2026 :
+ *
+ *     Primeira Liga    61 rencontres → 80,3 %
+ *     Bundesliga       35             → 77,1 %
+ *     La Liga          39             → 76,9 %
+ *     Serie A          22             → 72,7 %
+ *     Ligue 1          36             → 63,9 %
+ *     Premier League   26             → 61,5 %
+ *
+ * Dix-neuf points entre le premier et le dernier, à confiance égale. Servir
+ * le chiffre global à un match de Premier League revenait à annoncer 76 % là
+ * où l'application en fait 61.
+ */
+export const MATCHS_MINIMUM_LIGUE = 25;
 
 /** En deçà, on n'affiche RIEN. Un taux sur dix matchs n'est pas un taux. */
 export const MATCHS_MINIMUM_GLOBAL = 100;
@@ -64,7 +88,7 @@ const TTL = 6 * 60 * 60 * 1000;
  * ne répondrait plus à aucune famille : la fiabilité disparaîtrait de l'écran
  * pendant six heures, sans que rien ne le signale.
  */
-const CLE = 'fiabilite:apprise-v2';
+const CLE = 'fiabilite:apprise-v3';
 
 /**
  * ── LES FAMILLES SUIVENT LA CONFIANCE, PAS L'ÉCART ────────────────────────
@@ -179,10 +203,21 @@ async function calculer(): Promise<Releve> {
 
     const ligue = String(j.ligue ?? '').trim();
     if (!ligue) continue;
-    const k = `${ligue}|${t}`;
-    parLigue[k] ??= { justes: 0, total: 0 };
-    parLigue[k].total++;
-    if (j.issue_juste) parLigue[k].justes++;
+    // Le palier CUMULÉ : cette rencontre compte pour sa propre famille et pour
+    // toutes celles qui lui sont inférieures. Un match à 80 % de confiance
+    // nourrit donc aussi la mesure « au moins 68 % » et « au moins 62 % ».
+    const tete = Math.max(
+      Number(j.proba_domicile),
+      Number(j.proba_nul),
+      Number(j.proba_exterieur)
+    );
+    for (const palier of TRANCHES) {
+      if (tete < palier.min) continue;
+      const k = `${ligue}|${palier.cle}`;
+      parLigue[k] ??= { justes: 0, total: 0 };
+      parLigue[k].total++;
+      if (j.issue_juste) parLigue[k].justes++;
+    }
   }
 
   return { global, parLigue, total: jugements.length, calculeLe: new Date().toISOString() };
