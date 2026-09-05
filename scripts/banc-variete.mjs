@@ -62,6 +62,32 @@ const LIGUES = [
   { id: 94, nom: 'Primeira Liga' },
   { id: 88, nom: 'Eredivisie' },
   { id: 144, nom: 'Jupiler Pro League' },
+  // ── LES CHAMPIONNATS AJOUTÉS LE 5 SEPTEMBRE 2026 ────────────────────────
+  //
+  // La sélection les propose déjà — 2. Bundesliga, Ekstraklasa, Super Liga
+  // sont apparus dans la liste du jour — mais faute d'être mesurés, ils
+  // recevaient le chiffre GLOBAL. Un match d'Ekstraklasa s'affichait donc à
+  // 79 % parce que c'est la moyenne de tous les championnats confondus, sans
+  // que personne ne sache ce que l'application y vaut vraiment.
+  //
+  // Les mesurer, c'est aussi pouvoir les ÉCARTER : un championnat qui
+  // ressortirait à 55 % n'a rien à faire dans une sélection qui promet trois
+  // sur quatre.
+  { id: 40, nom: 'Championship' },
+  { id: 79, nom: '2. Bundesliga' },
+  { id: 136, nom: 'Serie B' },
+  { id: 62, nom: 'Ligue 2' },
+  { id: 203, nom: 'Süper Lig' },
+  { id: 106, nom: 'Ekstraklasa' },
+  { id: 179, nom: 'Premiership' },
+  { id: 207, nom: 'Super League' },
+  { id: 197, nom: 'Super League 1' },
+  { id: 113, nom: 'Allsvenskan' },
+  { id: 103, nom: 'Eliteserien' },
+  { id: 345, nom: 'Czech Liga' },
+  { id: 283, nom: 'Liga I' },
+  { id: 210, nom: 'HNL' },
+  { id: 286, nom: 'Super Liga' },
 ];
 const SAISON = 2025;
 const TERMINE = ['FT', 'AET', 'PEN'];
