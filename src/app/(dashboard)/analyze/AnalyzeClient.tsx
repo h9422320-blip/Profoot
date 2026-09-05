@@ -2348,10 +2348,37 @@ export default function AnalyzePage({
                     de ce type déjà jouées{result.fiabilite.ligue ? ` en ${result.fiabilite.ligue}` : ''},
                     l&apos;IA a trouvé le bon résultat {result.fiabilite.taux} fois sur 100.
                   </p>
-                  {result.fiabilite.taux < 45 && (
-                    <p className="text-[10.5px] text-orange-300/80 font-bold leading-relaxed">
-                      Match difficile à prévoir : les deux équipes se tiennent de trop près.
-                    </p>
+                  {/* ── DIRE OÙ ALLER, PAS SEULEMENT QUE C'EST DIFFICILE ────
+                      Mesuré le 5 septembre 2026 sur les 489 abonnés actifs
+                      ayant des analyses vérifiées : les vingt-neuf qui sont
+                      sous 30 % de réussite ne lancent PAS plus d'analyses que
+                      les autres — 9,3 en moyenne, comme tout le monde. Ils en
+                      lancent simplement sur d'autres matchs.
+
+                      Part de leurs analyses dans un grand championnat :
+
+                          sous 30 % de réussite ... 21,5 %
+                          entre 30 et 60 % ........ 40,3 %
+                          au-dessus de 60 % ....... 43,4 %
+
+                      Deux fois moins. Ce n'est pas de la malchance, c'est un
+                      problème de choix — et personne ne leur avait dit. Leur
+                      annoncer « match difficile » sans leur dire où aller
+                      revenait à constater le dégât sans l'éviter. */}
+                  {result.fiabilite.taux < 55 && (
+                    <div className="rounded-[12px] border border-orange-400/25 bg-orange-400/[0.06] px-3 py-2.5">
+                      <p className="text-[10.5px] font-bold leading-relaxed text-orange-300/90">
+                        {result.fiabilite.taux < 45
+                          ? 'Rencontre difficile à cerner : les deux équipes se tiennent de trop près.'
+                          : 'Rencontre moyennement lisible pour notre IA.'}
+                      </p>
+                      <p className="mt-1 text-[10.5px] leading-relaxed text-white/45">
+                        Pour vos prochaines analyses, la liste{' '}
+                        <strong className="text-white/70">« Les matchs les mieux cernés »</strong>,
+                        en haut de cet écran, ne montre que les rencontres où notre IA a le
+                        mieux vu par le passé — souvent au-dessus de 75 %.
+                      </p>
+                    </div>
                   )}
                 </div>
               ) : result.confidence ? (
