@@ -281,7 +281,10 @@ test('★ ACQUIS — le relevé du banc se lit hors du garde-temps des pages', (
    * Cette lecture n'a lieu qu'au recalcul du relevé, toutes les six heures,
    * jamais pendant qu'un visiteur attend. Elle peut prendre son temps.
    */
-  const src = lire('src/lib/fiabilite-apprise.ts');
+  // Sans les commentaires : celui de `lireBanc` cite nommément la fonction
+  // qu'on vérifie avoir quittée, et le test se déclencherait sur son propre
+  // récit.
+  const src = sansCommentaires(lire('src/lib/fiabilite-apprise.ts'));
   const bloc = src.slice(src.indexOf('async function lireBanc'), src.indexOf('function fusionner'));
   assert.doesNotMatch(
     bloc,
