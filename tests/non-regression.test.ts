@@ -742,8 +742,24 @@ test("l'abonné ne reçoit jamais moins de texte que le visiteur gratuit", () =>
 const ATALANTA = { recentMatches: ['D','W','L','W','W'], goalsScored: 74, goalsConceded: 42, cleanSheets: 13, avgPossession: 56, winStreak: 22, played: 38, name: 'Atalanta BC' };
 const SASSUOLO = { recentMatches: ['L','D','L','L','W'], goalsScored: 44, goalsConceded: 73, cleanSheets: 8, avgPossession: 47, winStreak: 9, played: 38, name: 'Sassuolo' };
 
+// ── RÉFÉRENCE MISE À JOUR LE 5 SEPTEMBRE 2026, EN CONNAISSANCE DE CAUSE ───
+//
+// Décision du propriétaire, après avoir lu les quatre formules de clôture qui
+// se relayaient : il n'en garde qu'une, « notre IA, elle, a fini son travail
+// et livre son verdict complet ». Elle dit que le travail EST FAIT et qu'il
+// ne reste qu'à l'ouvrir, là où « notre analyse détaillée dit lequel pèse le
+// plus lourd » promettait encore.
+//
+// Ce qui la précède, en revanche, suit désormais l'écart de forme au lieu
+// d'être tiré au sort : « sur le papier, la rencontre reste ouverte » sonnait
+// faux juste après un texte expliquant qu'une équipe écrase l'autre. Atalanta
+// (3 victoires) contre Sassuolo (1) donne un écart de deux, d'où « les deux
+// équipes ont leurs arguments ».
+//
+// Le reste du texte — l'ouverture, les deux phrases d'atouts, l'appel final —
+// n'a pas bougé d'un caractère.
 const RESUME_VALIDE =
-  "Atalanta BC reçoit Sassuolo pour un match de Serie A. Atalanta BC arrive lancé avec 3 victoires sur ses 5 derniers matchs, et son attaque trouve la faille presque à chaque sortie. De son côté, Sassuolo traverse une passe difficile (1-1-3 sur ses 5 derniers), et son attaque reste capable de faire la différence. Difficile de départager ces deux-là à l'œil nu — notre IA a passé la rencontre au crible, minute par minute. Débloquez l'analyse complète pour tout voir.";
+  "Atalanta BC reçoit Sassuolo pour un match de Serie A. Atalanta BC arrive lancé avec 3 victoires sur ses 5 derniers matchs, et son attaque trouve la faille presque à chaque sortie. De son côté, Sassuolo traverse une passe difficile (1-1-3 sur ses 5 derniers), et son attaque reste capable de faire la différence. Les deux équipes ont leurs arguments — notre IA, elle, a fini son travail et livre son verdict complet. Débloquez l'analyse complète pour tout voir.";
 
 const SCENARIO_VALIDE =
   "Atalanta BC misera sur son volume offensif et cherchera à peser haut sur la défense adverse. De l'autre côté, Sassuolo devra d'abord resserrer ses lignes avant de songer à se projeter. La rencontre se jouera sur la capacité de chacun à imposer son plan et à contrarier celui d'en face.";
@@ -1009,5 +1025,53 @@ test("★ ACQUIS — le résumé d'un abonné fait au moins quatre phrases", () 
   assert.ok(
     /RESUME_MINIMUM/.test(source) && /parsedData\.quickSummary = composerApercuVendeur\(/.test(source),
     "Le filet a disparu : un résumé trop court partira tel quel vers un abonné qui a payé."
+  );
+});
+
+test('★ ACQUIS — l’aperçu gratuit se termine TOUJOURS par la même phrase', async () => {
+  /*
+   * Décision du propriétaire, le 5 septembre 2026. Quatre formules de clôture
+   * se relayaient selon les noms des équipes ; il n'en garde qu'une, parce
+   * qu'elle vend mieux : elle annonce que le travail EST FAIT et qu'il ne
+   * reste qu'à l'ouvrir.
+   *
+   * Un appel à l'action qui change d'une visite à l'autre se mesure mal, de
+   * surcroît : on ne saura jamais lequel convertit si chacun ne sert qu'un
+   * quart du temps.
+   *
+   * Ce test parcourt des profils très différents — écrasant, contrasté,
+   * équilibré — et vérifie que la fin ne bouge pas, alors que le début, lui,
+   * doit suivre la rencontre.
+   */
+  const { composerApercu } = await import('../src/lib/apercu-vendeur');
+  const equipe = (lettres: string[], nom: string) => ({
+    recentMatches: lettres, goalsScored: 50, goalsConceded: 40, cleanSheets: 10,
+    avgPossession: 52, winStreak: 12, played: 38, name: nom,
+  });
+
+  const profils: [string[], string[]][] = [
+    [['W', 'W', 'W', 'W', 'W'], ['L', 'L', 'L', 'L', 'L']],
+    [['W', 'W', 'W', 'D', 'L'], ['W', 'D', 'L', 'L', 'L']],
+    [['W', 'D', 'L', 'W', 'D'], ['D', 'W', 'L', 'D', 'W']],
+  ];
+
+  const ouvertures = new Set<string>();
+  for (const [f1, f2] of profils) {
+    const texte = composerApercu('Alpha', 'Beta', equipe(f1, 'Alpha') as any, equipe(f2, 'Beta') as any, {
+      competition: 'Test League',
+      stade: null,
+    });
+    assert.match(
+      texte,
+      /notre IA, elle, a fini son travail et livre son verdict complet\. Débloquez l'analyse complète pour tout voir\.$/,
+      `La clôture a changé sur le profil ${f1.join('')} / ${f2.join('')} :\n  ${texte}`
+    );
+    // Ce qui précède le tiret cadratin final : l'ouverture, qui doit varier.
+    ouvertures.add(texte.slice(0, texte.lastIndexOf('—')).slice(-60));
+  }
+
+  assert.ok(
+    ouvertures.size >= 2,
+    'Toutes les rencontres reçoivent la même ouverture : elle ne suit plus l’écart de forme.'
   );
 });

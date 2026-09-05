@@ -302,12 +302,37 @@ const LIENS = [
  * Ces formulations disent donc qu'un verdict EXISTE sans employer aucun des
  * mots qui le nomment.
  */
-const TENSIONS = [
-  "Deux dynamiques opposées se font face — et notre IA a déjà tranché : tout est dans l'analyse complète.",
-  "Sur le papier, la rencontre reste ouverte — notre IA, elle, a fini son travail et livre son verdict complet.",
-  "Difficile de départager ces deux-là à l'œil nu — notre IA a passé la rencontre au crible, minute par minute.",
-  "Les deux équipes ont leurs arguments — notre analyse détaillée dit lequel pèse le plus lourd.",
-];
+/**
+ * ── UNE SEULE FIN, ET C'EST VOULU ─────────────────────────────────────────
+ *
+ * Quatre formules de clôture se relayaient, tirées au sort selon les noms des
+ * équipes. Décision du propriétaire, le 5 septembre 2026 : il n'en garde
+ * qu'une, celle-ci, parce qu'elle vend mieux que les trois autres — elle dit
+ * que le travail EST FAIT et qu'il ne reste qu'à l'ouvrir, là où « notre
+ * analyse détaillée dit lequel pèse le plus lourd » promet encore.
+ *
+ * Un appel à l'action qui change d'une visite à l'autre se mesure mal, aussi :
+ * on ne saura jamais lequel convertit si chacun ne sert qu'un quart du temps.
+ */
+const CLOTURE = 'notre IA, elle, a fini son travail et livre son verdict complet.';
+
+/**
+ * ── LE DÉBUT, LUI, SUIT LA RENCONTRE ──────────────────────────────────────
+ *
+ * « Sur le papier, la rencontre reste ouverte » sonnait faux devant un texte
+ * qui vient d'expliquer qu'une équipe écrase l'autre. Ces trois ouvertures
+ * sont donc choisies sur l'écart de forme des cinq derniers matchs, et non
+ * tirées au sort.
+ *
+ * Aucune ne nomme un vainqueur, et c'est une contrainte, pas une élégance :
+ * « favori » et « vainqueur » figurent dans les termes interdits, et l'aperçu
+ * gratuit ne doit rien livrer de ce que l'accès payant contient.
+ */
+const OUVERTURES = {
+  contraste: 'Deux dynamiques opposées se font face —',
+  nuance: 'Les deux équipes ont leurs arguments —',
+  serre: 'Sur le papier, la rencontre reste ouverte —',
+} as const;
 
 /**
  * Une empreinte stable, et surtout BIEN RÉPARTIE.
@@ -380,7 +405,13 @@ export function composerApercu(
   const lien = LIENS[empreinte(e1, e2) % LIENS.length];
   const phrase2 = a2.length > 1 ? `${lien} ${a2[0]}, et ${a2[1]}.` : `${lien} ${a2[0]}.`;
 
-  const tension = TENSIONS[empreinte(e2, e1) % TENSIONS.length];
+  // L'écart de forme sur les cinq derniers matchs, en victoires. Trois et
+  // plus : les deux équipes ne vivent pas la même saison. Zéro ou un : rien ne
+  // les sépare à l'œil nu.
+  const ecartForme = Math.abs(b1.v - b2.v);
+  const ouvertureTension =
+    ecartForme >= 3 ? OUVERTURES.contraste : ecartForme >= 2 ? OUVERTURES.nuance : OUVERTURES.serre;
+  const tension = `${ouvertureTension} ${CLOTURE}`;
 
   // Le décor, quand il est connu : la compétition et le stade situent la
   // rencontre en une ligne et donnent au texte l'allure d'un vrai chapeau
