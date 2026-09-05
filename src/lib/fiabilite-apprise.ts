@@ -88,7 +88,7 @@ const TTL = 6 * 60 * 60 * 1000;
  * ne répondrait plus à aucune famille : la fiabilité disparaîtrait de l'écran
  * pendant six heures, sans que rien ne le signale.
  */
-const CLE = 'fiabilite:apprise-v5';
+const CLE = 'fiabilite:apprise-v6';
 
 /**
  * ── LES FAMILLES SUIVENT LA CONFIANCE, PAS L'ÉCART ────────────────────────
@@ -238,6 +238,26 @@ async function calculer(): Promise<Releve> {
       Number(j.proba_nul),
       Number(j.proba_exterieur)
     );
+    // ── DEUX MESURES PAR CHAMPIONNAT, ET L'ORDRE COMPTE ──────────────────
+    //
+    // EXCLUSIVE : les rencontres de CETTE tranche seulement. C'est le chiffre
+    // juste — un match à 70 % vaut ce que valent les matchs entre 68 et 74 %.
+    //
+    // CUMULÉE : cette tranche et toutes celles au-dessus. Deux fois plus de
+    // matière, mais systématiquement OPTIMISTE, puisqu'elle mêle aux matchs
+    // de la tranche ceux, plus sûrs, qui la dominent. Mesuré le 5 septembre
+    // 2026 : 66,1 % en exclusif contre 71,2 % en cumulé sur « tendance
+    // forte », et jusqu'à dix points d'écart sur les tranches basses.
+    //
+    // La lecture prend l'exclusive dès qu'elle tient sur assez de rencontres,
+    // et ne se rabat sur la cumulée que faute de mieux. Promettre 79 % là où
+    // l'on en fait 70 fabrique exactement le client mécontent qu'on cherche à
+    // éviter.
+    for (const k of [`${ligue}|x${t}|${c}`, `${ligue}|x${t}`]) {
+      parLigue[k] ??= { justes: 0, total: 0 };
+      parLigue[k].total++;
+      if (j.issue_juste) parLigue[k].justes++;
+    }
     for (const palier of TRANCHES) {
       if (tete < palier.min) continue;
       for (const k of [`${ligue}|${palier.cle}|${c}`, `${ligue}|${palier.cle}`]) {
@@ -379,8 +399,14 @@ export function fiabilitePour(
   // 61,5 %. On ne descend d'un cran que faute de matière, jamais par défaut.
   const nom = String(ligue ?? '').trim();
   const candidats: [{ justes: number; total: number } | undefined, string | null][] = [
+    // La tranche EXACTE du championnat, avec le côté du terrain : le chiffre
+    // le plus juste qui existe.
+    [nom ? releve.parLigue[`${nom}|x${t}|${c}`] : undefined, nom],
+    [nom ? releve.parLigue[`${nom}|x${t}`] : undefined, nom],
+    // Puis la mesure cumulée du championnat — plus de matière, mais optimiste.
     [nom ? releve.parLigue[`${nom}|${t}|${c}`] : undefined, nom],
     [nom ? releve.parLigue[`${nom}|${t}`] : undefined, nom],
+    // Enfin le chiffre global, qui est exclusif et donc juste.
     [releve.global[`${t}|${c}`], null],
   ];
 

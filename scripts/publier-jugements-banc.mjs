@@ -97,6 +97,14 @@ for (const v of verdicts) {
 
   const ligue = String(v.ligue ?? '').trim();
   if (!ligue) continue;
+  // La mesure EXCLUSIVE — celle de la tranche exacte — porte un « x » devant
+  // le nom de la famille. C'est elle que la lecture préfère : la cumulée est
+  // systématiquement optimiste puisqu'elle mêle les matchs plus sûrs.
+  for (const k of [`${ligue}|x${famille}|${cote}`, `${ligue}|x${famille}`]) {
+    parLigue[k] ??= { justes: 0, total: 0 };
+    parLigue[k].total++;
+    if (v.issue_juste) parLigue[k].justes++;
+  }
   for (const palier of TRANCHES) {
     if (tete < palier.min) continue;
     for (const k of [`${ligue}|${palier.cle}|${cote}`, `${ligue}|${palier.cle}`]) {

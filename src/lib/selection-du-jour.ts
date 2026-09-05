@@ -49,6 +49,7 @@ import { createAdminClient } from './supabase-admin';
 import { lireReserve, ecrireReserve } from './api-football';
 import { lireReleve, fiabilitePour, trancheDe, TRANCHES } from './fiabilite-apprise';
 import { getLiveTeams } from './teams-live';
+import { CHAMPIONNATS } from './precalcul-selection';
 import type { EquipeDuJour } from './grands-matchs-du-jour';
 
 /** Une heure : la liste bouge quand un match commence, pas plus vite. */
@@ -198,6 +199,17 @@ async function calculer(): Promise<SelectionDuJour> {
   const pourLeJour = async (jour: string): Promise<MatchSelectionne[]> => {
     const retenus: MatchSelectionne[] = [];
     for (const f of await fixturesDuJour(jour)) {
+      // ── PREMIÈRES DIVISIONS SEULEMENT ─────────────────────────────
+      //
+      // Décision du propriétaire, le 5 septembre 2026. Le pré-calcul a cessé
+      // de préparer les deuxièmes divisions le jour même, mais leurs
+      // pronostics restent en base — calculés la veille — et la sélection
+      // continuait de proposer de la 2. Bundesliga.
+      //
+      // La liste est celle du pré-calcul : une seule source, pour que ce
+      // qu'on prépare et ce qu'on propose ne divergent jamais.
+      if (!CHAMPIONNATS.includes(String(f?.league?.name ?? ''))) continue;
+
       const p = pronostics.get(Number(f?.fixture?.id));
       if (!p || p.proba_domicile == null) continue;
 

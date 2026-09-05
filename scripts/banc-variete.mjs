@@ -73,10 +73,10 @@ const LIGUES = [
   // Les mesurer, c'est aussi pouvoir les ÉCARTER : un championnat qui
   // ressortirait à 55 % n'a rien à faire dans une sélection qui promet trois
   // sur quatre.
-  { id: 40, nom: 'Championship' },
-  { id: 79, nom: '2. Bundesliga' },
-  { id: 136, nom: 'Serie B' },
-  { id: 62, nom: 'Ligue 2' },
+  // Les deuxièmes divisions ont été retirées le 5 septembre 2026 : le
+  // propriétaire ne veut proposer que des PREMIÈRES divisions. Les mesurer
+  // n'aurait servi qu'à diluer le chiffre global de rencontres qu'on
+  // n'affiche pas.
   { id: 203, nom: 'Süper Lig' },
   { id: 106, nom: 'Ekstraklasa' },
   { id: 179, nom: 'Premiership' },
@@ -89,7 +89,22 @@ const LIGUES = [
   { id: 210, nom: 'HNL' },
   { id: 286, nom: 'Super Liga' },
 ];
-const SAISON = 2025;
+/**
+ * ── DEUX SAISONS, ET UN ÉTAT PAR SAISON ───────────────────────────────────
+ *
+ * Chaque saison ajoutée double la matière de mesure. Ce qui compte n'est pas
+ * le nombre de verdicts pour lui-même : c'est le nombre de combinaisons
+ * championnat × famille × côté du terrain qui atteignent les vingt-cinq
+ * rencontres exigées. En dessous, la fiabilité retombe sur le chiffre global
+ * et un match d'Eredivisie s'affiche au taux de tout le monde.
+ *
+ * L'ÉTAT DES ÉQUIPES EST CLOISONNÉ PAR SAISON, et c'est indispensable : une
+ * équipe reléguée, un effectif refait, un entraîneur parti — les forces d'une
+ * saison ne décrivent pas la suivante. Les mélanger reviendrait à prédire la
+ * saison 2025 avec la moyenne de deux saisons, ce que la production ne fait
+ * jamais.
+ */
+const SAISONS = [2024, 2025];
 const TERMINE = ['FT', 'AET', 'PEN'];
 
 /** Nombre de matchs déjà joués par équipe avant qu'on accepte de prédire. */
@@ -97,11 +112,21 @@ const HISTORIQUE_MINIMUM = 5;
 
 const rencontres = [];
 for (const l of LIGUES) {
-  const d = await apiFootball(`/fixtures?league=${l.id}&season=${SAISON}`, CACHE_TTL.TEAM_INFO);
+  const parSaison = await Promise.all(
+    SAISONS.map((sa) =>
+      apiFootball(`/fixtures?league=${l.id}&season=${sa}`, CACHE_TTL.TEAM_INFO).then((d) =>
+        (d?.response ?? []).map((f) => ({ f, sa }))
+      )
+    )
+  );
+  const d = { response: parSaison.flat() };
   const fx = (d?.response ?? [])
-    .filter((f) => TERMINE.includes(f?.fixture?.status?.short))
-    .map((f) => ({
-      ligue: l.id,
+    .filter(({ f }) => TERMINE.includes(f?.fixture?.status?.short))
+    .map(({ f, sa }) => ({
+      // La clé d'état porte la saison : deux saisons du même championnat sont
+      // deux mondes séparés.
+      ligue: `${l.id}:${sa}`,
+      nomLigue: l.nom,
       date: new Date(f.fixture.date).getTime(),
       dom: f.teams.home.id,
       ext: f.teams.away.id,
@@ -365,7 +390,7 @@ for (const m of rencontres) {
         const reelle = m.bd > m.be ? 'domicile' : m.bd === m.be ? 'nul' : 'exterieur';
         const prevue = vraie.buts1 > vraie.buts2 ? 'domicile' : vraie.buts1 === vraie.buts2 ? 'nul' : 'exterieur';
         verdicts.push({
-          ligue: (LIGUES.find((x) => x.id === m.ligue) || {}).nom || String(m.ligue),
+          ligue: m.nomLigue || String(m.ligue),
           proba_domicile: vraie.probaVictoire1,
           proba_nul: vraie.probaNul,
           proba_exterieur: vraie.probaVictoire2,

@@ -50,7 +50,17 @@ import { figerPrediction } from './prediction-figee';
  * coûterait du quota pour des rencontres que la fiabilité mesurée écarterait
  * de toute façon.
  */
-const CHAMPIONNATS = [
+// ── PREMIÈRES DIVISIONS UNIQUEMENT ────────────────────────────────────────
+//
+// Décision du propriétaire, le 5 septembre 2026 : la sélection ne propose que
+// des premières divisions. Championship, Serie B, 2. Bundesliga et Ligue 2 en
+// ont été retirées le jour même — elles étaient entrées la veille et la
+// sélection s'était mise à proposer de la 2. Bundesliga.
+//
+// Ce n'est pas une question de mesure : le Championship ressortait à 80,8 %,
+// mieux que la Serie A. C'est une question de produit — ce que les abonnés
+// veulent voir analysé.
+export const CHAMPIONNATS = [
   'Premier League',
   'La Liga',
   'Serie A',
@@ -59,10 +69,10 @@ const CHAMPIONNATS = [
   'Primeira Liga',
   'Eredivisie',
   'Jupiler Pro League',
-  'Championship',
-  'Serie B',
-  '2. Bundesliga',
-  'Ligue 2',
+  
+  
+  
+  
   'Süper Lig',
   'Super Lig',
   'Liga Portugal',
