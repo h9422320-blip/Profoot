@@ -1295,6 +1295,51 @@ export function calculerScoreProbable(
   const FRANCHISE_BUTS = Number(process.env.BANC_FRANCHISE_BUTS) || 2;
 
   /**
+   * ── L'APLATISSEMENT : RESSERRER SANS INVERSER ─────────────────────────
+   *
+   * Chaque poids est élevé à cette puissance avant le tirage.
+   *
+   *   1     — les probabilités telles quelles. Le score deux fois plus
+   *           probable sort deux fois plus souvent, et le 1-0 finit à 13 %
+   *           parce qu'il est en tête sur beaucoup de rencontres.
+   *   0,5   — la racine carrée. Un score quatre fois plus probable ne sort
+   *           plus que deux fois plus souvent : les écarts s'écrasent,
+   *           L'ORDRE NE CHANGE PAS.
+   *   0     — tous les scores à égalité. À proscrire : le score ne dirait
+   *           plus rien du match et contredirait les pourcentages affichés
+   *           juste en dessous — le défaut signalé le 3 septembre 2026.
+   *
+   * Ce réglage ne touche QUE la répartition à l'intérieur de l'issue déjà
+   * retenue. Le vainqueur annoncé reste celui des probabilités, quoi qu'il
+   * arrive : un favori à 85 % ne peut pas recevoir un score perdant.
+   */
+  /**
+   * ── LA VALEUR RETENUE : 0,5 ────────────────────────────────────────────
+   *
+   * Choisie par le propriétaire le 5 septembre 2026, sur ces mesures — six
+   * réglages, 2 305 rencontres, le vrai moteur :
+   *
+   *     réglage   score le plus servi   score exact
+   *       1            1-0  16,4 %         7,4 %
+   *       0,8          1-0  14,8 %         7,2 %
+   *       0,65         1-0  14,0 %         6,9 %
+   *       0,5          1-0  12,8 %         6,8 %     <-- retenu
+   *       0,35         1-0  11,7 %         6,2 %
+   *       0,2          2-0  10,5 %         5,7 %
+   *
+   * C'est le meilleur rapport de la série : 3,6 points de concentration en
+   * moins pour 0,6 point de précision. En dessous, on paie deux fois plus
+   * cher — et à 0,35, une domination à 77 % commence à rendre des 3-2, ce qui
+   * n'a pas de sens.
+   *
+   * Le plancher, lui, est à 9 % : même en aplatissant à l'extrême, le 1-0 et
+   * le 2-0 restent les scores POSSIBLES sur presque toutes les victoires à
+   * domicile, quand un 5-2 ne l'est que sur quelques rencontres. Viser 7 %
+   * était donc hors d'atteinte, et le savoir évite d'y revenir.
+   */
+  const APLATISSEMENT = Number(process.env.BANC_APLATISSEMENT) || 0.5;
+
+  /**
    * Un nombre de [0, 1) tiré d'une graine, sans aucun hasard réel.
    *
    * Mélange entier de Thomas Wang : deux graines voisines donnent deux
@@ -1420,7 +1465,8 @@ export function calculerScoreProbable(
         // elle écrase aussi le 1-0 face au 2-0 et concentre tout sur le plus
         // petit score : mesuré, 1-0 grimpait à 28 %, soit le défaut qu'on
         // vient de corriger, dans l'autre sens.
-        const poids = pr * Math.pow(PENALITE_BUTS, Math.max(0, i + j - FRANCHISE_BUTS));
+        const brut = pr * Math.pow(PENALITE_BUTS, Math.max(0, i + j - FRANCHISE_BUTS));
+        const poids = APLATISSEMENT === 1 ? brut : Math.pow(brut, APLATISSEMENT);
         candidats.push({ buts1: i, buts2: j, proba: poids });
         masse += poids;
       }

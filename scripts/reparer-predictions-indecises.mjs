@@ -103,9 +103,12 @@ for (let depart = 0; depart < 100_000; depart += 1000) {
 // ete departage : c est le comportement du premier passage.
 const AVANT = process.env.AVANT_LE || '2026-09-02T21:00:00Z';
 const SEULEMENT_INDECISES = process.argv.includes('--indecises');
-const aReparer = SEULEMENT_INDECISES
-  ? toutes.filter(indecise)
-  : toutes.filter((p) => new Date(p.calculee_le).getTime() < new Date(AVANT).getTime());
+const CIBLES = (process.env.FIXTURES_CIBLES ?? '').split(',').filter(Boolean).map(Number);
+const aReparer = CIBLES.length
+  ? toutes.filter((p) => CIBLES.includes(Number(p.fixture_id)))
+  : SEULEMENT_INDECISES
+    ? toutes.filter(indecise)
+    : toutes.filter((p) => new Date(p.calculee_le).getTime() < new Date(AVANT).getTime());
 console.log(`${toutes.length} prédictions figées, dont ${aReparer.length} à examiner.\n`);
 
 // ── 2. RÉSERVES PARTAGÉES ───────────────────────────────────────────────────
