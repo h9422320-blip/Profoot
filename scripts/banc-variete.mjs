@@ -398,10 +398,27 @@ for (const [nom, s] of Object.entries(resultats)) {
 for (const nom of ['PRODUCTION sommet', 'ecart>=1.3', 'ecart>=1.6']) {
   const s = resultats[nom];
   if (!s) continue;
-  const tri = [...s.scores].sort((a, b) => b[1] - a[1]).slice(0, 10);
-  console.log(`\n${nom} — répartition :`);
+  // ── TOUTE LA QUEUE, ET PAS SEULEMENT LA TÊTE ────────────────────────────
+  //
+  // L'affichage s'arrêtait aux dix premiers. C'est ce qu'il faut pour repérer
+  // une concentration — mais pas pour savoir CE QU'IL Y A DERRIÈRE. Le
+  // propriétaire a demandé le 5 septembre 2026 ce que cachaient les points de
+  // suspension : la réponse tenait en vingt-six scores de plus.
+  const tri = [...s.scores].sort((a, b) => b[1] - a[1]);
+  console.log(`\n${nom} — répartition (${tri.length} scores différents) :`);
+  for (let i = 0; i < tri.length; i += 6) {
+    console.log(
+      '   ' +
+        tri
+          .slice(i, i + 6)
+          .map(([k, v]) => `${k} ${((100 * v) / s.n).toFixed(1).padStart(4)}%`)
+          .join('   ')
+    );
+  }
+  const dix = tri.slice(0, 10).reduce((a, [, v]) => a + v, 0);
   console.log(
-    '   ' + tri.map(([k, v]) => `${k} ${((100 * v) / s.n).toFixed(0)}%`).join('  ')
+    `   → les dix premiers pèsent ${((100 * dix) / s.n).toFixed(0)} %, ` +
+      `les ${tri.length - 10} autres ${(100 - (100 * dix) / s.n).toFixed(0)} %`
   );
 }
 
