@@ -35,6 +35,7 @@ import {
   fiabilitePour,
   MATCHS_MINIMUM_LIGUE,
   MATCHS_MINIMUM_GLOBAL,
+  TRANCHES,
 } from '../src/lib/fiabilite-apprise';
 
 const lire = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8');
@@ -152,5 +153,64 @@ test('★ ACQUIS — le serveur pose la fiabilité sur chaque analyse', () => {
     route,
     /const releveFiabilite = await lireReleve\(\)/,
     'Le relevé n’est plus lu — ou il l’est dans une fonction non asynchrone.'
+  );
+});
+
+// ── LES PALIERS SUIVENT LA CONFIANCE, ET LE SEUIL VISE LES QUATRE SUR CINQ ──
+
+test('★ ACQUIS — les familles se lisent sur la confiance de l’issue annoncée', () => {
+  /*
+   * Mesuré le 5 septembre 2026 sur les 3 467 rencontres jugées, une fois le
+   * classement passé de l'écart à la confiance :
+   *
+   *     Issue incertaine     1 309 matchs → 38,6 %
+   *     La rencontre penche  1 113 matchs → 49,1 %
+   *     Tendance marquée       481 matchs → 56,5 %
+   *     Tendance nette         251 matchs → 61,0 %
+   *     Tendance forte         145 matchs → 64,1 %
+   *     Tendance très forte    168 matchs → 75,6 %
+   *
+   * Du simple au double. L'ancien classement par écart mélangeait 45/28/27 et
+   * 70/15/15 dans la même famille, alors que le second est bien plus sûr.
+   */
+  const bornes = TRANCHES.map((t) => t.min);
+  assert.deepEqual(
+    bornes,
+    [0, 45, 55, 62, 68, 74],
+    'Les bornes des familles ont changé — les remesurer sur les jugements avant de les bouger.'
+  );
+  assert.equal(trancheDe(80, 12, 8), 'tresforte', '80 % de confiance : tendance très forte.');
+  assert.equal(trancheDe(38, 30, 32), 'incertain', '38 % au mieux : rien n’est joué.');
+});
+
+test('★ ACQUIS — la sélection ne descend pas sous 70 % de fiabilité', async () => {
+  /*
+   * Objectif du propriétaire, le 5 septembre 2026 : que l'utilisateur qui
+   * lance cinq analyses en trouve quatre justes.
+   *
+   * Ce seuil est la seule façon honnête d'en approcher. À 58, la sélection
+   * acceptait des rencontres à 58,5 % de réussite — une sur deux, ce qui
+   * n'est pas une sélection. À 70, elle ne retient que des matchs où
+   * l'application a réellement raison sept à huit fois sur dix.
+   *
+   * Elle en propose forcément moins. C'est le prix, et c'est le bon.
+   */
+  const { FIABILITE_MINIMUM } = await import('../src/lib/selection-du-jour');
+  assert.ok(
+    FIABILITE_MINIMUM >= 70,
+    `Le seuil de la sélection est retombé à ${FIABILITE_MINIMUM} : elle proposerait de nouveau des matchs qu’on rate une fois sur deux.`
+  );
+});
+
+test('★ ACQUIS — la clé du relevé est versionnée', () => {
+  // Le relevé range ses compteurs sous les noms des familles. Le jour où
+  // celles-ci changent, un relevé rangé sous les anciennes serait relu sans
+  // erreur et ne répondrait plus à rien : la fiabilité disparaîtrait de
+  // l'écran pendant six heures, en silence.
+  const src = fs.readFileSync(path.join(process.cwd(), 'src/lib/fiabilite-apprise.ts'), 'utf8');
+  assert.match(
+    src,
+    /const CLE = 'fiabilite:apprise-v\d+'/,
+    'La clé de réserve a perdu son numéro de version.'
   );
 });
