@@ -201,9 +201,37 @@ export default function MatchsDuJour({
                   rappelle la couleur de l'action, sans ajouter un mot. */}
               <span className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-[#10B981]/70 to-transparent" />
 
+              {/* ── LE TAUX, EN HAUT À GAUCHE ─────────────────────────────
+                  Mesuré le 5 septembre 2026 sur les quatre matchs proposés ce
+                  jour-là : AS Roma - Atalanta à 62 %, Le Havre - Brest à 44 %.
+                  Dix-huit points d'écart, et le client tapait au hasard.
+
+                  Les vingt-neuf abonnés sous 30 % de réussite ne lancent pas
+                  plus d'analyses que les autres : ils les lancent sur d'autres
+                  matchs. Ce carrousel est le chemin le plus emprunté, et il ne
+                  disait rien de ce qu'il proposait.
+
+                  Absent quand la rencontre n'a jamais été analysée : on ne
+                  devine pas un taux. */}
               <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate text-[9px] font-black uppercase tracking-[0.14em] text-white/35">
-                  {m.championnat}
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {typeof m.fiabilite === 'number' && (
+                    <span
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-black tabular-nums ${
+                        m.fiabilite >= 70
+                          ? 'bg-[#10B981]/20 text-[#34D399]'
+                          : m.fiabilite >= 55
+                            ? 'bg-[#2DD4BF]/15 text-[#5EEAD4]'
+                            : 'bg-orange-400/15 text-orange-300'
+                      }`}
+                      title="Part d'analyses justes sur les rencontres de ce type déjà jouées"
+                    >
+                      {m.fiabilite} %
+                    </span>
+                  )}
+                  <span className="min-w-0 truncate text-[9px] font-black uppercase tracking-[0.14em] text-white/35">
+                    {m.championnat}
+                  </span>
                 </span>
                 <span
                   suppressHydrationWarning

@@ -116,6 +116,7 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
                   championnat: m.championnat,
                   dom: m.dom,
                   ext: m.ext,
+                  fiabilite: m.fiabilite,
                 })
               }
               className={`group grid w-full grid-cols-[42px_76px_1fr] items-center gap-2.5 rounded-[14px] border border-white/[0.07] ${ton.fond} px-2.5 py-2.5 text-left transition-all hover:border-white/20 hover:bg-white/[0.04] active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-50`}
