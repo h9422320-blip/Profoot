@@ -284,10 +284,26 @@ const CLE_BANC = 'fiabilite:banc-v1';
 
 async function lireBanc(): Promise<Pick<Releve, 'global' | 'parLigue'> | null> {
   try {
-    const cache = await lireReserve<Releve>(CLE_BANC);
-    // On ignore `expiree` à dessein : ce relevé porte sur une saison finie et
-    // ne se périme pas. C'est le script qui le renouvelle, pas l'horloge.
-    return cache?.contenu?.global ? cache.contenu : null;
+    // ── LECTURE DIRECTE, ET NON PAR LA RÉSERVE ─────────────────────────────
+    //
+    // `lireReserve` abandonne au bout d'une seconde et demie — un garde-temps
+    // posé pour les pages publiques, qui ne doivent jamais attendre. Il est
+    // trop court pour ces huit kilo-octets : vérifié le 5 septembre 2026, la
+    // fusion n'avait tout simplement pas lieu, et le relevé restait à ses
+    // 26 rencontres au lieu de 57. Rien ne le signalait — les taux étaient
+    // seulement mesurés sur moins de matière.
+    //
+    // Cette lecture-ci n'a lieu qu'au recalcul du relevé, une fois toutes les
+    // six heures, jamais pendant qu'un visiteur attend. Elle peut prendre son
+    // temps ; on lui laisse cinq secondes.
+    const sb = createAdminClient();
+    const lecture = sb.from('cache_api').select('contenu').eq('cle', CLE_BANC).maybeSingle();
+    const limite = new Promise<null>((r) => setTimeout(() => r(null), 5_000));
+    const resultat: any = await Promise.race([lecture, limite]);
+    const contenu = resultat?.data?.contenu;
+    // On ignore la date d'expiration à dessein : ce relevé porte sur une
+    // saison achevée et ne se périme pas. C'est le script qui le renouvelle.
+    return contenu?.global ? contenu : null;
   } catch {
     return null;
   }

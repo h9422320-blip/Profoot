@@ -264,3 +264,34 @@ test('★ ACQUIS — la mesure sépare le favori qui reçoit de celui qui se dé
     'Le compteur de repli, sans le côté du terrain, a disparu.'
   );
 });
+
+test('★ ACQUIS — le relevé du banc se lit hors du garde-temps des pages', () => {
+  /*
+   * La fusion des deux sources a été livrée le 5 septembre 2026… et n'a pas eu
+   * lieu. `lireReserve` abandonne au bout d'une seconde et demie — un
+   * garde-temps posé pour les pages publiques, qui ne doivent jamais attendre.
+   * Trop court pour ces huit kilo-octets.
+   *
+   * Rien ne le signalait : aucune erreur, aucun journal. Le relevé restait
+   * simplement à ses 26 rencontres au lieu de 57, et les taux affichés étaient
+   * mesurés sur moitié moins de matière. Vérifié en base après coup —
+   * `Primeira Liga|tresforte|domicile` portait 26 rencontres, la somme des
+   * deux sources en donne 57 et 89,5 % de réussite.
+   *
+   * Cette lecture n'a lieu qu'au recalcul du relevé, toutes les six heures,
+   * jamais pendant qu'un visiteur attend. Elle peut prendre son temps.
+   */
+  const src = lire('src/lib/fiabilite-apprise.ts');
+  const bloc = src.slice(src.indexOf('async function lireBanc'), src.indexOf('function fusionner'));
+  assert.doesNotMatch(
+    bloc,
+    /lireReserve/,
+    'Le relevé du banc repasse par la réserve : son garde-temps d’une seconde et demie fera échouer la fusion en silence.'
+  );
+  assert.match(
+    bloc,
+    /Promise\.race/,
+    'La lecture n’a plus de limite de temps du tout : une base muette bloquerait le recalcul.'
+  );
+  assert.match(bloc, /5_000/, 'Le délai accordé à cette lecture a changé.');
+});
