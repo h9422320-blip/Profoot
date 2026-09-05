@@ -1254,6 +1254,47 @@ export function calculerScoreProbable(
   const SANS_DEUX_UN = process.env.BANC_AVEC_DEUX_UN !== 'oui';
 
   /**
+   * ── LE POIDS DES GROS SCORES, RAMENÉ À CE QU'ILS PÈSENT VRAIMENT ───────
+   *
+   * Chaque but supplémentaire multiplie le poids d'un score par ce facteur.
+   * En dessous de 1, les scores fleuves reculent et les petits avancent.
+   *
+   * Pourquoi c'est nécessaire alors que la grille est déjà « la vraie
+   * probabilité » : parce que le tirage se fait À L'INTÉRIEUR d'une issue déjà
+   * choisie, et que l'issue retenue est presque toujours celle du favori. La
+   * masse conditionnelle penche donc vers les scores larges, plus qu'ils
+   * n'arrivent en vrai.
+   *
+   * Un seul réglage produit les deux effets demandés le 5 septembre 2026 :
+   * moins de 3-0, 3-1 et 0-3 — et, mécaniquement, plus de 1-0, 2-0, 0-1 et
+   * 0-2, puisque la masse retirée aux uns revient aux autres dans la même
+   * issue.
+   *
+   * Il ne touche PAS à l'issue annoncée : 3-0 et 1-0 disent la même chose du
+   * vainqueur. La justesse du résultat ne peut donc pas bouger.
+   */
+  //
+  // ── LA VALEUR RETENUE EST 1, C'EST-À-DIRE AUCUNE PÉNALITÉ ──────────────
+  //
+  // Le propriétaire a donné le 5 septembre 2026 une répartition à atteindre :
+  // 1-0 16 %, 2-0 14 %, 3-0 6 %, 3-1 5 %, 0-1 11 %, 0-2 11 %, 1-3 5 %,
+  // 0-3 2 %, 1-1 4 %, 4-0 4 %.
+  //
+  // Dix réglages ont été essayés sur les 2 305 rencontres du banc, en mesurant
+  // l'écart total à cette liste. Toute pénalité ÉLOIGNE : 14 points d'écart
+  // sans elle, 18 à 0,9, 22 à 0,8, 23 à 0,6. La masse retirée aux gros scores
+  // revient au 1-0 et au 2-0, qui dépassent alors la cible autant que les
+  // autres lui manquaient.
+  //
+  // Le levier reste en place, réglable, parce qu'il faudra peut-être le
+  // reprendre quand la table d'apprentissage aura doublé. Mais il est neutre
+  // aujourd'hui, et c'est une mesure qui l'a décidé.
+  const PENALITE_BUTS = Number(process.env.BANC_PENALITE_BUTS) || 1;
+
+  /** Nombre de buts au-dessous duquel la pénalité ne s'applique pas. */
+  const FRANCHISE_BUTS = Number(process.env.BANC_FRANCHISE_BUTS) || 2;
+
+  /**
    * Un nombre de [0, 1) tiré d'une graine, sans aucun hasard réel.
    *
    * Mélange entier de Thomas Wang : deux graines voisines donnent deux
@@ -1372,9 +1413,16 @@ export function calculerScoreProbable(
         if (SANS_DEUX_UN && ((i === 2 && j === 1) || (i === 1 && j === 2))) continue;
         const pr = probaDe(i, j);
         // Le seuil reste : sans lui, un 5-0 improbable finirait par sortir.
+        // Il s'applique à la probabilité NUE, avant pénalité : c'est la
+        // plausibilité du score qui décide s'il entre, pas notre préférence.
         if (pr < SEUIL_GRILLE * referenceProba) continue;
-        candidats.push({ buts1: i, buts2: j, proba: pr });
-        masse += pr;
+        // La pénalité ne mord qu'AU-DELÀ de deux buts. Sans cette franchise,
+        // elle écrase aussi le 1-0 face au 2-0 et concentre tout sur le plus
+        // petit score : mesuré, 1-0 grimpait à 28 %, soit le défaut qu'on
+        // vient de corriger, dans l'autre sens.
+        const poids = pr * Math.pow(PENALITE_BUTS, Math.max(0, i + j - FRANCHISE_BUTS));
+        candidats.push({ buts1: i, buts2: j, proba: poids });
+        masse += poids;
       }
     }
 
