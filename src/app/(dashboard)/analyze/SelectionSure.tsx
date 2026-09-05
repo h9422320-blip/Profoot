@@ -131,16 +131,28 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
               {/* Les deux écussons, deuxième colonne, largeur fixe. */}
               <div className="flex items-center gap-1.5">
                 {[m.dom, m.ext].map((e, i) => (
+                  // ── PLUS DE PASTILLE, L'ÉCUSSON SEUL ──────────────────
+                  //
+                  // Il était posé sur un rond blanc, qui le rendait visible
+                  // mais imposait une pastille de plus dans une interface qui
+                  // en compte déjà beaucoup. Demande du propriétaire, le
+                  // 5 septembre 2026 : l'écusson occupe désormais toute la
+                  // place du rond, et rien ne se voit derrière.
+                  //
+                  // L'ombre portée remplace le rond dans sa seule fonction
+                  // utile : détacher du fond un écusson sombre — un noir et
+                  // blanc, un bleu nuit — qui se confondrait sinon avec la
+                  // carte. Elle ne se voit pas sur un écusson clair.
                   <div
                     key={i}
-                    className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-white ring-1 ${ton.anneau} transition-transform group-hover:scale-105`}
+                    className="flex h-[34px] w-[34px] shrink-0 items-center justify-center transition-transform group-hover:scale-110"
                   >
                     {e.logo ? (
                       <img
                         src={e.logo}
                         alt={e.name}
                         title={e.name}
-                        className="h-[24px] w-[24px] object-contain"
+                        className="h-[34px] w-[34px] object-contain drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]"
                         // Chargement immédiat, et non paresseux : six images de
                         // vingt-quatre pixels ne coûtent rien, alors qu'un
                         // écusson qui arrive une seconde trop tard laisse un
@@ -152,7 +164,7 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
                     ) : (
                       // Un écusson manquant ne doit pas laisser un trou : les
                       // deux premières lettres suffisent à tenir la ligne.
-                      <span className="text-[11px] font-black text-[#101c24]">
+                      <span className="text-[11px] font-black text-white/75">
                         {e.name.slice(0, 2).toUpperCase()}
                       </span>
                     )}
