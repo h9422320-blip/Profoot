@@ -133,8 +133,20 @@ export function messageAlerteVenteNonHonoree(details: {
       ? `ProFoot — vente livrée automatiquement (${email ?? 'client inconnu'})`
       : `ProFoot — une vente n'a PAS ouvert d'accès (${email ?? 'client inconnu'})`,
     texte: [
+      // ── CE RÉSUMÉ DÉCRIVAIT UNE ACTION QU'ON NE FAIT PLUS ──────────────
+      //
+      // Il annonçait « le compte vient d'être créé et l'accès est crédité ».
+      // Or on ne crée JAMAIS de compte à la place de quelqu'un depuis la
+      // décision du 1er septembre 2026. Le résumé du courriel contredisait
+      // donc le motif détaillé qu'il affiche quinze lignes plus bas — celui-ci
+      // disant, correctement, que l'accès avait été posé sur un compte
+      // existant ou qu'une invitation était partie.
+      //
+      // Deux versions du même événement dans un même message : celle qu'on lit
+      // en premier, fausse, et celle qu'on lit en second, juste. Le lecteur
+      // s'arrête à la première.
       livree
-        ? "Une vente MakeTou est arrivée sans compte : le compte vient d'être créé et l'accès est crédité. Rien à faire."
+        ? 'Une vente MakeTou est arrivée sans compte à son adresse, et elle a été servie. Rien à faire — le motif ci-dessous dit comment.'
         : "Une vente MakeTou vient d'être encaissée sans que l'accès s'ouvre.",
       '',
       `Client   : ${email ?? '(adresse absente du message)'}`,
@@ -160,10 +172,14 @@ export function messageAlerteVenteNonHonoree(details: {
       // une intervention humaine que lorsqu'il en faut vraiment une.
       'CE QUI SE FAIT TOUT SEUL',
       '',
-      "Si l'acheteur n'a pas de compte, l'application le crée, crédite l'accès",
-      'et lui envoie un lien pour choisir son mot de passe. En cas d\'échec,',
-      "l'entretien repasse deux fois par jour, et l'acheteur est relancé",
-      'automatiquement au bout de 24 h puis de 72 h.',
+      // Ces quatre lignes décrivaient elles aussi la création de compte
+      // abandonnée le 1er septembre 2026. Elles disent maintenant les deux
+      // chemins qui existent réellement.
+      "Si l'adresse de la vente porte une faute de frappe, l'accès est posé",
+      "sur le vrai compte de l'acheteur. Si l'adresse est inconnue, il reçoit",
+      "une invitation et son accès s'ouvre à la seconde où il crée son compte.",
+      "Aucun compte n'est jamais créé à sa place. En cas d'échec, l'entretien",
+      "repasse deux fois par jour et l'acheteur est relancé à 24 h puis 72 h.",
       '',
       "SI RIEN NE BOUGE D'ICI QUELQUES HEURES",
       '',
