@@ -141,7 +141,13 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
                         alt={e.name}
                         title={e.name}
                         className="h-[24px] w-[24px] object-contain"
-                        loading="lazy"
+                        // Chargement immédiat, et non paresseux : six images de
+                        // vingt-quatre pixels ne coûtent rien, alors qu'un
+                        // écusson qui arrive une seconde trop tard laisse un
+                        // rond blanc vide — et sans nom de club affiché, la
+                        // ligne ne dit alors plus quel match elle désigne.
+                        // Constaté à la première capture d'écran.
+                        loading="eager"
                       />
                     ) : (
                       // Un écusson manquant ne doit pas laisser un trou : les
@@ -165,9 +171,13 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
                 {/* L'heure rejoint le nombre de rencontres, qui est ce qui rend
                     le taux crédible : sans lui, « 77 % » n'est qu'une
                     affirmation de plus. Le championnat n'y est pas répété. */}
+                {/* « rencontres mesurées » débordait encore : le mot
+                    « mesurées » est déjà porté par le titre de la section et
+                    par la mention du bas. Un nombre posé à côté d'un
+                    pourcentage se comprend sans lui. */}
                 <p className="truncate text-[10.5px] leading-tight text-white/40 mt-[3px]">
                   {m.kickoffISO ? `${heureLocale(m.kickoffISO)} · ` : ''}
-                  {m.mesureeSur.toLocaleString('fr-FR')} rencontres mesurées
+                  {m.mesureeSur.toLocaleString('fr-FR')} rencontres
                 </p>
               </div>
             </button>
