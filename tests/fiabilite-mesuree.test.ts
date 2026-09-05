@@ -226,3 +226,41 @@ test('★ ACQUIS — la clé du relevé est versionnée', () => {
     'La clé de réserve a perdu son numéro de version.'
   );
 });
+
+test('★ ACQUIS — la mesure sépare le favori qui reçoit de celui qui se déplace', async () => {
+  /*
+   * Cherché sur la première moitié de l'histoire, validé sur la seconde —
+   * celle que la recherche n'avait jamais vue :
+   *
+   *     confiance ≥ 76 % et favori À DOMICILE .... 76,7 %  (60 rencontres)
+   *     confiance ≥ 76 %, sans distinction ....... 73,1 %  (78)
+   *     confiance ≥ 68 % et favori À DOMICILE .... 70,9 % (148)
+   *     confiance ≥ 68 %, sans distinction ....... 67,4 % (193)
+   *
+   * Et sur le relevé complet, dans la famille la plus sûre :
+   *
+   *     tendance très forte, favori à domicile ... 80,0 % (130)
+   *     tendance très forte, favori à l'extérieur  60,5 %  (38)
+   *
+   * Nineteen points d'écart selon le seul côté du terrain. Confondre les deux
+   * revenait à annoncer 76 % là où l'application en fait 60.
+   */
+  const { coteDuFavori } = await import('../src/lib/fiabilite-apprise');
+  assert.equal(coteDuFavori(70, 12), 'domicile');
+  assert.equal(coteDuFavori(12, 70), 'exterieur');
+  assert.equal(coteDuFavori(40, 40), 'domicile', 'À égalité, celui qui reçoit.');
+
+  const src = lire('src/lib/fiabilite-apprise.ts');
+  assert.match(
+    src,
+    /coteDuFavori\(Number\(j\.proba_domicile\), Number\(j\.proba_exterieur\)\)/,
+    'Le relevé ne distingue plus le côté du favori : trois à quatre points de mesure perdus.'
+  );
+  // Le repli sans le côté doit rester : sans lui, une famille sans assez de
+  // matière d'un côté ne rendrait plus rien du tout.
+  assert.match(
+    src,
+    /for \(const k of \[`\$\{t\}\|\$\{c\}`, t\]\)/,
+    'Le compteur de repli, sans le côté du terrain, a disparu.'
+  );
+});

@@ -88,7 +88,7 @@ const TTL = 6 * 60 * 60 * 1000;
  * ne répondrait plus à aucune famille : la fiabilité disparaîtrait de l'écran
  * pendant six heures, sans que rien ne le signale.
  */
-const CLE = 'fiabilite:apprise-v3';
+const CLE = 'fiabilite:apprise-v4';
 
 /**
  * ── LES FAMILLES SUIVENT LA CONFIANCE, PAS L'ÉCART ────────────────────────
@@ -122,6 +122,28 @@ export const TRANCHES = [
 ] as const;
 
 export type CleTranche = (typeof TRANCHES)[number]['cle'];
+
+/**
+ * ── LE CÔTÉ DU FAVORI COMPTE, ET IL COMPTE BEAUCOUP ───────────────────────
+ *
+ * Cherché sur la première moitié de l'histoire, validé sur la seconde — celle
+ * que la recherche n'avait jamais vue :
+ *
+ *     confiance ≥ 76 % et favori À DOMICILE .... 76,7 %  (60 rencontres)
+ *     confiance ≥ 76 %, sans distinction ....... 73,1 %  (78)
+ *     confiance ≥ 68 % et favori À DOMICILE .... 70,9 % (148)
+ *     confiance ≥ 68 %, sans distinction ....... 67,4 % (193)
+ *
+ * Trois à quatre points, à confiance égale, selon le seul côté du terrain. Un
+ * favori qui reçoit tient sa promesse plus souvent qu'un favori qui se
+ * déplace, et le moteur ne le disait pas.
+ */
+export type CoteDuFavori = 'domicile' | 'exterieur';
+
+/** De quel côté penche la rencontre ? */
+export function coteDuFavori(proba1: number, proba2: number): CoteDuFavori {
+  return Number(proba1) >= Number(proba2) ? 'domicile' : 'exterieur';
+}
 
 /**
  * Range un match dans sa famille, d'après la probabilité de l'issue la plus
@@ -196,10 +218,15 @@ async function calculer(): Promise<Releve> {
   for (const j of jugements) {
     if (j.proba_domicile == null || j.issue_juste == null) continue;
     const t = trancheDe(Number(j.proba_domicile), Number(j.proba_nul), Number(j.proba_exterieur));
+    const c = coteDuFavori(Number(j.proba_domicile), Number(j.proba_exterieur));
 
-    global[t] ??= { justes: 0, total: 0 };
-    global[t].total++;
-    if (j.issue_juste) global[t].justes++;
+    // Deux compteurs : l'un avec le côté du terrain, l'autre sans. Le second
+    // sert de repli quand le premier manque de matière.
+    for (const k of [`${t}|${c}`, t]) {
+      global[k] ??= { justes: 0, total: 0 };
+      global[k].total++;
+      if (j.issue_juste) global[k].justes++;
+    }
 
     const ligue = String(j.ligue ?? '').trim();
     if (!ligue) continue;
@@ -213,10 +240,11 @@ async function calculer(): Promise<Releve> {
     );
     for (const palier of TRANCHES) {
       if (tete < palier.min) continue;
-      const k = `${ligue}|${palier.cle}`;
-      parLigue[k] ??= { justes: 0, total: 0 };
-      parLigue[k].total++;
-      if (j.issue_juste) parLigue[k].justes++;
+      for (const k of [`${ligue}|${palier.cle}|${c}`, `${ligue}|${palier.cle}`]) {
+        parLigue[k] ??= { justes: 0, total: 0 };
+        parLigue[k].total++;
+        if (j.issue_juste) parLigue[k].justes++;
+      }
     }
   }
 
@@ -259,16 +287,29 @@ export function fiabilitePour(
   if (!releve) return null;
 
   const t = trancheDe(proba1, probaNul, proba2);
+  const c = coteDuFavori(proba1, proba2);
   const famille = TRANCHES.find((x) => x.cle === t)?.libelle ?? 'Match';
 
+  // ── DU PLUS PRÉCIS AU PLUS GÉNÉRAL ──────────────────────────────────────
+  //
+  // Championnat ET côté du terrain d'abord : c'est la mesure la plus fine, et
+  // celle qui distingue une Primeira Liga à 82,9 % d'une Premier League à
+  // 61,5 %. On ne descend d'un cran que faute de matière, jamais par défaut.
   const nom = String(ligue ?? '').trim();
-  const local = nom ? releve.parLigue[`${nom}|${t}`] : undefined;
-  if (local && local.total >= MATCHS_MINIMUM_LIGUE) {
+  const candidats: [{ justes: number; total: number } | undefined, string | null][] = [
+    [nom ? releve.parLigue[`${nom}|${t}|${c}`] : undefined, nom],
+    [nom ? releve.parLigue[`${nom}|${t}`] : undefined, nom],
+    [releve.global[`${t}|${c}`], null],
+  ];
+
+  for (const [source, lig] of candidats) {
+    const minimum = lig ? MATCHS_MINIMUM_LIGUE : MATCHS_MINIMUM_GLOBAL;
+    if (!source || source.total < minimum) continue;
     return {
-      taux: Math.round((100 * local.justes) / local.total),
-      matchs: local.total,
+      taux: Math.round((100 * source.justes) / source.total),
+      matchs: source.total,
       famille,
-      ligue: nom,
+      ligue: lig,
     };
   }
 
