@@ -1224,6 +1224,53 @@ export function calculerScoreProbable(
   const SEUIL_PLAUSIBILITE = Number(process.env.BANC_SEUIL_PLAUSIBLE) || 0.45;
 
   /**
+   * ── QUELLE RÈGLE CHOISIT LE SCORE ─────────────────────────────────────
+   *
+   * `paliers` — la liste ordonnée ci-dessus. Elle a remplacé le 2-1 unique,
+   *   et a fini par produire sa propre répétition : 3-0 ou 3-1 sur presque
+   *   toute victoire nette.
+   *
+   * `grille`  — chaque score compatible avec l'issue, pondéré par sa
+   *   probabilité réelle sur CE match. Le score suit alors l'intensité de la
+   *   domination au lieu d'une liste écrite d'avance.
+   *
+   * Réglable par `BANC_CHOIX_SCORE` pour que le banc d'essai compare les deux
+   * sur des milliers de rencontres, et non sur une impression. À ne pas
+   * confondre avec `BANC_REGLE_SCORE`, plus haut, qui décide comment les BUTS
+   * ATTENDUS deviennent des entiers — deux étapes distinctes du même calcul.
+   */
+  const CHOIX_DU_SCORE = process.env.BANC_CHOIX_SCORE || 'grille';
+
+  /**
+   * Sous ce seuil, un score n'entre pas dans le tirage.
+   *
+   * Plus bas que celui des paliers, et c'est voulu : ici le poids fait déjà
+   * le tri, un score improbable étant rarement tiré. Le seuil ne sert qu'à
+   * écarter l'absurde — un 5-0 sur une rencontre à deux buts attendus.
+   */
+  const SEUIL_GRILLE = Number(process.env.BANC_SEUIL_GRILLE) || 0.12;
+
+  /** Le 2-1 reste-t-il proscrit ? Décision du 3 septembre 2026. */
+  const SANS_DEUX_UN = process.env.BANC_AVEC_DEUX_UN !== 'oui';
+
+  /**
+   * Un nombre de [0, 1) tiré d'une graine, sans aucun hasard réel.
+   *
+   * Mélange entier de Thomas Wang : deux graines voisines donnent deux
+   * résultats sans rapport, ce qui est exactement ce qu'on demande — les buts
+   * attendus de deux matchs voisins ne doivent pas produire le même score.
+   */
+  const melangeur = (graine: number): number => {
+    let x = graine | 0;
+    x = (x ^ 61) ^ (x >>> 16);
+    x = x + (x << 3);
+    x = x ^ (x >>> 4);
+    x = Math.imul(x, 0x27d4eb2d);
+    x = x ^ (x >>> 15);
+    return ((x >>> 0) % 100_000) / 100_000;
+  };
+
+  /**
    * ── LE NUL N'EST ANNONCÉ QUE S'IL DOMINE VRAIMENT ─────────────────────
    *
    * Le propriétaire veut voir le 1-1 autour de 7 %, contre 13 % mesurés.
@@ -1299,15 +1346,75 @@ export function calculerScoreProbable(
     }
   }
 
-  for (const palier of PALIERS[issueVisee]) {
-    let retenu: { buts1: number; buts2: number; proba: number } | null = null;
-    for (const [i, j] of palier) {
-      if (i > BUTS_MAX || j > BUTS_MAX) continue;
-      const pr = probaDe(i, j);
-      if (pr < SEUIL_PLAUSIBILITE * referenceProba) continue;
-      if (!retenu || pr > retenu.proba) retenu = { buts1: i, buts2: j, proba: pr };
+  if (CHOIX_DU_SCORE === 'grille') {
+    // ── TOUS LES SCORES DE L'ISSUE, CHACUN SELON SON POIDS ───────────────
+    //
+    // Les paliers ci-dessus font sortir 3-0 ou 3-1 sur presque toute victoire
+    // nette : leur premier rang contient ces deux scores, et l'on n'en
+    // descend que si aucun n'est plausible. Constaté le 5 septembre 2026 sur
+    // neuf rencontres du jour analysées à la main — Manchester City 3-0
+    // Coventry à 85 %, Brentford 3-0 Sunderland à 60 % : deux dominations
+    // très différentes, le même score.
+    //
+    // Ici, chaque score compatible avec l'issue reçoit son poids réel, celui
+    // que la loi de Poisson lui donne pour CE match. Une domination écrasante
+    // pousse la masse vers 3-0 et 4-0 ; une victoire modeste vers 1-0 et 2-1.
+    // Le score suit enfin l'intensité de la rencontre.
+    const candidats: { buts1: number; buts2: number; proba: number }[] = [];
+    let masse = 0;
+    for (let i = 0; i <= BUTS_MAX; i++) {
+      for (let j = 0; j <= BUTS_MAX; j++) {
+        const ici = i > j ? 'victoire1' : i === j ? 'nul' : 'victoire2';
+        if (ici !== issueVisee) continue;
+        // Le 2-1 (et son miroir) reste écarté tant que la décision du
+        // 3 septembre 2026 tient : le propriétaire ne veut plus le voir.
+        // C'est un réglage, pas une loi — d'où la variable.
+        if (SANS_DEUX_UN && ((i === 2 && j === 1) || (i === 1 && j === 2))) continue;
+        const pr = probaDe(i, j);
+        // Le seuil reste : sans lui, un 5-0 improbable finirait par sortir.
+        if (pr < SEUIL_GRILLE * referenceProba) continue;
+        candidats.push({ buts1: i, buts2: j, proba: pr });
+        masse += pr;
+      }
     }
-    if (retenu) { meilleur = retenu; break; }
+
+    if (candidats.length && masse > 0) {
+      // ── UN TIRAGE, MAIS PAS UN HASARD ──────────────────────────────────
+      //
+      // La graine vient des buts attendus du match lui-même. Deux
+      // conséquences, toutes deux nécessaires : le même match rend TOUJOURS
+      // le même score — un abonné qui rouvre son analyse doit y retrouver ce
+      // qu'il a lu —, et deux matchs différents tombent sur des scores
+      // différents, puisque leurs buts attendus le sont.
+      //
+      // Sans cela, le score le plus probable sortirait à chaque fois, et l'on
+      // retomberait sur la répétition qu'on vient de quitter : le mode d'une
+      // loi de Poisson est très stable d'un match à l'autre.
+      const graine =
+        (Math.round(butsAttendus1 * 10_000) * 73_856_093) ^
+        (Math.round(butsAttendus2 * 10_000) * 19_349_663);
+      const tirage = melangeur(graine);
+
+      let cumul = 0;
+      for (const c of candidats) {
+        cumul += c.proba / masse;
+        if (tirage <= cumul) {
+          meilleur = c;
+          break;
+        }
+      }
+    }
+  } else {
+    for (const palier of PALIERS[issueVisee]) {
+      let retenu: { buts1: number; buts2: number; proba: number } | null = null;
+      for (const [i, j] of palier) {
+        if (i > BUTS_MAX || j > BUTS_MAX) continue;
+        const pr = probaDe(i, j);
+        if (pr < SEUIL_PLAUSIBILITE * referenceProba) continue;
+        if (!retenu || pr > retenu.proba) retenu = { buts1: i, buts2: j, proba: pr };
+      }
+      if (retenu) { meilleur = retenu; break; }
+    }
   }
 
   // ── CONFIANCE ──────────────────────────────────────────────────────────────
