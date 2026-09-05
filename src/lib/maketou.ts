@@ -336,6 +336,10 @@ export async function ouvrirAccesMaketou(
   if (!userId) {
     /** Vrai quand la livraison a réellement ouvert l'accès dans la foulée. */
     let livree = false;
+    // Vrai UNIQUEMENT quand un accès a réellement été posé sur un compte.
+    // `livree` ne suffit pas à le dire : elle vaut vrai aussi pour une simple
+    // invitation, et avoir confondu les deux a produit un motif mensonger.
+    let accesPose = false;
 
     // ── ON LUI DIT QUOI FAIRE, AU LIEU DE L'ATTENDRE ──────────────────────
     //
@@ -392,6 +396,7 @@ export async function ouvrirAccesMaketou(
         // « Servi » veut dire : accès ouvert OU invitation partie. Les deux sont
         // un succès du point de vue de l'acheteur, qui a désormais un chemin.
         livree = r.livrees > 0 || r.invitations > 0;
+        accesPose = r.livrees > 0;
         console.log(
           `[MAKETOU] Livraison immédiate : ${r.livrees} accès ouvert(s), ${r.invitations} invitation(s). ${r.details.join(' ; ')}`
         );
@@ -413,14 +418,37 @@ export async function ouvrirAccesMaketou(
       // qu'elle laissait deux acheteurs dehors pendant deux jours. L'alerte
       // décrivait donc une action qui n'existait plus, et laissait croire
       // qu'il fallait attendre le client.
+      //
+      // ── PUIS IL A MENTI DANS L'AUTRE SENS ──────────────────────────────
+      //
+      // Sa version suivante annonçait « son compte vient d'être créé, l'accès
+      // est crédité » dès que `livree` valait vrai. Or `livree` l'est aussi
+      // quand une simple INVITATION est partie — et depuis la décision du
+      // 1er septembre 2026, on ne crée plus jamais de compte à la place de
+      // quelqu'un. Le motif décrivait donc, là encore, une action qui n'existe
+      // pas.
+      //
+      // Le 5 septembre, en cherchant d'autres acheteurs restés dehors, ce
+      // texte a fait conclure que deux clients avaient un compte et un accès.
+      // Vérification faite, ni l'un ni l'autre n'avait de compte à l'adresse
+      // de la vente : leur accès était posé sur leur VRAI compte, à une faute
+      // de frappe près — « enocktrabi78 » pour « enocktrabi8 ». Bonne surprise
+      // ce jour-là ; le même motif aurait masqué un vrai abandon le lendemain.
+      //
+      // Il dit désormais lequel des trois chemins a servi, et il n'y en a que
+      // trois.
       motif: erreurTrace
         ? `Aucun compte ProFoot à cette adresse, ET la vente n'a PAS PU être enregistrée ` +
           `(${erreurTrace.message}). Elle est donc perdue : à rattraper à la main.`
-        : livree
-          ? `Aucun compte ProFoot à cette adresse : son compte vient d'être créé, l'accès ` +
-            `est crédité, et un lien pour choisir son mot de passe lui a été envoyé.`
-          : `Aucun compte ProFoot à cette adresse, et la livraison immédiate n'a rien ouvert. ` +
-            `L'entretien repassera dessus, et l'acheteur sera relancé automatiquement.`,
+        : accesPose
+          ? `Aucun compte ProFoot à l'adresse de la vente : l'accès a été posé sur le compte ` +
+            `existant de l'acheteur, reconnu à une faute de frappe près.`
+          : livree
+            ? `Aucun compte ProFoot à cette adresse. Aucun compte n'a été créé — c'est la ` +
+              `règle. L'acheteur a reçu une invitation, et son accès s'ouvrira tout seul à ` +
+              `la seconde où il créera son compte.`
+            : `Aucun compte ProFoot à cette adresse, et la livraison immédiate n'a rien ` +
+              `ouvert. L'entretien repassera dessus, et l'acheteur sera relancé.`,
     };
   }
 
