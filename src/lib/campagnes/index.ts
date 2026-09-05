@@ -64,7 +64,32 @@ function semaine(): string {
   return `${d.getUTCFullYear()}-S${String(Math.ceil((jours + debut.getUTCDay() + 1) / 7)).padStart(2, '0')}`;
 }
 
-const SIGNATURE = ['', 'Ousmane', 'ProFoot AI — profootai.com'];
+/**
+ * ── LA MENTION QUI DIT CE QU'ON VEND, ET CE QU'ON NE VEND PAS ─────────────
+ *
+ * Le 5 septembre 2026, un membre répond au message du matin : « Oui mais je
+ * commence trop à perdre de l'argent il faut améliorer vos analyses. » Il
+ * venait de prendre l'accès annuel trois jours plus tôt.
+ *
+ * Ce que sa phrase établit par écrit, c'est qu'il engage de l'argent sur nos
+ * analyses. Or ce projet a perdu sa boutique en août 2026 sur un contrôle
+ * « produits interdits : paris sportifs, jeux de hasard », et un échange
+ * pareil est exactement la pièce qui déclenche le suivant.
+ *
+ * Cette mention n'est pas une formule pour se couvrir. Elle dit la vérité de
+ * ce qui est vendu — une lecture statistique — et elle est ce qui permet de
+ * le démontrer, message après message, à quiconque le demanderait.
+ *
+ * Elle vit ICI, collée à la signature, parce que les cinq campagnes
+ * l'empruntent : aucune ne peut partir sans elle, et une sixième l'aura
+ * d'office.
+ */
+const MENTION =
+  "ProFoot AI est un outil d'analyse statistique du football. Nos analyses " +
+  'décrivent des tendances mesurées sur les rencontres passées ; elles ne ' +
+  'garantissent aucun résultat.';
+
+const SIGNATURE = ['', 'Ousmane', 'ProFoot AI — profootai.com', '', MENTION];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LES MESSAGES
