@@ -548,7 +548,38 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
       (laissees.length ? ` Remises au prochain passage : ${laissees.join(', ')}.` : '')
   );
 
-  if (rencontres.length < 100) return null;
+  /**
+   * ── UN PASSAGE STÉRILE DOIT QUAND MÊME FAIRE AVANCER L'ANNEAU ──────────
+   *
+   * ── CE QUI BLOQUAIT ENCORE, APRÈS LE PREMIER CORRECTIF ────────────────
+   *
+   * Le rang de reprise avançait bien en mémoire, y compris sur une compétition
+   * qui n'avait pas eu le temps de finir. Mais il n'était JAMAIS enregistré :
+   * le relevé ne s'écrit qu'à la toute fin, et un passage qui n'a rien pu lire
+   * sortait ici, avant l'écriture. Le rang avancé était donc jeté, et le
+   * passage suivant reprenait sur la même compétition. Indéfiniment.
+   *
+   * Vérifié à l'instant : trois passages de suite, « 0 compétition(s) lues »,
+   * la Liga Argentina en tête à chaque fois.
+   *
+   * ── CE QUI SE PASSE MAINTENANT ───────────────────────────────────────
+   *
+   * Le rang est enregistré SEUL, sans toucher aux forces : le relevé existant
+   * est conservé intact, on n'y change que l'endroit où reprendre. Le passage
+   * suivant attaque donc une autre compétition, et l'anneau tourne même quand
+   * une compétition est trop grosse pour un seul passage.
+   */
+  if (rencontres.length < 100) {
+    const connu = releveConnu;
+    if (connu?.clubs && connu.prochainDepart !== arreteA) {
+      await ecrireReserve(CLE, { ...connu, prochainDepart: arreteA }, TTL);
+      console.log(
+        `[OCCASIONS] Passage sans matière — les forces sont conservées, ` +
+          `le prochain passage reprendra plus loin (rang ${arreteA}).`
+      );
+    }
+    return null;
+  }
 
   // ── CE QUE VAUT UN TIR, RECALCULÉ À CHAQUE RELEVÉ ──────────────────────
   //
