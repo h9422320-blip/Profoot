@@ -57,7 +57,7 @@
 import { apiFootball, CACHE_TTL, lireReserve, ecrireReserve } from './api-football';
 
 /** La réserve où vit le relevé. Le suffixe change à chaque évolution de forme. */
-const CLE = 'forces:occasions-v5';
+const CLE = 'forces:occasions-v6';
 
 /**
  * ── LA VERSION PRÉCÉDENTE RESTE UN FILET ──────────────────────────────────
@@ -87,7 +87,7 @@ const CLE = 'forces:occasions-v5';
  * Cette clé se décale d'un cran à chaque nouvelle version : v3 lit v2, une
  * future v4 lira v3.
  */
-const CLE_PRECEDENTE = 'forces:occasions-v4';
+const CLE_PRECEDENTE = 'forces:occasions-v5';
 
 /** Six heures : le relevé bouge à chaque journée de championnat, pas plus. */
 const TTL = 6 * 60 * 60 * 1000;
@@ -728,6 +728,46 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
       if (!forces.has(nom)) continue;
       const etalon = moyennesParLigue[ligueMajoritaire(nom)] ?? moyenne;
 
+      /**
+       * ── L'ÉTALON D'UNE RENCONTRE N'EST PAS TOUJOURS CELUI DU CLUB ──────
+       *
+       * ── LE DÉFAUT ────────────────────────────────────────────────────
+       *
+       * Ce qu'une équipe « aurait dû » produire se calculait TOUJOURS avec
+       * l'étalon de son propre championnat. Or la force de l'adversaire, elle,
+       * est un rapport mesuré dans LE SIEN.
+       *
+       * Sur une rencontre domestique, les deux étalons sont le même et tout
+       * s'annule. Sur une coupe d'Europe, non : quand le Bayern reçoit le Real
+       * Madrid, l'attendu se calculait à 1,676 occasion — l'étalon allemand —
+       * multiplié par une défense mesurée à l'échelle espagnole, où la moyenne
+       * vaut 1,370. Vingt-deux pour cent d'écart entre les deux échelles, sur
+       * une multiplication : l'attendu sortait faux, et la force du Bayern
+       * avec lui.
+       *
+       * Ce n'est pas un cas rare depuis que les coupes sont couvertes : le
+       * Bayern, le PSG, l'Arsenal et le Real comptent six à dix rencontres
+       * européennes sur vingt et une — près d'un tiers de leur forme, mesuré
+       * sur une échelle qui n'était pas la bonne. Et ce sont les clubs les plus
+       * analysés de l'application.
+       *
+       * ── LA RÈGLE ─────────────────────────────────────────────────────
+       *
+       * L'étalon d'une rencontre est celui de la rencontre : le championnat
+       * commun quand les deux clubs en viennent, la moyenne des deux quand ils
+       * s'affrontent en coupe — aucun des deux n'ayant plus de titre que
+       * l'autre à décrire ce match-là.
+       *
+       * C'est EXACTEMENT la règle qu'applique déjà la lecture, dans
+       * `butsAttendusOccasions`. Les deux bouts de la chaîne parlent enfin la
+       * même langue.
+       */
+      const etalonDuMatch = (nomAdversaire: string): number => {
+        const ligueAdv = ligueMajoritaire(nomAdversaire);
+        const e = ligueAdv ? moyennesParLigue[ligueAdv] : undefined;
+        return e === undefined || e === etalon ? etalon : (etalon + e) / 2;
+      };
+
       let produitA = 0, attenduA = 0, produitD = 0, attenduD = 0;
       for (let i = 0; i < suite.length; i++) {
         const m = suite[i];
@@ -735,10 +775,11 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
         const adv = forces.get(m.adv);
         const terrain = m.chezSoi ? avantageDomicile : avantageExterieur;
         const terrainAdv = m.chezSoi ? avantageExterieur : avantageDomicile;
+        const eMatch = etalonDuMatch(m.adv);
         produitA += w * m.pour;
-        attenduA += w * etalon * (adv ? adv.def : 1) * terrain;
+        attenduA += w * eMatch * (adv ? adv.def : 1) * terrain;
         produitD += w * m.contre;
-        attenduD += w * etalon * (adv ? adv.att : 1) * terrainAdv;
+        attenduD += w * eMatch * (adv ? adv.att : 1) * terrainAdv;
       }
 
       // Le rétrécissement vers 1 : une équipe peu vue reste proche de la
