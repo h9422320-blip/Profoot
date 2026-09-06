@@ -57,7 +57,7 @@
 import { apiFootball, CACHE_TTL, lireReserve, ecrireReserve } from './api-football';
 
 /** La réserve où vit le relevé. Le suffixe change à chaque évolution de forme. */
-const CLE = 'forces:occasions-v3';
+const CLE = 'forces:occasions-v4';
 
 /**
  * ── LA VERSION PRÉCÉDENTE RESTE UN FILET ──────────────────────────────────
@@ -87,7 +87,7 @@ const CLE = 'forces:occasions-v3';
  * Cette clé se décale d'un cran à chaque nouvelle version : v3 lit v2, une
  * future v4 lira v3.
  */
-const CLE_PRECEDENTE = 'forces:occasions-v2';
+const CLE_PRECEDENTE = 'forces:occasions-v3';
 
 /** Six heures : le relevé bouge à chaque journée de championnat, pas plus. */
 const TTL = 6 * 60 * 60 * 1000;
@@ -139,8 +139,8 @@ export const CHAMPIONNATS = [
   { id: 40, nom: 'Championship' },
   { id: 203, nom: 'Süper Lig' },
   { id: 128, nom: 'Liga Profesional Argentina' },
-  { id: 2, nom: 'Ligue des champions' },
-  { id: 3, nom: 'Ligue Europa' },
+  { id: 2, nom: 'Ligue des champions', europeenne: true },
+  { id: 3, nom: 'Ligue Europa', europeenne: true },
   // ── LA SECONDE VAGUE, MESUREE LE 6 SEPTEMBRE 2026 ──────────────────────
   //
   // Une fois les grandes compétitions couvertes, il restait 527 analyses
@@ -160,7 +160,7 @@ export const CHAMPIONNATS = [
   // Ce sont de petits volumes pris un par un, mais l'abonné qui analyse la
   // Segunda est un abonné comme un autre : il paie le même prix et juge
   // l'application sur SES rencontres.
-  { id: 848, nom: 'Ligue Europa Conference' },
+  { id: 848, nom: 'Ligue Europa Conference', europeenne: true },
   { id: 141, nom: 'Segunda División' },
   { id: 136, nom: 'Serie B' },
   { id: 62, nom: 'Ligue 2' },
@@ -170,6 +170,40 @@ export const CHAMPIONNATS = [
   { id: 207, nom: 'Super League' },
   { id: 197, nom: 'Super League 1' },
 ] as const;
+
+/**
+ * ── UNE COUPE D'EUROPE N'EST LE CHAMPIONNAT DE PERSONNE ──────────────────
+ *
+ * ── CE QUI A ÉTÉ TROUVÉ LE 6 SEPTEMBRE 2026 ─────────────────────────────
+ *
+ * Le Bayern München était rangé dans « Ligue des champions », avec HUIT
+ * rencontres. Le Paris Saint Germain aussi, avec onze. Lyon et Fribourg dans
+ * « Ligue Europa ». Douze clubs en tout — et ce sont les plus analysés de
+ * l'application.
+ *
+ * Conséquences, toutes silencieuses :
+ *
+ *   — leur force était rapportée à l'étalon de la coupe d'Europe et non à
+ *     celui de leur championnat, deux niveaux de jeu très différents ;
+ *   — elle ne reposait que sur leurs huit à onze matchs européens au lieu de
+ *     leurs vingt et un matchs domestiques ;
+ *   — et le Bayern manquait purement et simplement à la Bundesliga, qui
+ *     n'affichait que seize clubs sur dix-huit.
+ *
+ * ── LA CAUSE ────────────────────────────────────────────────────────────
+ *
+ * La compétition d'un club est celle où on l'a le plus vu. Or la construction
+ * avance une compétition par passage : lors du passage qui lisait la Ligue des
+ * champions, le Bayern n'y était vu QUE là. Sa compétition majoritaire, pour
+ * ce passage, devenait donc la coupe d'Europe.
+ *
+ * ── LA RÈGLE POSÉE ──────────────────────────────────────────────────────
+ *
+ * Une coupe d'Europe n'est le championnat de personne. Tous ses participants
+ * en ont un, ailleurs. Elle ne peut donc jamais servir d'étalon à un club, et
+ * un club vu seulement là au cours d'un passage n'est pas rangé du tout — la
+ * fusion conserve alors ce que son passage domestique avait établi.
+ */
 
 /**
  * ── LES RÉGLAGES, ET LA MESURE QUI LES A CHOISIS ─────────────────────────
@@ -536,12 +570,20 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
    * qu'une poignée de rencontres. On prend donc la compétition MAJORITAIRE,
    * qui est son championnat, jamais la coupe.
    */
+  /** Les compétitions qui ne sont le championnat de personne. */
+  const EUROPEENNES = new Set<string>(
+    CHAMPIONNATS.filter((c) => (c as { europeenne?: boolean }).europeenne).map((c) => c.nom)
+  );
+
   const ligueMajoritaire = (club: string): string => {
     const compte = ligueDuClub.get(club);
     if (!compte) return '';
     let meilleure = '';
     let vues = 0;
     for (const [nom, k] of compte) {
+      // Une coupe d'Europe ne peut jamais devenir le championnat d'un club :
+      // voir la note en tête de fichier.
+      if (EUROPEENNES.has(nom)) continue;
       if (k > vues && moyennesParLigue[nom] !== undefined) {
         vues = k;
         meilleure = nom;

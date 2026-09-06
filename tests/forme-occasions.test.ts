@@ -572,3 +572,56 @@ test('★ ACQUIS — la version précédente du relevé sert de filet', () => {
     'Le relevé et son filet portent la même clé : le filet ne couvre rien.'
   );
 });
+
+/**
+ * ── UNE COUPE D'EUROPE N'EST LE CHAMPIONNAT DE PERSONNE ───────────────────
+ *
+ * Trouvé en production le 6 septembre 2026 : le Bayern München était rangé
+ * dans « Ligue des champions » avec HUIT rencontres, le Paris Saint Germain
+ * aussi avec onze, Lyon et Fribourg dans « Ligue Europa ». Douze clubs — les
+ * plus analysés de l'application.
+ *
+ * Leur force était donc rapportée à l'étalon de la coupe d'Europe et non à
+ * celui de leur championnat, sur leurs huit matchs européens au lieu de leurs
+ * vingt et un domestiques. Et la Bundesliga n'affichait que seize clubs sur
+ * dix-huit, sans le Bayern.
+ *
+ * La cause : la construction avance une compétition par passage. Lors du
+ * passage qui lisait la Ligue des champions, le Bayern n'y était vu QUE là.
+ */
+test("★ ACQUIS — une coupe d'Europe ne devient jamais le championnat d'un club", () => {
+  const src = fs.readFileSync('src/lib/forme-occasions.ts', 'utf8');
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  // Les trois coupes doivent être marquées dans la liste des compétitions.
+  const bloc = src.slice(
+    src.indexOf('export const CHAMPIONNATS'),
+    src.indexOf('] as const;', src.indexOf('export const CHAMPIONNATS'))
+  );
+  for (const nom of ['Ligue des champions', 'Ligue Europa', 'Ligue Europa Conference']) {
+    const ligne = bloc.split('\n').find((l) => l.includes(`nom: '${nom}'`));
+    assert.ok(ligne, `${nom} a disparu de la liste des compétitions.`);
+    assert.ok(
+      /europeenne:\s*true/.test(ligne!),
+      `${nom} n'est plus marquée comme européenne : elle pourrait redevenir le ` +
+        "championnat de référence d'un club, avec le mauvais étalon et deux fois " +
+        'moins de rencontres.'
+    );
+  }
+
+  // Et le tri doit réellement les écarter — dans le code, pas dans un
+  // commentaire qui décrirait une intention.
+  const debut = code.indexOf('const ligueMajoritaire');
+  assert.ok(debut !== -1, 'La fonction qui choisit la compétition a disparu.');
+  const choix = code.slice(debut, debut + 900);
+  assert.ok(
+    /EUROPEENNES\.has\(nom\)/.test(choix),
+    "Le choix de la compétition d'un club n'écarte plus les coupes d'Europe."
+  );
+  assert.ok(
+    /const EUROPEENNES = new Set/.test(code),
+    "L'ensemble des compétitions européennes n'est plus construit."
+  );
+});
