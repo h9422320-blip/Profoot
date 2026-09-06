@@ -7,6 +7,7 @@ import { openRouterDisponible } from "@/lib/openrouter";
 import { requireUser } from "@/lib/subscription";
 import { consumeAnalysis, buildMatchKey, rembourserAnalyse, type QuotaState } from "@/lib/analysis-quota";
 import { toTeaser } from "@/lib/analysis-teaser";
+import { lireForces, butsAttendusOccasions } from "@/lib/forme-occasions";
 import { lireReserve, ecrireReserve } from "@/lib/api-football";
 import { lireCalibrages, facteursPour } from "@/lib/calibrage";
 import { lireReleve, fiabilitePour } from "@/lib/fiabilite-apprise";
@@ -1453,7 +1454,24 @@ async function analyser(req: Request, billet: BilletQuota) {
     // rencontres entre championnats passent de 42,5 % à 50,1 % de réussite,
     // les coupes européennes de 48,6 % à 55,9 %, et les matchs internes ne
     // bougent pas — le rapport y vaut exactement 1.
-    rapportEntreChampionnats(await lireForcesChampionnats(), t1League, t2League)
+    rapportEntreChampionnats(await lireForcesChampionnats(), t1League, t2League),
+    // ── LA RENCONTRE VUE PAR LES OCCASIONS ───────────────────────────────
+    //
+    // Tirs cadrés et tirs dans la surface, dix fois plus nombreux que les buts
+    // et donc dix fois moins bruités. Le relevé est bâti par la tâche
+    // planifiée `/api/cron/occasions` — jamais ici : l'abonné qui attend son
+    // analyse ne paie pas les centaines d'appels que sa construction demande.
+    //
+    // Mesuré sur 1 544 rencontres hors échantillon : les rencontres mises en
+    // avant passent de 67,4 % à 75,5 % de réussite. Voir `forme-occasions.ts`.
+    //
+    // Rend `null` dès qu'un des deux clubs est inconnu du relevé — un
+    // championnat non couvert garde exactement le calcul d'avant.
+    butsAttendusOccasions(
+      await lireForces(),
+      equipe1AJoueADomicile === true ? team1.name : team2.name,
+      equipe1AJoueADomicile === true ? team2.name : team1.name
+    )
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────

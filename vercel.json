@@ -7,6 +7,14 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/occasions",
+      "schedule": "20 4 * * *"
+    },
+    {
+      "path": "/api/cron/occasions",
+      "schedule": "20 16 * * *"
+    },
+    {
       "path": "/api/cron/audit",
       "schedule": "37 5 * * *"
     },

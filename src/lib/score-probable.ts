@@ -491,7 +491,16 @@ export function calculerScoreProbable(
    * pas encore été calculée. Voir `forces-championnats.ts` pour ce qu'il
    * mesure et ce qu'il a rapporté.
    */
-  rapportChampionnats = 1
+  rapportChampionnats = 1,
+  /**
+   * Les buts attendus vus par les OCCASIONS — tirs cadrés et tirs dans la
+   * surface — plutôt que par les buts. Voir `forme-occasions.ts` pour la
+   * mesure complète qui a décidé de les mélanger, et dans quelle proportion.
+   *
+   * Absents, tout ce qui suit rend exactement ce qu'il rendait avant : un
+   * championnat non couvert par le fournisseur ne perd rien.
+   */
+  occasions?: { domicile: number; exterieur: number } | null
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -661,8 +670,66 @@ export function calculerScoreProbable(
   // pas encore été calculée.
   const rapport =
     Number.isFinite(rapportChampionnats) && rapportChampionnats > 0 ? rapportChampionnats : 1;
-  const butsAttendus1 = borner(butsAttendus1Brut * rapport, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
-  const butsAttendus2 = borner(butsAttendus2Brut / rapport, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+  const butsAttendus1Calcule = borner(butsAttendus1Brut * rapport, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+  const butsAttendus2Calcule = borner(butsAttendus2Brut / rapport, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+
+  /**
+   * ── LES DEUX FAÇONS DE LIRE LA RENCONTRE SE REJOIGNENT ICI ─────────────
+   *
+   * Au-dessus : la force estimée sur les BUTS marqués et encaissés. Ci-après,
+   * la même rencontre vue par les OCCASIONS — tirs cadrés, tirs dans la
+   * surface — qui sont dix fois plus nombreuses, donc dix fois moins bruitées.
+   *
+   * ── POURQUOI ICI, ET PAS PLUS LOIN ────────────────────────────────────
+   *
+   * C'est le seul point où le mélange ne peut RIEN casser. Tout ce qui suit —
+   * la grille des scores, l'issue annoncée, les trois probabilités, la
+   * confiance, « les deux marquent », le nombre de buts — se déduit de ces
+   * deux nombres. Mélanger plus loin, au niveau des probabilités, laisserait
+   * le score annoncé décrire un autre match que les pourcentages affichés.
+   *
+   * ── LE POIDS, ET CE QU'IL A COÛTÉ DE LE CHOISIR ───────────────────────
+   *
+   * Moitié-moitié. Mesuré le 6 septembre 2026 sur 1 544 rencontres communes,
+   * hors échantillon, la seconde moitié du calendrier n'ayant jamais servi à
+   * l'apprentissage :
+   *
+   *                        moteur seul    moitié-moitié
+   *     toutes rencontres    51,04 %         52,07 %
+   *     confiance ≥ 60 %     67,39 %         75,51 %
+   *     Brier                 0,6051          0,5984
+   *
+   * Les proportions de 30 à 60 % font toutes mieux que le moteur seul sur les
+   * deux mesures ET dans les deux moitiés du contrôle : ce n'est pas un
+   * réglage taillé sur mesure, c'est un plateau.
+   *
+   * À zéro, cette ligne ne fait rien — d'où la variable, pour pouvoir tout
+   * éteindre sans redéployer si la mesure se retournait un jour.
+   */
+  const POIDS_OCCASIONS = Number(process.env.BANC_POIDS_OCCASIONS ?? 0.5);
+
+  const melanger = (calcule: number, vuParLesOccasions: number | undefined) =>
+    vuParLesOccasions !== undefined &&
+    Number.isFinite(vuParLesOccasions) &&
+    vuParLesOccasions > 0 &&
+    POIDS_OCCASIONS > 0
+      ? borner(
+          POIDS_OCCASIONS * vuParLesOccasions + (1 - POIDS_OCCASIONS) * calcule,
+          BUTS_ATTENDUS_MIN,
+          BUTS_ATTENDUS_MAX
+        )
+      : calcule;
+
+  // `equipe1` n'est pas toujours celle qui reçoit : on aligne d'abord.
+  const equipe1Recoit = equipe1AJoueADomicile === true;
+  const butsAttendus1 = melanger(
+    butsAttendus1Calcule,
+    equipe1Recoit ? occasions?.domicile : occasions?.exterieur
+  );
+  const butsAttendus2 = melanger(
+    butsAttendus2Calcule,
+    equipe1Recoit ? occasions?.exterieur : occasions?.domicile
+  );
 
   // Grille complète des scores : chaque case est la probabilité de ce score
   // exact. Tout le reste — issue, deux équipes marquent, nombre de buts — s'en

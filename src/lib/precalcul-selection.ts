@@ -39,6 +39,7 @@
 
 import { createAdminClient } from './supabase-admin';
 import { calculerScoreProbable, competitionPeuFiable } from './score-probable';
+import { lireForces, butsAttendusOccasions } from './forme-occasions';
 import { lireForcesLigue } from './forces-equipes';
 import { figerPrediction } from './prediction-figee';
 
@@ -208,6 +209,11 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
       String(a?.fixture?.date ?? '').localeCompare(String(b?.fixture?.date ?? ''))
     );
 
+    // Le relevé des occasions se lit UNE FOIS par passage, jamais par
+    // rencontre : c'est le même pour toutes, et le relire soixante fois
+    // coûterait soixante allers-retours pour un résultat identique.
+    const releveOccasions = await lireForces();
+
     for (const f of aPreparer.slice(0, MAX_PAR_PASSAGE)) {
       const ligue = Number(f?.league?.id);
       const saison = Number(f?.league?.season);
@@ -274,7 +280,19 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
           true,
           competitionPeuFiable(f?.league?.name ?? null),
           { equipe1: rang(domId), equipe2: rang(extId) },
-          forcesDuMatch
+          forcesDuMatch,
+          // Les trois réglages suivants gardent leur valeur d'origine : ils ne
+          // sont nommés que pour atteindre le dernier.
+          undefined,
+          false,
+          1,
+          // ── LA MÊME LECTURE QUE L'ANALYSE ──────────────────────────────
+          //
+          // Indispensable, et pas seulement souhaitable : la sélection du jour
+          // affiche un score que l'abonné retrouve en ouvrant l'analyse. Si
+          // l'un des deux voyait les occasions et pas l'autre, la carte
+          // annoncerait un score que l'analyse contredirait.
+          butsAttendusOccasions(releveOccasions, f?.teams?.home?.name, f?.teams?.away?.name)
         );
 
         await figerPrediction({
