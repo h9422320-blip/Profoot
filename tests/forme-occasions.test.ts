@@ -525,3 +525,50 @@ test("★ ACQUIS — un absent n'est jamais compté deux fois", () => {
       '« i. boura » repasseraient tous les deux.'
   );
 });
+
+/**
+ * ── LE MOTEUR NE RECULE JAMAIS PENDANT UNE BASCULE DE VERSION ─────────────
+ *
+ * Changer la façon de calculer les forces oblige à changer la clé du relevé —
+ * une force ajustée et une force moyennée ne se mélangent pas. Mais le nouveau
+ * relevé se construit une compétition par passage : plusieurs heures.
+ *
+ * Pendant ces heures, un club présent dans l'ancien relevé et pas encore dans
+ * le neuf perdait toute lecture par les occasions et retombait au calcul
+ * d'avant — un recul, sur des rencontres que des abonnés payants analysent
+ * pendant ce temps-là.
+ */
+test('★ ACQUIS — la version précédente du relevé sert de filet', () => {
+  const src = fs
+    .readFileSync('src/lib/forme-occasions.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  assert.ok(
+    /const CLE_PRECEDENTE = /.test(src),
+    "La clé du relevé précédent a disparu : une bascule de version priverait de " +
+      'nouveau les clubs pas encore recalculés.'
+  );
+
+  const lecture = src.slice(src.indexOf('export async function lireForces'));
+  assert.ok(
+    /lireReserve<ReleveOccasions>\(CLE_PRECEDENTE\)/.test(lecture),
+    "La lecture ne va plus chercher le relevé précédent."
+  );
+  // La lecture neuve doit primer : sinon un club recalculé garderait sa
+  // vieille force pour toujours.
+  assert.ok(
+    /if \(clubs\[nom\]\) continue/.test(lecture),
+    'Le relevé neuf ne fait plus autorité sur les clubs qu\'il contient : ' +
+      "l'ancien pourrait recouvrir une force fraîchement ajustée."
+  );
+
+  // Et les deux clés doivent différer, sinon le filet ne sert à rien.
+  const neuve = src.match(/const CLE = '([^']+)'/)?.[1];
+  const vieille = src.match(/const CLE_PRECEDENTE = '([^']+)'/)?.[1];
+  assert.notEqual(
+    neuve,
+    vieille,
+    'Le relevé et son filet portent la même clé : le filet ne couvre rien.'
+  );
+});

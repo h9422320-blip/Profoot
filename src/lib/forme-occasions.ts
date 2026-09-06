@@ -59,6 +59,36 @@ import { apiFootball, CACHE_TTL, lireReserve, ecrireReserve } from './api-footba
 /** La réserve où vit le relevé. Le suffixe change à chaque évolution de forme. */
 const CLE = 'forces:occasions-v3';
 
+/**
+ * ── LA VERSION PRÉCÉDENTE RESTE UN FILET ──────────────────────────────────
+ *
+ * ── CE QUI SE PASSAIT SANS ELLE ──────────────────────────────────────────
+ *
+ * Changer la façon de calculer les forces oblige à changer la clé du relevé —
+ * une force ajustée et une force moyennée ne se mélangent pas. Mais le nouveau
+ * relevé se construit une compétition par passage : plusieurs heures pour tout
+ * couvrir.
+ *
+ * Pendant ces heures, un club présent dans l'ANCIEN relevé et pas encore dans
+ * le nouveau perdait toute lecture par les occasions et retombait au calcul
+ * d'avant. Un recul, même provisoire, sur des rencontres que des abonnés
+ * payants analysent pendant ce temps-là.
+ *
+ * ── CE QUI SE PASSE MAINTENANT ───────────────────────────────────────────
+ *
+ * Le club est cherché dans le relevé neuf ; s'il n'y est pas encore, dans le
+ * précédent. Une force moyennée vaut moins qu'une force ajustée, mais
+ * infiniment mieux que pas de force du tout — c'était déjà elle qui tournait
+ * hier, et elle a été mesurée.
+ *
+ * Le moteur ne peut donc plus reculer pendant une bascule de version : au
+ * pire il n'avance pas encore.
+ *
+ * Cette clé se décale d'un cran à chaque nouvelle version : v3 lit v2, une
+ * future v4 lira v3.
+ */
+const CLE_PRECEDENTE = 'forces:occasions-v2';
+
 /** Six heures : le relevé bouge à chaque journée de championnat, pas plus. */
 const TTL = 6 * 60 * 60 * 1000;
 
@@ -773,7 +803,35 @@ export async function rafraichirSiNecessaire(): Promise<{ lance: boolean; raison
 export async function lireForces(): Promise<ReleveOccasions | null> {
   try {
     const cache = await lireReserve<ReleveOccasions>(CLE);
-    return cache?.contenu?.clubs ? cache.contenu : null;
+    const neuf = cache?.contenu?.clubs ? cache.contenu : null;
+
+    // Le relevé neuf couvre-t-il déjà tout ? Alors rien d'autre à faire.
+    // Sinon on complète avec le précédent, pour les clubs qu'il n'a pas encore
+    // atteints — jamais pour ceux qu'il a, sa lecture faisant autorité.
+    const ancien = await lireReserve<ReleveOccasions>(CLE_PRECEDENTE).catch(() => null);
+    const clubsAnciens = ancien?.contenu?.clubs;
+    if (!clubsAnciens) return neuf;
+
+    if (!neuf) {
+      // Le neuf n'existe pas encore du tout : on sert l'ancien tel quel plutôt
+      // que de priver tout le monde.
+      return ancien!.contenu;
+    }
+
+    const clubs = { ...neuf.clubs };
+    const moyennes = { ...(neuf.moyennesParLigue ?? {}) };
+    let repris = 0;
+    for (const [nom, force] of Object.entries(clubsAnciens)) {
+      if (clubs[nom]) continue;
+      const etalon = ancien!.contenu.moyennesParLigue?.[force.ligue];
+      if (etalon === undefined) continue;
+      clubs[nom] = force;
+      if (moyennes[force.ligue] === undefined) moyennes[force.ligue] = etalon;
+      repris++;
+    }
+    if (!repris) return neuf;
+
+    return { ...neuf, clubs, moyennesParLigue: moyennes };
   } catch {
     return null;
   }
