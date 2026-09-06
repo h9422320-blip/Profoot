@@ -370,3 +370,57 @@ test('★ ACQUIS — les compétitions couvertes restent celles qui sont analys�
   // deux fois dans l'étalon de son championnat.
   assert.equal(new Set(ids).size, ids.length, 'Une compétition figure deux fois dans la liste.');
 });
+
+/**
+ * ── LE RELEVÉ NE DOIT PAS DÉPENDRE D'UNE TÂCHE QUI NE PART PAS ────────────
+ *
+ * Découvert le 6 septembre 2026 au matin : la tâche planifiée demandait deux
+ * cent trente secondes de travail quand l'hébergeur coupe à soixante. Elle
+ * était tuée en pleine lecture, TOUJOURS avant d'écrire — elle n'a donc jamais
+ * rien produit. Le relevé servi ce matin-là n'existait que parce qu'il avait
+ * été bâti à la main depuis un poste.
+ *
+ * Rien ne l'aurait signalé : pas d'erreur, pas de trace, et la lecture accepte
+ * un relevé périmé à dessein. L'application aurait servi des forces de plus en
+ * plus vieilles pendant des semaines.
+ */
+test('★ ACQUIS — la construction tient sous la coupure de soixante secondes', () => {
+  const src = fs.readFileSync('src/lib/forme-occasions.ts', 'utf8');
+  const budget = Number((src.match(/const BUDGET_MS = ([\d_]+)/) ?? [])[1]?.replace(/_/g, ''));
+  assert.ok(
+    Number.isFinite(budget) && budget <= 45_000,
+    `Le budget de construction vaut ${budget} ms. Au-delà de 45 000, la fonction ` +
+      "est tuée par l'hébergeur avant d'écrire le relevé, et la tâche ne produit " +
+      "plus rien — sans qu'aucune erreur ne le signale."
+  );
+
+  const route = fs.readFileSync('src/app/api/cron/occasions/route.ts', 'utf8');
+  const max = Number((route.match(/maxDuration = (\d+)/) ?? [])[1]);
+  assert.ok(
+    max <= 60,
+    `La route déclare maxDuration = ${max}. L'hébergeur coupe à 60 : annoncer ` +
+      'plus donne une fausse impression de sécurité.'
+  );
+});
+
+test('★ ACQUIS — le relevé se rafraîchit par le passage des visiteurs', () => {
+  const src = fs.readFileSync('src/lib/forme-occasions.ts', 'utf8');
+  assert.ok(
+    /export async function rafraichirSiNecessaire/.test(src),
+    'Le rafraîchissement opportuniste a disparu : le relevé redeviendrait ' +
+      "dépendant d'une tâche planifiée qui ne part pas."
+  );
+
+  const mesure = fs.readFileSync('src/app/api/mesure/route.ts', 'utf8');
+  assert.ok(
+    /rafraichirSiNecessaire/.test(mesure),
+    "La route de mesure ne déclenche plus le rafraîchissement. C'est la porte " +
+      'la plus passante de l\'application, et celle que ce dépôt utilise déjà ' +
+      'pour les courriels, faute de tâches planifiées fiables.'
+  );
+  assert.ok(
+    mesure.indexOf('rafraichirSiNecessaire') > mesure.indexOf('after('),
+    'Le rafraîchissement est appelé hors de `after()` : il serait tué dès la ' +
+      'réponse envoyée, et ferait attendre le visiteur pour rien.'
+  );
+});

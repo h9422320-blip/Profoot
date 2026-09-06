@@ -206,6 +206,31 @@ export async function POST(req: Request) {
       await declencherCampagnesDuJour();
     });
 
+    // ── LE RELEVÉ DES OCCASIONS SE TIENT À JOUR PAR LA MÊME PORTE ────────
+    //
+    // Il devait l'être par une tâche planifiée. Découvert le 6 septembre 2026
+    // au matin : cette tâche demandait deux cent trente secondes quand
+    // l'hébergeur coupe à soixante. Elle était tuée avant d'écrire, et n'a donc
+    // JAMAIS rien produit — le relevé servi ce matin-là n'existait que parce
+    // qu'il avait été bâti à la main depuis un poste.
+    //
+    // Le raccrocher ici est le remède que ce dépôt applique déjà aux courriels,
+    // pour la même raison : les visiteurs passent, les tâches planifiées non.
+    //
+    // Le coût pour le visiteur reste nul — il a sa réponse — et pour la base
+    // presque nul : `rafraichirSiNecessaire` rend la main immédiatement tant
+    // que le relevé a moins d'une heure et demie, ce qui est le cas vingt-trois
+    // fois sur vingt-quatre.
+    after(async () => {
+      try {
+        const { rafraichirSiNecessaire } = await import('@/lib/forme-occasions');
+        const r = await rafraichirSiNecessaire();
+        if (r.lance) console.log(`[OCCASIONS] Relevé repris par une visite : ${r.raison}.`);
+      } catch {
+        // Sans conséquence : le relevé précédent continue de servir.
+      }
+    });
+
     return recu();
   } catch {
     // Une table absente, une base injoignable : la visite continue comme si de

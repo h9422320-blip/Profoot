@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { autoriserCron } from '@/lib/garde-cron';
 import { construireForces } from '@/lib/forme-occasions';
 
-export const maxDuration = 300;
+// L'hébergeur coupe à soixante secondes sur ce projet — la même limite qui
+// contraint l'Agent VIP. Déclarer trois cents ne changeait rien : la fonction
+// était tuée en pleine lecture, toujours avant d'écrire, et cette tâche n'a
+// donc jamais rien produit. La construction tient désormais en trente-cinq
+// secondes et avance d'une compétition par passage. Voir `forme-occasions.ts`.
+export const maxDuration = 60;
 // Jamais de mise en cache : la tâche doit réellement s'exécuter à chaque appel.
 export const dynamic = 'force-dynamic';
 

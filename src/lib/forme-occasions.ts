@@ -314,7 +314,31 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
    * en commençant par les compétitions les plus analysées.
    */
   const DEBUT = Date.now();
-  const BUDGET_MS = 230_000;
+  /**
+   * ── TRENTE-CINQ SECONDES, ET PAS DEUX CENT TRENTE ─────────────────────
+   *
+   * ── CE QUI A ÉTÉ COMPRIS LE 6 SEPTEMBRE 2026 AU MATIN ────────────────
+   *
+   * Le budget valait deux cent trente secondes, et la route déclarait
+   * « maxDuration = 300 ». Or l'hébergeur coupe les fonctions de ce projet à
+   * SOIXANTE SECONDES — la même limite qui contraint déjà l'Agent VIP.
+   *
+   * La construction était donc tuée en pleine lecture, toujours avant
+   * d'atteindre l'écriture finale. Autrement dit : la tâche planifiée n'a
+   * JAMAIS rien écrit. Le relevé servi en production n'existait que parce
+   * qu'il avait été bâti à la main depuis un poste, sans limite de temps.
+   *
+   * Rien ne l'aurait signalé : ni erreur, ni trace. Le relevé aurait
+   * simplement vieilli — et la lecture accepte un relevé périmé, à dessein —
+   * donc l'application aurait servi des forces de plus en plus vieilles sans
+   * que personne ne s'en aperçoive.
+   *
+   * Trente-cinq secondes laissent la place à la lecture d'une compétition ET
+   * à l'écriture du relevé, sous la coupure. Une compétition par passage,
+   * c'est peu — mais le tour d'anneau et la fusion font que chaque passage
+   * AJOUTE, et les passages sont nombreux (voir `rafraichirSiNecessaire`).
+   */
+  const BUDGET_MS = 35_000;
   const couvertes: string[] = [];
   const laissees: string[] = [];
 
@@ -354,7 +378,7 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
       );
 
       for (const f of jouees) {
-        if (Date.now() - DEBUT > BUDGET_MS + 40_000) {
+        if (Date.now() - DEBUT > BUDGET_MS + 8_000) {
           // Dépassement franc : on abandonne CETTE compétition entière.
           complete = false;
           break;
@@ -591,6 +615,74 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
 
   await ecrireReserve(CLE, fusionne, TTL);
   return fusionne;
+}
+
+/** Le verrou : deux visiteurs simultanés ne construisent pas deux fois. */
+const CLE_VERROU = 'forces:occasions-verrou';
+
+/** Au-delà, on considère que la construction précédente est morte. */
+const VERROU_MS = 3 * 60 * 1000;
+
+/** En dessous de cet âge, le relevé est jugé assez frais pour ne rien faire. */
+const FRAICHEUR_MS = 90 * 60 * 1000;
+
+/**
+ * ── LE RELEVÉ SE TIENT À JOUR PAR LE PASSAGE DES VISITEURS ───────────────
+ *
+ * ── POURQUOI PAS SIMPLEMENT UNE TÂCHE PLANIFIÉE ─────────────────────────
+ *
+ * Parce qu'elles ne partent pas. Le fait est déjà consigné ailleurs dans ce
+ * dépôt : trois tâches de courriels déclarées le 1er septembre 2026 n'avaient
+ * toujours rien envoyé le lendemain soir, et l'envoi a dû être raccroché au
+ * passage des visiteurs. La même chose vaut ici.
+ *
+ * S'y ajoute la coupure à soixante secondes : même partie, une tâche n'a le
+ * temps de lire qu'une seule compétition.
+ *
+ * ── COMMENT ÇA TIENT ────────────────────────────────────────────────────
+ *
+ * Chaque passage ne fait qu'un petit pas — une compétition, trente-cinq
+ * secondes — mais le tour d'anneau reprend là où le précédent s'est arrêté et
+ * la fusion conserve tout le reste. Le relevé ne recule jamais : il avance par
+ * petits bouts, et vingt-quatre pas suffisent à faire le tour complet.
+ *
+ * Le verrou empêche deux visiteurs simultanés de bâtir en double. La fraîcheur
+ * d'une heure et demie empêche de reconstruire à chaque visite : la
+ * construction part une quinzaine de fois par jour, ce qui fait tourner
+ * l'anneau à peu près une fois par jour et demi.
+ *
+ * NE LÈVE JAMAIS : appelée depuis `after()`, une exception y serait perdue, et
+ * une page ne doit pas échouer parce qu'un relevé n'a pas pu se mettre à jour.
+ */
+export async function rafraichirSiNecessaire(): Promise<{ lance: boolean; raison: string }> {
+  try {
+    const actuel = await lireReserve<ReleveOccasions>(CLE).catch(() => null);
+    const construitLe = actuel?.contenu?.construitLe
+      ? new Date(actuel.contenu.construitLe).getTime()
+      : 0;
+    const age = Date.now() - construitLe;
+    if (construitLe && age < FRAICHEUR_MS) {
+      return { lance: false, raison: `frais, bâti il y a ${Math.round(age / 60000)} min` };
+    }
+
+    const verrou = await lireReserve<string>(CLE_VERROU).catch(() => null);
+    if (verrou?.contenu && !verrou.expiree) {
+      return { lance: false, raison: 'une construction est déjà en cours' };
+    }
+    await ecrireReserve(CLE_VERROU, new Date().toISOString(), VERROU_MS);
+
+    const releve = await construireForces();
+    // Le verrou tombe aussitôt : le passage suivant peut enchaîner sur la
+    // compétition d'après sans attendre trois minutes.
+    await ecrireReserve(CLE_VERROU, '', 1).catch(() => {});
+
+    return releve
+      ? { lance: true, raison: `${Object.keys(releve.clubs).length} club(s)` }
+      : { lance: true, raison: 'matière insuffisante' };
+  } catch (e: any) {
+    console.warn(`[OCCASIONS] Rafraîchissement impossible : ${e?.message}`);
+    return { lance: false, raison: 'erreur' };
+  }
 }
 
 /**
