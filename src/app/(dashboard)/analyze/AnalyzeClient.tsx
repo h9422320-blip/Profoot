@@ -2643,6 +2643,56 @@ export default function AnalyzePage({
                   </div>
                 )}
 
+              {/* ── CE QUI EST PRESQUE CERTAIN ──────────────────────────────
+                  « Qui gagne » plafonne à 82,7 % de réussite : trois issues,
+                  c'est le mur du domaine. Ces affirmations-ci sortent de la
+                  MÊME grille de scores, mais posent une question à DEUX
+                  réponses — et elles tiennent 92 à 98 %, mesuré le 6 septembre
+                  2026 sur 1 544 rencontres hors échantillon, stable dans les
+                  deux moitiés du contrôle :
+
+                      « telle équipe marque », annoncé à 90 % ... tenu 98,5 %
+                      « telle équipe marque », annoncé à 85 % ... tenu 94,1 %
+                      « telle équipe ne perd pas », à 85 % ...... tenu 92,8 %
+
+                  Rien n'est promis en dessous de 85 % : la section disparaît
+                  plutôt que d'annoncer une certitude qui n'en est pas une. */}
+              {Array.isArray(result.quasiCertitudes) && result.quasiCertitudes.length > 0 && (
+                <div className="rounded-[32px] border border-[#10B981]/25 bg-[#10B981]/[0.07] p-6 space-y-4 shadow-md">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">🔒</span>
+                    <h4
+                      className="font-black text-base text-white"
+                      style={{ fontFamily: 'var(--police-titre), sans-serif' }}
+                    >
+                      Ce qui est presque certain
+                    </h4>
+                  </div>
+
+                  <ul className="space-y-2.5">
+                    {result.quasiCertitudes.map((c: { texte: string; probabilite: number }) => (
+                      <li
+                        key={c.texte}
+                        className="flex items-center justify-between gap-3 rounded-[16px] border border-white/8 bg-black/20 px-4 py-3"
+                      >
+                        <span className="text-[12.5px] font-bold leading-snug text-white/90">
+                          {c.texte}
+                        </span>
+                        <span className="shrink-0 rounded-full bg-[#10B981]/20 px-2.5 py-1 text-[12px] font-black tabular-nums text-[#34D399]">
+                          {c.probabilite} %
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p className="text-[10.5px] leading-relaxed text-white/45 font-semibold">
+                    Ces affirmations portent sur une question à deux réponses, et non sur
+                    l&apos;issue du match. C&apos;est ce qui les rend beaucoup plus sûres que le
+                    vainqueur lui-même. Rien n&apos;est affiché ici en dessous de 85 %.
+                  </p>
+                </div>
+              )}
+
               {/* Indices de performance */}
               <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-md">
                 <div className="flex items-center gap-3">

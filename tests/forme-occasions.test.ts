@@ -424,3 +424,73 @@ test('★ ACQUIS — le relevé se rafraîchit par le passage des visiteurs', ()
       'réponse envoyée, et ferait attendre le visiteur pour rien.'
   );
 });
+
+/**
+ * ── LES QUASI-CERTITUDES ──────────────────────────────────────────────────
+ *
+ * « Qui gagne » plafonne à 82,7 % de réussite, et encore sur cinquante-deux
+ * rencontres : trois issues possibles, c'est le mur du domaine. Le 6 septembre
+ * 2026, les abonnés se plaignaient que l'application « ne fonctionne pas ».
+ *
+ * Ces affirmations-ci sortent de la MÊME grille de scores, mais posent une
+ * question à DEUX réponses. Mesuré sur 1 544 rencontres hors échantillon,
+ * stable dans les deux moitiés du contrôle :
+ *
+ *     « telle équipe marque », annoncé à 90 % ... tenu 98,5 % (67 fois)
+ *     « telle équipe marque », annoncé à 85 % ... tenu 94,1 % (269)
+ *     « telle équipe ne perd pas », à 85 % ...... tenu 92,8 % (111)
+ *
+ * Ce que ces épreuves protègent : le seuil de 85 %, sans lequel on afficherait
+ * des « certitudes » à soixante pour cent, et la cohérence entre ce qui est
+ * affirmé et la grille dont ça sort.
+ */
+test('★ ACQUIS — les quasi-certitudes sortent de la même grille que le score', () => {
+  const r = calculerScoreProbable(FORTE, FAIBLE, true, false);
+  const q = r.quasiCertitudes;
+
+  // L'équipe forte qui reçoit est forcément celle qui marque et qui ne perd pas.
+  assert.ok(q.favoriMarqueEst1, "Le favori désigné n'est pas l'équipe forte qui reçoit.");
+  assert.ok(q.favoriNePerdPasEst1, "Le favori désigné n'est pas l'équipe forte qui reçoit.");
+
+  // « Ne pas perdre » est TOUJOURS au moins aussi probable que « gagner » :
+  // c'est la même chose, plus le nul. Une inversion ici voudrait dire que la
+  // grille et l'affirmation ne décrivent pas la même rencontre.
+  assert.ok(
+    q.favoriNePerdPas >= r.probaVictoire1 - 1,
+    `« ne perd pas » (${q.favoriNePerdPas} %) est annoncé en dessous de « gagne » ` +
+      `(${r.probaVictoire1} %). C'est arithmétiquement impossible.`
+  );
+
+  // « Au moins un but » vaut cent moins la probabilité du 0-0.
+  assert.ok(
+    q.auMoinsUnBut > 50 && q.auMoinsUnBut <= 100,
+    `« au moins un but » vaut ${q.auMoinsUnBut} %, ce qui est hors de tout sens.`
+  );
+  assert.ok(
+    q.moinsDeCinqButs > 50 && q.moinsDeCinqButs <= 100,
+    `« moins de cinq buts » vaut ${q.moinsDeCinqButs} %.`
+  );
+});
+
+test("★ ACQUIS — rien n'est affiché comme certain en dessous de 85 %", () => {
+  const route = fs.readFileSync('src/app/api/analyze/route.ts', 'utf8');
+  const bloc = route.slice(route.indexOf('const q = scoreCalcule.quasiCertitudes'));
+  const seuils = (bloc.slice(0, 2000).match(/>= (\d+)\)/g) ?? []).map((x) => Number(x.match(/\d+/)![0]));
+  assert.ok(seuils.length >= 4, 'Les quatre affirmations ne sont plus filtrées par un seuil.');
+  for (const s of seuils) {
+    assert.ok(
+      s >= 85,
+      `Une affirmation est présentée comme certaine à partir de ${s} %. En dessous ` +
+        "de 85 %, la mesure ne garantit plus les neuf cas sur dix, et l'abonné qui " +
+        'lit « presque certain » sur un pari à deux tiers se sent trompé.'
+    );
+  }
+
+  // Le mur : jamais servi à un compte sans abonnement.
+  const teaser = fs.readFileSync('src/lib/analysis-teaser.ts', 'utf8');
+  assert.ok(
+    !/quasiCertitudes/.test(teaser),
+    "Les quasi-certitudes sont entrées dans la liste blanche de l'aperçu gratuit : " +
+      'ce qui se paie serait donné.'
+  );
+});

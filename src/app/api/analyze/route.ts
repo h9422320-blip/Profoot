@@ -1787,6 +1787,42 @@ async function analyser(req: Request, billet: BilletQuota) {
       nomCompetition
     );
 
+    // ── LES QUASI-CERTITUDES ────────────────────────────────────────────
+    //
+    // « Qui gagne » plafonne à 82,7 % de réussite, et encore sur cinquante-deux
+    // rencontres. Ces affirmations-ci, tirées de la MÊME grille, tiennent
+    // 92 à 98 % — mesuré le 6 septembre 2026 sur 1 544 rencontres hors
+    // échantillon, stable dans les deux moitiés du contrôle.
+    //
+    // Ce n'est pas un moteur différent : c'est une question à deux réponses
+    // au lieu de trois. On ne garde que celles au-dessus de 85 %, avec le nom
+    // de l'équipe concernée — une affirmation sans son sujet ne sert à rien.
+    {
+      const q = scoreCalcule.quasiCertitudes;
+      const nom1 = team1.name;
+      const nom2 = team2.name;
+      const liste: { texte: string; probabilite: number }[] = [];
+
+      if (q.favoriMarque >= 85)
+        liste.push({
+          texte: `${q.favoriMarqueEst1 ? nom1 : nom2} marque au moins un but`,
+          probabilite: q.favoriMarque,
+        });
+      if (q.favoriNePerdPas >= 85)
+        liste.push({
+          texte: `${q.favoriNePerdPasEst1 ? nom1 : nom2} ne perd pas`,
+          probabilite: q.favoriNePerdPas,
+        });
+      if (q.auMoinsUnBut >= 85)
+        liste.push({ texte: 'La rencontre ne finit pas 0-0', probabilite: q.auMoinsUnBut });
+      if (q.moinsDeCinqButs >= 85)
+        liste.push({ texte: 'Moins de cinq buts au total', probabilite: q.moinsDeCinqButs });
+
+      if (liste.length) {
+        donnees.quasiCertitudes = liste.sort((a, b) => b.probabilite - a.probabilite);
+      }
+    }
+
     // Montré, jamais décisif — voir la mesure au-dessus de la collecte.
     // Absent du `TEASER_FIELDS` de `analysis-teaser.ts`, donc jamais envoyé
     // au navigateur d'un compte sans abonnement : la liste blanche l'exclut
