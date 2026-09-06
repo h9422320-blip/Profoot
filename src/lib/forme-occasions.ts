@@ -111,6 +111,34 @@ export const CHAMPIONNATS = [
   { id: 128, nom: 'Liga Profesional Argentina' },
   { id: 2, nom: 'Ligue des champions' },
   { id: 3, nom: 'Ligue Europa' },
+  // ── LA SECONDE VAGUE, MESUREE LE 6 SEPTEMBRE 2026 ──────────────────────
+  //
+  // Une fois les grandes compétitions couvertes, il restait 527 analyses
+  // d'abonnés dans des compétitions d'au moins quinze analyses chacune, toutes
+  // encore à l'ancien calcul. Les voici, par ordre de ce qui est analysé :
+  //
+  //     Ligue Europa Conference ... 48 analyses
+  //     Segunda División .......... 24
+  //     Serie B ................... 18
+  //     Ligue 2 ................... 17
+  //     Czech Liga ................ 14
+  //     Allsvenskan ............... 13
+  //     Premiership (Écosse) ...... 13
+  //     Super League (Suisse) ..... 13
+  //     Super League 1 (Grèce) .... 12
+  //
+  // Ce sont de petits volumes pris un par un, mais l'abonné qui analyse la
+  // Segunda est un abonné comme un autre : il paie le même prix et juge
+  // l'application sur SES rencontres.
+  { id: 848, nom: 'Ligue Europa Conference' },
+  { id: 141, nom: 'Segunda División' },
+  { id: 136, nom: 'Serie B' },
+  { id: 62, nom: 'Ligue 2' },
+  { id: 345, nom: 'Czech Liga' },
+  { id: 113, nom: 'Allsvenskan' },
+  { id: 179, nom: 'Premiership' },
+  { id: 207, nom: 'Super League' },
+  { id: 197, nom: 'Super League 1' },
 ] as const;
 
 /**
@@ -207,6 +235,19 @@ export type ReleveOccasions = {
   avantageDomicile: number;
   avantageExterieur: number;
   construitLe: string;
+  /**
+   * Par quelle compétition le PROCHAIN passage commencera.
+   *
+   * Sans ce rang, la tâche repartait toujours du début de la liste : les
+   * premières compétitions étaient relues à chaque fois et les dernières
+   * JAMAIS atteintes, puisque le budget de temps s'épuisait avant. Vingt-quatre
+   * compétitions déclarées, cinq servies, dix-neuf en attente éternelle.
+   *
+   * Le tour d'anneau règle cela sans rien coûter : chaque passage reprend là
+   * où le précédent s'est arrêté, et la fusion conserve les compétitions qu'il
+   * n'a pas relues. Toutes sont donc rafraîchies à leur tour.
+   */
+  prochainDepart?: number;
 };
 
 /** Un tir cadré vaut ce nombre de buts. Mesuré, puis recalculé à chaque relevé. */
@@ -277,11 +318,25 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
   const couvertes: string[] = [];
   const laissees: string[] = [];
 
-  for (const champ of CHAMPIONNATS) {
+  // ── LE TOUR D'ANNEAU ──────────────────────────────────────────────────
+  //
+  // On reprend où le passage précédent s'est arrêté. La liste est parcourue
+  // en anneau : arrivé au bout, on revient au début. Aucune compétition ne
+  // reste en attente indéfiniment, et l'ordre de la liste garde son sens —
+  // les plus analysées sont simplement servies plus tôt au premier passage.
+  const releveConnu = await lireForces();
+  const depart = Number(releveConnu?.prochainDepart ?? 0) % CHAMPIONNATS.length;
+  const ordre = [...CHAMPIONNATS.slice(depart), ...CHAMPIONNATS.slice(0, depart)];
+  let arreteA = depart;
+
+  for (const champ of ordre) {
     if (Date.now() - DEBUT > BUDGET_MS) {
       laissees.push(champ.nom);
       continue;
     }
+    // Le prochain passage commencera par celle-ci si elle est la première
+    // qu'on n'a pas eu le temps de finir.
+    arreteA = CHAMPIONNATS.findIndex((c) => c.nom === champ.nom);
     // Ce que cette compétition apporte n'entre dans le relevé QUE si elle a
     // été lue en entier.
     const apport: Rencontre[] = [];
@@ -339,6 +394,8 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
     if (complete) {
       rencontres.push(...apport);
       couvertes.push(champ.nom);
+      // Terminée : le prochain passage commencera par la SUIVANTE.
+      arreteA = (CHAMPIONNATS.findIndex((c) => c.nom === champ.nom) + 1) % CHAMPIONNATS.length;
     } else {
       laissees.push(champ.nom);
     }
@@ -470,6 +527,7 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
 
   const releve: ReleveOccasions = {
     clubs,
+    prochainDepart: arreteA,
     moyenne: Math.round(moyenne * 10_000) / 10_000,
     moyennesParLigue,
     avantageDomicile: Math.round(avantageDomicile * 10_000) / 10_000,
@@ -503,7 +561,7 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
    * et pour celles que ce passage n'a pas atteintes, celle d'avant. Le relevé
    * ne peut plus que s'enrichir.
    */
-  const ancien = await lireForces();
+  const ancien = releveConnu;
   let fusionne = releve;
 
   if (ancien?.clubs) {

@@ -236,10 +236,18 @@ test('★ ACQUIS — la construction fusionne au lieu d\'écraser', () => {
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/(^|[^:])\/\/.*$/gm, '$1');
 
+  // On vérifie que la construction VA CHERCHER le relevé précédent, sans
+  // exiger le nom de la variable qui le porte : une épreuve qui casse à un
+  // renommage ne protège rien, elle gêne.
+  const construction = src.slice(src.indexOf('export async function construireForces'));
   assert.ok(
-    /const ancien = await lireForces\(\)/.test(src),
+    /await lireForces\(\)/.test(construction),
     "La construction ne relit plus le relevé précédent : un passage écourté " +
       'écraserait de nouveau un relevé plus complet.'
+  );
+  assert.ok(
+    /const ancien = /.test(construction),
+    "Le relevé précédent n'est plus retenu pour la fusion."
   );
   assert.ok(
     /ecrireReserve\(CLE, fusionne/.test(src),
@@ -304,4 +312,61 @@ test('★ ACQUIS — le réaiguisage resserre sans changer le pronostic', () => 
     100,
     'Les trois probabilités ne totalisent plus cent.'
   );
+});
+
+/**
+ * ── AUCUNE COMPÉTITION NE DOIT ATTENDRE INDÉFINIMENT ──────────────────────
+ *
+ * La tâche s'arrête quand le temps manque, et elle repartait toujours du début
+ * de la liste : les premières compétitions étaient relues à chaque passage, les
+ * dernières JAMAIS atteintes. Vingt-quatre déclarées, cinq servies, dix-neuf en
+ * attente éternelle — et leurs abonnés à l'ancien calcul pour toujours.
+ *
+ * Le tour d'anneau règle cela : chaque passage reprend là où le précédent s'est
+ * arrêté, et la fusion garde ce qu'il n'a pas relu.
+ */
+test("★ ACQUIS — la construction reprend où elle s'était arrêtée", () => {
+  const src = fs
+    .readFileSync('src/lib/forme-occasions.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  assert.ok(
+    /prochainDepart/.test(src),
+    "Le rang de reprise a disparu : la tâche repartirait du début et les " +
+      'dernières compétitions ne seraient plus jamais atteintes.'
+  );
+  assert.ok(
+    /CHAMPIONNATS\.slice\(depart\)/.test(src) && /CHAMPIONNATS\.slice\(0, depart\)/.test(src),
+    "La liste n'est plus parcourue en anneau."
+  );
+  assert.ok(
+    /prochainDepart: arreteA/.test(src),
+    "Le rang n'est plus enregistré dans le relevé : il repartirait de zéro à " +
+      'chaque passage.'
+  );
+});
+
+test('★ ACQUIS — les compétitions couvertes restent celles qui sont analysées', () => {
+  const src = fs.readFileSync('src/lib/forme-occasions.ts', 'utf8');
+  const bloc = src.slice(src.indexOf('export const CHAMPIONNATS'), src.indexOf('] as const;', src.indexOf('export const CHAMPIONNATS')));
+  const ids = (bloc.match(/id: (\d+)/g) ?? []).map((x) => Number(x.replace('id: ', '')));
+
+  // Les cinq que le propriétaire a nommées, plus la MLS qui est la PREMIÈRE
+  // compétition analysée par ses abonnés — 464 analyses, devant la Premier
+  // League. Les perdre serait perdre le gros du bénéfice.
+  for (const [nom, id] of [
+    ['Premier League', 39],
+    ['La Liga', 140],
+    ['Serie A', 135],
+    ['Bundesliga', 78],
+    ['Ligue 1', 61],
+    ['Major League Soccer', 253],
+  ] as const) {
+    assert.ok(ids.includes(id), `${nom} ne fait plus partie des compétitions couvertes.`);
+  }
+
+  // Pas de doublon : une compétition lue deux fois compterait ses rencontres
+  // deux fois dans l'étalon de son championnat.
+  assert.equal(new Set(ids).size, ids.length, 'Une compétition figure deux fois dans la liste.');
 });
