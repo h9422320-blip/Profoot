@@ -131,8 +131,41 @@ const DEMI_VIE = 8;
 const RETRAIT = 3;
 const MINIMUM_RENCONTRES = 8;
 
-/** Combien de jours de calendrier on relit pour bâtir la forme. */
-const JOURS_RELUS = 150;
+/**
+ * ── COMBIEN DE JOURS DE CALENDRIER ON RELIT ──────────────────────────────
+ *
+ * ── CE QUI A ÉTÉ CONSTATÉ LE 6 SEPTEMBRE 2026 ───────────────────────────
+ *
+ * La fenêtre valait cent cinquante jours. Résultat dans le relevé : douze
+ * clubs de Bundesliga sur dix-huit, et TOUS avec exactement huit rencontres —
+ * pile le minimum. Les six autres en avaient sept et retombaient à l'ancien
+ * calcul, sans que rien ne le signale.
+ *
+ * La raison n'est pas allemande, elle est calendaire : le championnat
+ * d'Allemagne finit à la mi-mai et reprend à la mi-août. Sur cent cinquante
+ * jours pris début septembre, ses clubs ont simplement moins joué que les
+ * anglais, qui en comptaient neuf à onze.
+ *
+ * ── ET SURTOUT : LA MESURE PORTAIT SUR PLUS QUE ÇA ──────────────────────
+ *
+ * Le banc qui a valide ce moteur — 52,20 % de justesse, 74,36 % sur les
+ * rencontres mises en avant — lisait TOUT l'historique disponible, sans
+ * fenêtre. La production était donc plus restrictive que ce qui avait été
+ * mesuré : on servait une version amputée de celle qu'on avait éprouvée.
+ *
+ * ── POURQUOI L'ÉLARGIR NE COÛTE RIEN ────────────────────────────────────
+ *
+ * Le poids d'une rencontre est divisé par deux toutes les huit rencontres.
+ * La trentième en arrière ne pèse donc que sept centièmes de la dernière :
+ * elle complète le tableau sans jamais le commander. Un effectif refait
+ * pendant l'été est effacé par la décroissance bien avant de fausser quoi que
+ * ce soit.
+ *
+ * Le coût est ailleurs — plus de rencontres à relire — mais il est absorbé :
+ * la construction s'arrête à une frontière de compétition et le relevé
+ * fusionne avec le précédent. Deux ou trois passages suffisent à tout couvrir.
+ */
+const JOURS_RELUS = 240;
 
 const TERMINE = ['FT', 'AET', 'PEN'];
 
