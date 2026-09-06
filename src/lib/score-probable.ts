@@ -711,7 +711,25 @@ export function calculerScoreProbable(
    *
    * ── LE POIDS, ET CE QU'IL A COÛTÉ DE LE CHOISIR ───────────────────────
    *
-   * Moitié-moitié. Mesuré le 6 septembre 2026 sur 1 544 rencontres communes,
+   * Six dixièmes pour les occasions, quatre pour le calcul classique.
+   *
+   * ── POURQUOI CE N EST PLUS MOITIE-MOITIE ─────────────────────────────
+   *
+   * Le 0,5 avait été choisi quand la force d une équipe était une simple
+   * moyenne. Elle est désormais estimée par ajustement d ensemble — toutes
+   * les forces ensemble, corrigées de l adversaire — et cette lecture-là
+   * mérite plus de place. Remesuré le 6 septembre 2026, huit poids essayés :
+   *
+   *                justesse   Brier    P1      P2     mis en avant
+   *     50 %        52,53 %   0,5971  52,33   52,72     70,86 %
+   *     60 %        52,72 %   0,5963  52,72   52,72     70,96 %
+   *
+   * Le 0,6 gagne sur TOUTES les mesures, et les deux moitiés du contrôle
+   * tombent au même chiffre — la stabilité parfaite. Les poids de 0,7 et 0,8
+   * font mieux encore sur les rencontres mises en avant, mais perdent en
+   * seconde période : on ne court pas après ce bruit.
+   *
+   * Mesuré auparavant sur 1 544 rencontres communes,
    * hors échantillon, la seconde moitié du calendrier n'ayant jamais servi à
    * l'apprentissage :
    *
@@ -727,7 +745,7 @@ export function calculerScoreProbable(
    * À zéro, cette ligne ne fait rien — d'où la variable, pour pouvoir tout
    * éteindre sans redéployer si la mesure se retournait un jour.
    */
-  const POIDS_OCCASIONS = Number(process.env.BANC_POIDS_OCCASIONS ?? 0.5);
+  const POIDS_OCCASIONS = Number(process.env.BANC_POIDS_OCCASIONS ?? 0.6);
 
   const melanger = (calcule: number, vuParLesOccasions: number | undefined) =>
     vuParLesOccasions !== undefined &&

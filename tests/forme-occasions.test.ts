@@ -82,8 +82,26 @@ test("★ ACQUIS — sans relevé d'occasions, le moteur ne bouge pas d'un centi
   }
 });
 
-test('★ ACQUIS — le mélange se fait à parts égales, sur les buts attendus', () => {
-  const sans = calculerScoreProbable(FORTE, FAIBLE, true, false);
+test('★ ACQUIS — le mélange se fait sur les buts attendus, au poids voulu', () => {
+  // ── L'ÉPREUVE PORTE SUR LE MÉCANISME, PAS SUR UN CHIFFRE ────────────────
+  //
+  // Elle figeait le moitié-moitié. Le poids a été remesuré le 6 septembre 2026
+  // et porté à six dixièmes : l'épreuve a cassé alors que le moteur venait de
+  // s'améliorer. Une épreuve qui interdit de régler ce qui doit l'être ne
+  // protège rien, elle gêne.
+  //
+  // On fixe donc le poids ici, et on vérifie que le mélange le respecte
+  // exactement — quel que soit le réglage retenu en production.
+  const avant = process.env.BANC_POIDS_OCCASIONS;
+  process.env.BANC_POIDS_OCCASIONS = '0.75';
+  const POIDS = 0.75;
+
+  const sans = (() => {
+    process.env.BANC_POIDS_OCCASIONS = '0';
+    const r = calculerScoreProbable(FORTE, FAIBLE, true, false);
+    process.env.BANC_POIDS_OCCASIONS = String(POIDS);
+    return r;
+  })();
 
   // Une lecture « occasions » volontairement très différente du calcul.
   const occasions = { domicile: 0.4, exterieur: 3.0 };
@@ -100,17 +118,31 @@ test('★ ACQUIS — le mélange se fait à parts égales, sur les buts attendus
     occasions
   );
 
-  // À poids égal, le résultat tombe à mi-chemin. On tolère un centième pour
-  // les bornes et les arrondis du moteur.
+  if (avant === undefined) delete process.env.BANC_POIDS_OCCASIONS;
+  else process.env.BANC_POIDS_OCCASIONS = avant;
+
+  const attendu = (calcule: number, vu: number) => POIDS * vu + (1 - POIDS) * calcule;
   assert.ok(
-    Math.abs(avec.butsAttendus1 - (sans.butsAttendus1 + occasions.domicile) / 2) < 0.02,
-    `Les buts attendus de l'équipe qui reçoit ne sont pas à mi-chemin : ` +
-      `${sans.butsAttendus1} et ${occasions.domicile} donnent ${avec.butsAttendus1}.`
+    Math.abs(avec.butsAttendus1 - attendu(sans.butsAttendus1, occasions.domicile)) < 0.02,
+    `Les buts attendus de l'équipe qui reçoit ne respectent pas le poids : ` +
+      `${sans.butsAttendus1} et ${occasions.domicile} à ${POIDS} donnent ${avec.butsAttendus1}.`
   );
   assert.ok(
-    Math.abs(avec.butsAttendus2 - (sans.butsAttendus2 + occasions.exterieur) / 2) < 0.02,
-    `Les buts attendus de l'équipe qui se déplace ne sont pas à mi-chemin : ` +
-      `${sans.butsAttendus2} et ${occasions.exterieur} donnent ${avec.butsAttendus2}.`
+    Math.abs(avec.butsAttendus2 - attendu(sans.butsAttendus2, occasions.exterieur)) < 0.02,
+    `Les buts attendus de l'équipe qui se déplace ne respectent pas le poids : ` +
+      `${sans.butsAttendus2} et ${occasions.exterieur} à ${POIDS} donnent ${avec.butsAttendus2}.`
+  );
+
+  // Et le réglage de production doit rester une vraie moyenne pondérée : au
+  // delà de 1 ou en dessous de 0, le mélange n'aurait plus de sens.
+  const defaut = Number(
+    fs
+      .readFileSync('src/lib/score-probable.ts', 'utf8')
+      .match(/BANC_POIDS_OCCASIONS \?\? ([\d.]+)/)?.[1]
+  );
+  assert.ok(
+    defaut > 0 && defaut <= 1,
+    `Le poids par défaut vaut ${defaut} : hors de [0, 1], ce n'est plus un mélange.`
   );
 
   // Et tout ce qui en découle a suivi : c'est TOUT l'intérêt d'avoir mélangé
