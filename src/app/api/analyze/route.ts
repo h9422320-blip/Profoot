@@ -27,6 +27,12 @@ import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 // ProFoot ANALYSE ENGINE v6.0 — FULL AI DELEGATION
 // ============================================================================
 
+/** Une composition de depart, telle qu'on la montre. */
+type Composition = {
+  schema: string | null;
+  titulaires: { nom: string; poste: string | null }[];
+};
+
 const analysisCache = new Map<string, { data: any; timestamp: number }>();
 const apiFootballCache = new Map<string, { data: any; timestamp: number }>();
 
@@ -1480,6 +1486,86 @@ async function analyser(req: Request, billet: BilletQuota) {
   // après le coup d'envoi connaît déjà des buts, et n'en est plus un.
   const idRencontre = fixtureDeReference?.fixture?.id ?? matchDirect?.fixtureId ?? null;
   const lisible = !!idRencontre;
+
+  /**
+   * ── LES ABSENTS ET LES COMPOSITIONS ──────────────────────────────────────
+   *
+   * ── CE QUI A ÉTÉ MESURÉ AVANT DE LES BRANCHER, LE 6 SEPTEMBRE 2026 ──────
+   *
+   * Ils n'entrent PAS dans le calcul, et c'est une décision mesurée, pas un
+   * oubli. Sur 1 663 rencontres des cinq grands championnats — 95 % avec
+   * donnée d'absents, soit 3 090 observations :
+   *
+   *   — le nombre d'absents, comparé à l'habitude du club lui-même, ne
+   *     départage rien : toutes les tranches tiennent dans ±0,09 but, sans
+   *     ordre. Hors échantillon, la pente apprise vaut -0,0006 but par absent
+   *     et la pente vérifiée +0,0005 : signes contraires, les deux nuls.
+   *
+   *   — l'absence d'un VRAI buteur (dix buts ou plus dans la saison) va dans
+   *     le bon sens : -0,039 but contre +0,016 quand il est là. Mais hors
+   *     échantillon la pente s'effondre de -0,0096 à -0,00018, soit cinquante
+   *     fois moins. Un buteur à quinze buts coûterait alors trois millièmes
+   *     de but.
+   *
+   * Les brancher sur le moteur reviendrait à déplacer des pronostics sur du
+   * bruit. On les MONTRE, sans les faire décider : c'est une information que
+   * l'abonné veut lire, pas un levier de prédiction.
+   *
+   * ── CE QUE LE FOURNISSEUR DONNE, ET QUAND ────────────────────────────────
+   *
+   * Les ABSENTS sont disponibles longtemps à l'avance — vérifié à 42 heures du
+   * coup d'envoi, de 4 à 22 par rencontre.
+   *
+   * Les COMPOSITIONS ne le sont JAMAIS à l'avance : contrôlé le 6 septembre
+   * sur dix-neuf rencontres des grands championnats, aucune n'en avait à douze
+   * heures ni à quarante-deux heures. Elles paraissent environ une heure avant
+   * le coup d'envoi. L'écran ne les affiche donc que lorsqu'elles existent, et
+   * n'annonce rien quand elles manquent.
+   */
+  let effectif: {
+    absents: { equipe1: { nom: string; motif: string }[]; equipe2: { nom: string; motif: string }[] };
+    compositions: { equipe1: Composition | null; equipe2: Composition | null };
+  } | null = null;
+
+  if (idRencontre) {
+    // Les deux appels voyagent ensemble et passent par le cache commun : cent
+    // abonnés sur la même affiche ne coûtent pas deux cents requêtes.
+    const [brutAbsents, brutCompos] = await Promise.all([
+      fetchApiFootball(`/injuries?fixture=${idRencontre}`, CACHE_TTL.API_DATA).catch(() => null),
+      fetchApiFootball(`/fixtures/lineups?fixture=${idRencontre}`, CACHE_TTL.API_DATA).catch(() => null),
+    ]);
+
+    const nomDe = (n: any) => String(n ?? '').trim();
+    const absentsDe = (nomEquipe: string) =>
+      ((brutAbsents?.response ?? []) as any[])
+        .filter(
+          (a) =>
+            nomDe(a?.team?.name) === nomEquipe &&
+            String(a?.player?.type ?? '').toLowerCase().includes('missing')
+        )
+        .map((a) => ({ nom: nomDe(a?.player?.name), motif: nomDe(a?.player?.reason) }))
+        .filter((a) => a.nom)
+        .slice(0, 12);
+
+    const composDe = (nomEquipe: string): Composition | null => {
+      const c = ((brutCompos?.response ?? []) as any[]).find((x) => nomDe(x?.team?.name) === nomEquipe);
+      if (!c || !Array.isArray(c.startXI) || !c.startXI.length) return null;
+      return {
+        schema: nomDe(c.formation) || null,
+        titulaires: c.startXI
+          .map((j: any) => ({ nom: nomDe(j?.player?.name), poste: nomDe(j?.player?.pos) || null }))
+          .filter((j: any) => j.nom),
+      };
+    };
+
+    const a1 = absentsDe(team1.name);
+    const a2 = absentsDe(team2.name);
+    const c1 = composDe(team1.name);
+    const c2 = composDe(team2.name);
+    if (a1.length || a2.length || c1 || c2) {
+      effectif = { absents: { equipe1: a1, equipe2: a2 }, compositions: { equipe1: c1, equipe2: c2 } };
+    }
+  }
   const enregistrable = !lieuInconnu && !!fixtureDeReference?.fixture?.id && !matchDirect;
 
   if (lisible) {
@@ -1682,6 +1768,12 @@ async function analyser(req: Request, billet: BilletQuota) {
       scoreCalcule.probaVictoire2,
       nomCompetition
     );
+
+    // Montré, jamais décisif — voir la mesure au-dessus de la collecte.
+    // Absent du `TEASER_FIELDS` de `analysis-teaser.ts`, donc jamais envoyé
+    // au navigateur d'un compte sans abonnement : la liste blanche l'exclut
+    // par construction, sans qu'il faille y penser.
+    if (effectif) donnees.effectif = effectif;
 
     donnees.predictions = {
       ...(donnees.predictions ?? {}),

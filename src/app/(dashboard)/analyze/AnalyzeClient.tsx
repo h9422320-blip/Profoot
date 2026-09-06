@@ -2554,6 +2554,95 @@ export default function AnalyzePage({
                 </div>
               )}
 
+              {/* ── ABSENTS ET COMPOSITIONS ──────────────────────────────────
+                  Mesuré le 6 septembre 2026 sur 1 663 rencontres des cinq
+                  grands championnats : ces données n'entrent PAS dans le
+                  calcul du score, parce qu'elles ne prédisent rien qui
+                  survive hors échantillon. Elles sont ici pour être LUES.
+
+                  Les compositions ne paraissent qu'environ une heure avant le
+                  coup d'envoi : la colonne reste donc vide la plupart du
+                  temps, et l'écran n'annonce alors rien plutôt que d'inventer
+                  un onze probable. */}
+              {result.effectif &&
+                (result.effectif.absents?.equipe1?.length > 0 ||
+                  result.effectif.absents?.equipe2?.length > 0 ||
+                  result.effectif.compositions?.equipe1 ||
+                  result.effectif.compositions?.equipe2) && (
+                  <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-5 shadow-md">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">🩺</span>
+                      <h4
+                        className="font-black text-base text-white"
+                        style={{ fontFamily: 'var(--police-titre), sans-serif' }}
+                      >
+                        Absents et compositions
+                      </h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {([
+                        [getClub(team1!).name, result.effectif.absents?.equipe1 ?? [], result.effectif.compositions?.equipe1],
+                        [getClub(team2!).name, result.effectif.absents?.equipe2 ?? [], result.effectif.compositions?.equipe2],
+                      ] as [string, { nom: string; motif: string }[], any][]).map(
+                        ([nomEquipe, absents, compo]) => (
+                          <div
+                            key={nomEquipe}
+                            className="rounded-[20px] border border-white/8 bg-black/20 p-4 space-y-3"
+                          >
+                            <p className="text-[12px] font-black uppercase tracking-[0.1em] text-white/70">
+                              {nomEquipe}
+                            </p>
+
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/35">
+                                {absents.length > 0
+                                  ? `${absents.length} absent${absents.length > 1 ? 's' : ''}`
+                                  : 'Absents'}
+                              </p>
+                              {absents.length === 0 ? (
+                                <p className="text-[11px] text-white/40 font-semibold">
+                                  Aucun absent signalé.
+                                </p>
+                              ) : (
+                                <ul className="space-y-1">
+                                  {absents.map((a) => (
+                                    <li key={a.nom} className="flex items-baseline justify-between gap-2">
+                                      <span className="text-[11.5px] font-bold text-white/85 truncate">
+                                        {a.nom}
+                                      </span>
+                                      <span className="text-[10px] text-orange-300/70 font-semibold shrink-0">
+                                        {a.motif}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+
+                            {compo && (
+                              <div className="space-y-1.5 pt-1 border-t border-white/8">
+                                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/35">
+                                  Composition{compo.schema ? ` — ${compo.schema}` : ''}
+                                </p>
+                                <p className="text-[11.5px] leading-relaxed text-white/75 font-semibold">
+                                  {compo.titulaires.map((j: any) => j.nom).join(' · ')}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    <p className="text-[10px] text-white/35 font-semibold leading-relaxed">
+                      Les absences sont fournies par notre source de données et n&apos;entrent pas
+                      dans le calcul du score. Les compositions ne sont publiées qu&apos;environ une
+                      heure avant le coup d&apos;envoi.
+                    </p>
+                  </div>
+                )}
+
               {/* Indices de performance */}
               <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-6 shadow-md">
                 <div className="flex items-center gap-3">
