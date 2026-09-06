@@ -494,3 +494,34 @@ test("★ ACQUIS — rien n'est affiché comme certain en dessous de 85 %", () =
       'ce qui se paie serait donné.'
   );
 });
+
+/**
+ * ── LE FOURNISSEUR RENVOIE CHAQUE ABSENT DEUX FOIS ────────────────────────
+ *
+ * Constaté par le propriétaire le 6 septembre 2026 sur Troyes — Strasbourg :
+ * l'écran annonçait « 6 absents » et listait trois noms, puis les mêmes trois.
+ *
+ * Vérifié à la source : `/injuries?fixture=1552755` renvoie quatorze entrées
+ * pour sept absents réels — chaque joueur exactement deux fois.
+ *
+ * Sur une donnée que l'abonné vérifie en trois secondes ailleurs, doubler le
+ * nombre d'absents fait douter de tout le reste.
+ */
+test("★ ACQUIS — un absent n'est jamais compté deux fois", () => {
+  const src = fs
+    .readFileSync('src/app/api/analyze/route.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  const bloc = src.slice(src.indexOf('const absentsDe'), src.indexOf('const composDe'));
+  assert.ok(
+    /vus\.has\(/.test(bloc) && /vus\.add\(/.test(bloc),
+    "Le dédoublonnage des absents a disparu. Le fournisseur renvoyant chaque " +
+      "joueur deux fois, l'application afficherait de nouveau le double d'absents."
+  );
+  assert.ok(
+    /toLowerCase\(\)/.test(bloc),
+    'La comparaison des noms ne neutralise plus la casse : « I. Boura » et ' +
+      '« i. boura » repasseraient tous les deux.'
+  );
+});

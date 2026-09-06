@@ -1554,16 +1554,40 @@ async function analyser(req: Request, billet: BilletQuota) {
     ]);
 
     const nomDe = (n: any) => String(n ?? '').trim();
-    const absentsDe = (nomEquipe: string) =>
-      ((brutAbsents?.response ?? []) as any[])
+    /**
+     * ── LE FOURNISSEUR RENVOIE CHAQUE ABSENT DEUX FOIS ────────────────────
+     *
+     * Constaté par le propriétaire le 6 septembre 2026 sur Troyes —
+     * Strasbourg : l'écran affichait « 6 absents » et listait « I. Boura,
+     * P. Gozzi, Y. Titi » puis les mêmes trois noms à la suite.
+     *
+     * Vérifié à la source : `/injuries?fixture=1552755` renvoie QUATORZE
+     * entrées pour sept absents réels — chaque joueur exactement deux fois,
+     * même ligue, même saison, même motif. Le doublon vient du fournisseur, et
+     * il n'y a rien à en tirer : on ne recopie donc qu'une fois chaque nom.
+     *
+     * Sans ce garde, l'application annonçait le double d'absents qu'il n'y en
+     * a. Sur une donnée que l'abonné peut vérifier en trois secondes ailleurs,
+     * c'est le genre d'erreur qui fait douter de tout le reste.
+     */
+    const absentsDe = (nomEquipe: string) => {
+      const vus = new Set<string>();
+      return ((brutAbsents?.response ?? []) as any[])
         .filter(
           (a) =>
             nomDe(a?.team?.name) === nomEquipe &&
             String(a?.player?.type ?? '').toLowerCase().includes('missing')
         )
         .map((a) => ({ nom: nomDe(a?.player?.name), motif: nomDe(a?.player?.reason) }))
-        .filter((a) => a.nom)
+        .filter((a) => {
+          if (!a.nom) return false;
+          const cle = a.nom.toLowerCase();
+          if (vus.has(cle)) return false;
+          vus.add(cle);
+          return true;
+        })
         .slice(0, 12);
+    };
 
     const composDe = (nomEquipe: string): Composition | null => {
       const c = ((brutCompos?.response ?? []) as any[]).find((x) => nomDe(x?.team?.name) === nomEquipe);
