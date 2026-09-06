@@ -1340,6 +1340,52 @@ export function calculerScoreProbable(
   const APLATISSEMENT = Number(process.env.BANC_APLATISSEMENT) || 0.5;
 
   /**
+   * ── LE PLAFOND DE COHÉRENCE : UN SCORE NE DÉPASSE PAS SON MATCH ────────
+   *
+   * ── CE QUI A ÉTÉ CONSTATÉ LE 6 SEPTEMBRE 2026 ─────────────────────────
+   *
+   * Le propriétaire signale un « Arsenal 6-0 Chelsea ». Sonde passée sur
+   * 32 400 affiches : 8,15 % des analyses sortaient un score où une équipe
+   * marque CINQ buts ou plus. Un cas relevé : 0-5 annoncé alors que les buts
+   * attendus valaient 0,35 et 1,99. Une équipe à qui l'on prête deux buts s'en
+   * voyait attribuer cinq.
+   *
+   * ── POURQUOI L'APLATISSEMENT SEUL NE POUVAIT PAS L'ÉVITER ─────────────
+   *
+   * L'aplatissement à 0,5 prend la racine carrée de chaque poids : il resserre
+   * l'écart entre les scores pour rendre la variété que le propriétaire
+   * demandait. Mais il resserre AUSSI l'écart avec les scores improbables. À
+   * 1,99 but attendu, le 5 vaut 13 % du score le plus probable — il franchit
+   * donc le seuil d'entrée — et la racine carrée porte ce rapport à 36 %.
+   * Additionnés, ces scores de queue raflaient une analyse sur douze.
+   *
+   * Relever le seuil d'entrée ne réglait rien : mesuré, il fallait le tripler
+   * pour descendre à 2,7 % d'absurdités, en reperdant dix scores distincts et
+   * en reconcentrant tout sur le 1-0 — c'est-à-dire en rendant la répétition
+   * que l'on venait de corriger.
+   *
+   * ── LA RÈGLE RETENUE ──────────────────────────────────────────────────
+   *
+   * Le problème n'est pas le nombre de buts, c'est l'ÉCART entre le score et
+   * le match. Un 5-0 est juste quand l'IA attend 3,2 buts ; il est absurde
+   * quand elle en attend 2. Le plafond suit donc les buts attendus de CHAQUE
+   * équipe :
+   *
+   *     plafond = buts attendus + racine(buts attendus)
+   *
+   * C'est l'écart-type de la loi de Poisson : au-delà, on quitte le domaine
+   * de ce que la rencontre annonce. À 1,99 attendu le plafond vaut 3 ; à 3,2
+   * attendu il vaut 5, et la démonstration reste possible.
+   *
+   * Le plancher de 1 garantit qu'une équipe désignée gagnante peut toujours
+   * marquer, et le repli plus bas garantit qu'on ne se retrouve jamais sans
+   * aucun score à proposer.
+   */
+  const MARGE_PLAFOND = Number(process.env.BANC_MARGE_PLAFOND) || 1;
+  const plafondDe = (attendus: number) =>
+    Math.max(1, Math.floor(attendus + MARGE_PLAFOND * Math.sqrt(Math.max(0, attendus))));
+
+  /**
    * Un nombre de [0, 1) tiré d'une graine, sans aucun hasard réel.
    *
    * Mélange entier de Thomas Wang : deux graines voisines donnent deux
@@ -1515,6 +1561,8 @@ export function calculerScoreProbable(
     // Le score suit enfin l'intensité de la rencontre.
     const candidats: { buts1: number; buts2: number; proba: number }[] = [];
     let masse = 0;
+    const reserve: { buts1: number; buts2: number; proba: number }[] = [];
+    let masseReserve = 0;
     for (let i = 0; i <= BUTS_MAX; i++) {
       for (let j = 0; j <= BUTS_MAX; j++) {
         const ici = i > j ? 'victoire1' : i === j ? 'nul' : 'victoire2';
@@ -1534,12 +1582,26 @@ export function calculerScoreProbable(
         // vient de corriger, dans l'autre sens.
         const brut = pr * Math.pow(PENALITE_BUTS, Math.max(0, i + j - FRANCHISE_BUTS));
         const poids = APLATISSEMENT === 1 ? brut : Math.pow(brut, APLATISSEMENT);
+        // Hors plafond : le score reste en réserve. Il ne servira que si le
+        // plafond ne laissait RIEN passer, pour qu'aucune analyse ne se
+        // retrouve sans score à montrer.
+        if (i > plafondDe(butsAttendus1) || j > plafondDe(butsAttendus2)) {
+          reserve.push({ buts1: i, buts2: j, proba: poids });
+          masseReserve += poids;
+          continue;
+        }
         candidats.push({ buts1: i, buts2: j, proba: poids });
         masse += poids;
       }
     }
 
-    if (candidats.length && masse > 0) {
+    // Le repli : si le plafond a tout écarté — une issue que la rencontre
+    // rend très improbable —, on retire dans ce qui restait plutôt que de ne
+    // rien proposer.
+    const tirageParmi = candidats.length && masse > 0 ? candidats : reserve;
+    const masseTirage = candidats.length && masse > 0 ? masse : masseReserve;
+
+    if (tirageParmi.length && masseTirage > 0) {
       // ── UN TIRAGE, MAIS PAS UN HASARD ──────────────────────────────────
       //
       // La graine vient des buts attendus du match lui-même. Deux
@@ -1557,8 +1619,8 @@ export function calculerScoreProbable(
       const tirage = melangeur(graine);
 
       let cumul = 0;
-      for (const c of candidats) {
-        cumul += c.proba / masse;
+      for (const c of tirageParmi) {
+        cumul += c.proba / masseTirage;
         if (tirage <= cumul) {
           meilleur = c;
           break;

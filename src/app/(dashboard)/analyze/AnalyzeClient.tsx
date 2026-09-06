@@ -586,6 +586,14 @@ export default function AnalyzePage({
   const [analyzingStep, setAnalyzingStep] = useState(0);
   /** Avancement supplementaire, en points, une fois les etapes nommees epuisees. */
   const [avancementLent, setAvancementLent] = useState(0);
+  /**
+   * VRAI DÈS QUE LE SERVEUR A RÉPONDU.
+   *
+   * Sans cet état, la barre ne pouvait PAS atteindre 100 % : le plafond de
+   * 97 % s'appliquait aussi au retour du serveur. Elle affichait donc les
+   * résultats en disant encore « 97 % » — visible sur chaque analyse.
+   */
+  const [analyseTerminee, setAnalyseTerminee] = useState(false);
   const [showGlobalForm, setShowGlobalForm] = useState(false);
   const [pickerOpen, setPickerOpen] = useState<1 | 2 | null>(null);
   const [todayHistory, setTodayHistory] = useState<any[]>([]);
@@ -917,6 +925,7 @@ export default function AnalyzePage({
     setAnalyzeError(null);
     setAnalyzingStep(0);
     setAvancementLent(0);
+    setAnalyseTerminee(false);
 
     const startTime = Date.now();
     let currentStep = 0;
@@ -1019,10 +1028,45 @@ export default function AnalyzePage({
       }
 
       clearInterval(interval); clearInterval(rampe);
-      setAnalyzingStep(steps.length - 1);
-      
+
+      // ── QUAND LE SERVEUR RÉPOND TROP VITE, LA BARRE NE SAUTE PLUS ───────
+      //
+      // Constaté par le propriétaire le 6 septembre 2026 sur un compte payant :
+      // « ça passe directement de zéro pour cent à quatre-vingt-dix-sept pour
+      // cent », alors qu'un compte gratuit voyait bien 20, 40, 60, 80.
+      //
+      // Ce n'était pas un faux calcul : l'analyse est réelle, mais elle avait
+      // déjà été PRÉPARÉE À L'AVANCE pour les rencontres du carrousel et de la
+      // sélection. Le serveur répondait donc en moins d'une seconde, avant même
+      // que la deuxième étape nommée ne s'affiche — et la barre sautait de la
+      // première au plafond d'un seul coup. Un abonné qui voit ça n'en conclut
+      // pas « c'était prêt », il en conclut « ce n'est pas analysé ».
+      //
+      // Les étapes qui restent se déroulent donc jusqu'au bout, réparties sur
+      // le temps d'affichage minimum. On n'invente aucun travail : le travail
+      // est fait, on cesse seulement de l'escamoter.
       const elapsedTime = Date.now() - startTime;
-      const remainingTime = Math.max(0, 1200 - elapsedTime);
+      const AFFICHAGE_MINIMUM = 2400;
+      const remainingTime = Math.max(0, AFFICHAGE_MINIMUM - elapsedTime);
+      const etapesRestantes = steps.length - 1 - currentStep;
+
+      if (remainingTime > 0 && etapesRestantes > 0) {
+        const pas = remainingTime / (etapesRestantes + 1);
+        let k = currentStep;
+        const finition = setInterval(() => {
+          k++;
+          if (k >= steps.length - 1) {
+            clearInterval(finition);
+            setAnalyzingStep(steps.length - 1);
+            setAnalyseTerminee(true);
+          } else {
+            setAnalyzingStep(k);
+          }
+        }, pas);
+      } else {
+        setAnalyzingStep(steps.length - 1);
+        setAnalyseTerminee(true);
+      }
 
       setTimeout(() => {
         setResult(data);
@@ -1174,11 +1218,10 @@ export default function AnalyzePage({
   }, []);
 
   // 80 % au plus par les etapes nommees, plus la rampe lente, plafonne a 97 :
-  // les 100 % appartiennent au retour du serveur.
-  const progressPercent = Math.min(
-    97,
-    Math.round(((analyzingStep + 1) / steps.length) * 100 + avancementLent)
-  );
+  // les 100 % appartiennent au retour du serveur — et lui seul les donne.
+  const progressPercent = analyseTerminee
+    ? 100
+    : Math.min(97, Math.round(((analyzingStep + 1) / steps.length) * 100 + avancementLent));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#101c24] via-[#031b25] to-[#041f1a]">
@@ -2348,38 +2391,6 @@ export default function AnalyzePage({
                     de ce type déjà jouées{result.fiabilite.ligue ? ` en ${result.fiabilite.ligue}` : ''},
                     l&apos;IA a trouvé le bon résultat {result.fiabilite.taux} fois sur 100.
                   </p>
-                  {/* ── DIRE OÙ ALLER, PAS SEULEMENT QUE C'EST DIFFICILE ────
-                      Mesuré le 5 septembre 2026 sur les 489 abonnés actifs
-                      ayant des analyses vérifiées : les vingt-neuf qui sont
-                      sous 30 % de réussite ne lancent PAS plus d'analyses que
-                      les autres — 9,3 en moyenne, comme tout le monde. Ils en
-                      lancent simplement sur d'autres matchs.
-
-                      Part de leurs analyses dans un grand championnat :
-
-                          sous 30 % de réussite ... 21,5 %
-                          entre 30 et 60 % ........ 40,3 %
-                          au-dessus de 60 % ....... 43,4 %
-
-                      Deux fois moins. Ce n'est pas de la malchance, c'est un
-                      problème de choix — et personne ne leur avait dit. Leur
-                      annoncer « match difficile » sans leur dire où aller
-                      revenait à constater le dégât sans l'éviter. */}
-                  {result.fiabilite.taux < 55 && (
-                    <div className="rounded-[12px] border border-orange-400/25 bg-orange-400/[0.06] px-3 py-2.5">
-                      <p className="text-[10.5px] font-bold leading-relaxed text-orange-300/90">
-                        {result.fiabilite.taux < 45
-                          ? 'Rencontre difficile à cerner : les deux équipes se tiennent de trop près.'
-                          : 'Rencontre moyennement lisible pour notre IA.'}
-                      </p>
-                      <p className="mt-1 text-[10.5px] leading-relaxed text-white/45">
-                        Pour vos prochaines analyses, la liste{' '}
-                        <strong className="text-white/70">« Les matchs les mieux cernés »</strong>,
-                        en haut de cet écran, ne montre que les rencontres où notre IA a le
-                        mieux vu par le passé — souvent au-dessus de 75 %.
-                      </p>
-                    </div>
-                  )}
                 </div>
               ) : result.confidence ? (
                 <div className="bg-[#1d2f3a]/70 border border-white/10 rounded-[20px] p-4 space-y-2 mt-4">
