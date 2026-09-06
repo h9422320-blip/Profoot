@@ -218,3 +218,39 @@ test('★ ACQUIS — la tâche qui construit le relevé est bien planifiée', ()
     'La tâche est planifiée mais sa route a disparu.'
   );
 });
+
+/**
+ * ── UN RELEVÉ NE DOIT JAMAIS EN REMPLACER UN PLUS RICHE ───────────────────
+ *
+ * Constaté en production le 6 septembre 2026 à 3 h 12 : un passage avait lu
+ * huit compétitions et rangé 143 clubs ; le suivant, plus lent, n'en a lu que
+ * cinq et a écrasé le relevé — 100 clubs. Quarante-trois clubs disparus, leurs
+ * analyses revenues à l'ancien calcul, sans qu'aucune erreur ne le signale.
+ *
+ * L'épreuve porte sur le CODE parce que la fusion ne se voit qu'en production,
+ * après deux passages inégaux : aucune épreuve unitaire ne l'attraperait.
+ */
+test('★ ACQUIS — la construction fusionne au lieu d\'écraser', () => {
+  const src = fs
+    .readFileSync('src/lib/forme-occasions.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  assert.ok(
+    /const ancien = await lireForces\(\)/.test(src),
+    "La construction ne relit plus le relevé précédent : un passage écourté " +
+      'écraserait de nouveau un relevé plus complet.'
+  );
+  assert.ok(
+    /ecrireReserve\(CLE, fusionne/.test(src),
+    "Ce qui est écrit n'est plus le relevé FUSIONNÉ. Les compétitions non " +
+      'atteintes par ce passage seraient perdues.'
+  );
+  // La compétition relue à l'instant fait autorité : sans ce garde, un club
+  // garderait éternellement sa première valeur.
+  assert.ok(
+    /if \(moyennesParLigue\[force\.ligue\] !== undefined\) continue/.test(src),
+    "Le garde qui donne priorité à la lecture fraîche a disparu : les forces " +
+      'ne se mettraient plus jamais à jour.'
+  );
+});
