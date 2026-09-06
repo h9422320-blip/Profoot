@@ -512,11 +512,35 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
     if (complete) {
       rencontres.push(...apport);
       couvertes.push(champ.nom);
-      // Terminée : le prochain passage commencera par la SUIVANTE.
-      arreteA = (CHAMPIONNATS.findIndex((c) => c.nom === champ.nom) + 1) % CHAMPIONNATS.length;
     } else {
       laissees.push(champ.nom);
     }
+
+    /**
+     * ── ON AVANCE TOUJOURS, MÊME QUAND ON N'A PAS FINI ────────────────────
+     *
+     * ── CE QUI A BLOQUÉ LE MOTEUR LE 6 SEPTEMBRE 2026 ───────────────────
+     *
+     * Le rang de reprise n'avançait que sur une compétition TERMINÉE. La Liga
+     * Profesional Argentina compte 368 rencontres jouées : elle ne tient pas
+     * dans le budget de temps d'un passage. Chaque passage la reprenait donc
+     * depuis le début, échouait, et laissait le rang sur elle.
+     *
+     * Résultat vu en production : « 0 compétition(s) lues », les vingt-quatre
+     * remises au passage suivant, et « matière insuffisante ». Le relevé était
+     * GELÉ — plus aucune mise à jour des forces, indéfiniment, sans qu'aucune
+     * erreur ne soit levée.
+     *
+     * ── LA RÈGLE ────────────────────────────────────────────────────────
+     *
+     * Le rang avance dans tous les cas. Une compétition trop grosse pour un
+     * passage est simplement retentée au tour suivant — et elle finit par
+     * passer : chaque tentative met en réserve les rencontres qu'elle a eu le
+     * temps de lire, si bien que la fois d'après elle démarre déjà chaude.
+     *
+     * Une compétition ne peut plus prendre l'anneau en otage.
+     */
+    arreteA = (CHAMPIONNATS.findIndex((c) => c.nom === champ.nom) + 1) % CHAMPIONNATS.length;
   }
 
   console.log(

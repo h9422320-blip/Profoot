@@ -693,3 +693,36 @@ test("★ ACQUIS — un club rangé dans une coupe ne revient par aucune porte",
       'de version.'
   );
 });
+
+/**
+ * ── UNE COMPÉTITION NE PEUT PAS PRENDRE L'ANNEAU EN OTAGE ─────────────────
+ *
+ * Constaté en production le 6 septembre 2026 : le rang de reprise n'avançait
+ * que sur une compétition TERMINÉE. La Liga Profesional Argentina compte 368
+ * rencontres jouées et ne tient pas dans le budget de temps d'un passage.
+ * Chaque passage la reprenait donc depuis le début, échouait, et laissait le
+ * rang sur elle.
+ *
+ * Résultat : « 0 compétition(s) lues », les vingt-quatre remises au passage
+ * suivant, « matière insuffisante ». Le relevé était GELÉ — plus aucune mise à
+ * jour des forces, indéfiniment, et sans qu'aucune erreur ne soit levée.
+ */
+test("★ ACQUIS — le rang de reprise avance même sur un échec", () => {
+  const code = fs
+    .readFileSync('src/lib/forme-occasions.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  // L'avancement ne doit PAS être enfermé dans la branche du succès.
+  const bloc = code.slice(code.indexOf('if (complete) {'), code.indexOf('console.log(') );
+  const dansLeSucces = bloc.slice(bloc.indexOf('if (complete) {'), bloc.indexOf('} else {'));
+  assert.ok(
+    !/arreteA =/.test(dansLeSucces),
+    "L'avancement du rang est de nouveau réservé aux compétitions terminées : " +
+      'une compétition trop grosse gèlerait le relevé indéfiniment.'
+  );
+  assert.ok(
+    /arreteA = \(CHAMPIONNATS\.findIndex/.test(bloc),
+    "Le rang n'avance plus du tout après une compétition."
+  );
+});
