@@ -1585,16 +1585,31 @@ async function analyser(req: Request, billet: BilletQuota) {
       );
     }
 
-    if (deja && !aRemplacer) {
-      scoreCalcule.buts1 = deja.buts1;
-      scoreCalcule.buts2 = deja.buts2;
-      scoreCalcule.probaVictoire1 = deja.probaVictoire1;
-      scoreCalcule.probaNul = deja.probaNul;
-      scoreCalcule.probaVictoire2 = deja.probaVictoire2;
-      scoreCalcule.confiance = deja.confiance;
-      if (deja.butsAttendus1 !== null) scoreCalcule.butsAttendus1 = Number(deja.butsAttendus1);
-      if (deja.butsAttendus2 !== null) scoreCalcule.butsAttendus2 = Number(deja.butsAttendus2);
-    } else if (enregistrable && !deja) {
+    // ── LE SCORE AFFICHÉ EST TOUJOURS CELUI DU CALCUL DU JOUR ────────────
+    //
+    // Ici, la ligne figée ÉCRASAIT le calcul neuf : `scoreCalcule.buts1` et
+    // ses voisins étaient remplacés par ce qui avait été enregistré la
+    // première fois. L'intention était bonne — un abonné qui rouvre son
+    // analyse devait y retrouver ce qu'il avait lu.
+    //
+    // ── POURQUOI CE GEL EST RETIRÉ, LE 6 SEPTEMBRE 2026 ──────────────────
+    //
+    // Il rendait tout correctif du moteur invisible. Le plafond de cohérence
+    // posé le même jour ne s'appliquait qu'au calcul : les 182 rencontres
+    // déjà figées — une sur sept — gardaient leur score absurde jusqu'au coup
+    // d'envoi. Le propriétaire a vu « Arsenal 6-0 Chelsea » vingt minutes
+    // APRÈS la mise en ligne du correctif, et il avait raison : ce n'était pas
+    // un cache de navigateur, c'était cette ligne.
+    //
+    // C'est la deuxième fois qu'un correctif de score est neutralisé par le
+    // gel. Décision du propriétaire : le score montré est celui du calcul,
+    // toujours.
+    //
+    // CE QUI RESTE : la ligne continue d'être ÉCRITE. Elle sert au jugement,
+    // qui compare l'annonce d'avant match au résultat réel — c'est elle qui
+    // fait tenir le mur des preuves. On cesse de s'en servir pour AFFICHER,
+    // pas de la tenir.
+    if (enregistrable && !deja) {
       // `!deja` : une ligne vient peut-être d'être REMPLACÉE juste au-dessus.
       // Sans ce garde, on tenterait aussitôt de l'insérer une seconde fois —
       // refusée en silence, mais un aller-retour en base pour rien.
