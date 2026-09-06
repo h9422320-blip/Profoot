@@ -24,7 +24,7 @@
 import { after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { compterTentative } from '@/lib/limite-partagee';
-import { clientIp } from '@/lib/rateLimit';
+import { clientIp, isRateLimited } from '@/lib/rateLimit';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -69,8 +69,47 @@ export async function POST(req: Request) {
     // Le refus reste un 204, comme tout le reste ici : le navigateur d'un
     // visiteur ordinaire ne doit jamais voir d'erreur à cause de la mesure.
     const empreinte = clientIp(req) ?? 'inconnu';
-    const limite = await compterTentative('mesure', empreinte, 120, 60 * 60 * 1000);
-    if (limite.bloque) return recu();
+
+    // ── DEUX PALIERS : LE VISITEUR NE COÛTE RIEN, LE SCRIPT EST COMPTÉ ────
+    //
+    // ── CE QUI A CÉDÉ LE 5 SEPTEMBRE 2026 ────────────────────────────────
+    //
+    // Cette limite comptait en base pour TOUT LE MONDE : une lecture PLUS une
+    // écriture dans `cache_api` à chaque page ouverte, puis autant à chaque
+    // page quittée. Quatre opérations par visite, sur une route qui part à
+    // chaque page — robots compris. Et `cache_api` est exactement la table où
+    // vivent la fiabilité apprise et la sélection du jour : le compteur de
+    // visites martelait la table dont le produit dépend le plus. À 23 h 01, la
+    // base a cessé de répondre pendant quarante et une minutes.
+    //
+    // ── POURQUOI DEUX PALIERS PLUTÔT QU'UN COMPTEUR EN MÉMOIRE ───────────
+    //
+    // Tout passer en mémoire aurait suffi à sauver la base, mais aurait rouvert
+    // ce que le test « ★ ACQUIS — les écritures de mesure sont bornées »
+    // protège : un compteur en mémoire repart de zéro à chaque instance neuve,
+    // et Vercel en démarre sans arrêt. Un script décidé aurait retrouvé le
+    // moyen d'insérer des millions de lignes.
+    //
+    // Alors on sépare les deux populations, parce qu'elles ne se ressemblent
+    // pas :
+    //
+    //   — un visiteur ordinaire ouvre quelques pages par heure. Sous vingt, il
+    //     est compté en mémoire et ne touche JAMAIS la base ;
+    //   — un script en envoie des milliers. Il franchit les vingt en quelques
+    //     secondes et bascule alors sur `compterTentative`, le compteur en
+    //     base — durable, partagé entre toutes les instances, qui survit aux
+    //     redémarrages. C'est lui qui l'arrête.
+    //
+    // Le coût en base devient donc proportionnel à l'abus, et non au trafic.
+    // Presque personne ne l'atteint ; celui qui l'atteint est précisément
+    // celui contre qui la limite existe.
+    const PALIER_GRATUIT = 20;
+    const FENETRE_MS = 60 * 60 * 1000;
+
+    if (isRateLimited(empreinte, 'mesure-libre', PALIER_GRATUIT, FENETRE_MS)) {
+      const limite = await compterTentative('mesure', empreinte, 120, FENETRE_MS);
+      if (limite.bloque) return recu();
+    }
 
     const admin = createAdminClient();
 
@@ -101,9 +140,26 @@ export async function POST(req: Request) {
     // c'est même la majorité, et c'est celle qu'on cherche à convertir.
     let compteId: string | null = null;
     try {
+      // ── L'IDENTITÉ SE LIT SANS APPELER SUPABASE ─────────────────────────
+      //
+      // `getUser()` est un appel RÉSEAU : il envoie le jeton à Supabase pour
+      // le faire valider. Sur une route qui part à chaque page ouverte, c'est
+      // un aller-retour par visite, pour la seule colonne `compte_id`.
+      //
+      // `getClaims()` fait mieux SANS RIEN CÉDER sur la sûreté : les jetons de
+      // ce projet sont signés en ES256 (vérifié le 5 septembre 2026 sur
+      // `/auth/v1/.well-known/jwks.json`), donc asymétriques. La bibliothèque
+      // récupère la clé publique une fois, la garde, et vérifie ensuite la
+      // signature EN LOCAL. Un jeton forgé est refusé exactement comme avant ;
+      // simplement, plus personne ne traverse le réseau pour l'apprendre.
+      //
+      // Si un jour ce projet repassait à des jetons symétriques (HS256),
+      // `getClaims()` retomberait tout seul sur `getUser()` : on perdrait le
+      // gain, jamais la vérification.
       const sb = await createServerClient();
-      const { data: { user } } = await sb.auth.getUser();
-      compteId = user?.id ?? null;
+      const { data } = await sb.auth.getClaims();
+      const sub = data?.claims?.sub;
+      compteId = typeof sub === 'string' ? sub : null;
     } catch {
       compteId = null;
     }

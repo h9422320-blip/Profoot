@@ -95,7 +95,44 @@ export async function updateSession(request: NextRequest) {
     (path) => chemin === path || chemin.startsWith(path + '/')
   );
 
-  const besoinDIdentite = isProtectedPath || chemin.startsWith('/api/');
+  /**
+   * LES ROUTES QUI N'ONT PAS BESOIN QU'ON DEMANDE QUI VOUS ÊTES.
+   *
+   * ── LA PANNE DU 5 SEPTEMBRE 2026 ────────────────────────────────────────
+   *
+   * De 23 h 01 à 23 h 42, la base n'a plus répondu du tout : 522 sur chaque
+   * lecture, plus une seule connexion possible. Le tableau de bord affichait
+   * 525 617 requêtes en vingt-quatre heures pour 0,0 % de réussite, sur un
+   * serveur MICRO.
+   *
+   * La cause : `/api/mesure`, le compteur de visites, part sur CHAQUE page
+   * ouverte — y compris les pages publiques, y compris les passages de robots.
+   * Il commence par `/api/`, il tombait donc dans la règle ci-dessous et
+   * déclenchait un `getUser()` — un appel réseau à Supabase — avant même
+   * d'entrer dans la route. À l'arrivée puis au départ de chaque page. Soit,
+   * mesuré le 5 septembre : environ 45 000 pages vues par jour × 3 appels =
+   * les 134 787 appels d'authentification affichés au tableau de bord.
+   *
+   * C'est la deuxième fois. Le 25 août, la même chose avait fait passer le
+   * projet en « Malsain » ; le correctif d'alors avait retiré l'appel sur les
+   * pages publiques, mais laissé passer tout ce qui commence par `/api/`.
+   *
+   * ── POURQUOI ON PEUT S'EN PASSER ICI, ET SEULEMENT ICI ──────────────────
+   *
+   * Cet appel sert à trois choses : fermer une page protégée, vérifier le
+   * droit d'administrer, rafraîchir le jeton. Pour un compteur de visites,
+   * aucune des trois. La route n'ouvre aucun droit, ne lit aucun contenu
+   * payant, et lit elle-même l'identité du visiteur quand il y en a une — de
+   * façon vérifiée, sans appel réseau (voir `api/mesure/route.ts`).
+   *
+   * CETTE LISTE SE TIENT COURTE ET SE JUSTIFIE LIGNE À LIGNE. Une route qui
+   * décide d'un droit ou sert du contenu payant n'y entre jamais : le portier
+   * est la seule barrière qui s'exécute avant tout le reste.
+   */
+  const SANS_IDENTITE = ['/api/mesure'];
+
+  const besoinDIdentite =
+    isProtectedPath || (chemin.startsWith('/api/') && !SANS_IDENTITE.includes(chemin));
 
   // Do not run code between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
