@@ -14,8 +14,6 @@ import { reserverOngletPaiement, partirPayer, libererOnglet } from "@/lib/depart
 import { heureLocale, dateLongueLocale, jourEtMoisLocaux } from "@/lib/heure-locale";
 import type { MatchDuJour } from "@/lib/grands-matchs-du-jour";
 import type { MatchSelectionne } from "@/lib/selection-du-jour";
-import type { Certitude as CertitudeDuJour } from "@/lib/certitudes-du-jour";
-import CertitudesDuJour from "./CertitudesDuJour";
 
 /**
  * La notice est chargee A LA DEMANDE, comme sur le paywall et les tarifs.
@@ -564,7 +562,6 @@ export default function AnalyzePage({
   offreEntree,
   matchsDuJour,
   selectionSure,
-  certitudes,
 }: {
   preuves?: React.ReactNode;
   offreEntree?: OffreEntree;
@@ -577,7 +574,6 @@ export default function AnalyzePage({
    */
   matchsDuJour?: { matchs: MatchDuJour[]; aujourdhui: boolean };
   selectionSure?: { matchs: MatchSelectionne[]; aujourdhui: boolean };
-  certitudes?: { liste: CertitudeDuJour[]; aujourdhui: boolean };
 }) {
   const offre = offreEntree ?? { libelle: "Essentiel", prixXof: 2000, analyses: 20 };
   const prixOffre = offre.prixXof.toLocaleString("fr-FR");
@@ -1328,13 +1324,6 @@ export default function AnalyzePage({
               Elle disparaît pendant l'analyse, comme le carrousel : proposer
               un autre match à quelqu'un qui attend le sien l'inviterait à
               perdre celui-là. */}
-          {!analyzing && (
-            <CertitudesDuJour
-              liste={certitudes?.liste ?? []}
-              aujourdhui={certitudes?.aujourdhui ?? true}
-            />
-          )}
-
           {!analyzing && (
             <SelectionSure
               matchs={selectionSure?.matchs ?? []}
@@ -2700,6 +2689,26 @@ export default function AnalyzePage({
                     Ces affirmations portent sur une question à deux réponses, et non sur
                     l&apos;issue du match. C&apos;est ce qui les rend beaucoup plus sûres que le
                     vainqueur lui-même. Rien n&apos;est affiché ici en dessous de 85 %.
+                  </p>
+
+                  {/* ── CE QUE CETTE SECTION EST, ET CE QU'ELLE N'EST PAS ────
+                      Demandé par le propriétaire le 6 septembre 2026. Une liste
+                      de pourcentages élevés se lit vite comme une invitation à
+                      parier — par un visiteur, mais surtout par la boutique qui
+                      encaisse les abonnements. ProFoot AI y perdrait son moyen
+                      de paiement du jour au lendemain, et ce serait sur un
+                      malentendu : l'application ne prend aucun pari, n'en
+                      propose aucun, ne renvoie vers aucun opérateur.
+
+                      La mention est donc mise là où le malentendu naît — juste
+                      sous les chiffres — et pas reléguée en bas de page. */}
+                  <p className="rounded-[12px] border border-white/8 bg-black/25 px-3 py-2.5 text-[10.5px] leading-relaxed text-white/50 font-semibold">
+                    <strong className="text-white/70">À titre informatif.</strong> ProFoot AI est un
+                    outil d&apos;analyse destiné aux passionnés de football qui veulent aller plus
+                    loin dans la lecture d&apos;une rencontre. Ce n&apos;est pas une application de
+                    paris sportifs : elle ne prend aucun pari, n&apos;en propose aucun et ne renvoie
+                    vers aucun opérateur. Ces pourcentages décrivent des tendances calculées, pas
+                    des résultats garantis.
                   </p>
                 </div>
               )}
