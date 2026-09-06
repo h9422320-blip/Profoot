@@ -57,7 +57,7 @@
 import { apiFootball, CACHE_TTL, lireReserve, ecrireReserve } from './api-football';
 
 /** La réserve où vit le relevé. Le suffixe change à chaque évolution de forme. */
-const CLE = 'forces:occasions-v4';
+const CLE = 'forces:occasions-v5';
 
 /**
  * ── LA VERSION PRÉCÉDENTE RESTE UN FILET ──────────────────────────────────
@@ -87,7 +87,7 @@ const CLE = 'forces:occasions-v4';
  * Cette clé se décale d'un cran à chaque nouvelle version : v3 lit v2, une
  * future v4 lira v3.
  */
-const CLE_PRECEDENTE = 'forces:occasions-v3';
+const CLE_PRECEDENTE = 'forces:occasions-v4';
 
 /** Six heures : le relevé bouge à chaque journée de championnat, pas plus. */
 const TTL = 6 * 60 * 60 * 1000;
@@ -219,6 +219,19 @@ export const CHAMPIONNATS = [
  *
  * MINIMUM : en dessous, on ne se prononce pas du tout sur ce club.
  */
+/**
+ * Les compétitions qui ne sont le championnat de personne.
+ *
+ * Utilisé à trois endroits — le choix de la compétition d'un club, la fusion
+ * avec le relevé précédent, et le filet de version. Les trois doivent appliquer
+ * la même règle, sinon une porte fermée d'un côté se rouvre de l'autre : c'est
+ * exactement ce qui s'est passé le 6 septembre 2026, où six clubs mal rangés
+ * revenaient par la fusion après avoir été écartés à la construction.
+ */
+export const EUROPEENNES = new Set<string>(
+  CHAMPIONNATS.filter((c) => (c as { europeenne?: boolean }).europeenne).map((c) => c.nom)
+);
+
 const DEMI_VIE = 8;
 const RETRAIT = 3;
 const MINIMUM_RENCONTRES = 8;
@@ -570,11 +583,6 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
    * qu'une poignée de rencontres. On prend donc la compétition MAJORITAIRE,
    * qui est son championnat, jamais la coupe.
    */
-  /** Les compétitions qui ne sont le championnat de personne. */
-  const EUROPEENNES = new Set<string>(
-    CHAMPIONNATS.filter((c) => (c as { europeenne?: boolean }).europeenne).map((c) => c.nom)
-  );
-
   const ligueMajoritaire = (club: string): string => {
     const compte = ligueDuClub.get(club);
     if (!compte) return '';
@@ -744,6 +752,14 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
     let repris = 0;
 
     for (const [nom, force] of Object.entries(ancien.clubs)) {
+      // ── LA PORTE FERMEE A LA CONSTRUCTION RESTE FERMEE ICI ─────────────
+      //
+      // Six clubs -- Qarabag, Fenerbahçe, Dinamo Zagreb, Bodo/Glimt, Rijeka,
+      // Ferencvaros -- revenaient rangés dans une coupe d'Europe alors que la
+      // construction venait de les écarter. Ils étaient repris tels quels du
+      // relevé précédent, avec l'étalon de la coupe : 0,93 pour la Ligue Europa
+      // là où un championnat vaut 1,4. Leur force en sortait fausse de moitié.
+      if (EUROPEENNES.has(force.ligue)) continue;
       // Une compétition relue à l'instant fait autorité : on ne remet pas
       // l'ancienne version de ses clubs par-dessus la neuve.
       if (moyennesParLigue[force.ligue] !== undefined) continue;
@@ -865,6 +881,10 @@ export async function lireForces(): Promise<ReleveOccasions | null> {
     let repris = 0;
     for (const [nom, force] of Object.entries(clubsAnciens)) {
       if (clubs[nom]) continue;
+      // Même règle que la fusion : un club rangé dans une coupe d'Europe ne
+      // revient pas par le filet. Sans lecture, le moteur applique son propre
+      // calcul — ce qui vaut mieux qu'une force mesurée au mauvais étalon.
+      if (EUROPEENNES.has(force.ligue)) continue;
       const etalon = ancien!.contenu.moyennesParLigue?.[force.ligue];
       if (etalon === undefined) continue;
       clubs[nom] = force;

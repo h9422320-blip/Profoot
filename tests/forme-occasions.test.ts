@@ -625,3 +625,39 @@ test("★ ACQUIS — une coupe d'Europe ne devient jamais le championnat d'un cl
     "L'ensemble des compétitions européennes n'est plus construit."
   );
 });
+
+/**
+ * ── LA PORTE FERMÉE À LA CONSTRUCTION DOIT LE RESTER PARTOUT ──────────────
+ *
+ * Le 6 septembre 2026, la construction venait d'écarter les coupes d'Europe
+ * comme championnat de référence. Six clubs — Qarabag, Fenerbahçe, Dinamo
+ * Zagreb, Bodo/Glimt, Rijeka, Ferencvaros — revenaient pourtant rangés dans
+ * une coupe, repris tels quels du relevé précédent par la fusion.
+ *
+ * Avec l'étalon de la coupe : 0,93 pour la Ligue Europa là où un championnat
+ * vaut 1,4. Leur force en sortait fausse de moitié.
+ *
+ * Une règle appliquée à un seul endroit sur trois ne protège rien.
+ */
+test("★ ACQUIS — un club rangé dans une coupe ne revient par aucune porte", () => {
+  const code = fs
+    .readFileSync('src/lib/forme-occasions.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  // La règle est nommée une seule fois, au niveau du module.
+  assert.ok(
+    /export const EUROPEENNES = new Set<string>\(/.test(code),
+    "L'ensemble des compétitions européennes n'est plus partagé : chaque endroit " +
+      'appliquerait sa propre règle, et une porte fermée ici se rouvrirait ailleurs.'
+  );
+
+  // Et les TROIS portes l'appliquent.
+  const portes = code.match(/EUROPEENNES\.has\(/g) ?? [];
+  assert.ok(
+    portes.length >= 3,
+    `Seulement ${portes.length} endroit(s) appliquent la règle. Il en faut trois : ` +
+      'le choix de la compétition, la fusion avec le relevé précédent, et le filet ' +
+      'de version.'
+  );
+});
