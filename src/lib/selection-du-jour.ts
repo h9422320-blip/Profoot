@@ -91,13 +91,44 @@ export const FIABILITE_MINIMUM = 70;
 export const MAX_MATCHS = 6;
 
 /**
- * En deçà, on n'affiche RIEN plutôt qu'une sélection étique.
+ * ── COMBIEN DE RENCONTRES FAUT-IL POUR AFFICHER LA SECTION ────────────────
  *
- * Deux rencontres présentées comme « les plus sûres du jour » donneraient
- * l'impression qu'il n'y a rien à analyser aujourd'hui — l'inverse exact de
- * l'effet recherché.
+ * ── CE QUI A ÉTÉ CONSTATÉ LE 6 SEPTEMBRE 2026 ───────────────────────────
+ *
+ * Le propriétaire signale que « Les matchs les mieux cernés » a disparu de
+ * l'écran d'analyse. Rien n'avait été retiré : la section était VIDE, ce qui
+ * n'est pas la même chose.
+ *
+ * Le relevé du jour, mesuré :
+ *
+ *                              aujourd'hui   demain
+ *     rencontres à venir            29          26
+ *     avec un pronostic préparé     18          24
+ *     atteignant les 70 %            1           1
+ *
+ * Le seuil en valait trois. Avec une seule rencontre qualifiée, la section
+ * s'effaçait — et l'application donnait l'impression de ne rien avoir à
+ * proposer, alors qu'elle avait précisément trouvé LA rencontre la mieux
+ * cernée du jour, à 78 %.
+ *
+ * ── POURQUOI UN SEUL SUFFIT ─────────────────────────────────────────────
+ *
+ * Le raisonnement d'origine — « deux rencontres présentées comme les plus
+ * sûres du jour donneraient l'impression qu'il n'y a rien à analyser » —
+ * confondait deux choses. La section ne promet pas l'abondance, elle promet la
+ * QUALITÉ : ce qui y figure a été mesuré au-dessus de 70 % de réussite sur les
+ * rencontres de ce type déjà jouées.
+ *
+ * Un dimanche soir ou un lundi, le programme ne contient parfois qu'une seule
+ * affiche vraiment lisible. La cacher pour cause de solitude prive l'abonné de
+ * la meilleure information de sa journée, et lui laisse croire que le moteur
+ * n'a rien trouvé.
+ *
+ * Le seuil de fiabilité, lui, ne bouge PAS : c'est lui qui porte la promesse.
+ * On montre moins souvent plusieurs rencontres ; on ne montre jamais une
+ * rencontre moins sûre.
  */
-export const MINIMUM_POUR_AFFICHER = 3;
+export const MINIMUM_POUR_AFFICHER = 1;
 
 export interface MatchSelectionne {
   fixtureId: number;

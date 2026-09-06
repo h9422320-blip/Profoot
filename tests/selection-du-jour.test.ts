@@ -89,9 +89,22 @@ test('★ ACQUIS — on ne présente comme « sûr » que ce qui l’est', () =>
     FIABILITE_MINIMUM >= 58,
     'Le seuil de fiabilité est descendu : des matchs médiocres entreraient dans une sélection qui promet le contraire.'
   );
+  // ── LE NOMBRE MINIMUM EST PASSÉ DE TROIS À UN, LE 6 SEPTEMBRE 2026 ──────
+  //
+  // Le seuil en valait trois. Constaté ce jour-là : sur les 29 rencontres à
+  // venir dans les championnats retenus, UNE SEULE atteignait les 70 % de
+  // fiabilité — et la section disparaissait entièrement de l'écran.
+  //
+  // L'application donnait donc l'impression de n'avoir rien trouvé, alors
+  // qu'elle avait précisément trouvé LA rencontre la mieux cernée du jour, à
+  // 78 %. C'est l'inverse exact de ce que la section doit produire.
+  //
+  // La section ne promet pas l'abondance, elle promet la QUALITÉ. Le seuil de
+  // FIABILITÉ, lui, ne bouge pas — c'est lui qui porte la promesse, et
+  // l'épreuve juste au-dessus continue de le garder.
   assert.ok(
-    MINIMUM_POUR_AFFICHER >= 3,
-    'Deux cartes annoncées comme « les plus sûres du jour » disent surtout qu’il n’y a rien à analyser.'
+    MINIMUM_POUR_AFFICHER >= 1,
+    'La section ne peut plus rien afficher : elle exigerait moins d’une rencontre.'
   );
   assert.ok(MAX_MATCHS <= 8, 'Au-delà, ce n’est plus une sélection mais une liste.');
 });
