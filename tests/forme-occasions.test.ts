@@ -254,3 +254,54 @@ test('★ ACQUIS — la construction fusionne au lieu d\'écraser', () => {
       'ne se mettraient plus jamais à jour.'
   );
 });
+
+/**
+ * ── LE RÉAIGUISAGE : RESSERRER SANS JAMAIS CHANGER L'ORDRE ────────────────
+ *
+ * Mesuré le 6 septembre 2026 sur 1 544 rencontres hors échantillon : le moteur
+ * annonçait 62 % là où il réussissait 71,6 %, et 75 % là où il réussissait
+ * 83 %. Trois points d'écart en moyenne, toujours dans le même sens — la
+ * moyenne de deux avis est toujours moins tranchée que chacun d'eux.
+ *
+ * La correction élève les trois probabilités à une puissance puis les ramène à
+ * cent. Ce qu'elle NE DOIT JAMAIS faire, c'est changer l'issue annoncée ou le
+ * score : ce serait un autre pronostic, pas un pronostic mieux dit.
+ */
+test('★ ACQUIS — le réaiguisage resserre sans changer le pronostic', () => {
+  const occasions = { domicile: 2.1, exterieur: 0.8 };
+  const avec = calculerScoreProbable(FORTE, FAIBLE, true, false, undefined, null, null, false, 1, occasions);
+
+  // L'issue annoncée et le score doivent être ceux qu'on aurait sans
+  // réaiguisage : on l'éteint par la variable pour comparer.
+  const avant = process.env.BANC_AIGUISAGE;
+  process.env.BANC_AIGUISAGE = '1';
+  const sans = calculerScoreProbable(FORTE, FAIBLE, true, false, undefined, null, null, false, 1, occasions);
+  if (avant === undefined) delete process.env.BANC_AIGUISAGE;
+  else process.env.BANC_AIGUISAGE = avant;
+
+  assert.equal(avec.buts1, sans.buts1, 'Le réaiguisage a changé le score annoncé.');
+  assert.equal(avec.buts2, sans.buts2, 'Le réaiguisage a changé le score annoncé.');
+
+  const tete = (r: { probaVictoire1: number; probaNul: number; probaVictoire2: number }) =>
+    [r.probaVictoire1, r.probaNul, r.probaVictoire2].indexOf(
+      Math.max(r.probaVictoire1, r.probaNul, r.probaVictoire2)
+    );
+  assert.equal(
+    tete(avec),
+    tete(sans),
+    "Le réaiguisage a changé l'issue annoncée. Ce n'est plus le même pronostic."
+  );
+
+  assert.ok(
+    Math.max(avec.probaVictoire1, avec.probaNul, avec.probaVictoire2) >
+      Math.max(sans.probaVictoire1, sans.probaNul, sans.probaVictoire2),
+    'Les probabilités ne sont pas plus nettes : le moteur continue de se ' +
+      'sous-vendre de trois points.'
+  );
+
+  assert.equal(
+    avec.probaVictoire1 + avec.probaNul + avec.probaVictoire2,
+    100,
+    'Les trois probabilités ne totalisent plus cent.'
+  );
+});

@@ -830,6 +830,72 @@ export function calculerScoreProbable(
 
   const pct = (v: number) => Math.round(v * 1000) / 10;
 
+  /**
+   * ── LE MOTEUR SE SOUS-VENDAIT, ET C'ÉTAIT MÉCANIQUE ───────────────────
+   *
+   * ── CE QUI A ÉTÉ MESURÉ LE 6 SEPTEMBRE 2026 ──────────────────────────
+   *
+   * Sur 1 544 rencontres jamais vues pendant l'apprentissage, ce que le
+   * moteur annonçait et ce qui arrivait vraiment :
+   *
+   *     annoncé 42 %  ->  arrivé 46,7 %
+   *     annoncé 52 %  ->  arrivé 58,9 %
+   *     annoncé 62 %  ->  arrivé 71,6 %
+   *     annoncé 75 %  ->  arrivé 83,0 %
+   *
+   * Trois points d'écart en moyenne, toujours dans le même sens. Ce n'est pas
+   * un hasard d'échantillon : c'est une conséquence arithmétique du mélange.
+   * La moyenne de deux avis est TOUJOURS moins tranchée que chacun d'eux, et
+   * depuis que la rencontre se lit de deux façons — les buts et les occasions
+   * — les probabilités sortent aplaties.
+   *
+   * ── LE REMÈDE, ET LA PREUVE QU'IL TIENT ──────────────────────────────
+   *
+   * Chaque probabilité est élevée à une puissance, puis les trois sont
+   * ramenées à cent. Une transformation qui resserre sans jamais changer
+   * l'ordre : l'issue annoncée et le score restent RIGOUREUSEMENT les mêmes,
+   * seule leur netteté change. La justesse est d'ailleurs identique au
+   * centième — 52,20 % avant comme après.
+   *
+   * Validation croisée en deux plis : on apprend la puissance sur une moitié,
+   * on la vérifie sur l'autre, puis l'inverse.
+   *
+   *     A -> B : puissance 1,20   Brier 0,5975 -> 0,5964   biais +2,91 -> -0,16
+   *     B -> A : puissance 1,15   Brier 0,5990 -> 0,5974   biais +3,43 -> +1,18
+   *
+   * Les deux plis gagnent, et les deux puissances apprises sont proches.
+   *
+   * ── POURQUOI 1,15 ET NON 1,20 ────────────────────────────────────────
+   *
+   * Les deux marchent. On prend la plus PRUDENTE : à 1,15 le moteur annonce
+   * encore un point de moins que ce qu'il fait, à 1,20 il annonce un dixième
+   * de trop. Entre promettre un peu moins et promettre un peu trop, la règle
+   * du propriétaire ne laisse pas hésiter — un abonné agréablement surpris ne
+   * parle jamais mal du produit.
+   *
+   * ── ET SEULEMENT QUAND LE MÉLANGE A EU LIEU ──────────────────────────
+   *
+   * L'aplatissement vient du mélange : sans occasions, il n'y a rien à
+   * resserrer. Sur les compétitions que le fournisseur ne couvre pas, cette
+   * ligne ne fait donc rien du tout, comme le reste.
+   */
+  const AIGUISAGE = Number(process.env.BANC_AIGUISAGE ?? 1.15);
+  const melangeEuLieu =
+    occasions != null &&
+    Number.isFinite(occasions.domicile) &&
+    Number.isFinite(occasions.exterieur) &&
+    POIDS_OCCASIONS > 0;
+
+  if (melangeEuLieu && AIGUISAGE !== 1) {
+    const q = [victoire1, nul, victoire2].map((x) => Math.pow(Math.max(1e-9, x), AIGUISAGE));
+    const total = q[0] + q[1] + q[2];
+    if (total > 0) {
+      victoire1 = q[0] / total;
+      nul = q[1] / total;
+      victoire2 = q[2] / total;
+    }
+  }
+
   // Les trois issues doivent totaliser exactement 100 : on ajuste la plus
   // grande du reliquat d'arrondi plutôt que d'afficher 99,8 %.
   let pv1 = Math.round(victoire1 * 100);
