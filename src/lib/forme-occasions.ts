@@ -63,18 +63,54 @@ const CLE = 'forces:occasions-v1';
 const TTL = 6 * 60 * 60 * 1000;
 
 /**
- * Les championnats couverts.
+ * Les compétitions couvertes, DANS L'ORDRE DE CE QUE LES ABONNÉS ANALYSENT.
  *
- * Ceux que le propriétaire a nommés, et eux seuls. Les statistiques de tirs ne
- * sont pas fournies partout, et un relevé bâti sur une couverture trouée vaut
- * moins que pas de relevé du tout.
+ * ── CE QUE LE RELEVÉ DU 6 SEPTEMBRE 2026 A MONTRÉ ────────────────────────
+ *
+ * Sur les 3 467 analyses déjà confrontées à leur résultat, réparties en
+ * soixante-sept compétitions :
+ *
+ *     Major League Soccer .......... 464 analyses
+ *     Premier League ............... 392
+ *     La Liga ...................... 355
+ *     Serie A ...................... 355
+ *     Jupiler Pro League ........... 287
+ *     Bundesliga ................... 282
+ *     Eredivisie ................... 278
+ *     Ligue 1 ...................... 278
+ *     Primeira Liga ................ 277
+ *
+ * La compétition LA PLUS ANALYSÉE n'était pas un des cinq grands championnats :
+ * c'était la MLS. Et la Jupiler, l'Eredivisie et la Primeira Liga pèsent
+ * chacune autant qu'une Bundesliga. En s'en tenant aux cinq grands, on laissait
+ * la moitié des analyses de nos abonnés à l'ancien calcul.
+ *
+ * Contrôlé le même jour sur quinze compétitions : le fournisseur donne les
+ * statistiques de tirs pour TOUTES, quatre rencontres sur quatre. Rien
+ * n'obligeait à se limiter.
+ *
+ * ── POURQUOI L'ORDRE COMPTE ──────────────────────────────────────────────
+ *
+ * La construction s'arrête proprement quand le temps manque (voir
+ * `construireForces`), à une frontière de compétition. Celles du haut sont
+ * donc servies en premier, et ce sont celles qui pèsent le plus.
  */
 export const CHAMPIONNATS = [
+  { id: 253, nom: 'Major League Soccer' },
   { id: 39, nom: 'Premier League' },
   { id: 140, nom: 'La Liga' },
   { id: 135, nom: 'Serie A' },
+  { id: 144, nom: 'Jupiler Pro League' },
   { id: 78, nom: 'Bundesliga' },
+  { id: 88, nom: 'Eredivisie' },
   { id: 61, nom: 'Ligue 1' },
+  { id: 94, nom: 'Primeira Liga' },
+  { id: 71, nom: 'Serie A brésilienne' },
+  { id: 40, nom: 'Championship' },
+  { id: 203, nom: 'Süper Lig' },
+  { id: 128, nom: 'Liga Profesional Argentina' },
+  { id: 2, nom: 'Ligue des champions' },
+  { id: 3, nom: 'Ligue Europa' },
 ] as const;
 
 /**
@@ -165,7 +201,37 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
   };
   const rencontres: Rencontre[] = [];
 
+  /**
+   * ── LE BUDGET DE TEMPS, ET POURQUOI ON S'ARRÊTE À UNE FRONTIÈRE ────────
+   *
+   * L'hébergeur coupe la tâche à cinq minutes. Quinze compétitions demandent,
+   * la toute première fois, plusieurs milliers d'appels — bien au-delà.
+   *
+   * On s'arrête donc proprement, et TOUJOURS entre deux compétitions, jamais
+   * au milieu de l'une d'elles : une compétition à moitié lue donnerait des
+   * forces FAUSSES, pas incomplètes. Une équipe dont on aurait lu six matchs
+   * sur douze aurait l'air de valoir ce que valent ces six-là.
+   *
+   * Les passages suivants coûtent une poignée d'appels : les statistiques
+   * d'une rencontre terminée ne changent plus jamais et restent un an en
+   * réserve. La couverture se remplit donc d'elle-même en deux ou trois jours,
+   * en commençant par les compétitions les plus analysées.
+   */
+  const DEBUT = Date.now();
+  const BUDGET_MS = 230_000;
+  const couvertes: string[] = [];
+  const laissees: string[] = [];
+
   for (const champ of CHAMPIONNATS) {
+    if (Date.now() - DEBUT > BUDGET_MS) {
+      laissees.push(champ.nom);
+      continue;
+    }
+    // Ce que cette compétition apporte n'entre dans le relevé QUE si elle a
+    // été lue en entier.
+    const apport: Rencontre[] = [];
+    let complete = true;
+
     for (const saison of saisonsAVoir) {
       const liste = await apiFootball<any>(
         `/fixtures?league=${champ.id}&season=${saison}`,
@@ -178,6 +244,11 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
       );
 
       for (const f of jouees) {
+        if (Date.now() - DEBUT > BUDGET_MS + 40_000) {
+          // Dépassement franc : on abandonne CETTE compétition entière.
+          complete = false;
+          break;
+        }
         // Les statistiques d'une rencontre TERMINÉE ne changent plus jamais :
         // on les garde très longtemps, et le relevé suivant ne les redemande
         // pas. C'est ce qui fait tomber le coût à quelques dizaines d'appels
@@ -194,7 +265,7 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
         const e = bloc(f.teams?.away?.name);
         if (!d || !e) continue;
 
-        rencontres.push({
+        apport.push({
           date: new Date(f.fixture.date).getTime(),
           dom: f.teams.home.name,
           ext: f.teams.away.name,
@@ -206,8 +277,21 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
           butsE: Number(f.goals?.away ?? 0),
         });
       }
+      if (!complete) break;
+    }
+
+    if (complete) {
+      rencontres.push(...apport);
+      couvertes.push(champ.nom);
+    } else {
+      laissees.push(champ.nom);
     }
   }
+
+  console.log(
+    `[OCCASIONS] ${couvertes.length} compétition(s) lues : ${couvertes.join(', ')}.` +
+      (laissees.length ? ` Remises au prochain passage : ${laissees.join(', ')}.` : '')
+  );
 
   if (rencontres.length < 100) return null;
 
