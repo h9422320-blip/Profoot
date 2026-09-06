@@ -57,7 +57,7 @@
 import { apiFootball, CACHE_TTL, lireReserve, ecrireReserve } from './api-football';
 
 /** La réserve où vit le relevé. Le suffixe change à chaque évolution de forme. */
-const CLE = 'forces:occasions-v1';
+const CLE = 'forces:occasions-v2';
 
 /** Six heures : le relevé bouge à chaque journée de championnat, pas plus. */
 const TTL = 6 * 60 * 60 * 1000;
@@ -143,12 +143,33 @@ type ForceClub = {
   defense: number;
   /** Sur combien de rencontres, pour savoir si l'on peut s'y fier. */
   rencontres: number;
+  /**
+   * La compétition où ce club a été le plus vu.
+   *
+   * ── POURQUOI ELLE EST INDISPENSABLE ────────────────────────────────────
+   *
+   * Une équipe ne se compare qu'à SON championnat. Mesuré le 6 septembre
+   * 2026 sur les seuls championnats européens, les occasions par équipe et
+   * par rencontre vont de 1,320 en Serie A à 1,510 en Bundesliga — quatorze
+   * pour cent d'écart. Avec la MLS, le Brésil et l'Argentine, l'éventail
+   * s'élargit encore.
+   *
+   * Rapporter tout le monde à une moyenne MONDIALE ferait passer un club
+   * allemand ordinaire pour une attaque au-dessus de la moyenne ET une
+   * défense au-dessus de la moyenne. Les deux erreurs se multiplient : les
+   * buts attendus d'une rencontre entre deux clubs allemands ressortaient
+   * surestimés de sept pour cent, et ceux d'une rencontre italienne
+   * sous-estimés d'autant.
+   */
+  ligue: string;
 };
 
 export type ReleveOccasions = {
   clubs: Record<string, ForceClub>;
-  /** Occasions moyennes par équipe et par rencontre, toutes équipes confondues. */
+  /** Occasions moyennes par équipe et par rencontre, toutes compétitions confondues. */
   moyenne: number;
+  /** Et la même chose, compétition par compétition — c'est celle-là qui sert. */
+  moyennesParLigue: Record<string, number>;
   /** Ce que vaut l'avantage du terrain, mesuré et non supposé. */
   avantageDomicile: number;
   avantageExterieur: number;
@@ -189,6 +210,7 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
   const saisonsAVoir = [new Date().getUTCFullYear() - 1, new Date().getUTCFullYear()];
 
   type Rencontre = {
+    ligue: string;
     date: number;
     dom: string;
     ext: string;
@@ -266,6 +288,7 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
         if (!d || !e) continue;
 
         apport.push({
+          ligue: champ.nom,
           date: new Date(f.fixture.date).getTime(),
           dom: f.teams.home.name,
           ext: f.teams.away.name,
@@ -315,6 +338,9 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
 
   // ── LES FORCES, À POIDS DÉCROISSANTS ──────────────────────────────────
   const suites = new Map<string, { pour: number; contre: number }[]>();
+  /** Combien de fois chaque club a été vu dans chaque compétition. */
+  const ligueDuClub = new Map<string, Map<string, number>>();
+  const parLigue = new Map<string, { somme: number; n: number }>();
   let sommeOccasions = 0;
   let nbOccasions = 0;
   let occDom = 0;
@@ -325,6 +351,15 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
     const oe = occasionsDe(r.cadresE, r.surfaceE, taux);
     suites.set(r.dom, [...(suites.get(r.dom) ?? []), { pour: od, contre: oe }]);
     suites.set(r.ext, [...(suites.get(r.ext) ?? []), { pour: oe, contre: od }]);
+    for (const club of [r.dom, r.ext]) {
+      const compte = ligueDuClub.get(club) ?? new Map<string, number>();
+      compte.set(r.ligue, (compte.get(r.ligue) ?? 0) + 1);
+      ligueDuClub.set(club, compte);
+    }
+    const l = parLigue.get(r.ligue) ?? { somme: 0, n: 0 };
+    l.somme += od + oe;
+    l.n += 2;
+    parLigue.set(r.ligue, l);
     sommeOccasions += od + oe;
     nbOccasions += 2;
     occDom += od;
@@ -334,11 +369,43 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
   const moyenne = sommeOccasions / nbOccasions;
   if (!(moyenne > 0)) return null;
 
+  // Une compétition n'a son propre étalon que si elle est assez fournie ;
+  // sinon l'étalon décrirait vingt rencontres et non un championnat.
+  const moyennesParLigue: Record<string, number> = {};
+  for (const [nom, l] of parLigue) {
+    if (l.n >= 40) moyennesParLigue[nom] = Math.round((l.somme / l.n) * 10_000) / 10_000;
+  }
+
+  /**
+   * La compétition d'un club : celle où on l'a le plus vu.
+   *
+   * Les coupes d'Europe brouilleraient la lecture — un club allemand n'y joue
+   * qu'une poignée de rencontres. On prend donc la compétition MAJORITAIRE,
+   * qui est son championnat, jamais la coupe.
+   */
+  const ligueMajoritaire = (club: string): string => {
+    const compte = ligueDuClub.get(club);
+    if (!compte) return '';
+    let meilleure = '';
+    let vues = 0;
+    for (const [nom, k] of compte) {
+      if (k > vues && moyennesParLigue[nom] !== undefined) {
+        vues = k;
+        meilleure = nom;
+      }
+    }
+    return meilleure;
+  };
+
   const nbRencontres = rencontres.length;
   const avantageDomicile = occDom / nbRencontres / moyenne;
   const avantageExterieur = occExt / nbRencontres / moyenne;
 
-  const lisser = (suite: { pour: number; contre: number }[], cle: 'pour' | 'contre') => {
+  const lisser = (
+    suite: { pour: number; contre: number }[],
+    cle: 'pour' | 'contre',
+    etalon: number
+  ) => {
     let poids = 0;
     let somme = 0;
     for (let i = 0; i < suite.length; i++) {
@@ -346,25 +413,32 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
       poids += w;
       somme += w * suite[i][cle];
     }
-    const brut = poids > 0 ? somme / poids : moyenne;
-    // Le rétrécissement : une équipe peu vue tire vers la moyenne du
+    const brut = poids > 0 ? somme / poids : etalon;
+    // Le rétrécissement : une équipe peu vue tire vers la moyenne de SON
     // championnat plutôt que vers le hasard de ses premiers adversaires.
-    return (brut * poids + moyenne * RETRAIT) / (poids + RETRAIT);
+    return (brut * poids + etalon * RETRAIT) / (poids + RETRAIT);
   };
 
   const clubs: Record<string, ForceClub> = {};
   for (const [nom, suite] of suites) {
     if (suite.length < MINIMUM_RENCONTRES) continue;
+    const ligue = ligueMajoritaire(nom);
+    // Sans compétition identifiée, on ne sait pas à quoi comparer ce club :
+    // mieux vaut l'écarter que le mesurer au mauvais étalon.
+    if (!ligue) continue;
+    const etalon = moyennesParLigue[ligue];
     clubs[nom] = {
-      attaque: Math.round(lisser(suite, 'pour') * 10_000) / 10_000,
-      defense: Math.round(lisser(suite, 'contre') * 10_000) / 10_000,
+      attaque: Math.round(lisser(suite, 'pour', etalon) * 10_000) / 10_000,
+      defense: Math.round(lisser(suite, 'contre', etalon) * 10_000) / 10_000,
       rencontres: suite.length,
+      ligue,
     };
   }
 
   const releve: ReleveOccasions = {
     clubs,
     moyenne: Math.round(moyenne * 10_000) / 10_000,
+    moyennesParLigue,
     avantageDomicile: Math.round(avantageDomicile * 10_000) / 10_000,
     avantageExterieur: Math.round(avantageExterieur * 10_000) / 10_000,
     construitLe: new Date().toISOString(),
@@ -406,11 +480,23 @@ export function butsAttendusOccasions(
   const e = nomExterieur ? releve.clubs[nomExterieur] : undefined;
   if (!d || !e) return null;
 
-  const m = releve.moyenne;
+  /**
+   * ── L'ÉTALON EST CELUI DE LA RENCONTRE, PAS CELUI DU MONDE ─────────────
+   *
+   * Chaque force a été calculée par rapport à la moyenne de SON championnat.
+   * Il faut donc la ramener au niveau de la rencontre qui se joue.
+   *
+   * Deux clubs du même championnat : c'est le sien. Une coupe d'Europe entre
+   * un Allemand et un Italien : la moyenne des deux, parce qu'aucun des deux
+   * étalons n'a plus de titre que l'autre à décrire la rencontre.
+   */
+  const md = releve.moyennesParLigue?.[d.ligue];
+  const me = releve.moyennesParLigue?.[e.ligue];
+  const m = md && me ? (md + me) / 2 : md ?? me ?? releve.moyenne;
   if (!(m > 0)) return null;
 
-  // Attaque de l'un contre défense de l'autre, rapportées à la moyenne du
-  // championnat, puis l'avantage du terrain tel qu'il a été MESURÉ.
+  // Attaque de l'un contre défense de l'autre, rapportées à l'étalon de la
+  // rencontre, puis l'avantage du terrain tel qu'il a été MESURÉ.
   const domicile = m * (d.attaque / m) * (e.defense / m) * releve.avantageDomicile;
   const exterieur = m * (e.attaque / m) * (d.defense / m) * releve.avantageExterieur;
 

@@ -143,10 +143,11 @@ test("★ ACQUIS — l'orientation du terrain est respectée", () => {
 test('★ ACQUIS — un club inconnu du relevé ne produit aucune lecture', () => {
   const releve: ReleveOccasions = {
     clubs: {
-      'Real Madrid': { attaque: 1.9, defense: 0.9, rencontres: 20 },
-      Getafe: { attaque: 0.9, defense: 1.4, rencontres: 20 },
+      'Real Madrid': { attaque: 1.9, defense: 0.9, rencontres: 20, ligue: 'La Liga' },
+      Getafe: { attaque: 0.9, defense: 1.4, rencontres: 20, ligue: 'La Liga' },
     },
     moyenne: 1.35,
+    moyennesParLigue: { 'La Liga': 1.32 },
     avantageDomicile: 1.12,
     avantageExterieur: 0.9,
     construitLe: new Date().toISOString(),
@@ -158,6 +159,48 @@ test('★ ACQUIS — un club inconnu du relevé ne produit aucune lecture', () =
 
   const lu = butsAttendusOccasions(releve, 'Real Madrid', 'Getafe');
   assert.ok(lu && lu.domicile > lu.exterieur, "Le fort qui reçoit doit devancer le faible qui se déplace.");
+});
+
+/**
+ * ── L'ÉTALON EST CELUI DU CHAMPIONNAT, JAMAIS UNE MOYENNE MONDIALE ────────
+ *
+ * Mesuré le 6 septembre 2026 : les occasions par équipe et par rencontre vont
+ * de 1,320 en Serie A à 1,510 en Bundesliga, quatorze pour cent d'écart — et
+ * la couverture inclut désormais la MLS, le Brésil et l'Argentine.
+ *
+ * Comparer tout le monde à une moyenne mondiale ferait passer un club allemand
+ * ordinaire pour une attaque ET une défense au-dessus de la moyenne. Les deux
+ * erreurs se MULTIPLIENT : sept pour cent de trop sur les buts attendus d'une
+ * rencontre allemande, autant en moins sur une rencontre italienne. Rien ne le
+ * signalerait, sinon des pronostics un peu faux dans deux championnats.
+ */
+test("★ ACQUIS — deux clubs moyens de leur championnat donnent un match moyen", () => {
+  // Deux championnats très différents, deux clubs parfaitement dans la moyenne
+  // du leur : la rencontre doit ressortir au niveau de LEUR championnat.
+  for (const [ligue, etalon] of [
+    ['Bundesliga', 1.51],
+    ['Serie A', 1.32],
+  ] as const) {
+    const releve: ReleveOccasions = {
+      clubs: {
+        A: { attaque: etalon, defense: etalon, rencontres: 20, ligue },
+        B: { attaque: etalon, defense: etalon, rencontres: 20, ligue },
+      },
+      moyenne: 1.42,
+      moyennesParLigue: { Bundesliga: 1.51, 'Serie A': 1.32 },
+      avantageDomicile: 1,
+      avantageExterieur: 1,
+      construitLe: new Date().toISOString(),
+    };
+    const lu = butsAttendusOccasions(releve, 'A', 'B');
+    assert.ok(lu, 'Aucune lecture rendue.');
+    assert.ok(
+      Math.abs(lu.domicile - etalon) < 0.01 && Math.abs(lu.exterieur - etalon) < 0.01,
+      `En ${ligue}, deux clubs strictement moyens donnent ${lu.domicile.toFixed(3)} et ` +
+        `${lu.exterieur.toFixed(3)} au lieu de ${etalon}. L'étalon employé n'est pas ` +
+        'celui de leur championnat.'
+    );
+  }
 });
 
 test('★ ACQUIS — la tâche qui construit le relevé est bien planifiée', () => {
