@@ -217,6 +217,23 @@ export const CHAMPIONNATS = [
  * leste une équipe. Sans lui, un club vu six fois affiche des forces extrêmes
  * qui ne décrivent que le hasard de ses adversaires.
  *
+ * Porté de 3 à 4 le 6 septembre 2026, après remesure — le réglage datait de
+ * l ancienne méthode, quand la force était une simple moyenne. Cinq valeurs
+ * essayées, contrôle coupé en deux :
+ *
+ *     lest   justesse    P1      P2     mis en avant
+ *      3      52,72 %   52,72   52,72     70,96 %   (272 rencontres)
+ *      4      52,72 %   52,72   52,72     71,98 %   (257 rencontres)
+ *
+ * La justesse ne bouge d aucun centième, dans aucune des deux périodes, et
+ * les rencontres mises en avant gagnent un point sur un ensemble de taille
+ * comparable. Le Brier recule de six dix-millièmes : c est le prix, et il est
+ * payé sur une mesure de calibrage, pas sur le nombre de fois où le moteur a
+ * raison.
+ *
+ * Au-delà de 4, le gain continue (73,59 % à 6) mais la justesse commence à
+ * se dégrader en première période. On s arrête là.
+ *
  * MINIMUM : en dessous, on ne se prononce pas du tout sur ce club.
  */
 /**
@@ -233,7 +250,7 @@ export const EUROPEENNES = new Set<string>(
 );
 
 const DEMI_VIE = 8;
-const RETRAIT = 3;
+const RETRAIT = 4;
 const MINIMUM_RENCONTRES = 8;
 
 /**
