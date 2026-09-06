@@ -140,7 +140,15 @@ const VIDE: SelectionDuJour = { matchs: [], aujourdhui: true, calculeeLe: '' };
 /** Les statuts qui désignent une rencontre pas encore jouée. */
 const A_VENIR = ['NS', 'TBD'];
 
-async function fixturesDuJour(jour: string): Promise<any[]> {
+/**
+ * Les rencontres pas encore jouées d'une journée.
+ *
+ * Exportée pour que « Les certitudes du jour » lisent EXACTEMENT la même
+ * liste : deux façons de savoir quels matchs se jouent aujourd'hui finiraient
+ * par diverger, et l'abonné verrait une certitude sur un match absent de la
+ * sélection, ou l'inverse.
+ */
+export async function fixturesDuJour(jour: string): Promise<any[]> {
   const cle = process.env.API_FOOTBALL_KEY;
   if (!cle) return [];
   try {

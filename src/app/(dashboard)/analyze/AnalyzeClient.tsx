@@ -14,6 +14,8 @@ import { reserverOngletPaiement, partirPayer, libererOnglet } from "@/lib/depart
 import { heureLocale, dateLongueLocale, jourEtMoisLocaux } from "@/lib/heure-locale";
 import type { MatchDuJour } from "@/lib/grands-matchs-du-jour";
 import type { MatchSelectionne } from "@/lib/selection-du-jour";
+import type { Certitude as CertitudeDuJour } from "@/lib/certitudes-du-jour";
+import CertitudesDuJour from "./CertitudesDuJour";
 
 /**
  * La notice est chargee A LA DEMANDE, comme sur le paywall et les tarifs.
@@ -562,6 +564,7 @@ export default function AnalyzePage({
   offreEntree,
   matchsDuJour,
   selectionSure,
+  certitudes,
 }: {
   preuves?: React.ReactNode;
   offreEntree?: OffreEntree;
@@ -574,6 +577,7 @@ export default function AnalyzePage({
    */
   matchsDuJour?: { matchs: MatchDuJour[]; aujourdhui: boolean };
   selectionSure?: { matchs: MatchSelectionne[]; aujourdhui: boolean };
+  certitudes?: { liste: CertitudeDuJour[]; aujourdhui: boolean };
 }) {
   const offre = offreEntree ?? { libelle: "Essentiel", prixXof: 2000, analyses: 20 };
   const prixOffre = offre.prixXof.toLocaleString("fr-FR");
@@ -1324,6 +1328,13 @@ export default function AnalyzePage({
               Elle disparaît pendant l'analyse, comme le carrousel : proposer
               un autre match à quelqu'un qui attend le sien l'inviterait à
               perdre celui-là. */}
+          {!analyzing && (
+            <CertitudesDuJour
+              liste={certitudes?.liste ?? []}
+              aujourdhui={certitudes?.aujourdhui ?? true}
+            />
+          )}
+
           {!analyzing && (
             <SelectionSure
               matchs={selectionSure?.matchs ?? []}

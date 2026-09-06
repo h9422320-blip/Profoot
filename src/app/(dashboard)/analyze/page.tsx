@@ -5,6 +5,7 @@ import { lireOffre } from "@/lib/offres";
 import { UNLIMITED } from "@/lib/subscription";
 import { matchsDuJour } from "@/lib/grands-matchs-du-jour";
 import { lireSelectionDuJour } from "@/lib/selection-du-jour";
+import { lireCertitudesDuJour } from "@/lib/certitudes-du-jour";
 
 /**
  * La page d'analyse.
@@ -64,6 +65,11 @@ export default async function AnalyzePage() {
   // en cas de panne, elle revient vide et la section ne s'affiche pas.
   const selection = await lireSelectionDuJour();
 
+  // Les affirmations que l application peut tenir plus de neuf fois sur dix.
+  // Meme reserve, meme discipline : en cas de panne elle revient vide et la
+  // section ne s affiche pas.
+  const certitudes = await lireCertitudesDuJour();
+
   return (
     <AnalyzeClient
       offreEntree={{
@@ -73,6 +79,7 @@ export default async function AnalyzePage() {
       }}
       matchsDuJour={journee}
       selectionSure={selection}
+      certitudes={certitudes}
       preuves={
         <Suspense fallback={null}>
           <SectionPreuves />
