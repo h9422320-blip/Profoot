@@ -151,11 +151,41 @@ function nombreEventuel(valeur: unknown): number | null {
   return null;
 }
 
-/** Le montant est-il compatible avec l'offre, dans l'une ou l'autre écriture ? */
+/**
+ * Le montant est-il compatible avec l'offre ?
+ *
+ * ── CELUI QUI A PAYÉ TROP NE DOIT JAMAIS ÊTRE REFUSÉ ─────────────────────
+ *
+ * Cette fonction exigeait l'égalité PARFAITE avec le tarif. Le 9 septembre
+ * 2026 à 10 h 53, un acheteur a réglé 2 550 F pour l'offre à 2 000 F — donc
+ * PLUS que le prix — et l'application a répondu « Montant 2550 incompatible
+ * avec l'offre essential_monthly (2000) ». Il a payé, la boutique a encaissé,
+ * et il n'a rien reçu. Le propriétaire a dû lui ouvrir l'accès à la main.
+ *
+ * Le surplus n'a rien d'anormal : la boutique ajoute ses frais au prix
+ * affiché, et ces frais changent avec le moyen de paiement. Les paniers du
+ * jour portent 2 040, 5 100, 15 300 — deux pour cent — et celui-ci 2 550,
+ * vingt-sept. Une égalité stricte devait fatalement casser.
+ *
+ * ── LA RÈGLE ─────────────────────────────────────────────────────────────
+ *
+ * On accepte à partir du tarif, et jusqu'à une fois et demie. En dessous, la
+ * vente ne couvre pas l'offre. Au-dessus, ce n'est plus un frais mais un autre
+ * montant — probablement une autre monnaie, et `montantComparable` s'en charge
+ * déjà en amont.
+ *
+ * Entre les deux, l'acheteur a payé son dû ou davantage : il entre.
+ */
 export function montantCompatible(paye: number, plan: PlanKey): boolean {
   const config = PLANS[plan];
   const acceptes = [config.amountXof, ...(config.montantsPrecedents as readonly number[])];
-  return acceptes.some((a) => paye === a || paye === a * 100);
+  return acceptes.some(
+    (a) =>
+      // Le tarif, frais de boutique compris.
+      (paye >= a && paye <= a * 1.5) ||
+      // La même somme écrite en centimes, avec la même tolérance.
+      (paye >= a * 100 && paye <= a * 150)
+  );
 }
 
 /**

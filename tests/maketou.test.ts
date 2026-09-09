@@ -438,3 +438,55 @@ test('★ ACQUIS — la route accuse toujours réception', () => {
   assert.doesNotMatch(ROUTE, /status:\s*5\d\d/, 'Une 5xx déclencherait des réessais en boucle.');
   assert.match(ROUTE, /catch \(e: any\)/, 'Une exception non rattrapée produirait une 500.');
 });
+
+/**
+ * ── CELUI QUI A PAYÉ TROP NE DOIT JAMAIS ÊTRE REFUSÉ ──────────────────────
+ *
+ * Le 9 septembre 2026 à 10 h 53, un acheteur a réglé 2 550 F pour l'offre à
+ * 2 000 F — donc PLUS que le prix — et l'application a répondu « Montant 2550
+ * incompatible avec l'offre essential_monthly (2000) ». Il a payé, la boutique
+ * a encaissé, et il n'a rien reçu ; le propriétaire a dû lui ouvrir l'accès à
+ * la main, deux fois.
+ *
+ * Le surplus n'a rien d'anormal : la boutique ajoute ses frais au prix
+ * affiché, et ces frais changent avec le moyen de paiement. Les paniers du
+ * même jour portaient 2 040, 5 100 et 15 300 — deux pour cent — et celui-ci
+ * 2 550, vingt-sept pour cent.
+ */
+test('★ ACQUIS — un acheteur qui paie plus que le tarif entre quand même', () => {
+  // Le cas réel qui a coûté un accès.
+  assert.ok(
+    montantCompatible(2550, 'essential_monthly'),
+    "2 550 F pour une offre à 2 000 F est refusé : l'acheteur a payé PLUS que le " +
+      "prix et l'application lui dit non."
+  );
+
+  // Les frais ordinaires de la boutique, relevés le même jour.
+  assert.ok(montantCompatible(2040, 'essential_monthly'), '2 040 F (frais de 2 %) est refusé.');
+  assert.ok(montantCompatible(5100, 'pro_monthly'), '5 100 F (frais de 2 %) est refusé.');
+  assert.ok(montantCompatible(15300, 'vip_yearly'), '15 300 F (frais de 2 %) est refusé.');
+
+  // Le tarif exact reste évidemment accepté.
+  assert.ok(montantCompatible(2000, 'essential_monthly'));
+  assert.ok(montantCompatible(5000, 'pro_monthly'));
+  assert.ok(montantCompatible(15000, 'vip_yearly'));
+
+  // Et l'écriture en centimes, avec la même tolérance.
+  assert.ok(montantCompatible(200000, 'essential_monthly'));
+  assert.ok(montantCompatible(204000, 'essential_monthly'));
+
+  // ── CE QUI DOIT TOUJOURS ÊTRE REFUSÉ ──────────────────────────────────
+  //
+  // Payer MOINS que le tarif ne donne pas droit à l'offre : ce serait la
+  // porte ouverte à qui règle deux cents francs pour un accès à deux mille.
+  assert.ok(!montantCompatible(1500, 'essential_monthly'), 'Un paiement sous le tarif passe.');
+  assert.ok(!montantCompatible(2000, 'pro_monthly'), "Le tarif Essentiel ouvre l'offre Pro.");
+
+  // Et un montant sans rapport n'est pas un frais : c'est une autre monnaie,
+  // ou une autre vente. Trente et un mille francs guinéens ne valent pas un
+  // accès Essentiel.
+  assert.ok(
+    !montantCompatible(31242, 'essential_monthly'),
+    'Une somme en monnaie étrangère est prise pour le tarif.'
+  );
+});

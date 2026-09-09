@@ -713,9 +713,21 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
    * La justesse monte DANS LES DEUX moitiés du contrôle, et sur les
    * rencontres mises en avant — celles que l'abonné ouvre en premier.
    *
-   * Cinq tours suffisent : au-delà les forces ne bougent plus.
+   * ── COMBIEN DE TOURS ────────────────────────────────────────────────
+   *
+   * Huit. Remesuré le 6 septembre 2026, une fois le lest et le poids du
+   * mélange repris :
+   *
+   *     tours   justesse   Brier     P1      P2     mis en avant
+   *       5      52,72 %   0,5969   52,72   52,72     71,98 %
+   *       8      52,72 %   0,5968   52,72   52,72     72,20 %
+   *      12      52,72 %   0,5968   52,72   52,72     72,20 %
+   *
+   * Le douzième tour rend exactement le huitième : les forces ont cessé de
+   * bouger. On s arrête donc à huit, qui est le point de convergence, et non
+   * à cinq, qui s arrêtait un peu tôt.
    */
-  const TOURS = 5;
+  const TOURS = 8;
 
   const forces = new Map<string, { att: number; def: number }>();
   for (const [nom, suite] of suites) {
