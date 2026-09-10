@@ -58,13 +58,38 @@ console.log(`  Offre        : ${mois} mois de plan « ${plan} »`);
 console.log(`  Destinataires: ${adresses.join(', ')}\n`);
 
 // ── Retrouver les comptes ───────────────────────────────────────────────────
+// ── ON LIT JUSQU'AU BOUT, ET C'EST TOUT LE SUJET ──────────────────────────
+//
+// Ce parcours s'arrêtait à trente pages de deux cents, soit six mille
+// comptes. Il y en a plus de dix mille : tout client inscrit récemment se
+// voyait répondre « AUCUN COMPTE avec cette adresse — rien fait », et le
+// geste commercial n'avait tout simplement pas lieu.
+//
+// Constaté le 10 septembre 2026 sur diarrasouleyman220@gmail.com, dont le
+// compte existe bel et bien depuis le 23 août. Rien ne le signalait : la
+// phrase du script ressemble à un diagnostic, pas à une panne.
+//
+// On boucle donc jusqu'à ce qu'une page revienne incomplète — c'est le seul
+// signal de fin fiable — avec un plafond assez large pour ne plus jamais
+// couper, et un avertissement s'il devait être atteint.
 const comptes = new Map();
-for (let page = 1; page <= 30; page++) {
-  const { data } = await sb.auth.admin.listUsers({ page, perPage: 200 });
+const PAR_PAGE = 1000;
+const PAGES_MAX = 200; // deux cent mille comptes : de la marge pour des années.
+let page = 1;
+for (; page <= PAGES_MAX; page++) {
+  const { data, error } = await sb.auth.admin.listUsers({ page, perPage: PAR_PAGE });
+  if (error) {
+    console.error(`\n  Lecture des comptes interrompue page ${page} : ${error.message}\n`);
+    break;
+  }
   const lot = data?.users ?? [];
   for (const u of lot) comptes.set(String(u.email).toLowerCase(), u);
-  if (lot.length < 200) break;
+  if (lot.length < PAR_PAGE) break;
 }
+if (page > PAGES_MAX) {
+  console.error('\n  ATTENTION : plafond de lecture atteint, des comptes peuvent manquer.\n');
+}
+console.log(`  ${comptes.size} comptes lus.\n`);
 
 for (const adresse of adresses) {
   const u = comptes.get(adresse.toLowerCase());
