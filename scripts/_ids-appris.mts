@@ -3,7 +3,7 @@ import { LEAGUE_IDS } from '../src/lib/api-football.js';
 import { CHAMPIONNATS as NOMS } from '../src/lib/precalcul-selection.js';
 console.log(`=== ${CHAMPIONNATS.length} competitions APPRISES par le releve des tirs ===`);
 for (const c of CHAMPIONNATS) console.log(`  ${String(c.id).padStart(4)}  ${c.nom}${(c as any).europeenne ? '  (coupe)' : ''}`);
-const ids = new Set(CHAMPIONNATS.map((c) => c.id));
+const ids = new Set<number>(CHAMPIONNATS.map((c) => c.id as number));
 console.log(`\n=== les ${NOMS.length} noms actuellement retenus par la selection ===`);
 for (const n of NOMS) console.log(`  ${n}`);
 console.log('\n=== LEAGUE_IDS : ' + Object.keys(LEAGUE_IDS as any).length + ' entrees ===');

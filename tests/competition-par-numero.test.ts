@@ -110,7 +110,7 @@ test('★ ACQUIS — les vraies compétitions entrent toujours', () => {
 test('★ ACQUIS — on ne prépare que ce que le moteur a appris', () => {
   // Chaque compétition préparée doit être couverte par le relevé des tirs,
   // seule exception assumée : la Liga I roumaine, nommée de longue date.
-  const apprises = new Set(APPRISES.map((c) => c.id));
+  const apprises = new Set<number>(APPRISES.map((c) => c.id as number));
   const LIGA_I = 283;
   for (const id of IDS_PREPARES) {
     assert.ok(
