@@ -55,7 +55,7 @@ async function championnatDe(equipe: number): Promise<number | null> {
   if (cacheLigue.has(equipe)) return cacheLigue.get(equipe)!;
   let trouve: number | null = null;
   for (const s of [2026, 2025]) {
-    const r: any = await apiFootball(`/leagues?team=${equipe}&season=${s}`, CACHE_TTL.TEAM_STATS);
+    const r: any = await apiFootball(`/leagues?team=${equipe}&season=${s}`, CACHE_TTL.TEAM_INFO);
     const c = (r?.response ?? []).find((x: any) => x?.league?.type === 'League');
     if (c?.league?.id) { trouve = Number(c.league.id); break; }
     await new Promise((res) => setTimeout(res, 350));

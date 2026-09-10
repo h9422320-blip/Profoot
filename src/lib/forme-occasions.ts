@@ -410,6 +410,23 @@ const occasionsDe = (cadres: number, surface: number, taux: Taux): number =>
   0.5 * (taux.cadre * cadres + taux.surface * surface);
 
 /**
+ * Une rencontre lue avec ses tirs : ce que la construction collecte chez le
+ * fournisseur, et ce que le calcul des forces consomme.
+ */
+export type RencontreTirs = {
+  ligue: string;
+  date: number;
+  dom: string;
+  ext: string;
+  cadresD: number;
+  surfaceD: number;
+  cadresE: number;
+  surfaceE: number;
+  butsD: number;
+  butsE: number;
+};
+
+/**
  * Construit le relevé et le range dans la réserve.
  *
  * Appelé par la tâche planifiée, jamais par une analyse : bâtir ceci demande
@@ -420,19 +437,7 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
   const depuis = Date.now() - JOURS_RELUS * 86_400_000;
   const saisonsAVoir = [new Date().getUTCFullYear() - 1, new Date().getUTCFullYear()];
 
-  type Rencontre = {
-    ligue: string;
-    date: number;
-    dom: string;
-    ext: string;
-    cadresD: number;
-    surfaceD: number;
-    cadresE: number;
-    surfaceE: number;
-    butsD: number;
-    butsE: number;
-  };
-  const rencontres: Rencontre[] = [];
+  const rencontres: RencontreTirs[] = [];
 
   /**
    * ── LE BUDGET DE TEMPS, ET POURQUOI ON S'ARRÊTE À UNE FRONTIÈRE ────────
@@ -520,7 +525,7 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
     arreteA = CHAMPIONNATS.findIndex((c) => c.nom === champ.nom);
     // Ce que cette compétition apporte n'entre dans le relevé QUE si elle a
     // été lue en entier.
-    const apport: Rencontre[] = [];
+    const apport: RencontreTirs[] = [];
     let complete = true;
 
     for (const saison of saisonsAVoir) {
@@ -644,6 +649,110 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
     return null;
   }
 
+  // ── LE CALCUL DES FORCES ─────────────────────────────────────────────────
+  //
+  // Il vit dans `forcesDepuisRencontres`, juste après cette fonction : c’est
+  // le même code, sorti tel quel le 10 septembre 2026 pour pouvoir être rejoué
+  // à une date passée. Mêmes rencontres, même rang de reprise.
+  const releve = forcesDepuisRencontres(rencontres, arreteA);
+  if (!releve) return null;
+  const moyennesParLigue = releve.moyennesParLigue;
+
+  /**
+   * ── UN RELEVÉ NE REMPLACE JAMAIS UN PLUS RICHE ────────────────────────
+   *
+   * ── CE QUI S'EST PASSÉ LE 6 SEPTEMBRE 2026 À 3 H 12 ───────────────────
+   *
+   * Le premier passage avait lu huit compétitions et rangé 143 clubs. Le
+   * deuxième, lancé quatre minutes plus tard, n'en a lu que cinq — la lecture
+   * de la réserve est parfois plus lente — et il a ÉCRASÉ le relevé complet
+   * par le sien : 100 clubs. Quarante-trois clubs venaient de disparaître, et
+   * leurs analyses de repasser à l'ancien calcul, sans qu'aucune erreur ne le
+   * signale.
+   *
+   * Le budget de temps, qui protège la tâche de l'hébergeur, produisait donc
+   * un relevé qui pouvait REGRESSER d'un passage à l'autre.
+   *
+   * ── POURQUOI ON PEUT FUSIONNER SANS RIEN FAUSSER ──────────────────────
+   *
+   * Chaque club est jaugé à l'étalon de SON championnat, et les championnats
+   * ne se parlent pas. Les clubs allemands d'un ancien passage restent donc
+   * exacts même si ce passage-ci n'a pas relu la Bundesliga : rien dans leur
+   * calcul ne dépend de ce qu'on a lu ailleurs.
+   *
+   * On garde donc, compétition par compétition, la lecture la plus récente —
+   * et pour celles que ce passage n'a pas atteintes, celle d'avant. Le relevé
+   * ne peut plus que s'enrichir.
+   */
+  const ancien = releveConnu;
+  let fusionne = releve;
+
+  if (ancien?.clubs) {
+    const clubsFusionnes: Record<string, ForceClub> = { ...releve.clubs };
+    const moyennesFusionnees: Record<string, number> = { ...moyennesParLigue };
+    let repris = 0;
+
+    for (const [nom, force] of Object.entries(ancien.clubs)) {
+      // ── LA PORTE FERMEE A LA CONSTRUCTION RESTE FERMEE ICI ─────────────
+      //
+      // Six clubs -- Qarabag, Fenerbahçe, Dinamo Zagreb, Bodo/Glimt, Rijeka,
+      // Ferencvaros -- revenaient rangés dans une coupe d'Europe alors que la
+      // construction venait de les écarter. Ils étaient repris tels quels du
+      // relevé précédent, avec l'étalon de la coupe : 0,93 pour la Ligue Europa
+      // là où un championnat vaut 1,4. Leur force en sortait fausse de moitié.
+      if (EUROPEENNES.has(force.ligue)) continue;
+      // Une compétition relue à l'instant fait autorité : on ne remet pas
+      // l'ancienne version de ses clubs par-dessus la neuve.
+      if (moyennesParLigue[force.ligue] !== undefined) continue;
+      if (ancien.moyennesParLigue?.[force.ligue] === undefined) continue;
+      if (!clubsFusionnes[nom]) {
+        clubsFusionnes[nom] = force;
+        moyennesFusionnees[force.ligue] = ancien.moyennesParLigue[force.ligue];
+        repris++;
+      }
+    }
+
+    if (repris > 0) {
+      console.log(
+        `[OCCASIONS] ${repris} club(s) repris du relevé précédent, pour les compétitions que ce passage n'a pas atteintes.`
+      );
+      fusionne = { ...releve, clubs: clubsFusionnes, moyennesParLigue: moyennesFusionnees };
+    }
+  }
+
+  await ecrireReserve(CLE, fusionne, TTL);
+  return fusionne;
+}
+
+/**
+ * ── LE CALCUL DES FORCES, SÉPARÉ DE LEUR LECTURE ─────────────────────────
+ *
+ * Tout ce qui suit était écrit au milieu de `construireForces`, entre le
+ * téléchargement des rencontres et l’écriture du relevé. Il en a été sorti
+ * TEL QUEL, sans qu’une ligne du calcul change, le 10 septembre 2026.
+ *
+ * ── POURQUOI ──────────────────────────────────────────────────────────────
+ *
+ * Pour rejouer le relevé à une date passée — « que savait-on de ce club la
+ * veille de ce match ? » — avec le VRAI calcul. Sans cette séparation, tester
+ * une idée demandait d’en écrire une copie dans un script, et une copie
+ * dérive : ce projet a déjà vu un banc d’essai rendre cinq fois de suite le
+ * même chiffre rassurant sur un moteur qui, lui, avait changé.
+ *
+ * ── CE QUE CELA NE CHANGE PAS ─────────────────────────────────────────────
+ *
+ * `construireForces` l’appelle exactement là où ce code se trouvait, avec les
+ * mêmes rencontres et le même rang de reprise. Ni réseau ni réserve ici : une
+ * fonction pure, qui rend le relevé ou `null`.
+ *
+ * Elle TRIE `rencontres` sur place, comme le faisait le code d’origine : un
+ * appelant qui tient à son ordre lui passe une copie.
+ */
+export function forcesDepuisRencontres(
+  rencontres: RencontreTirs[],
+  prochainDepart?: number,
+  construitLe: string = new Date().toISOString()
+): ReleveOccasions | null {
   // ── CE QUE VAUT UN TIR, RECALCULÉ À CHAQUE RELEVÉ ──────────────────────
   //
   // Figer 0,325 et 0,170 serait figer le football de septembre 2026. Les taux
@@ -897,78 +1006,14 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
 
   const releve: ReleveOccasions = {
     clubs,
-    prochainDepart: arreteA,
+    prochainDepart,
     moyenne: Math.round(moyenne * 10_000) / 10_000,
     moyennesParLigue,
     avantageDomicile: Math.round(avantageDomicile * 10_000) / 10_000,
     avantageExterieur: Math.round(avantageExterieur * 10_000) / 10_000,
-    construitLe: new Date().toISOString(),
+    construitLe,
   };
-
-  /**
-   * ── UN RELEVÉ NE REMPLACE JAMAIS UN PLUS RICHE ────────────────────────
-   *
-   * ── CE QUI S'EST PASSÉ LE 6 SEPTEMBRE 2026 À 3 H 12 ───────────────────
-   *
-   * Le premier passage avait lu huit compétitions et rangé 143 clubs. Le
-   * deuxième, lancé quatre minutes plus tard, n'en a lu que cinq — la lecture
-   * de la réserve est parfois plus lente — et il a ÉCRASÉ le relevé complet
-   * par le sien : 100 clubs. Quarante-trois clubs venaient de disparaître, et
-   * leurs analyses de repasser à l'ancien calcul, sans qu'aucune erreur ne le
-   * signale.
-   *
-   * Le budget de temps, qui protège la tâche de l'hébergeur, produisait donc
-   * un relevé qui pouvait REGRESSER d'un passage à l'autre.
-   *
-   * ── POURQUOI ON PEUT FUSIONNER SANS RIEN FAUSSER ──────────────────────
-   *
-   * Chaque club est jaugé à l'étalon de SON championnat, et les championnats
-   * ne se parlent pas. Les clubs allemands d'un ancien passage restent donc
-   * exacts même si ce passage-ci n'a pas relu la Bundesliga : rien dans leur
-   * calcul ne dépend de ce qu'on a lu ailleurs.
-   *
-   * On garde donc, compétition par compétition, la lecture la plus récente —
-   * et pour celles que ce passage n'a pas atteintes, celle d'avant. Le relevé
-   * ne peut plus que s'enrichir.
-   */
-  const ancien = releveConnu;
-  let fusionne = releve;
-
-  if (ancien?.clubs) {
-    const clubsFusionnes: Record<string, ForceClub> = { ...releve.clubs };
-    const moyennesFusionnees: Record<string, number> = { ...moyennesParLigue };
-    let repris = 0;
-
-    for (const [nom, force] of Object.entries(ancien.clubs)) {
-      // ── LA PORTE FERMEE A LA CONSTRUCTION RESTE FERMEE ICI ─────────────
-      //
-      // Six clubs -- Qarabag, Fenerbahçe, Dinamo Zagreb, Bodo/Glimt, Rijeka,
-      // Ferencvaros -- revenaient rangés dans une coupe d'Europe alors que la
-      // construction venait de les écarter. Ils étaient repris tels quels du
-      // relevé précédent, avec l'étalon de la coupe : 0,93 pour la Ligue Europa
-      // là où un championnat vaut 1,4. Leur force en sortait fausse de moitié.
-      if (EUROPEENNES.has(force.ligue)) continue;
-      // Une compétition relue à l'instant fait autorité : on ne remet pas
-      // l'ancienne version de ses clubs par-dessus la neuve.
-      if (moyennesParLigue[force.ligue] !== undefined) continue;
-      if (ancien.moyennesParLigue?.[force.ligue] === undefined) continue;
-      if (!clubsFusionnes[nom]) {
-        clubsFusionnes[nom] = force;
-        moyennesFusionnees[force.ligue] = ancien.moyennesParLigue[force.ligue];
-        repris++;
-      }
-    }
-
-    if (repris > 0) {
-      console.log(
-        `[OCCASIONS] ${repris} club(s) repris du relevé précédent, pour les compétitions que ce passage n'a pas atteintes.`
-      );
-      fusionne = { ...releve, clubs: clubsFusionnes, moyennesParLigue: moyennesFusionnees };
-    }
-  }
-
-  await ecrireReserve(CLE, fusionne, TTL);
-  return fusionne;
+  return releve;
 }
 
 /** Le verrou : deux visiteurs simultanés ne construisent pas deux fois. */
