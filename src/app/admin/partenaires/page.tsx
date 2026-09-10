@@ -519,6 +519,25 @@ export default async function PartenairesPage() {
                         compte que du 28 au 31 — la boutique n'existait pas avant. La commission du
                         partenaire se calcule sur le <span className="font-bold">prix de vente</span>.
                       </p>
+
+                      {/* ── DEUX ÉCRANS DE MAKETOU, DEUX NOMBRES ─────────────
+                          Le 10 septembre 2026, le propriétaire a comparé cette
+                          page à « Analytiques » et n'a rien retrouvé. Les deux
+                          écrans de la boutique ne comptent pas la même chose,
+                          et rien ne le dit nulle part. Écrit ici une fois pour
+                          toutes, avec le contrôle qui tranche. */}
+                      <div className="mt-3 rounded-[14px] border border-amber-400/25 bg-amber-400/[0.06] px-3.5 py-3">
+                        <p className="text-[12px] text-amber-100/80 leading-relaxed">
+                          <strong className="font-black text-amber-200">
+                            Comparez avec « Tableau de bord », jamais avec « Analytiques ».
+                          </strong>{" "}
+                          Le tableau de bord compte toutes les ventes encaissées. « Analytiques » ne
+                          compte que celles qu'il a pu rattacher à une visite suivie — un acheteur
+                          venu d'un lien WhatsApp n'y figure pas. Mesuré le 10 septembre 2026 :
+                          277 ventes au tableau de bord, 257 dans Analytiques, soit 20 ventes et
+                          56 000 FCFA d'écart, sur des ventes pourtant bien encaissées.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </Panneau>
