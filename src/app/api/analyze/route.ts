@@ -1704,6 +1704,12 @@ async function analyser(req: Request, billet: BilletQuota) {
         xgDomicile: e1Domicile ? scoreCalcule.butsAttendus1 : scoreCalcule.butsAttendus2,
         xgExterieur: e1Domicile ? scoreCalcule.butsAttendus2 : scoreCalcule.butsAttendus1,
         calculeeLe: new Date().toISOString(),
+        dateMatch: fixtureDeReference?.fixture?.date
+          ? String(fixtureDeReference.fixture.date)
+          : null,
+        competition: fixtureDeReference?.league?.name
+          ? String(fixtureDeReference.league.name)
+          : null,
       });
       console.log(
         `[PREDICTION] ${team1.name} — ${team2.name} : ligne indécise ` +
@@ -1759,6 +1765,14 @@ async function analyser(req: Request, billet: BilletQuota) {
         xgDomicile: e1Domicile ? scoreCalcule.butsAttendus1 : scoreCalcule.butsAttendus2,
         xgExterieur: e1Domicile ? scoreCalcule.butsAttendus2 : scoreCalcule.butsAttendus1,
         calculeeLe: new Date().toISOString(),
+        // L'heure du coup d'envoi et la compétition, pour que la boucle
+        // d'apprentissage sache quand ce match est jouable et appris.
+        dateMatch: fixtureDeReference?.fixture?.date
+          ? String(fixtureDeReference.fixture.date)
+          : null,
+        competition: fixtureDeReference?.league?.name
+          ? String(fixtureDeReference.league.name)
+          : null,
       });
     }
   }

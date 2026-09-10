@@ -354,6 +354,10 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
           xgDomicile: r.butsAttendus1,
           xgExterieur: r.butsAttendus2,
           calculeeLe: new Date().toISOString(),
+          // L'heure du coup d'envoi et la compétition, pour que la boucle
+          // d'apprentissage sache quand ce match est jouable et appris.
+          dateMatch: f?.fixture?.date ? String(f.fixture.date) : null,
+          competition: f?.league?.name ? String(f.league.name) : null,
         });
         bilan.calculees++;
       } catch (e: any) {

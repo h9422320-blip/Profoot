@@ -50,6 +50,25 @@ export interface PredictionFigee {
   xgDomicile: number | null;
   xgExterieur: number | null;
   calculeeLe: string;
+  // ── DEUX RENSEIGNEMENTS QUI NE SERVENT PAS À AFFICHER, MAIS À APPRENDRE ──
+  //
+  // La table les portait déjà, et personne ne les remplissait : mesuré le
+  // 10 septembre 2026, UN pronostic sur 1 455 connaissait la date de son
+  // match.
+  //
+  // Sans elle, la boucle d'apprentissage ne peut pas savoir si une rencontre
+  // est jouée. Elle se rabattait donc sur l'âge du PRONOSTIC — deux jours de
+  // délai de grâce avant d'oser demander le résultat au fournisseur. Un match
+  // de mercredi soir, pronostiqué le mardi, n'était appris que le jeudi.
+  //
+  // Avec la date, on demande le résultat deux heures et demie après le coup
+  // d'envoi, c'est-à-dire le soir même. Et l'on cesse de dépenser du quota à
+  // interroger des matchs qui n'ont pas commencé.
+  //
+  // Facultatives : une ligne écrite sans elles reste parfaitement valable et
+  // retombe sur l'ancienne règle.
+  dateMatch?: string | null;
+  competition?: string | null;
 }
 
 /** Ce qu'on lit, remis dans l'ordre de saisie de l'utilisateur. */
@@ -221,6 +240,11 @@ export async function remplacerPredictionFigee(p: PredictionFigee): Promise<bool
         xg_domicile: p.xgDomicile,
         xg_exterieur: p.xgExterieur,
         calculee_le: new Date().toISOString(),
+        // Une ligne remplacée profite des mêmes renseignements qu'une ligne
+        // neuve : sans eux, les pronostics réparés resteraient les seuls que
+        // la boucle d'apprentissage doive attendre deux jours pour juger.
+        ...(p.dateMatch ? { date_match: p.dateMatch } : {}),
+        ...(p.competition ? { competition: p.competition } : {}),
       })
       .eq('fixture_id', p.fixtureId);
     return !error;
@@ -230,24 +254,45 @@ export async function remplacerPredictionFigee(p: PredictionFigee): Promise<bool
 }
 
 export async function figerPrediction(p: PredictionFigee): Promise<void> {
+  const socle = {
+    fixture_id: p.fixtureId,
+    domicile_id: p.domicileId,
+    domicile_nom: p.domicileNom,
+    exterieur_id: p.exterieurId,
+    exterieur_nom: p.exterieurNom,
+    buts_domicile: p.butsDomicile,
+    buts_exterieur: p.butsExterieur,
+    proba_domicile: p.probaDomicile,
+    proba_nul: p.probaNul,
+    proba_exterieur: p.probaExterieur,
+    confiance: p.confiance,
+    xg_domicile: p.xgDomicile,
+    xg_exterieur: p.xgExterieur,
+  };
+
+  const renseignements = {
+    ...(p.dateMatch ? { date_match: p.dateMatch } : {}),
+    ...(p.competition ? { competition: p.competition } : {}),
+  };
+  const complet = { ...socle, ...renseignements };
+
   try {
-    await createAdminClient()
-      .from('predictions_match')
-      .insert({
-        fixture_id: p.fixtureId,
-        domicile_id: p.domicileId,
-        domicile_nom: p.domicileNom,
-        exterieur_id: p.exterieurId,
-        exterieur_nom: p.exterieurNom,
-        buts_domicile: p.butsDomicile,
-        buts_exterieur: p.butsExterieur,
-        proba_domicile: p.probaDomicile,
-        proba_nul: p.probaNul,
-        proba_exterieur: p.probaExterieur,
-        confiance: p.confiance,
-        xg_domicile: p.xgDomicile,
-        xg_exterieur: p.xgExterieur,
-      });
+    const { error } = await createAdminClient().from('predictions_match').insert(complet);
+    if (!error) return;
+
+    // ── LE PRONOSTIC PASSE AVANT SES DEUX RENSEIGNEMENTS ──────────────────
+    //
+    // `date_match` et `competition` aident à apprendre ; elles ne sont pas le
+    // pronostic. Si la base les refuse — colonne absente sur une base plus
+    // ancienne, type inattendu —, elle refuse TOUTE la ligne, et l'analyse en
+    // cours perdrait son pronostic figé : deux abonnés du même match liraient
+    // alors deux choses différentes.
+    //
+    // On réessaie donc sans elles. C'est exactement ce que fait déjà
+    // `jugerRencontresTerminees` pour `buts_attendus_*`.
+    if (Object.keys(renseignements).length > 0 && /date_match|competition/.test(error.message)) {
+      await createAdminClient().from('predictions_match').insert(socle);
+    }
   } catch {
     // Déjà figée, ou table absente : dans les deux cas l'analyse en cours reste
     // valable et doit aboutir.

@@ -19,6 +19,18 @@
       "schedule": "37 5 * * *"
     },
     {
+      "path": "/api/cron/apprendre",
+      "schedule": "35 1 * * *"
+    },
+    {
+      "path": "/api/cron/apprendre",
+      "schedule": "35 9 * * *"
+    },
+    {
+      "path": "/api/cron/apprendre",
+      "schedule": "35 17 * * *"
+    },
+    {
       "path": "/api/cron/courriels",
       "schedule": "10 7 * * *"
     },

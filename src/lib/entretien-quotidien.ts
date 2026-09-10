@@ -176,8 +176,17 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
     'Juger les rencontres terminées',
     async () => {
       const { jugerRencontresTerminees } = await import('./calibrage');
-      const r = await jugerRencontresTerminees();
-      return `${r.jugees} nouvelle(s) sur ${r.examinees} examinée(s)`;
+      // Un budget de temps : cette chaîne tourne dans une fonction que
+      // l'hébergeur coupe à soixante secondes, et les jugements ne sont écrits
+      // qu'à la toute fin du jugement. Coupé en chemin, il perd TOUT ce qu'il
+      // avait rassemblé — et les douze étapes suivantes ne partent jamais.
+      //
+      // Vingt-cinq secondes laissent de la place au reste de l'entretien.
+      const r = await jugerRencontresTerminees(40, 25_000);
+      // Le détail est reporté tel quel : c'est ce qui manquait quand la trace
+      // répétait « 0 nouvelle(s) sur 414 examinée(s) » six jours de suite sans
+      // jamais dire si le fournisseur avait répondu.
+      return `${r.jugees} nouvelle(s) sur ${r.examinees} examinée(s) — ${r.pourquoi}`;
     },
     etapes
   );

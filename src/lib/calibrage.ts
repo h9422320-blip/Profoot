@@ -38,7 +38,7 @@
  */
 
 import { createAdminClient } from './supabase-admin';
-import { lireReserve, ecrireReserve } from './api-football';
+import { lireReserve, ecrireReserve, apiFootball, CACHE_TTL } from './api-football';
 
 /** En deçà, les facteurs sont mesurés mais NON appliqués. */
 export const MATCHS_MINIMUM = 30;
@@ -350,12 +350,35 @@ export async function enregistrerJugement(j: Jugement): Promise<boolean> {
  * plutôt qu'en une seule, et rien n'est perdu.
  */
 export async function jugerRencontresTerminees(
-  appelsMax = 40
-): Promise<{ examinees: number; jugees: number; deja: number }> {
+  appelsMax = 40,
+  budgetMs = 0
+): Promise<{ examinees: number; jugees: number; deja: number; pourquoi: string }> {
+  // ── UN BUDGET DE TEMPS, PARCE QUE L'HÉBERGEUR COUPE À SOIXANTE SECONDES ──
+  //
+  // Déclarer `maxDuration = 300` ne change rien sur ce projet : la fonction
+  // est tuée à la soixantième seconde, en plein milieu, et TOUT ce qu'elle
+  // avait rassemblé est perdu — les jugements ne sont écrits qu'à la fin.
+  //
+  // C'est exactement ce qui s'est passé : mesuré le 10 septembre 2026, la
+  // tâche d'audit demandait 106 à 218 secondes de travail, et son bloc
+  // d'apprentissage — le dernier de la liste — n'était jamais atteint. Le
+  // dernier match appris datait du 2 septembre. Huit jours de résultats,
+  // dont la soirée de Ligue des champions, n'ont jamais servi à rien.
+  //
+  // Avec un budget, la boucle s'arrête d'elle-même AVANT la coupure et écrit
+  // ce qu'elle a. Elle en juge moins par passage, mais elle en juge — et ce
+  // qui reste est repris au passage suivant, puisque la file est ordonnée du
+  // plus ancien au plus récent.
+  //
+  // Zéro, la valeur par défaut, veut dire « pas de limite » : les appels
+  // existants et les scripts lancés à la main ne changent pas de comportement.
+  const debut = Date.now();
+  const tempsEcoule = () => budgetMs > 0 && Date.now() - debut > budgetMs;
+
   const cle = process.env.API_FOOTBALL_KEY;
   if (!cle) {
     console.warn('[CALIBRAGE] Clé du fournisseur absente : aucun jugement possible.');
-    return { examinees: 0, jugees: 0, deja: 0 };
+    return { examinees: 0, jugees: 0, deja: 0, pourquoi: 'clé du fournisseur absente' };
   }
 
   const sb = createAdminClient();
@@ -388,7 +411,8 @@ export async function jugerRencontresTerminees(
     6000
   );
 
-  if (!predictions.length) return { examinees: 0, jugees: 0, deja: 0 };
+  if (!predictions.length)
+    return { examinees: 0, jugees: 0, deja: 0, pourquoi: 'aucun pronostic en base' };
 
   // TOUTES les rencontres déjà jugées, pas les mille premières. Au-delà de ce
   // plafond invisible, la tâche de nuit redemandait au fournisseur des fiches
@@ -408,37 +432,149 @@ export async function jugerRencontresTerminees(
   const DELAI_DE_GRACE_MS = 48 * 60 * 60 * 1000;
   const limite = Date.now() - DELAI_DE_GRACE_MS;
 
-  const aExaminer = predictions
+  // ── QUAND LA DATE DU MATCH EST CONNUE, ELLE TRANCHE ─────────────────────
+  //
+  // Le délai de grâce ci-dessus raisonne sur l'âge du PRONOSTIC, faute de
+  // mieux : un match de mercredi soir, pronostiqué la veille, n'était donc
+  // examiné que le jeudi — et le vendredi pour la soirée de Ligue des
+  // champions, que le propriétaire regardait pourtant le soir même.
+  //
+  // `date_match` est désormais enregistrée avec le pronostic. Deux heures et
+  // demie après le coup d'envoi, un match est fini : on peut demander son
+  // résultat, et seulement à partir de là. C'est à la fois PLUS TÔT pour ce
+  // qui est joué et PLUS TARD pour ce qui ne l'est pas — le quota du
+  // fournisseur cesse d'être dépensé sur des rencontres à venir.
+  //
+  // Les lignes sans date gardent l'ancienne règle, au caractère près.
+  const DUREE_DUNE_RENCONTRE_MS = 2.5 * 60 * 60 * 1000;
+  const finieDepuis = Date.now() - DUREE_DUNE_RENCONTRE_MS;
+
+  const eligibles = predictions
     .filter((p: any) => p.fixture_id && !dejaJuges.has(Number(p.fixture_id)))
     .filter((p: any) => {
+      const coupDEnvoi = p.date_match ? Date.parse(p.date_match) : NaN;
+      if (Number.isFinite(coupDEnvoi)) return coupDEnvoi <= finieDepuis;
+
       const quand = Date.parse(p.calculee_le);
       // Une date illisible ne doit pas écarter la ligne : mieux vaut une
       // requête de trop qu'un pronostic jamais confronté à son résultat.
       return !Number.isFinite(quand) || quand <= limite;
-    })
-    .slice(0, appelsMax * 20);
+    });
 
-  if (!aExaminer.length) return { examinees: 0, jugees: 0, deja: dejaJuges.size };
+  // ── LA FILE SE PREND PAR LES DEUX BOUTS ─────────────────────────────────
+  //
+  // Prise uniquement par le plus ancien, et plafonnée, elle se bouche.
+  //
+  // Certaines rencontres ne seront JAMAIS terminées : un match reporté, une
+  // fiche retirée du fournisseur, un identifiant d'une compétition qu'il ne
+  // sert plus. Le pronostic reste en base, éternellement éligible, et revient
+  // à chaque passage. Quand il y en a assez pour remplir le plafond, plus rien
+  // d'autre n'est jamais examiné — et la trace dit, tous les jours, la même
+  // phrase sans le moindre défaut apparent :
+  //
+  //     Juger les rencontres terminées : 0 nouvelle(s) sur 800 examinée(s)
+  //
+  // Relevé du 4 au 10 septembre 2026, sept jours de suite. Pendant ce temps
+  // la soirée de Ligue des champions du 9 — cinq pronostics justes sur six,
+  // exactement ce que le propriétaire veut voir — n'était pas apprise.
+  //
+  // On garde donc la moitié du budget pour l'arriéré, qui se résorbe du plus
+  // ancien au plus récent comme avant, et l'autre moitié pour ce qui vient de
+  // se jouer. Quoi qu'il arrive en tête de file, les matchs de ce soir sont
+  // appris ce soir.
+  const plafond = appelsMax * 20;
+  const anciens = eligibles.slice(0, Math.ceil(plafond / 2));
+  const prisEnCompte = new Set(anciens.map((p: any) => Number(p.fixture_id)));
+  const recents = [...eligibles]
+    .reverse()
+    .filter((p: any) => !prisEnCompte.has(Number(p.fixture_id)))
+    .slice(0, plafond - anciens.length);
+
+  const aExaminer = [...recents, ...anciens];
+
+  if (!aExaminer.length)
+    return {
+      examinees: 0,
+      jugees: 0,
+      deja: dejaJuges.size,
+      pourquoi: 'tout ce qui est joué est déjà jugé',
+    };
 
   // Seules ces trois issues signifient qu'un résultat est acquis. Un match
   // reporté ou interrompu n'apprend rien et ne doit pas entrer au bilan.
   const TERMINE = ['FT', 'AET', 'PEN'];
   const lignes: any[] = [];
 
+  // ── « ZÉRO JUGÉE » DOIT DIRE POURQUOI ───────────────────────────────────
+  //
+  // Six jours durant, la trace disait « 0 nouvelle(s) sur 414 examinée(s) ».
+  // C'est la phrase d'une journée sans match, d'un fournisseur muet et d'une
+  // clé refusée — trois situations qu'il faut pouvoir distinguer d'un coup
+  // d'œil, sans rebrancher un script à la main.
+  let lotsSansReponse = 0;
+  let fichesRecues = 0;
+  let absentes = 0;
+  let pasTerminees = 0;
+  let arreteParLeTemps = false;
+
   for (let i = 0; i < aExaminer.length; i += 20) {
+    // On s'arrête AVANT d'engager un appel qu'on n'aura pas le temps de
+    // terminer. Ce qui a déjà été rassemblé est écrit juste en dessous.
+    if (tempsEcoule()) {
+      arreteParLeTemps = true;
+      break;
+    }
     const lot = aExaminer.slice(i, i + 20);
     try {
-      const r = await fetch(
-        `https://v3.football.api-sports.io/fixtures?ids=${lot.map((p: any) => p.fixture_id).join('-')}`,
-        { headers: { 'x-apisports-key': cle }, cache: 'no-store' }
+      // ── LE MÊME CHEMIN QUE LA VÉRIFICATION DES ANALYSES ─────────────────
+      //
+      // C'était un `fetch` brut vers le fournisseur, et il rendait zéro
+      // jugement en production TOUS LES JOURS, du 4 au 10 septembre 2026 :
+      //
+      //     Juger les rencontres terminées : 0 nouvelle(s) sur 414 examinée(s)
+      //     Juger les rencontres terminées : 0 nouvelle(s) sur 800 examinée(s)
+      //
+      // La même fonction, lancée à la main depuis un poste, en jugeait 382 sur
+      // 568. Le quota n'était pas en cause — 1 902 appels sur 150 000.
+      //
+      // Ce `fetch` brut n'avait NI délai d'attente, NI réserve, NI lecture du
+      // corps d'erreur que le fournisseur renvoie parfois avec un code 200. Ses
+      // trois modes d'échec rendaient donc exactement la même chose qu'une
+      // journée sans match : rien, et pas un mot.
+      //
+      // `apiFootball` est le chemin qui, lui, fonctionne en production —
+      // `verifierPronostics` s'en sert pour lire des centaines de rencontres
+      // juste avant, dans la même tâche. Il pose un délai de dix secondes,
+      // journalise le code HTTP et l'erreur du fournisseur en toutes lettres,
+      // et garde une réponse de secours.
+      const j = await apiFootball<any>(
+        `/fixtures?ids=${lot.map((p: any) => p.fixture_id).join('-')}`,
+        // Cinq minutes : une rencontre terminée ne change plus, mais le même
+        // lot contient souvent des matchs encore à venir. Une réserve longue
+        // les figerait « non joués » jusqu'au lendemain.
+        CACHE_TTL.FIXTURES_TODAY
       );
-      const j = await r.json();
+
+      const recues = j?.response ?? null;
+      if (!recues) {
+        lotsSansReponse++;
+        continue;
+      }
+
       const fiches = new Map<number, any>();
-      for (const f of j?.response ?? []) fiches.set(f.fixture.id, f);
+      for (const f of recues) fiches.set(f.fixture.id, f);
+      fichesRecues += fiches.size;
 
       for (const p of lot as any[]) {
         const f = fiches.get(Number(p.fixture_id));
-        if (!f || !TERMINE.includes(f.fixture?.status?.short)) continue;
+        if (!f) {
+          absentes++;
+          continue;
+        }
+        if (!TERMINE.includes(f.fixture?.status?.short)) {
+          pasTerminees++;
+          continue;
+        }
 
         const reelsDom = Number(f.goals?.home);
         const reelsExt = Number(f.goals?.away);
@@ -511,10 +647,17 @@ export async function jugerRencontresTerminees(
     console.warn('[CALIBRAGE] Lot refusé :', err.message);
   }
 
+  const pourquoi =
+    `${fichesRecues} fiche(s) reçue(s), ${pasTerminees} non terminée(s), ` +
+    `${absentes} absente(s) du fournisseur, ${lotsSansReponse} lot(s) sans réponse`;
+
   console.log(
-    `[CALIBRAGE] ${aExaminer.length} rencontre(s) examinée(s), ${lignes.length} jugée(s).`
+    `[CALIBRAGE] ${aExaminer.length} rencontre(s) examinée(s), ${lignes.length} jugée(s) — ` +
+      pourquoi +
+      (arreteParLeTemps ? `, arrêt sur le budget de ${Math.round(budgetMs / 1000)} s` : '') +
+      '.'
   );
-  return { examinees: aExaminer.length, jugees: lignes.length, deja: dejaJuges.size };
+  return { examinees: aExaminer.length, jugees: lignes.length, deja: dejaJuges.size, pourquoi };
 }
 
 /**
