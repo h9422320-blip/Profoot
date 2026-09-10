@@ -117,6 +117,17 @@ export default async function PartenairesPage() {
     );
   const veilleAffichee = veille.xof + surcoutAcheteurMaketou(veille.xof);
 
+  // ── LES DEUX SEULS NOMBRES QUE LA PAGE ANNONCE COMME « RECETTES » ──────
+  //
+  // Le propriétaire compare cette page à MakeTou plusieurs fois par jour. Tant
+  // qu'elle annonçait le prix de vente, les deux écrans se contredisaient à
+  // chaque regard, et c'était l'application qu'on soupçonnait.
+  //
+  // Elle annonce donc ce que la boutique annonce, à la seconde près : la page
+  // est en rendu dynamique et se refait à chaque vente.
+  const recettesMoisMaketou = veilleAffichee;
+  const ventesMoisMaketou = veille.ventes;
+
   const MOIS_FR = [
     "janvier", "février", "mars", "avril", "mai", "juin",
     "juillet", "août", "septembre", "octobre", "novembre", "décembre",
@@ -156,11 +167,17 @@ export default async function PartenairesPage() {
         reperes={[
           { libelle: "Partenaires", valeur: String(eco.nombrePartenaires) },
           { libelle: "Part reversée", valeur: `${eco.partTotalePct} %`, accent: true },
-          { libelle: `Recettes ${moisCourant}`, valeur: fcfa(eco.recettesMoisXof) },
-          // Le nombre que le propriétaire lit sur MakeTou, à côté du nôtre.
-          // Sans lui, les deux écrans se contredisent dès le premier coup
-          // d'œil et c'est l'application qu'on soupçonne.
-          { libelle: "Sur MakeTou (jusqu’à hier)", valeur: fcfa(veilleAffichee) },
+          // ── UN SEUL CHIFFRE ICI, ET C'EST CELUI DE LA BOUTIQUE ──────────
+          //
+          // Ce repère affichait le PRIX DE VENTE — 812 500 le 10 septembre
+          // 2026 — pendant que MakeTou affichait 771 630. Deux nombres justes,
+          // deux conventions, et un propriétaire qui doit expliquer l'écart à
+          // l'influenceur qu'il rémunère.
+          //
+          // Décision du propriétaire, le 10 septembre 2026 : ce repère porte
+          // le chiffre de MakeTou, et lui seul. Le prix de vente reste
+          // affiché plus bas, là où se calcule la part du partenaire.
+          { libelle: `Recettes ${moisCourant}`, valeur: fcfa(veilleAffichee), accent: true },
         ]}
       />
 
@@ -212,29 +229,21 @@ export default async function PartenairesPage() {
                 <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">
                   Recettes encaissées
                 </p>
+                {/* ── LE CHIFFRE DE LA BOUTIQUE, ET LUI SEUL ──────────────
+                    Cette place portait le PRIX DE VENTE — 812 500 le
+                    10 septembre 2026 — pendant que MakeTou affichait 771 630.
+                    Deux nombres justes, deux conventions, et un propriétaire
+                    qui doit expliquer l'écart à l'influenceur qu'il rémunère.
+
+                    Décision du propriétaire, le 10 septembre 2026 : la page
+                    parle la langue de la boutique. Le prix de vente ne
+                    disparaît pas — il reste sous la part du partenaire, là
+                    où il sert au calcul et nulle part ailleurs. */}
                 <p className="text-[26px] sm:text-[32px] leading-none font-black text-white tabular-nums mt-2 tracking-tight">
-                  {fcfa(eco.recettesMoisXof)}
+                  {fcfa(recettesMoisMaketou)}
                 </p>
-                {/* ── LE NOMBRE DE MAKETOU, SOUS CELUI-CI ─────────────────
-                    Le 10 septembre 2026, le propriétaire lit 812 500 ici et
-                    771 630 sur MakeTou, et conclut que la page est fausse.
-                    Les deux sont justes : leur écran ajoute 2 % et s'arrête
-                    la veille. Tant que ce n'était écrit qu'en bas de page, il
-                    ne le voyait pas — c'est ce chiffre-ci qu'il regarde. */}
-                <p className="mt-2 text-[12px] leading-relaxed text-cyan-300/70">
-                  Sur MakeTou :{" "}
-                  <span className="font-black text-cyan-300">{fcfa(veilleAffichee)}</span>
-                  <span className="text-white/35"> ({veille.ventes} ventes, jusqu’à hier)</span>
-                </p>
-                <p className="text-[11.5px] leading-relaxed text-white/35">
-                  Leur fenêtre exclut le jour en cours. Aujourd’hui compris :{" "}
-                  {fcfa(
-                    (moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].xof ?? 0) +
-                      surcoutAcheteurMaketou(
-                        moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].xof ?? 0
-                      )
-                  )}
-                  .
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-white/35">
+                  {ventesMoisMaketou} ventes · le nombre lisible sur MakeTou
                 </p>
               </div>
               {/* Un filet entre les colonnes sur grand écran : les quatre
@@ -249,8 +258,14 @@ export default async function PartenairesPage() {
                 <p className="text-[26px] sm:text-[32px] leading-none font-black text-white/50 tabular-nums mt-2 tracking-tight">
                   −{fcfa(eco.fraisBoutiqueMoisXof)}
                 </p>
-                <p className="text-[11px] text-white/30 mt-0.5">
-                  {fcfa(eco.netMoisXof)} nets
+                {/* ── LE PRIX DE VENTE VIT ICI, ET NULLE PART AILLEURS ────
+                    Il ne s'affiche plus comme « recettes » — deux nombres
+                    appelés du même nom sur un même écran ont fait douter le
+                    propriétaire de sa propre caisse. Mais il reste écrit :
+                    c'est sur lui que se calcule la part du partenaire, et un
+                    calcul dont la base est cachée ne se vérifie pas. */}
+                <p className="text-[11px] text-white/30 mt-0.5 leading-relaxed">
+                  {fcfa(eco.netMoisXof)} nets, sur {fcfa(eco.recettesMoisXof)} de prix de vente
                 </p>
               </div>
               <div className="xl:border-l xl:border-white/[0.08] xl:pl-5">
@@ -465,7 +480,7 @@ export default async function PartenairesPage() {
                               et l'écart entre les deux lectures dépassait
                               cinquante mille francs sur le seul mois d'août. */}
                           <p className="text-[12px] text-white/35 mt-0.5 tabular-nums">
-                            {fcfa(m.recettesXof)} encaissés · {m.ventes} vente
+                            {fcfa(m.recettesXof)} de prix de vente · {m.ventes} vente
                             {m.ventes > 1 ? "s" : ""}
                           </p>
                           <p className="text-[12px] text-white/35 tabular-nums">
@@ -593,16 +608,16 @@ export default async function PartenairesPage() {
 
                         <div className="mt-2.5 space-y-1 text-[12.5px] tabular-nums text-amber-100/85">
                           <p>
-                            Ce mois-ci <strong className="text-amber-200">jusqu'à hier</strong> —
-                            ce que MakeTou vous montrera :{" "}
+                            Ce que MakeTou vous montre :{" "}
                             <span className="font-black text-amber-200">
-                              {veille.ventes} ventes · {fcfa(veilleAffichee)}
-                            </span>
+                              {ventesMoisMaketou} ventes · {fcfa(recettesMoisMaketou)}
+                            </span>{" "}
+                            — c'est le chiffre affiché en haut de cette page.
                           </p>
                           <p className="text-amber-100/60">
-                            Ce mois-ci <strong>aujourd'hui compris</strong> — la réalité de votre
-                            caisse : {moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].ventes ?? 0}{" "}
-                            ventes ·{" "}
+                            Avec le jour en cours :{" "}
+                            {moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].ventes ?? 0} ventes
+                            ·{" "}
                             {fcfa(
                               (moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].xof ?? 0) +
                                 surcoutAcheteurMaketou(
