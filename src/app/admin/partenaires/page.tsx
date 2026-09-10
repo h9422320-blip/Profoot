@@ -95,6 +95,28 @@ export default async function PartenairesPage() {
   );
   const moisMaketou = [...parMois(journeesMaketou)].sort((a, b) => a[0].localeCompare(b[0]));
 
+  // ── LA FENÊTRE DE MAKETOU EXCLUT SON DERNIER JOUR ─────────────────────
+  //
+  // Mesuré le 10 septembre 2026, au franc près. « Analytiques », fenêtre
+  // 01/09/2026 – 10/09/2026 : 257 ventes, 771 630 F. Nos comptes du 1er au
+  // 9 septembre : 257 ventes, 771 630 F. Du 1er au 10 : 277 ventes,
+  // 828 750 F.
+  //
+  // Leur sélecteur s'arrête donc la veille du jour choisi. Le propriétaire a
+  // comparé nos dix journées à leurs neuf, a trouvé 56 000 francs d'écart, et
+  // a conclu — légitimement — que l'application mentait.
+  //
+  // On affiche donc le nombre que MakeTou MONTRERA, à côté du nôtre.
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const cleMoisCourant = aujourdhui.slice(0, 7);
+  const veille = Object.entries(journeesMaketou)
+    .filter(([jour]) => jour.startsWith(cleMoisCourant) && jour < aujourdhui)
+    .reduce(
+      (t, [, p]) => ({ xof: t.xof + p.xof, ventes: t.ventes + p.ventes }),
+      { xof: 0, ventes: 0 }
+    );
+  const veilleAffichee = veille.xof + surcoutAcheteurMaketou(veille.xof);
+
   const MOIS_FR = [
     "janvier", "février", "mars", "avril", "mai", "juin",
     "juillet", "août", "septembre", "octobre", "novembre", "décembre",
@@ -526,16 +548,49 @@ export default async function PartenairesPage() {
                           écrans de la boutique ne comptent pas la même chose,
                           et rien ne le dit nulle part. Écrit ici une fois pour
                           toutes, avec le contrôle qui tranche. */}
-                      <div className="mt-3 rounded-[14px] border border-amber-400/25 bg-amber-400/[0.06] px-3.5 py-3">
-                        <p className="text-[12px] text-amber-100/80 leading-relaxed">
+                      {/* ── LE MODE D'EMPLOI DE LA COMPARAISON ──────────────
+                          Sans lui, deux écrans justes donnent deux nombres
+                          différents et c'est l'application qu'on soupçonne. */}
+                      <div className="mt-3 rounded-[14px] border border-amber-400/30 bg-amber-400/[0.07] px-3.5 py-3">
+                        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-200/70">
+                          Comment comparer avec MakeTou
+                        </p>
+
+                        <p className="mt-2 text-[12.5px] text-amber-100/85 leading-relaxed">
                           <strong className="font-black text-amber-200">
-                            Comparez avec « Tableau de bord », jamais avec « Analytiques ».
+                            Le sélecteur de dates de MakeTou n'inclut PAS son dernier jour.
                           </strong>{" "}
-                          Le tableau de bord compte toutes les ventes encaissées. « Analytiques » ne
-                          compte que celles qu'il a pu rattacher à une visite suivie — un acheteur
-                          venu d'un lien WhatsApp n'y figure pas. Mesuré le 10 septembre 2026 :
-                          277 ventes au tableau de bord, 257 dans Analytiques, soit 20 ventes et
-                          56 000 FCFA d'écart, sur des ventes pourtant bien encaissées.
+                          Une fenêtre qui se termine aujourd'hui s'arrête en réalité hier soir.
+                          Mesuré au franc près le 10 septembre 2026 : leur écran annonçait
+                          257 ventes et 771 630 FCFA pour « 01/09 → 10/09 », ce qui est exactement
+                          notre 1<sup>er</sup> au 9.
+                        </p>
+
+                        <div className="mt-2.5 space-y-1 text-[12.5px] tabular-nums text-amber-100/85">
+                          <p>
+                            Ce mois-ci <strong className="text-amber-200">jusqu'à hier</strong> —
+                            ce que MakeTou vous montrera :{" "}
+                            <span className="font-black text-amber-200">
+                              {veille.ventes} ventes · {fcfa(veilleAffichee)}
+                            </span>
+                          </p>
+                          <p className="text-amber-100/60">
+                            Ce mois-ci <strong>aujourd'hui compris</strong> — la réalité de votre
+                            caisse : {moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].ventes ?? 0}{" "}
+                            ventes ·{" "}
+                            {fcfa(
+                              (moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].xof ?? 0) +
+                                surcoutAcheteurMaketou(
+                                  moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].xof ?? 0
+                                )
+                            )}
+                          </p>
+                        </div>
+
+                        <p className="mt-2.5 text-[12px] text-amber-100/60 leading-relaxed">
+                          Pour tout voir chez eux, choisissez <strong>demain</strong> comme date de
+                          fin. Et comparez avec « Tableau de bord » ou « Ventes » : « Analytiques »
+                          est une vue de trafic, elle ne compte pas de la même façon.
                         </p>
                       </div>
                     </div>
