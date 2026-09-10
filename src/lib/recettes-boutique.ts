@@ -227,9 +227,21 @@ export function tauxMaketou(): number {
  *     forfait de 40 F     →  62 920 affichés par MakeTou
  *
  * Trois cent vingt francs les séparent, et c'est le tableau de bord de la
- * boutique qui tranche, pas un raisonnement. La page des partenaires affiche
- * la première hypothèse : si l'écran de MakeTou annonce l'autre nombre, c'est
- * cette constante-ci qu'il faut corriger, et elle seule.
+ * boutique qui tranche, pas un raisonnement.
+ *
+ * ── CE N'EST PLUS UNE HYPOTHÈSE : MESURÉ LE 10 SEPTEMBRE 2026 ────────────
+ *
+ * Le journal du pulse (`maketou:pulse:recus`) garde, pour chaque vente, le
+ * prix du produit ET le montant que la boutique annonce. Relevé sur 98 ventes
+ * réelles, aux quatre tarifs pratiqués :
+ *
+ *     prix    2 000  →  montant  2 040     79 ventes     +2,00 %
+ *     prix    5 000  →  montant  5 100      9 ventes     +2,00 %
+ *     prix   15 000  →  montant 15 300      9 ventes     +2,00 %
+ *     prix    2 500  →  montant  2 550      1 vente      +2,00 %
+ *
+ * Un forfait de 40 F aurait donné 5 040 et 15 040. C'est bien un pourcentage,
+ * et il vaut deux pour cent sur tous les tarifs. L'hypothèse est close.
  */
 export const TAUX_MAKETOU_ACHETEUR = 0.02;
 

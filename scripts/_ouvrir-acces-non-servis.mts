@@ -50,12 +50,19 @@ const { courrielDisponible, envoyerCourriel, messageAccesCree } = await import('
 const sb = createAdminClient();
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://profootai.com';
 
-const CIBLES = [
-  'mohamedabdoulrayanecherky@gmail.com',
-  'babaoulare@4gmail.com',
-  'abdoulayemeite44@gmail.com',
-  'djevessojules634@gmail.com',
-];
+/**
+ * Les adresses à servir sont passées en argument — celles du paiement, telles
+ * qu'elles figurent sur la vente. L'outil retrouve seul l'adresse joignable
+ * quand le domaine est fautif.
+ *
+ *   npx tsx scripts/_ouvrir-acces-non-servis.mts adresse@exemple.com --ecrire
+ */
+const CIBLES = process.argv.slice(2).filter((a) => a.includes('@')).map((a) => a.trim().toLowerCase());
+if (!CIBLES.length) {
+  console.log('\n  Aucune adresse fournie.');
+  console.log('  npx tsx scripts/_ouvrir-acces-non-servis.mts adresse@exemple.com [--ecrire] [--par-whatsapp]\n');
+  process.exit(1);
+}
 
 /**
  * ── ON N'OUVRE PAS UN ACCÈS QU'ON NE PEUT PAS ANNONCER ────────────────────

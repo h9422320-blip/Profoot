@@ -431,7 +431,9 @@ export default async function PartenairesPage() {
               <div className="mt-6">
                 <Panneau
                   titre="Jour par jour"
-                  sousTitre={`Depuis le début du contrat · frais retenus au taux de chaque boutique`}
+                  sousTitre={`Depuis le début du contrat · « Chez MakeTou » = le nombre exact lisible sur leur tableau de bord (prix + ${Math.round(
+                    TAUX_MAKETOU_ACHETEUR * 100
+                  )} % ajoutés à l'acheteur)`}
                   icone={<CalendarDays className="w-4 h-4" />}
                   teinte="cyan"
                 >
@@ -445,6 +447,17 @@ export default async function PartenairesPage() {
                             <tr className="text-white/35 text-left">
                               <th className="py-2 pr-3 font-bold">Date</th>
                               <th className="py-2 pr-3 font-bold text-right">Ventes</th>
+                              {/* ── LA COLONNE QUI ÉVITE DE DOUTER ────────────
+                                  Elle porte EXACTEMENT le nombre lisible sur le
+                                  tableau de bord de MakeTou, jour par jour. Sans
+                                  elle, les deux écrans affichaient deux nombres
+                                  différents pour la même journée — 2 % d'écart,
+                                  parfaitement normal mais jamais écrit — et il
+                                  fallait croire sur parole que le compte était
+                                  bon. C'est un partenaire qu'on paie avec. */}
+                              <th className="py-2 pr-3 font-bold text-right text-cyan-300/60">
+                                Chez MakeTou
+                              </th>
                               <th className="py-2 pr-3 font-bold text-right">Encaissé</th>
                               <th className="py-2 pr-3 font-bold text-right">Frais</th>
                               <th className="py-2 font-bold text-right">Net</th>
@@ -460,6 +473,17 @@ export default async function PartenairesPage() {
                                   </span>
                                 </td>
                                 <td className="py-2 pr-3 text-right text-white/50">{p.ventes}</td>
+                                {/* Chariow est morte le 27 août : son tableau de
+                                    bord n'est plus consultable, et inventer un
+                                    nombre à confronter à rien ne servirait
+                                    personne. */}
+                                <td className="py-2 pr-3 text-right font-bold text-cyan-300/80">
+                                  {jour <= DERNIER_JOUR_CHARIOW
+                                    ? "—"
+                                    : Math.round(
+                                        p.xof + surcoutAcheteurMaketou(p.xof)
+                                      ).toLocaleString("fr-FR")}
+                                </td>
                                 <td className="py-2 pr-3 text-right text-white/80">
                                   {Math.round(p.xof).toLocaleString("fr-FR")}
                                 </td>
@@ -475,6 +499,13 @@ export default async function PartenairesPage() {
                               <td className="py-2.5 pr-3 font-black text-white">Total</td>
                               <td className="py-2.5 pr-3 text-right font-bold text-white/60">
                                 {cumul.ventes}
+                              </td>
+                              {/* Le total de la colonne ne porte QUE la période
+                                  MakeTou : additionner des journées Chariow, qui
+                                  n'ont jamais été affichées par cette boutique,
+                                  donnerait un total introuvable sur son écran. */}
+                              <td className="py-2.5 pr-3 text-right font-black text-cyan-300">
+                                {afficheMaketou.toLocaleString("fr-FR")}
                               </td>
                               <td className="py-2.5 pr-3 text-right font-black text-white">
                                 {cumul.xof.toLocaleString("fr-FR")}
