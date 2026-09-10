@@ -200,7 +200,7 @@ export default async function FichePartenaire({
                       invite à une multiplication qui ne retombe pas sur le
                       montant affiché. */}
                   <p className="text-[11px] text-white/35 mt-0.5 tabular-nums">
-                    {fcfa(m.recettesXof)} de prix de vente · {m.ventes} vente{m.ventes > 1 ? "s" : ""}
+                    {m.ventes} vente{m.ventes > 1 ? "s" : ""}
                   </p>
                   <p className="text-[11px] text-white/35 tabular-nums">
                     &minus; {fcfa(m.fraisBoutiqueXof)} de frais de boutique

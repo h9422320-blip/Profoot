@@ -258,14 +258,15 @@ export default async function PartenairesPage() {
                 <p className="text-[26px] sm:text-[32px] leading-none font-black text-white/50 tabular-nums mt-2 tracking-tight">
                   −{fcfa(eco.fraisBoutiqueMoisXof)}
                 </p>
-                {/* ── LE PRIX DE VENTE VIT ICI, ET NULLE PART AILLEURS ────
-                    Il ne s'affiche plus comme « recettes » — deux nombres
-                    appelés du même nom sur un même écran ont fait douter le
-                    propriétaire de sa propre caisse. Mais il reste écrit :
-                    c'est sur lui que se calcule la part du partenaire, et un
-                    calcul dont la base est cachée ne se vérifie pas. */}
+                {/* ── LE PRIX DE VENTE NE S'AFFICHE NULLE PART ────────────
+                    Décision du propriétaire, le 10 septembre 2026, répétée
+                    quatre fois : un seul chiffre d'affaires à l'écran, celui
+                    de la boutique. Deux nombres voisins appelés du même nom
+                    l'ont obligé à justifier un écart devant l'influenceur
+                    qu'il rémunère — et ce doute-là coûte plus cher que la
+                    vérifiabilité du calcul. */}
                 <p className="text-[11px] text-white/30 mt-0.5 leading-relaxed">
-                  {fcfa(eco.netMoisXof)} nets, sur {fcfa(eco.recettesMoisXof)} de prix de vente
+                  {fcfa(eco.netMoisXof)} nets
                 </p>
               </div>
               <div className="xl:border-l xl:border-white/[0.08] xl:pl-5">
@@ -480,8 +481,7 @@ export default async function PartenairesPage() {
                               et l'écart entre les deux lectures dépassait
                               cinquante mille francs sur le seul mois d'août. */}
                           <p className="text-[12px] text-white/35 mt-0.5 tabular-nums">
-                            {fcfa(m.recettesXof)} de prix de vente · {m.ventes} vente
-                            {m.ventes > 1 ? "s" : ""}
+                            {m.ventes} vente{m.ventes > 1 ? "s" : ""}
                           </p>
                           <p className="text-[12px] text-white/35 tabular-nums">
                             &minus; {fcfa(m.fraisBoutiqueXof)} de frais de boutique
@@ -535,7 +535,6 @@ export default async function PartenairesPage() {
                             <th className="py-2 pr-3 font-bold text-right text-cyan-300/60">
                               Chez MakeTou
                             </th>
-                            <th className="py-2 pr-3 font-bold text-right">Prix de vente</th>
                             <th className="py-2 font-bold text-right">Net</th>
                           </tr>
                         </thead>
@@ -548,9 +547,6 @@ export default async function PartenairesPage() {
                                 {Math.round(
                                   m.xof + surcoutAcheteurMaketou(m.xof)
                                 ).toLocaleString("fr-FR")}
-                              </td>
-                              <td className="py-2 pr-3 text-right text-white/80">
-                                {Math.round(m.xof).toLocaleString("fr-FR")}
                               </td>
                               <td className="py-2 text-right font-bold text-white">
                                 {Math.round(m.xof - (m.fraisXof ?? 0)).toLocaleString("fr-FR")}
@@ -565,9 +561,6 @@ export default async function PartenairesPage() {
                             <td className="py-2.5 pr-3 text-right font-black text-cyan-300">
                               {afficheMaketou.toLocaleString("fr-FR")}
                             </td>
-                            <td className="py-2.5 pr-3 text-right font-black text-white">
-                              {mt.xof.toLocaleString("fr-FR")}
-                            </td>
                             <td className="py-2.5 text-right font-black text-[#a78bfa]">
                               {netMaketou.toLocaleString("fr-FR")}
                             </td>
@@ -578,8 +571,7 @@ export default async function PartenairesPage() {
                         La colonne <span className="text-cyan-300/80 font-bold">Chez MakeTou</span>{" "}
                         est le nombre lisible sur leur tableau de bord : le prix plus les{" "}
                         {Math.round(TAUX_MAKETOU_ACHETEUR * 100)} % ajoutés aux acheteurs. Août ne
-                        compte que du 28 au 31 — la boutique n'existait pas avant. La commission du
-                        partenaire se calcule sur le <span className="font-bold">prix de vente</span>.
+                        compte que du 28 au 31 — la boutique n'existait pas avant.
                       </p>
 
                       {/* ── DEUX ÉCRANS DE MAKETOU, DEUX NOMBRES ─────────────
@@ -777,13 +769,14 @@ export default async function PartenairesPage() {
                               « Revenus totaux » chez MakeTou :{" "}
                               <span className="font-bold text-white">{fcfa(afficheMaketou)}</span>
                             </p>
+                            {/* Un seul chiffre d'affaires à l'écran : la
+                                soustraction se fait d'un bloc, sans exposer
+                                un second total qu'on prendrait pour lui. */}
                             <p className="text-white/50">
-                              &minus; {fcfa(surcoutMaketou)} ajoutés aux acheteurs par la boutique
-                              — cet argent ne vous a jamais appartenu
-                            </p>
-                            <p className="text-white/50">
-                              = {fcfa(mt.xof)} de prix de vente sur {mt.ventes} vente
-                              {mt.ventes > 1 ? "s" : ""}, &minus; {fcfa(mt.fraisXof)} de commission
+                              &minus; {fcfa(surcoutMaketou + mt.fraisXof)} gardés par la boutique
+                              sur {mt.ventes} vente{mt.ventes > 1 ? "s" : ""} — dont{" "}
+                              {fcfa(surcoutMaketou)} ajoutés aux acheteurs, qui ne vous ont jamais
+                              appartenu
                             </p>
                             <p className="text-white/75 font-bold pt-0.5">
                               = {fcfa(netMaketou)} qui vous reviennent — le « solde en attente » de
