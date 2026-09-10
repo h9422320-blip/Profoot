@@ -95,38 +95,37 @@ export default async function PartenairesPage() {
   );
   const moisMaketou = [...parMois(journeesMaketou)].sort((a, b) => a[0].localeCompare(b[0]));
 
-  // ── LA FENÊTRE DE MAKETOU EXCLUT SON DERNIER JOUR ─────────────────────
-  //
-  // Mesuré le 10 septembre 2026, au franc près. « Analytiques », fenêtre
-  // 01/09/2026 – 10/09/2026 : 257 ventes, 771 630 F. Nos comptes du 1er au
-  // 9 septembre : 257 ventes, 771 630 F. Du 1er au 10 : 277 ventes,
-  // 828 750 F.
-  //
-  // Leur sélecteur s'arrête donc la veille du jour choisi. Le propriétaire a
-  // comparé nos dix journées à leurs neuf, a trouvé 56 000 francs d'écart, et
-  // a conclu — légitimement — que l'application mentait.
-  //
-  // On affiche donc le nombre que MakeTou MONTRERA, à côté du nôtre.
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const cleMoisCourant = aujourdhui.slice(0, 7);
-  const veille = Object.entries(journeesMaketou)
-    .filter(([jour]) => jour.startsWith(cleMoisCourant) && jour < aujourdhui)
+
+  // ── LE CHIFFRE DU MOIS, VIVANT ─────────────────────────────────────────
+  //
+  // ── L'ERREUR QUE CETTE VERSION CORRIGE ────────────────────────────────
+  //
+  // Ce nombre a d'abord été calculé « jusqu'à hier », pour coller à ce que
+  // MakeTou affiche : leur sélecteur de dates EXCLUT sa date de fin — mesuré
+  // au franc près le 10 septembre 2026, leur fenêtre 01/09 → 10/09 rendait
+  // 257 ventes et 771 630 F, ce qui est exactement notre 1ᵉʳ au 9.
+  //
+  // Mais un chiffre arrêté hier ne bouge pas quand quelqu'un achète
+  // aujourd'hui. Le propriétaire a vu une vente de 2 000 F entrer sans que
+  // rien ne change à l'écran, et il a eu raison de le prendre pour une panne :
+  // une page qui prétend suivre la caisse doit suivre la caisse.
+  //
+  // On compte donc le mois ENTIER, jour en cours compris, dans la convention
+  // de la boutique — le prix plus les 2 % ajoutés aux acheteurs. Chaque vente
+  // le fait monter dans la seconde.
+  //
+  // Pour retrouver ce nombre chez MakeTou, il faut choisir DEMAIN comme date
+  // de fin : c'est leur fenêtre qui ampute, pas ce calcul.
+  const moisEnCours = Object.entries(journeesMaketou)
+    .filter(([jour]) => jour.startsWith(cleMoisCourant))
     .reduce(
       (t, [, p]) => ({ xof: t.xof + p.xof, ventes: t.ventes + p.ventes }),
       { xof: 0, ventes: 0 }
     );
-  const veilleAffichee = veille.xof + surcoutAcheteurMaketou(veille.xof);
-
-  // ── LES DEUX SEULS NOMBRES QUE LA PAGE ANNONCE COMME « RECETTES » ──────
-  //
-  // Le propriétaire compare cette page à MakeTou plusieurs fois par jour. Tant
-  // qu'elle annonçait le prix de vente, les deux écrans se contredisaient à
-  // chaque regard, et c'était l'application qu'on soupçonnait.
-  //
-  // Elle annonce donc ce que la boutique annonce, à la seconde près : la page
-  // est en rendu dynamique et se refait à chaque vente.
-  const recettesMoisMaketou = veilleAffichee;
-  const ventesMoisMaketou = veille.ventes;
+  const recettesMoisMaketou = moisEnCours.xof + surcoutAcheteurMaketou(moisEnCours.xof);
+  const ventesMoisMaketou = moisEnCours.ventes;
 
   const MOIS_FR = [
     "janvier", "février", "mars", "avril", "mai", "juin",
@@ -177,7 +176,7 @@ export default async function PartenairesPage() {
           // Décision du propriétaire, le 10 septembre 2026 : ce repère porte
           // le chiffre de MakeTou, et lui seul. Le prix de vente reste
           // affiché plus bas, là où se calcule la part du partenaire.
-          { libelle: `Recettes ${moisCourant}`, valeur: fcfa(veilleAffichee), accent: true },
+          { libelle: `Recettes ${moisCourant}`, valeur: fcfa(recettesMoisMaketou), accent: true },
         ]}
       />
 
