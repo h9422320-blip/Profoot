@@ -251,6 +251,95 @@ export type ResultatPulse =
  * L'authenticité du message doit avoir été vérifiée AVANT d'appeler cette
  * fonction : elle fait confiance à ce qu'on lui donne.
  */
+/**
+ * LE MONTANT À INSCRIRE DANS LES COMPTES.
+ *
+ * ── POURQUOI PAS SIMPLEMENT LE TARIF ─────────────────────────────────────
+ *
+ * On écrivait `PLANS[plan].amountXof` — le tarif de l'offre. Une vente réglée
+ * 2 500 francs entrait donc dans les comptes pour 2 000, et les livres ne
+ * pouvaient plus égaler le tableau de bord de la boutique.
+ *
+ * On inscrit désormais le prix RÉELLEMENT porté par la vente, à une condition
+ * stricte : qu'il soit libellé en francs. L'offre à 2 000 FCFA s'affiche
+ * « 31 242 GNF » à un visiteur guinéen — inscrire 31 242 gonflerait la recette
+ * d'un facteur seize. Hors francs, le tarif reste donc la seule valeur
+ * honnête dont on dispose.
+ */
+export function montantPourLesComptes(vente: VenteMaketou, plan: PlanKey | null): number {
+  const paye = montantEnFrancs(vente);
+  if (montantComparable(vente) && montantLisible(vente) && paye != null && paye > 0) return paye;
+  return plan ? PLANS[plan].amountXof : 0;
+}
+
+/**
+ * INSCRIRE UNE VENTE DANS LES COMPTES, MÊME QUAND ELLE N'OUVRE RIEN.
+ *
+ * ── CE QUI A ÉTÉ PERDU FAUTE DE CETTE FONCTION ───────────────────────────
+ *
+ * La trace comptable était écrite APRÈS les contrôles de montant et d'offre.
+ * Une vente refusée par l'un d'eux n'était donc inscrite nulle part : l'argent
+ * entrait chez la boutique, et nos livres l'ignoraient.
+ *
+ * Le 9 septembre 2026 à 10 h 53, p13057177@gmail.com règle 2 500 francs depuis
+ * le Cameroun. Le contrôle refuse — « Montant 2500 incompatible avec l'offre
+ * essential_monthly (2000) » — et rien n'est écrit. Le tableau de bord de
+ * MakeTou annonçait alors 387 ventes pour 1 176 570 francs ; la page des
+ * partenaires en comptait 386 pour 1 174 020. Deux mille cinq cent cinquante
+ * francs d'écart, et un propriétaire obligé de croire ses écrans sur parole
+ * devant l'influenceur qu'il rémunère.
+ *
+ * ── CE QU'ELLE FAIT, ET CE QU'ELLE NE FAIT PAS ───────────────────────────
+ *
+ * Elle inscrit la vente et RIEN d'autre : aucun accès n'est ouvert, aucun
+ * compte touché. La cause du refus est conservée à côté du montant, pour
+ * qu'une vente non honorée se retrouve sans avoir à relire un journal qui ne
+ * garde que cent lignes.
+ *
+ * Elle ne lève jamais : une écriture comptable manquée ne doit pas empêcher
+ * le reste du traitement, qui peut encore prévenir quelqu'un.
+ */
+export async function noterVentePourLesComptes(
+  admin: SupabaseClient,
+  vente: VenteMaketou,
+  plan: PlanKey | null,
+  motif: string
+): Promise<void> {
+  const venteId = vente.sale?.id;
+  const email = vente.customer?.email?.toLowerCase().trim();
+  if (!venteId || !email) return;
+
+  try {
+    // `ignoreDuplicates` : si la vente est déjà connue — un pulse rejoué, ou
+    // une tentative précédente qui avait abouti —, on ne réécrit rien. Une
+    // vente honorée ne doit pas se voir reposer une cause d'échec.
+    const { error } = await admin.from('payment_intents').upsert(
+      {
+        sale_id: venteId,
+        user_id: null,
+        email,
+        plan: plan ?? null,
+        amount: montantPourLesComptes(vente, plan),
+        pays: vente.originCountry?.code ?? null,
+        pays_source: 'maketou',
+        moyen_paiement: vente.paymentMethod?.name ?? null,
+        statut_boutique: 'completed',
+        cause_echec: 'acces_non_ouvert',
+        message_echec: motif.slice(0, 500),
+        releve_le: new Date().toISOString(),
+      },
+      { onConflict: 'sale_id', ignoreDuplicates: true }
+    );
+    if (error) {
+      console.error(`[MAKETOU] Vente ${venteId} NON inscrite dans les comptes : ${error.message}`);
+      return;
+    }
+    console.warn(`[MAKETOU] Vente ${venteId} inscrite dans les comptes sans ouvrir d'accès : ${motif}`);
+  } catch (e: any) {
+    console.error('[MAKETOU] Écriture comptable impossible :', e?.message);
+  }
+}
+
 export async function ouvrirAccesMaketou(
   admin: SupabaseClient,
   vente: VenteMaketou
@@ -267,11 +356,11 @@ export async function ouvrirAccesMaketou(
 
   const plan = offreAchetee(vente);
   if (!plan) {
-    return {
-      ouvert: false,
-      email,
-      motif: `Offre non reconnue (produit « ${vente.products?.[0]?.name ?? '?'} »).`,
-    };
+    const motif = `Offre non reconnue (produit « ${vente.products?.[0]?.name ?? '?'} »).`;
+    // L'argent est entré : il doit figurer dans les comptes même si nous ne
+    // savons pas quoi ouvrir. Voir `noterVentePourLesComptes`.
+    await noterVentePourLesComptes(admin, vente, null, motif);
+    return { ouvert: false, email, motif };
   }
 
   // ── LE MONTANT, QUAND IL VEUT DIRE QUELQUE CHOSE ────────────────────────
@@ -288,20 +377,18 @@ export async function ouvrirAccesMaketou(
   const paye = montantEnFrancs(vente);
   if (montantComparable(vente) && montantLisible(vente)) {
     if (paye == null || !montantCompatible(paye, plan)) {
-      return {
-        ouvert: false,
-        email,
-        motif: `Montant ${paye} incompatible avec l'offre ${plan} (${PLANS[plan].amountXof}).`,
-      };
+      const motif = `Montant ${paye} incompatible avec l'offre ${plan} (${PLANS[plan].amountXof}).`;
+      // C'est CE refus qui a fait disparaître 2 550 francs des livres le
+      // 9 septembre 2026. La vente est désormais inscrite avant tout.
+      await noterVentePourLesComptes(admin, vente, plan, motif);
+      return { ouvert: false, email, motif };
     }
   } else if (!offreParNom(vente)) {
-    return {
-      ouvert: false,
-      email,
-      motif:
-        `Montant ${paye} invérifiable (devise ${deviseDeLaVente(vente) ?? 'inconnue'}), ` +
-        `et le produit « ${vente.products?.[0]?.name ?? '?'} » ne nomme aucune offre.`,
-    };
+    const motif =
+      `Montant ${paye} invérifiable (devise ${deviseDeLaVente(vente) ?? 'inconnue'}), ` +
+      `et le produit « ${vente.products?.[0]?.name ?? '?'} » ne nomme aucune offre.`;
+    await noterVentePourLesComptes(admin, vente, plan, motif);
+    return { ouvert: false, email, motif };
   } else {
     console.log(
       `[MAKETOU] Montant invérifiable (${paye}, ${deviseDeLaVente(vente) ?? 'sans devise'}) — ` +
@@ -343,7 +430,10 @@ export async function ouvrirAccesMaketou(
       user_id: userId,
       email,
       plan,
-      amount: PLANS[plan].amountXof,
+      // Le prix RÉELLEMENT réglé, et non le tarif de l'offre : c'est lui que
+      // la boutique additionne sur son tableau de bord. Voir
+      // `montantPourLesComptes` pour le cas des monnaies étrangères.
+      amount: montantPourLesComptes(vente, plan),
       pays: vente.originCountry?.code ?? null,
       pays_source: 'maketou',
       moyen_paiement: vente.paymentMethod?.name ?? null,

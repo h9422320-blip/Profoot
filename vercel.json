@@ -19,6 +19,10 @@
       "schedule": "37 5 * * *"
     },
     {
+      "path": "/api/cron/bilan-du-soir",
+      "schedule": "59 23 * * *"
+    },
+    {
       "path": "/api/cron/apprendre",
       "schedule": "35 1 * * *"
     },
