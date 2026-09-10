@@ -418,12 +418,28 @@ test('★ ACQUIS — les compétitions couvertes restent celles qui sont analys�
  */
 test('★ ACQUIS — la construction tient sous la coupure de soixante secondes', () => {
   const src = fs.readFileSync('src/lib/forme-occasions.ts', 'utf8');
-  const budget = Number((src.match(/const BUDGET_MS = ([\d_]+)/) ?? [])[1]?.replace(/_/g, ''));
+
+  // ── C'EST LA VALEUR PAR DÉFAUT QUI EST L'ACQUIS ───────────────────────
+  //
+  // Une surcharge par variable d'environnement a été ajoutée le 10 septembre
+  // 2026, pour amorcer depuis un poste les championnats qu'on vient
+  // d'ajouter : leur réserve de statistiques est froide, il faut deux cents
+  // appels pour une saison, et aucun passage de trente-cinq secondes n'y
+  // arrive.
+  //
+  // Ce qui doit rester garanti, c'est que le SERVEUR, lui, tienne sous la
+  // coupure. La variable n'existe pas en production : le défaut s'applique.
+  const budget = Number(
+    (src.match(/const BUDGET_MS = Number\(process\.env\.\w+\) \|\| ([\d_]+)/) ?? [])[1]?.replace(
+      /_/g,
+      ''
+    )
+  );
   assert.ok(
     Number.isFinite(budget) && budget <= 45_000,
-    `Le budget de construction vaut ${budget} ms. Au-delà de 45 000, la fonction ` +
-      "est tuée par l'hébergeur avant d'écrire le relevé, et la tâche ne produit " +
-      "plus rien — sans qu'aucune erreur ne le signale."
+    `Le budget de construction par défaut vaut ${budget} ms. Au-delà de 45 000, la ` +
+      "fonction est tuée par l'hébergeur avant d'écrire le relevé, et la tâche ne " +
+      "produit plus rien — sans qu'aucune erreur ne le signale."
   );
 
   const route = fs.readFileSync('src/app/api/cron/occasions/route.ts', 'utf8');
@@ -570,6 +586,111 @@ test("★ ACQUIS — un absent n'est jamais compté deux fois", () => {
  * d'avant — un recul, sur des rencontres que des abonnés payants analysent
  * pendant ce temps-là.
  */
+test('★ ACQUIS — le relevé se relit patiemment, le délai d’une page ne suffit pas', () => {
+  /*
+   * ── LE PIÈGE QUI A DÉJÀ SERVI DEUX FOIS ─────────────────────────────────
+   *
+   * `lireReserve` abandonne au bout d'une seconde et demie. C'est un
+   * garde-temps posé le 25 août 2026, quand la base a saturé et que `/pricing`
+   * attendait trente secondes. Il a sa raison d'être et il reste.
+   *
+   * Mais il est trop court pour les gros relevés. Le 5 septembre 2026, le
+   * relevé de fiabilité restait à ses 26 rencontres au lieu de 57 pour cette
+   * raison exacte. Le 10 septembre, relevé en appelant `lireForces` :
+   *
+   *     [DÉLAI] réserve forces:occasions-v6 : delai après 1503 ms — repli servi
+   *
+   * Le relevé NEUF n'arrivait pas. Le moteur retombait sur le précédent,
+   * périmé depuis le 6 — 364 clubs et un étalon de 1,3433 au lieu de 402 clubs
+   * et 1,4195. La moitié du moteur qui a porté les rencontres de promus de
+   * 67,4 à 75,5 % travaillait sur des données de quatre jours.
+   *
+   * Et rien ne le signalait : `butsAttendusOccasions` rend `null` quand le
+   * relevé manque, et le moteur reprend alors son propre calcul au centième
+   * près. Un repli propre, et parfaitement muet.
+   */
+  const src = fs
+    .readFileSync('src/lib/forme-occasions.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  assert.ok(
+    /async function lireRelevePatiemment/.test(src),
+    'La relecture patiente a disparu : le relevé neuf cessera d’arriver sans qu’un seul ' +
+      'message ne le dise.'
+  );
+  // Le chemin rapide passe TOUJOURS en premier : quand la base répond vite,
+  // rien ne doit être plus lent qu'avant.
+  assert.ok(
+    /const rapide = await lireReserve<ReleveOccasions>\(cle\)[\s\S]{0,120}if \(rapide\?\.contenu\) return rapide/.test(
+      src
+    ),
+    'Le chemin rapide ne passe plus en premier : toutes les lectures paieront la relecture.'
+  );
+  assert.ok(
+    /const LIMITE_RELECTURE_MS = 5_000/.test(src),
+    'La relecture n’a plus de plafond : une base tombée ferait attendre un abonné.'
+  );
+
+  // Les deux endroits qui lisent le relevé doivent passer par là — y compris
+  // le contrôle de fraîcheur, qui sans cela ne voit jamais son propre travail.
+  const lecture = src.slice(src.indexOf('export async function lireForces'));
+  assert.ok(
+    /lireRelevePatiemment\(CLE\)/.test(lecture),
+    'La lecture du relevé est revenue au chemin qui renonce.'
+  );
+  const rafraichir = src.slice(src.indexOf('export async function rafraichirSiNecessaire'));
+  assert.ok(
+    /lireRelevePatiemment\(CLE\)/.test(rafraichir),
+    'Le contrôle de fraîcheur est revenu au chemin qui renonce : il rebâtira à chaque visite ' +
+      'en croyant n’avoir rien bâti.'
+  );
+});
+
+test('★ ACQUIS — les clubs des coupes d’Europe ont un championnat où se mesurer', () => {
+  /*
+   * `butsAttendusOccasions` rend `null` dès qu'UN SEUL des deux clubs manque.
+   * Mesuré le 10 septembre 2026 sur les 186 rencontres de coupe d'Europe des
+   * soixante jours à venir : 82 éclairées, 44,1 %.
+   *
+   * Il suffisait d'un Bodø/Glimt pour que Bayern — Bodø/Glimt retombe au
+   * calcul d'avant. Ce match était en tête de la sélection du jour, à 78 % de
+   * fiabilité.
+   *
+   * Ces dix championnats ne sont pas là pour eux-mêmes : ils sont là parce
+   * qu'ils donnent un étalon aux clubs qui jouent les coupes.
+   */
+  const { CHAMPIONNATS } = require('../src/lib/forme-occasions') as {
+    CHAMPIONNATS: readonly { id: number; nom: string }[];
+  };
+  const ids = new Set(CHAMPIONNATS.map((c) => c.id));
+  for (const [id, pays] of [
+    [103, 'Norvège — Bodø/Glimt, Viking, Lillestrøm, Brann'],
+    [119, 'Danemark — Copenhague, Midtjylland, Nordsjælland, Aarhus'],
+    [218, 'Autriche — Salzbourg, Sturm Graz, LASK'],
+    [106, 'Pologne — Lech Poznań, Jagiellonia'],
+    [210, 'Croatie — Dinamo Zagreb, Hajduk Split'],
+    [172, 'Bulgarie — Levski, CSKA Sofia'],
+    [318, 'Chypre — Omonia, Pafos'],
+    [333, 'Ukraine — Chakhtar Donetsk'],
+    [383, 'Israël — Hapoël Beer-Sheva'],
+    [271, 'Hongrie — Ferencváros'],
+  ] as [number, string][]) {
+    assert.ok(ids.has(id), `Le championnat ${id} a été retiré (${pays}).`);
+  }
+
+  // Et les trois coupes restent marquées comme européennes : un club mesuré
+  // dans une coupe n'a pas d'étalon de championnat, et ne doit pas en emprunter.
+  const europeennes = CHAMPIONNATS.filter(
+    (c) => (c as { europeenne?: boolean }).europeenne
+  ).map((c) => c.id);
+  assert.deepEqual(
+    [...europeennes].sort((a, b) => a - b),
+    [2, 3, 848],
+    'Les coupes d’Europe ne sont plus marquées comme telles.'
+  );
+});
+
 test('★ ACQUIS — la version précédente du relevé sert de filet', () => {
   const src = fs
     .readFileSync('src/lib/forme-occasions.ts', 'utf8')
@@ -583,8 +704,18 @@ test('★ ACQUIS — la version précédente du relevé sert de filet', () => {
   );
 
   const lecture = src.slice(src.indexOf('export async function lireForces'));
+  // ── L'INTENTION, PAS LE NOM DU LECTEUR ────────────────────────────────
+  //
+  // Cette assertion exigeait littéralement `lireReserve(CLE_PRECEDENTE)`.
+  // Le 10 septembre 2026, la lecture est passée à `lireRelevePatiemment` :
+  // `lireReserve` renonce au bout d'une seconde et demie, et ce relevé-ci est
+  // trop gros pour ce délai — le relevé NEUF n'arrivait donc jamais, et le
+  // moteur analysait les matchs du 10 avec la forme des équipes du 6.
+  //
+  // Ce qui doit être garanti n'est pas le nom du lecteur, c'est que le relevé
+  // précédent soit encore consulté comme filet.
   assert.ok(
-    /lireReserve<ReleveOccasions>\(CLE_PRECEDENTE\)/.test(lecture),
+    /\(CLE_PRECEDENTE\)/.test(lecture),
     "La lecture ne va plus chercher le relevé précédent."
   );
   // La lecture neuve doit primer : sinon un club recalculé garderait sa

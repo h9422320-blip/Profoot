@@ -169,6 +169,49 @@ export const CHAMPIONNATS = [
   { id: 179, nom: 'Premiership' },
   { id: 207, nom: 'Super League' },
   { id: 197, nom: 'Super League 1' },
+
+  // ── LA TROISIÈME VAGUE : CEUX QUI JOUENT LES COUPES D'EUROPE ───────────
+  //
+  // Mesuré le 10 septembre 2026 sur les 186 rencontres de Ligue des champions,
+  // Ligue Europa et Conference des soixante jours à venir : SEULEMENT 82
+  // étaient éclairées par ce relevé. 44,1 %.
+  //
+  // `butsAttendusOccasions` rend `null` dès qu'un SEUL des deux clubs manque.
+  // Il suffisait donc d'un Bodø/Glimt pour que Bayern — Bodø/Glimt retombe au
+  // calcul d'avant — et ce match était justement dans la sélection du jour, à
+  // 78 % de fiabilité, en tête de l'écran.
+  //
+  // Les 38 clubs absents se regroupaient par pays. Les voici, par nombre de
+  // rencontres de coupe d'Europe qu'ils concernent :
+  //
+  //     Norvège ...... Bodø/Glimt, Viking, Lillestrøm, Brann ......... 13
+  //     Danemark ..... Copenhague, Midtjylland, Nordsjælland, Aarhus . 12
+  //     Autriche ..... Salzbourg, Sturm Graz, LASK .................... 11
+  //     Pologne ...... Lech Poznań, Jagiellonia ....................... 8
+  //     Croatie ...... Dinamo Zagreb, Hajduk Split .................... 7
+  //     Bulgarie ..... Levski Sofia, CSKA Sofia ....................... 7
+  //     Chypre ....... Omonia Nicosie, Pafos .......................... 7
+  //     Ukraine ...... Chakhtar Donetsk ............................... 4
+  //     Israël ....... Hapoël Beer-Sheva .............................. 4
+  //     Hongrie ...... Ferencváros .................................... 4
+  //
+  // Le propriétaire veut la Ligue des champions en premier partout, et juste.
+  // Un relevé qui ignore la moitié de ses clubs ne peut pas tenir cela.
+  //
+  // Aucune compétition n'a été retirée : le tour d'anneau est simplement plus
+  // long — de vingt-quatre pas à trente-quatre. La construction part une
+  // quinzaine de fois par jour, portée par les visites : le tour passe de
+  // environ un jour et demi à environ deux jours et demi.
+  { id: 103, nom: 'Eliteserien' },
+  { id: 119, nom: 'Superliga danoise' },
+  { id: 218, nom: 'Bundesliga autrichienne' },
+  { id: 106, nom: 'Ekstraklasa' },
+  { id: 210, nom: 'HNL' },
+  { id: 172, nom: 'First League bulgare' },
+  { id: 318, nom: 'Première division chypriote' },
+  { id: 333, nom: 'Premier League ukrainienne' },
+  { id: 383, nom: "Ligat Ha'al" },
+  { id: 271, nom: 'NB I' },
 ] as const;
 
 /**
@@ -432,7 +475,27 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
    * c'est peu — mais le tour d'anneau et la fusion font que chaque passage
    * AJOUTE, et les passages sont nombreux (voir `rafraichirSiNecessaire`).
    */
-  const BUDGET_MS = 35_000;
+  /**
+   * ── UNE SURCHARGE, POUR AMORCER UNE COMPÉTITION NEUVE ─────────────────
+   *
+   * Trente-cinq secondes restent la valeur de production, et rien ne la change
+   * sur le serveur : la variable n'y existe pas.
+   *
+   * Mais une compétition qu'on vient d'ajouter part d'une réserve FROIDE : il
+   * faut une requête de statistiques par rencontre jouée, soit deux cents
+   * appels pour une saison. Aucun passage de trente-cinq secondes n'y arrive,
+   * la compétition est donc abandonnée entière — et c'est bien ainsi, elle
+   * n'entre au relevé que lue en totalité.
+   *
+   * Chaque passage réchauffe néanmoins la réserve de ce qu'il a eu le temps de
+   * lire, et la compétition finit par passer. « Finit par » voulait dire une
+   * vingtaine de passages par compétition : les dix championnats ajoutés le
+   * 10 septembre 2026 auraient mis des semaines à entrer.
+   *
+   * Avec cette surcharge, le propriétaire amorce depuis un poste en une fois,
+   * sans coupure d'hébergeur, et la production trouve la réserve déjà chaude.
+   */
+  const BUDGET_MS = Number(process.env.OCCASIONS_BUDGET_MS) || 35_000;
   const couvertes: string[] = [];
   const laissees: string[] = [];
 
@@ -947,7 +1010,12 @@ const FRAICHEUR_MS = 90 * 60 * 1000;
  */
 export async function rafraichirSiNecessaire(): Promise<{ lance: boolean; raison: string }> {
   try {
-    const actuel = await lireReserve<ReleveOccasions>(CLE).catch(() => null);
+    // La même relecture patiente qu'au-dessus : avec le seul chemin rapide,
+    // ce contrôle ne voyait JAMAIS le relevé — la réserve renonçait au bout
+    // d'une seconde et demie —, croyait n'avoir rien bâti, et relançait une
+    // construction à chaque visite. Le verrou évitait le pire, mais l'anneau
+    // repartait sans cesse du même endroit.
+    const actuel = await lireRelevePatiemment(CLE).catch(() => null);
     const construitLe = actuel?.contenu?.construitLe
       ? new Date(actuel.contenu.construitLe).getTime()
       : 0;
@@ -977,6 +1045,77 @@ export async function rafraichirSiNecessaire(): Promise<{ lance: boolean; raison
 }
 
 /**
+ * ── LE RELEVÉ EST TROP GROS POUR LE DÉLAI D'UNE PAGE PUBLIQUE ──────────────
+ *
+ * `lireReserve` abandonne au bout d'une seconde et demie. C'est un garde-temps
+ * posé le 25 août 2026, quand la base a saturé et que `/pricing` et `/matches`
+ * attendaient trente secondes : il a sa raison d'être, et il reste.
+ *
+ * Mais il est trop court pour ce relevé-ci. Mesuré le 10 septembre 2026, en
+ * appelant `lireForces` depuis un poste :
+ *
+ *     [DÉLAI] réserve forces:occasions-v6 : delai après 1503 ms — repli servi.
+ *
+ * Le relevé neuf n'arrivait donc PAS. La fonction retombait sur le relevé
+ * précédent — périmé depuis le 6 septembre — et le moteur analysait les matchs
+ * du 10 avec la forme des équipes du 6. La moitié du moteur qui a porté les
+ * rencontres de promus de 67,4 à 75,5 % tournait sur des données de quatre
+ * jours.
+ *
+ * Rien ne le signalait : `butsAttendusOccasions` rend `null` quand le relevé
+ * manque, et le moteur reprend alors son propre calcul au centième près. C'est
+ * un repli propre — et parfaitement muet.
+ *
+ * C'est le MÊME piège qui avait fait rester le relevé de fiabilité à ses
+ * 26 rencontres au lieu de 57, découvert le 5 septembre. La parade est la même,
+ * et elle est déjà éprouvée dans `fiabilite-apprise.ts`.
+ *
+ * ── DEUX TEMPS, ET LE PREMIER NE CHANGE PAS ───────────────────────────────
+ *
+ *   1. Le chemin rapide d'abord, inchangé : quand la base répond vite — c'est
+ *      le cas dès que l'index sur `cache_api` existe —, rien n'est plus lent
+ *      qu'avant, pas d'une milliseconde.
+ *
+ *   2. Quand il n'a rien rendu, on relit DIRECTEMENT, avec cinq secondes. Au
+ *      lieu de renoncer, on attend le temps qu'il faut pour ces quelques
+ *      centaines de kilo-octets.
+ *
+ * Le plafond de cinq secondes reste : une base réellement tombée ne doit pas
+ * faire attendre un abonné, et le moteur sait se passer de ce relevé.
+ */
+const LIMITE_RELECTURE_MS = 5_000;
+
+async function lireRelevePatiemment(
+  cle: string
+): Promise<{ contenu: ReleveOccasions; expiree: boolean } | null> {
+  const rapide = await lireReserve<ReleveOccasions>(cle).catch(() => null);
+  if (rapide?.contenu) return rapide;
+
+  try {
+    const { createAdminClient } = await import('./supabase-admin');
+    const lecture = createAdminClient()
+      .from('cache_api')
+      .select('contenu, expire_le')
+      .eq('cle', cle)
+      .maybeSingle();
+    const limite = new Promise<null>((r) => setTimeout(() => r(null), LIMITE_RELECTURE_MS));
+    const resultat: any = await Promise.race([lecture, limite]);
+    const contenu = resultat?.data?.contenu;
+    if (!contenu?.clubs) return null;
+
+    console.warn(
+      `[OCCASIONS] Relevé ${cle} obtenu par relecture directe — la réserve avait renoncé.`
+    );
+    return {
+      contenu: contenu as ReleveOccasions,
+      expiree: new Date(resultat.data.expire_le).getTime() < Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Le relevé, depuis la réserve.
  *
  * On accepte un relevé PÉRIMÉ plutôt que rien : la forme d'une équipe ne se
@@ -985,13 +1124,13 @@ export async function rafraichirSiNecessaire(): Promise<{ lance: boolean; raison
  */
 export async function lireForces(): Promise<ReleveOccasions | null> {
   try {
-    const cache = await lireReserve<ReleveOccasions>(CLE);
+    const cache = await lireRelevePatiemment(CLE);
     const neuf = cache?.contenu?.clubs ? cache.contenu : null;
 
     // Le relevé neuf couvre-t-il déjà tout ? Alors rien d'autre à faire.
     // Sinon on complète avec le précédent, pour les clubs qu'il n'a pas encore
     // atteints — jamais pour ceux qu'il a, sa lecture faisant autorité.
-    const ancien = await lireReserve<ReleveOccasions>(CLE_PRECEDENTE).catch(() => null);
+    const ancien = await lireRelevePatiemment(CLE_PRECEDENTE).catch(() => null);
     const clubsAnciens = ancien?.contenu?.clubs;
     if (!clubsAnciens) return neuf;
 
