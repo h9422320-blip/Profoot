@@ -27,6 +27,7 @@
  */
 
 import { apiFootball, CACHE_TTL } from './api-football';
+import { rangDeCompetition } from './precalcul-selection';
 import { createAdminClient } from './supabase-admin';
 import { lireReglages } from './app-settings';
 import { lirePredictionBrute } from './prediction-figee';
@@ -886,7 +887,28 @@ export async function getPreuvesPubliques(
     //    indéfiniment, quel que soit l'âge du match.
     if (a.miseEnAvant !== b.miseEnAvant) return a.miseEnAvant ? -1 : 1;
 
-    // 3. La notoriété de l'affiche, entre matchs du même jour.
+    // 3. ── LA LIGUE DES CHAMPIONS PASSE DEVANT, DANS SA JOURNÉE ────────────
+    //
+    // Décision du propriétaire, 10 septembre 2026 : « tu mets toujours la ligue
+    // des champions en avant. Comme ça, dès que l'utilisateur vient, il la
+    // voit. Et ensuite par la suite tu as les différents championnats. »
+    //
+    // C'est aussi ce que les chiffres soutiennent : les 8 et 9 septembre,
+    // l'application a été juste sept fois sur dix en Ligue des champions, dont
+    // un score exact — Sporting 3-1 Galatasaray. Ce sont les rencontres que le
+    // visiteur reconnaît, et celles où la preuve porte le plus.
+    //
+    // La notoriété des clubs départage ensuite, comme avant : rien n'est
+    // masqué, les autres compétitions suivent dans la même journée.
+    //
+    // Le même rang sert à la sélection du jour et au carrousel — trois listes
+    // rangées différemment sur le même écran donneraient l'impression que
+    // l'une des trois se trompe.
+    const rangA = rangDeCompetition(a.competition);
+    const rangB = rangDeCompetition(b.competition);
+    if (rangA !== rangB) return rangA - rangB;
+
+    // 4. La notoriété de l'affiche, entre matchs du même jour.
     const poidsA = poidsAffiche(a, grandsClubs);
     const poidsB = poidsAffiche(b, grandsClubs);
     if (poidsA !== poidsB) return poidsB - poidsA;

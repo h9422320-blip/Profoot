@@ -61,7 +61,51 @@ import { figerPrediction } from './prediction-figee';
 // Ce n'est pas une question de mesure : le Championship ressortait à 80,8 %,
 // mieux que la Serie A. C'est une question de produit — ce que les abonnés
 // veulent voir analysé.
+/**
+ * ── LES GRANDES COUPES D'EUROPE PASSENT DEVANT, PARTOUT ──────────────────
+ *
+ * ── CE QUI MANQUAIT, CONSTATÉ LE 10 SEPTEMBRE 2026 ──────────────────────
+ *
+ * La Ligue des champions ne figurait pas dans la liste ci-dessous. Le
+ * pré-calcul ne la préparait donc jamais, et « Les matchs les mieux cernés »
+ * ne pouvait pas la proposer : l'abonné y voyait la Bundesliga et la Super
+ * League un soir de Ligue des champions.
+ *
+ * Or ce sont ces rencontres-là qu'il vient chercher. Et sur les deux journées
+ * du 8 et du 9 septembre, l'application y a été juste sept fois sur dix, dont
+ * un score exact — Sporting 3-1 Galatasaray.
+ *
+ * ── CE QUE CETTE LISTE DÉCIDE ───────────────────────────────────────────
+ *
+ * Elle sert au pré-calcul ET à la sélection : une compétition absente d'ici
+ * n'est ni préparée, ni proposée. Les coupes y entrent donc, sans que rien
+ * n'en sorte — les championnats restent tous là.
+ *
+ * L'ORDRE, lui, se décide par `rangDeCompetition` : la Ligue des champions
+ * d'abord, les autres coupes européennes ensuite, puis tout le reste par
+ * fiabilité mesurée.
+ */
+export const COUPES_EUROPE = [
+  'UEFA Champions League',
+  'UEFA Europa League',
+  'UEFA Europa Conference League',
+];
+
+/**
+ * Le rang d'affichage d'une compétition : plus il est petit, plus elle passe
+ * devant. Employé par la sélection, par le carrousel et par le mur public,
+ * pour qu'ils rangent tous les trois de la même façon.
+ */
+export function rangDeCompetition(nom: string | null | undefined): number {
+  const n = String(nom ?? '').trim();
+  if (n === 'UEFA Champions League') return 0;
+  if (COUPES_EUROPE.includes(n)) return 1;
+  return 2;
+}
+
 export const CHAMPIONNATS = [
+  // Les coupes d'Europe en tête de liste — voir la note ci-dessus.
+  ...COUPES_EUROPE,
   'Premier League',
   'La Liga',
   'Serie A',

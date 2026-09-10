@@ -224,3 +224,64 @@ test('★ ACQUIS — le titre reste dans le vocabulaire de l’analyse', () => {
     );
   }
 });
+
+/**
+ * ── LA LIGUE DES CHAMPIONS PASSE DEVANT, PARTOUT ──────────────────────────
+ *
+ * ── CE QUI MANQUAIT, CONSTATÉ LE 10 SEPTEMBRE 2026 ──────────────────────
+ *
+ * La Ligue des champions ne figurait pas dans la liste des compétitions
+ * préparées. Le pré-calcul ne la touchait donc jamais, et « Les matchs les
+ * mieux cernés » ne pouvait pas la proposer : un soir de Ligue des champions,
+ * l'abonné y voyait la Bundesliga et la Super League.
+ *
+ * Or ce sont ces rencontres-là qu'il vient chercher — et celles où
+ * l'application a été la plus juste : sept fois sur dix les 8 et 9 septembre,
+ * dont un score exact.
+ */
+test('★ ACQUIS — les coupes d’Europe sont préparées et passent devant', async () => {
+  const { CHAMPIONNATS: LISTE, rangDeCompetition, COUPES_EUROPE } = await import(
+    '../src/lib/precalcul-selection'
+  );
+
+  // Sans elles dans la liste, rien n'est jamais préparé ni proposé.
+  for (const coupe of COUPES_EUROPE) {
+    assert.ok(
+      LISTE.includes(coupe),
+      `${coupe} a disparu des compétitions préparées : la sélection ne pourra plus ` +
+        'jamais la proposer, quel que soit le tri.'
+    );
+  }
+
+  // Et l'ordre : la Ligue des champions d'abord, les autres coupes ensuite,
+  // les championnats après.
+  assert.equal(rangDeCompetition('UEFA Champions League'), 0);
+  assert.ok(rangDeCompetition('UEFA Europa League') > rangDeCompetition('UEFA Champions League'));
+  assert.ok(rangDeCompetition('Premier League') > rangDeCompetition('UEFA Europa League'));
+
+  // Rien n'est retiré : les championnats restent tous là.
+  for (const c of ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1']) {
+    assert.ok(LISTE.includes(c), `${c} a été retiré des compétitions préparées.`);
+  }
+
+  // Une compétition inconnue ne remonte pas par accident devant les coupes.
+  assert.ok(rangDeCompetition('Coppa Titano') >= rangDeCompetition('Premier League'));
+  assert.ok(rangDeCompetition(null) >= rangDeCompetition('Premier League'));
+});
+
+test('★ ACQUIS — les trois listes rangent de la même façon', () => {
+  // La sélection, le carrousel et le mur public s'affichent sur le même écran.
+  // Rangés différemment, l'un des trois aurait l'air de se tromper.
+  const fs2 = require('node:fs') as typeof import('node:fs');
+  for (const f of [
+    'src/lib/selection-du-jour.ts',
+    'src/lib/grands-matchs-du-jour.ts',
+    'src/lib/preuves.ts',
+  ]) {
+    const src = fs2.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    assert.ok(
+      /rangDeCompetition\(/.test(src),
+      `${f} ne range plus par compétition : la Ligue des champions n'y passera plus devant.`
+    );
+  }
+});

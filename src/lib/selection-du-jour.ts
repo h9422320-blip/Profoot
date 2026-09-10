@@ -49,7 +49,7 @@ import { createAdminClient } from './supabase-admin';
 import { lireReserve, ecrireReserve } from './api-football';
 import { lireReleve, fiabilitePour, trancheDe, TRANCHES } from './fiabilite-apprise';
 import { getLiveTeams } from './teams-live';
-import { CHAMPIONNATS } from './precalcul-selection';
+import { CHAMPIONNATS, rangDeCompetition } from './precalcul-selection';
 import type { EquipeDuJour } from './grands-matchs-du-jour';
 
 /** Une heure : la liste bouge quand un match commence, pas plus vite. */
@@ -295,10 +295,25 @@ async function calculer(): Promise<SelectionDuJour> {
       });
     }
 
-    // La plus haute fiabilité d'abord ; à égalité, le match le plus proche —
-    // une rencontre dans une heure vaut mieux qu'une rencontre à minuit.
+    // ── LA LIGUE DES CHAMPIONS PASSE DEVANT ─────────────────────────────
+    //
+    // Décision du propriétaire, 10 septembre 2026 : c'est la compétition que
+    // l'abonné vient chercher, et celle où l'application a été la plus juste —
+    // sept fois sur dix les 8 et 9 septembre, dont un score exact.
+    //
+    // Elle ne remplace rien : les championnats restent tous proposés, ils
+    // passent simplement après. Le seuil de fiabilité, lui, ne bouge pas —
+    // une rencontre de Ligue des champions mal cernée n'entre pas ici pour
+    // autant.
+    //
+    // À rang égal, la plus haute fiabilité d'abord ; puis le match le plus
+    // proche — une rencontre dans une heure vaut mieux qu'une rencontre à
+    // minuit.
     retenus.sort(
-      (a, b) => b.fiabilite - a.fiabilite || a.kickoffISO.localeCompare(b.kickoffISO)
+      (a, b) =>
+        rangDeCompetition(a.championnat) - rangDeCompetition(b.championnat) ||
+        b.fiabilite - a.fiabilite ||
+        a.kickoffISO.localeCompare(b.kickoffISO)
     );
     return retenus.slice(0, MAX_MATCHS);
   };

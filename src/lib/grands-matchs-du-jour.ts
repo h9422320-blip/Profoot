@@ -46,6 +46,7 @@
 import { getTodayFixtures, getUpcomingFixtures, LEAGUE_IDS } from './api-football';
 import { lireReserve, ecrireReserve } from './api-football';
 import { getLiveTeams } from './teams-live';
+import { rangDeCompetition } from './precalcul-selection';
 
 /** Angleterre, Espagne, Italie, Allemagne, France. */
 export const GRANDS_CHAMPIONNATS: number[] = [
@@ -245,8 +246,16 @@ function aVenir(cartes: MatchDuJour[]): MatchDuJour[] {
   const seuil = Date.now() - BATTEMENT_MS;
   return cartes
     .filter((c) => new Date(c.kickoffISO).getTime() >= seuil)
+    // ── LA LIGUE DES CHAMPIONS PASSE DEVANT, ICI AUSSI ──────────────────
+    //
+    // Le carrousel et la sélection doivent ranger de la MÊME façon : deux
+    // listes voisines sur le même écran, ordonnées différemment, donnent
+    // l'impression que l'une des deux se trompe.
+    //
+    // Rien n'est retiré — les championnats suivent, simplement après.
     .sort(
       (a, b) =>
+        rangDeCompetition(a.championnat) - rangDeCompetition(b.championnat) ||
         (b.fiabilite ?? -1) - (a.fiabilite ?? -1) ||
         a.kickoffISO.localeCompare(b.kickoffISO)
     )
