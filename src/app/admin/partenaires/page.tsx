@@ -5,6 +5,7 @@ import {
 import { calculerEconomie, getPartenaires } from "@/lib/partenaires";
 import {
   heureDeLecture,
+  parMois,
   recettesParJour,
   retireDeMaketouXof,
   surcoutAcheteurMaketou,
@@ -82,6 +83,26 @@ export default async function PartenairesPage() {
   const netMaketou = Math.max(0, mt.xof - mt.fraisXof);
   const surcoutMaketou = surcoutAcheteurMaketou(mt.xof);
   const afficheMaketou = mt.xof + surcoutMaketou;
+
+  // ── LE MOIS, PARCE QUE C'EST CE QU'ON COMPARE ─────────────────────────
+  //
+  // Restreint aux journées MakeTou : août mêle les deux boutiques, et un mois
+  // d'août complet ne se compare à rien sur leur tableau de bord. Les totaux
+  // par mois s'additionnent donc exactement au total MakeTou affiché plus bas
+  // — 111 ventes en août, 277 en septembre, 388 en tout au 10 septembre 2026.
+  const journeesMaketou = Object.fromEntries(
+    Object.entries(parJour ?? {}).filter(([jour]) => jour > DERNIER_JOUR_CHARIOW)
+  );
+  const moisMaketou = [...parMois(journeesMaketou)].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const MOIS_FR = [
+    "janvier", "février", "mars", "avril", "mai", "juin",
+    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+  ];
+  const moisEnLettres = (cle: string) => {
+    const [a, m] = cle.split("-");
+    return `${MOIS_FR[Number(m) - 1] ?? m} ${a}`;
+  };
 
   // ── ACQUIS N'EST PAS ENCAISSÉ ───────────────────────────────────────────
   //
@@ -422,6 +443,86 @@ export default async function PartenairesPage() {
                   </div>
                 )}
               </Panneau>
+
+              {/* ── LE MOIS, PARCE QUE C'EST CE QU'ON COMPARE ───────────────
+                  Le 10 septembre 2026, le propriétaire a comparé le chiffre du
+                  mois lu sur MakeTou avec le total de cette page — qui couvre
+                  toute l'histoire, Chariow comprise. Rien ne pouvait
+                  coïncider, et il a conclu que l'application mentait.
+
+                  Le calcul par mois existait déjà dans `recettesParJour`, sans
+                  être affiché nulle part. Il l'est ici, restreint à la période
+                  MakeTou : c'est la seule qui puisse se confronter à leur
+                  tableau de bord. */}
+              <div className="mt-6">
+                <Panneau
+                  titre="Par mois, chez MakeTou"
+                  sousTitre="À comparer directement avec le tableau de bord de la boutique"
+                  icone={<CalendarDays className="w-4 h-4" />}
+                  teinte="cyan"
+                >
+                  {moisMaketou.length === 0 ? (
+                    <Vide message="Aucune vente depuis l'ouverture de MakeTou." />
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[12.5px] tabular-nums">
+                        <thead>
+                          <tr className="text-white/35 text-left">
+                            <th className="py-2 pr-3 font-bold">Mois</th>
+                            <th className="py-2 pr-3 font-bold text-right">Ventes</th>
+                            <th className="py-2 pr-3 font-bold text-right text-cyan-300/60">
+                              Chez MakeTou
+                            </th>
+                            <th className="py-2 pr-3 font-bold text-right">Prix de vente</th>
+                            <th className="py-2 font-bold text-right">Net</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {moisMaketou.map(([mois, m]) => (
+                            <tr key={mois} className="border-t border-[#2e4757]">
+                              <td className="py-2 pr-3 text-white/70">{moisEnLettres(mois)}</td>
+                              <td className="py-2 pr-3 text-right text-white/50">{m.ventes}</td>
+                              <td className="py-2 pr-3 text-right font-bold text-cyan-300/80">
+                                {Math.round(
+                                  m.xof + surcoutAcheteurMaketou(m.xof)
+                                ).toLocaleString("fr-FR")}
+                              </td>
+                              <td className="py-2 pr-3 text-right text-white/80">
+                                {Math.round(m.xof).toLocaleString("fr-FR")}
+                              </td>
+                              <td className="py-2 text-right font-bold text-white">
+                                {Math.round(m.xof - (m.fraisXof ?? 0)).toLocaleString("fr-FR")}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="border-t-2 border-[#8b5cf6]/40">
+                            <td className="py-2.5 pr-3 font-black text-white">Total MakeTou</td>
+                            <td className="py-2.5 pr-3 text-right font-bold text-white/60">
+                              {mt.ventes}
+                            </td>
+                            <td className="py-2.5 pr-3 text-right font-black text-cyan-300">
+                              {afficheMaketou.toLocaleString("fr-FR")}
+                            </td>
+                            <td className="py-2.5 pr-3 text-right font-black text-white">
+                              {mt.xof.toLocaleString("fr-FR")}
+                            </td>
+                            <td className="py-2.5 text-right font-black text-[#a78bfa]">
+                              {netMaketou.toLocaleString("fr-FR")}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p className="mt-3 text-[12px] text-white/45 leading-relaxed">
+                        La colonne <span className="text-cyan-300/80 font-bold">Chez MakeTou</span>{" "}
+                        est le nombre lisible sur leur tableau de bord : le prix plus les{" "}
+                        {Math.round(TAUX_MAKETOU_ACHETEUR * 100)} % ajoutés aux acheteurs. Août ne
+                        compte que du 28 au 31 — la boutique n'existait pas avant. La commission du
+                        partenaire se calcule sur le <span className="font-bold">prix de vente</span>.
+                      </p>
+                    </div>
+                  )}
+                </Panneau>
+              </div>
 
               {/* ── LE DÉTAIL QUI PERMET DE VÉRIFIER ────────────────────────
                   Chaque journée porte le taux de la boutique qui l'a
