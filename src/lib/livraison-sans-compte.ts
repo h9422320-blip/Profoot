@@ -86,6 +86,71 @@ function siteUrl(): string {
  * trois courriels après avoir payé fait conclure que quelque chose ne tourne
  * pas rond.
  */
+/**
+ * ── UNE INVITATION ENVOYÉE DANS LE VIDE NE SERT À PERSONNE ───────────────
+ *
+ * ── CE QUI A ÉTÉ TROUVÉ LE 9 SEPTEMBRE 2026 ─────────────────────────────
+ *
+ * Un acheteur a payé DEUX FOIS — le 5 septembre à 19 h 10 et le 6 à 7 h 22,
+ * deux mille francs chacune — et n'a jamais rien reçu. L'adresse portée sur la
+ * vente était `babaoulare@4gmail.com`. Ce domaine n'existe pas : le `4` est un
+ * doigt qui a glissé sur le clavier, juste au-dessus du `g`.
+ *
+ * Les deux invitations sont donc parties dans le vide. Aucune n'a rebondi vers
+ * nous, aucune alerte ne s'est levée, et le client attend depuis quatre jours
+ * avec quatre mille francs de perdus.
+ *
+ * La reconnaissance des fautes de frappe existait déjà — mais elle ne joue que
+ * pour retrouver un COMPTE EXISTANT. Ici il n'y a aucun compte : rien à
+ * rapprocher, et l'adresse cassée passe telle quelle.
+ *
+ * ── LA RÈGLE ────────────────────────────────────────────────────────────
+ *
+ * On ne corrige QUE le domaine, et seulement quand la faute est certaine :
+ * une liste fermée de domaines célèbres et de leurs déformations connues. On
+ * ne touche jamais à la partie avant l'arobase — « jean.dupont » et
+ * « jeandupont » sont deux personnes possibles, et deviner là serait envoyer
+ * l'invitation d'un client à un autre.
+ *
+ * L'invitation part alors à l'adresse corrigée, et la trace garde les deux :
+ * celle de la vente et celle qui a servi.
+ */
+const DOMAINES_CONNUS: Record<string, string> = {
+  // Le doigt qui glisse sur la rangée du dessus, ou une lettre en trop.
+  '4gmail.com': 'gmail.com',
+  '6gmail.com': 'gmail.com',
+  'gmail.co': 'gmail.com',
+  'gmail.cm': 'gmail.com',
+  'gmail.con': 'gmail.com',
+  'gmial.com': 'gmail.com',
+  'gmai.com': 'gmail.com',
+  'gmaill.com': 'gmail.com',
+  'gnail.com': 'gmail.com',
+  'gamil.com': 'gmail.com',
+  'yahoo.co': 'yahoo.com',
+  'yaho.com': 'yahoo.com',
+  'yahho.com': 'yahoo.com',
+  'hotmial.com': 'hotmail.com',
+  'hotmail.co': 'hotmail.com',
+  'outlok.com': 'outlook.com',
+  'icloud.co': 'icloud.com',
+};
+
+/**
+ * L'adresse à laquelle écrire vraiment.
+ *
+ * Rend l'adresse telle quelle quand rien n'est sûr : ne jamais deviner.
+ */
+export function adresseJoignable(email: string): string {
+  const brut = String(email ?? '').trim();
+  const arobase = brut.lastIndexOf('@');
+  if (arobase <= 0) return brut;
+  const local = brut.slice(0, arobase);
+  const domaine = brut.slice(arobase + 1).toLowerCase();
+  const corrige = DOMAINES_CONNUS[domaine];
+  return corrige ? `${local}@${corrige}` : brut;
+}
+
 async function inviterAsInscrire(
   sb: ReturnType<typeof createAdminClient>,
   email: string,
@@ -100,18 +165,41 @@ async function inviterAsInscrire(
     .limit(1);
   if (deja?.length) return 'deja';
 
+  // Le domaine est corrigé s'il est cassé de façon certaine — voir plus haut.
+  const destination = adresseJoignable(email);
+  const corrigee = destination !== email;
+
   const { envoyerCourriel, messageCompteAcreer } = await import('./courriel');
-  const lien = `${siteUrl()}/signup?email=${encodeURIComponent(email)}`;
-  const parti = await envoyerCourriel({ a: email, ...messageCompteAcreer(email, offre, lien) });
+  // Le lien porte l'adresse CORRIGÉE : c'est celle sur laquelle l'acheteur doit
+  // créer son compte pour que son accès s'ouvre. Le rattachement se fait
+  // ensuite à la faute de frappe près, comme pour les comptes existants.
+  const lien = `${siteUrl()}/signup?email=${encodeURIComponent(destination)}`;
+  const parti = await envoyerCourriel({
+    a: destination,
+    ...messageCompteAcreer(destination, offre, lien),
+  });
   if (!parti) return 'echec';
 
   await sb.from('webhook_events').insert({
     provider: 'invitation',
     delivery_id: reference,
     event: 'acheteur_invite_a_s_inscrire',
-    payload: { email, offre, vente: sale, invite_le: new Date().toISOString() },
+    payload: {
+      email,
+      // La trace garde les deux adresses : celle de la vente et celle qui a
+      // réellement servi. Sans quoi, en cherchant plus tard pourquoi un
+      // acheteur n'a rien reçu, on relirait l'adresse cassée et on conclurait
+      // que le courriel est bien parti là.
+      ...(corrigee ? { email_corrige: destination, domaine_corrige: true } : {}),
+      offre,
+      vente: sale,
+      invite_le: new Date().toISOString(),
+    },
   });
-  console.log(`[LIVRAISON] ${email} invité à créer son compte (${offre}).`);
+  console.log(
+    `[LIVRAISON] ${destination} invité à créer son compte (${offre})` +
+      (corrigee ? ` — domaine corrigé depuis ${email}.` : '.')
+  );
   return 'envoyee';
 }
 

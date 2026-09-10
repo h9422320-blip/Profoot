@@ -50,7 +50,19 @@ test('★ ACQUIS — on ne crée JAMAIS un compte à la place de quelqu’un', (
   const s = sansCommentaires(lire(MODULE));
   assert.doesNotMatch(s, /auth\.admin\.createUser/, 'L’application recrée des comptes à la place des acheteurs.');
   assert.match(s, /inviterAsInscrire/, 'L’invitation à s’inscrire a disparu.');
-  assert.match(s, /\/signup\?email=\$\{encodeURIComponent\(email\)\}/, 'Le lien ne pré-remplit plus l’adresse.');
+  // ── L'ÉPREUVE PORTE SUR L'INTENTION, PAS SUR UN NOM DE VARIABLE ─────────
+  //
+  // Elle exigeait le mot `email` dans le lien. Le 9 septembre 2026, l'adresse
+  // envoyée est devenue `destination` — la même, au domaine corrigé près quand
+  // il est cassé de façon certaine (`@4gmail.com`). L'épreuve a cassé alors que
+  // le courriel venait de devenir JOIGNABLE.
+  //
+  // Ce qui compte : le lien d'inscription pré-remplit bien une adresse.
+  assert.match(
+    s,
+    /\/signup\?email=\$\{encodeURIComponent\((email|destination)\)\}/,
+    'Le lien ne pré-remplit plus l’adresse.'
+  );
 
   // L'accès reste crédité pour qui a DÉJÀ un compte — la jumelle d'adresse.
   assert.match(s, /from\('subscriptions'\)[\s\S]{0,80}\.upsert/, 'L’accès n’est plus crédité.');
