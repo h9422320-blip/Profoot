@@ -39,7 +39,11 @@
 
 import { createAdminClient } from './supabase-admin';
 import { calculerScoreProbable, competitionPeuFiable } from './score-probable';
-import { lireForces, butsAttendusOccasions } from './forme-occasions';
+import {
+  lireForces,
+  butsAttendusOccasions,
+  CHAMPIONNATS as COMPETITIONS_APPRISES,
+} from './forme-occasions';
 import { lireForcesLigue } from './forces-equipes';
 import { figerPrediction } from './prediction-figee';
 
@@ -103,6 +107,70 @@ export function rangDeCompetition(nom: string | null | undefined): number {
   return 2;
 }
 
+/**
+ * ── UN NOM NE DÉSIGNE PAS UNE COMPÉTITION ────────────────────────────────
+ *
+ * ── CE QUI A ÉTÉ MESURÉ LE 10 SEPTEMBRE 2026 ────────────────────────────
+ *
+ * La sélection retenait une rencontre quand le NOM de sa compétition figurait
+ * dans la liste ci-dessous. Or « Premier League » est aussi le nom du
+ * championnat du Bhoutan, de l'Ouganda, du Ghana, du Botswana, de l'Égypte,
+ * de Bahreïn, du Kirghizistan, de Hong-Kong et de Singapour ; « Ligue 1 »
+ * celui de l'Algérie et de la Tunisie ; « Super League » celui de la
+ * Malaisie, de l'Ouzbékistan et de la Chine.
+ *
+ * Sur les 366 rencontres d'une semaine réelle, **108 entraient par cette
+ * porte — 29,5 %**. Le moteur les préparait, les proposait dans « les matchs
+ * les mieux cernés », et annonçait un vainqueur dans des championnats dont il
+ * n'a jamais lu une seule rencontre. On a vu RTC — Thimphu City et
+ * Police — UPDF remonter dans la liste des candidats.
+ *
+ * C'est l'exact contraire de ce qui est demandé : quand le moteur dit qu'une
+ * équipe gagne, cette équipe doit gagner.
+ *
+ * ── CE QU'ON RETIENT DÉSORMAIS ──────────────────────────────────────────
+ *
+ * Les compétitions que le moteur a RÉELLEMENT apprises, désignées par leur
+ * numéro chez le fournisseur — un numéro ne se confond avec rien. La liste
+ * est celle de `forme-occasions`, c'est-à-dire celle dont les forces
+ * d'attaque et de défense sont mesurées sur les tirs.
+ *
+ * ── CE QUE ÇA AJOUTE, ET CE QUE ÇA RETIRE ───────────────────────────────
+ *
+ * Ça AJOUTE quatorze compétitions que le moteur connaît par cœur et que la
+ * liste de noms ne mentionnait pas : Major League Soccer, Serie A
+ * brésilienne, Championship, Liga Profesional Argentina, Segunda División,
+ * Serie B, Ligue 2, Superliga danoise, Bundesliga autrichienne, First League
+ * bulgare, première division chypriote, Premier League ukrainienne, Ligat
+ * Ha'al, NB I.
+ *
+ * Ça ne retire QUE les homonymes jamais appris. Aucune compétition voulue ne
+ * disparaît : la Liga I roumaine, nommée ici sans figurer dans le relevé des
+ * tirs, est conservée explicitement.
+ */
+const LIGA_I_ROUMAINE = 283;
+
+export const IDS_PREPARES: ReadonlySet<number> = new Set<number>([
+  ...COMPETITIONS_APPRISES.map((c) => c.id),
+  LIGA_I_ROUMAINE,
+]);
+
+/**
+ * Cette rencontre appartient-elle à une compétition que le moteur prépare ?
+ *
+ * On juge sur le NUMÉRO de la compétition, jamais sur son nom : c'est le seul
+ * identifiant qui ne se confond pas d'un pays à l'autre.
+ */
+export function competitionRetenue(ligue: unknown): boolean {
+  const id = Number((ligue as { id?: unknown } | null | undefined)?.id);
+  return Number.isFinite(id) && IDS_PREPARES.has(id);
+}
+
+/**
+ * Les noms, conservés : le rang d'affichage, les diagnostics et les scripts
+ * s'en servent. Ce n'est plus ce qui décide de ce qu'on prépare — voir
+ * `competitionRetenue` juste au-dessus.
+ */
 export const CHAMPIONNATS = [
   // Les coupes d'Europe en tête de liste — voir la note ci-dessus.
   ...COUPES_EUROPE,
@@ -237,7 +305,7 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
       const jour = new Date(Date.now() + d * 86_400_000).toISOString().slice(0, 10);
       for (const f of await api(`fixtures?date=${jour}`)) {
         if (!A_VENIR.includes(String(f?.fixture?.status?.short))) continue;
-        if (!CHAMPIONNATS.includes(String(f?.league?.name ?? ''))) continue;
+        if (!competitionRetenue(f?.league)) continue;
         bilan.examinees++;
         if (connus.has(Number(f?.fixture?.id))) {
           bilan.dejaConnues++;

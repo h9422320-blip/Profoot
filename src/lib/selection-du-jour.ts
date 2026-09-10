@@ -49,7 +49,7 @@ import { createAdminClient } from './supabase-admin';
 import { lireReserve, ecrireReserve } from './api-football';
 import { lireReleve, fiabilitePour, trancheDe, TRANCHES } from './fiabilite-apprise';
 import { getLiveTeams } from './teams-live';
-import { CHAMPIONNATS, rangDeCompetition } from './precalcul-selection';
+import { CHAMPIONNATS, competitionRetenue, rangDeCompetition } from './precalcul-selection';
 import type { EquipeDuJour } from './grands-matchs-du-jour';
 
 /** Une heure : la liste bouge quand un match commence, pas plus vite. */
@@ -247,7 +247,15 @@ async function calculer(): Promise<SelectionDuJour> {
       //
       // La liste est celle du pré-calcul : une seule source, pour que ce
       // qu'on prépare et ce qu'on propose ne divergent jamais.
-      if (!CHAMPIONNATS.includes(String(f?.league?.name ?? ''))) continue;
+      //
+      // ── ET ON JUGE SUR LE NUMÉRO, PAS SUR LE NOM ──────────────────────
+      //
+      // « Premier League » est aussi le nom du championnat du Bhoutan, de
+      // l'Ouganda et de sept autres pays ; « Ligue 1 » celui de l'Algérie.
+      // Mesuré le 10 septembre 2026 : 108 rencontres sur 366 entraient par
+      // cette porte, et la sélection annonçait un vainqueur dans des
+      // championnats dont le moteur n'a jamais lu une rencontre.
+      if (!competitionRetenue(f?.league)) continue;
 
       const p = pronostics.get(Number(f?.fixture?.id));
       if (!p || p.proba_domicile == null) continue;
