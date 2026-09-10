@@ -1,42 +1,66 @@
 /**
- * Quelle part des rencontres que l application analyse le releve d occasions
- * sait eclairer.
+ * SUR COMBIEN DE RENCONTRES LA MOITIÉ « TIRS » DU MOTEUR S'APPLIQUE-T-ELLE ?
  *
- * Le denominateur qui compte n est pas « toutes les rencontres du monde » —
- * un samedi en compte seize cents, coupes de jeunes et reserves comprises —
- * mais celles des competitions declarees dans le releve.
+ * `butsAttendusOccasions` rend `null` dès qu'UN des deux clubs est inconnu du
+ * relevé. La rencontre retombe alors sur le seul modèle des buts — le moteur
+ * tourne, mais avec une moitié de cerveau, et rien ne le signale.
+ *
+ * Ce relevé dit, pour les rencontres réellement au programme, lesquelles sont
+ * couvertes et QUELS clubs manquent. C'est la liste des clubs à aller
+ * chercher, par ordre d'importance.
  */
 import fs from 'node:fs';
 for (const l of fs.readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
   const i = l.indexOf('=');
-  if (i > 0 && !l.startsWith('#')) process.env[l.slice(0, i).trim()] = l.slice(i + 1).trim().replace(/^["']|["']$/g, '');
+  if (i > 0 && !l.startsWith('#'))
+    process.env[l.slice(0, i).trim()] = l.slice(i + 1).trim().replace(/^["']|["']$/g, '');
 }
-const { lireForces, butsAttendusOccasions, CHAMPIONNATS } = await import('../src/lib/forme-occasions.js');
-const K = process.env.API_FOOTBALL_KEY!;
+const { lireForces, butsAttendusOccasions } = await import('../src/lib/forme-occasions.js');
+const { CHAMPIONNATS, rangDeCompetition } = await import('../src/lib/precalcul-selection.js');
 
 const releve = await lireForces();
-if (!releve) { console.log('RELEVE ABSENT'); process.exit(0); }
-const clubs = Object.keys((releve as any).clubs ?? {});
-console.log(`releve : ${clubs.length} clubs, etalon ${(releve as any).moyenne}, avantage ${(releve as any).avantageDomicile}/${(releve as any).avantageExterieur}`);
-const IDS = new Set(CHAMPIONNATS.map((c: any) => c.id));
-console.log(`${CHAMPIONNATS.length} competitions declarees\n`);
+if (!releve) { console.log('AUCUN RELEVE'); process.exit(1); }
+console.log(`relevé : ${Object.keys(releve.clubs).length} clubs\n`);
 
-for (const d of [0, 1, 2]) {
-  const jour = new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
-  const r = await fetch(`https://v3.football.api-sports.io/fixtures?date=${jour}`, { headers: { 'x-apisports-key': K }, cache: 'no-store' });
+const CLE = process.env.API_FOOTBALL_KEY!;
+const jours = [0, 1, 2, 3, 4, 5, 6].map((d) =>
+  new Date(Date.now() + d * 86400000).toISOString().slice(0, 10)
+);
+
+let couverts = 0;
+let total = 0;
+const manquants = new Map<string, { n: number; ligue: string }>();
+
+for (const jour of jours) {
+  const r = await fetch(`https://v3.football.api-sports.io/fixtures?date=${jour}`, {
+    headers: { 'x-apisports-key': CLE },
+    cache: 'no-store',
+  });
   const j = await r.json();
-  const fx = (j?.response ?? []).filter((f: any) => ['NS', 'TBD'].includes(f?.fixture?.status?.short));
-  const declarees = fx.filter((f: any) => IDS.has(Number(f?.league?.id)));
-  const eclaire = (f: any) => !!butsAttendusOccasions(releve, f?.teams?.home?.name, f?.teams?.away?.name);
-  const c1 = declarees.filter(eclaire).length;
-  const c2 = fx.filter(eclaire).length;
-  console.log(
-    `${jour} : ${c1} / ${declarees.length} dans les competitions declarees ` +
-      `(${((100 * c1) / Math.max(1, declarees.length)).toFixed(1)} %)   —   ` +
-      `${c2} / ${fx.length} toutes competitions confondues`
+  const retenus = (j?.response ?? []).filter((f: any) =>
+    CHAMPIONNATS.includes(String(f?.league?.name ?? ''))
   );
-  const trous = new Map<string, number>();
-  for (const f of declarees) if (!eclaire(f)) trous.set(String(f?.league?.name), (trous.get(String(f?.league?.name)) ?? 0) + 1);
-  for (const [nom, n] of [...trous.entries()].sort((a, b) => b[1] - a[1]))
-    console.log(`     trou : ${String(n).padStart(3)}  ${nom}`);
+
+  let cJour = 0;
+  for (const f of retenus) {
+    total++;
+    const dom = String(f?.teams?.home?.name ?? '');
+    const ext = String(f?.teams?.away?.name ?? '');
+    const ligue = String(f?.league?.name ?? '');
+    const vu = butsAttendusOccasions(releve, dom, ext);
+    if (vu) { couverts++; cJour++; continue; }
+    for (const nom of [dom, ext]) {
+      if (!releve.clubs[nom]) {
+        const c = manquants.get(nom) ?? { n: 0, ligue };
+        c.n++;
+        manquants.set(nom, c);
+      }
+    }
+  }
+  console.log(`${jour} : ${cJour}/${retenus.length} rencontres couvertes`);
 }
+
+console.log(`\n=== ${couverts}/${total} rencontres couvertes (${((100 * couverts) / Math.max(1, total)).toFixed(1)} %) ===`);
+console.log(`\n=== ${manquants.size} clubs absents du relevé, les plus fréquents d'abord ===`);
+for (const [nom, c] of [...manquants.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 40))
+  console.log(`  ${String(c.n).padStart(2)} × ${nom.padEnd(30)} ${c.ligue}`);

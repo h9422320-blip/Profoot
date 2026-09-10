@@ -42,7 +42,17 @@ import { useEffect } from 'react';
  * ce qu'il lit, et savoir que son accès n'est pas perdu.
  */
 
-/** Ce qui, dans un message d'erreur, désigne un morceau de code manquant. */
+/**
+ * ── CE QUI, DANS UN MESSAGE, DÉSIGNE UNE COUPURE RÉPARABLE PAR RECHARGEMENT ─
+ *
+ * Les six premiers signes visaient le morceau de code manquant après une mise
+ * en ligne. Les suivants ont été ajoutés le 10 septembre 2026 : sur un
+ * téléphone à 16 % de batterie, en 3G, ce n'est pas toujours le morceau qui
+ * manque — c'est la requête qui n'aboutit pas. Le navigateur dit alors
+ * « Failed to fetch », « Load failed » (Safari) ou « NetworkError », et
+ * l'ancienne liste ne reconnaissait rien : le visiteur restait bloqué sur un
+ * écran définitif alors qu'un simple rechargement suffisait.
+ */
 const SIGNES_MORCEAU_MANQUANT = [
   'ChunkLoadError',
   'Loading chunk',
@@ -50,22 +60,43 @@ const SIGNES_MORCEAU_MANQUANT = [
   'Failed to fetch dynamically imported module',
   'error loading dynamically imported module',
   'Importing a module script failed',
+  // Une coupure réseau pendant le chargement d'un morceau ou d'une page.
+  'Failed to fetch',
+  'NetworkError',
+  'Load failed',
+  'Failed to load',
+  'network error',
+  'Connection closed',
+  'Connection terminated',
 ];
 
 const CLE_RECHARGE = 'profoot:recharge-morceau';
 
 export default function GlobalError({
   error,
+  // ── « retry », ET NON « reset » ────────────────────────────────────────
+  //
+  // Le bouton recevait `reset`. Or, dans cette version de Next, `reset()`
+  // « efface l'état d'erreur et re-rend les enfants SANS aller rechercher le
+  // contenu » — il rejoue donc exactement le rendu qui vient d'échouer. Sur
+  // une panne côté serveur, la seule chose qu'il pouvait produire était le
+  // même écran, instantanément.
+  //
+  // C'est ce qu'un client payant a photographié le 10 septembre 2026 à
+  // 11 h 46 : il appuyait sur « Réessayer », et rien ne se passait.
+  //
+  // `retry()` va, lui, RECHERCHER le contenu avant de re-rendre. Les deux
+  // sont acceptés ici — le nom a changé selon les versions — et si aucun
+  // n'est fourni, on recharge la page, ce qui répare toujours.
+  retry,
   reset,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry?: () => void;
+  reset?: () => void;
 }) {
-  const morceauManquant = SIGNES_MORCEAU_MANQUANT.some(
-    (signe) =>
-      String(error?.name ?? '').includes(signe) ||
-      String(error?.message ?? '').includes(signe)
-  );
+  const texte = `${error?.name ?? ''} ${error?.message ?? ''}`;
+  const morceauManquant = SIGNES_MORCEAU_MANQUANT.some((signe) => texte.includes(signe));
 
   useEffect(() => {
     if (!morceauManquant) return;
@@ -136,7 +167,21 @@ export default function GlobalError({
               } catch {
                 /* sans importance */
               }
-              reset();
+              // ── LE BOUTON DOIT TOUJOURS FAIRE QUELQUE CHOSE ──────────────
+              //
+              // `retry` d'abord : il redemande le contenu au serveur. À
+              // défaut, un rechargement complet, qui répare tout ce qu'un
+              // re-rendu ne peut pas réparer. Ne jamais appeler `reset` seul :
+              // il rejoue le rendu qui vient d'échouer.
+              if (typeof retry === 'function') {
+                retry();
+                return;
+              }
+              try {
+                window.location.reload();
+              } catch {
+                reset?.();
+              }
             }}
             style={{
               minHeight: 48,
@@ -152,6 +197,31 @@ export default function GlobalError({
           >
             Réessayer
           </button>
+
+          {/* ── L'IDENTIFIANT, POUR QUE LA CAPTURE D'ÉCRAN SERVE À QUELQUE CHOSE ──
+              En production, le message d'une erreur venue du serveur est
+              volontairement générique : il ne dit rien de la cause. Seul
+              `digest` — un condensé posé par le cadre — permet de retrouver
+              la ligne correspondante dans les traces du serveur.
+
+              Sans lui, un client envoie une photo de cet écran et il ne reste
+              qu'à deviner. C'est ce qui s'est passé le 10 septembre 2026.
+
+              Il est écrit petit et sans couleur : celui qui n'en a pas besoin
+              ne le remarque pas, celui qui aide le client l'a sous les yeux. */}
+          {error?.digest ? (
+            <p
+              style={{
+                margin: '18px 0 0',
+                fontSize: 11,
+                letterSpacing: '.04em',
+                color: 'rgba(255,255,255,.34)',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              }}
+            >
+              réf. {error.digest}
+            </p>
+          ) : null}
         </div>
       </body>
     </html>
