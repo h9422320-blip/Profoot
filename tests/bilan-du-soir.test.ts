@@ -108,17 +108,17 @@ test('★ ACQUIS — le bilan du soir signale ce qui manque', () => {
 
   const alerte = messageBilanDuSoir(base);
   assert.match(alerte.texte, /ATTENTION/, 'Une vente manquante ne se voit pas dans le bilan.');
-  assert.match(alerte.texte, /SOUS-ÉVALUÉ/, 'Le bilan ne dit pas que son propre total est faux.');
+  assert.match(alerte.texte, /TROP BAS/, 'Le bilan ne dit pas que son propre total est faux.');
   assert.match(alerte.texte, /d86672fc/, 'La vente manquante n’est pas nommée : introuvable.');
 
   const propre = messageBilanDuSoir({ ...base, vuesAuPulse: 22, manquantes: 0, identifiantsManquants: [] });
   assert.doesNotMatch(propre.texte, /ATTENTION/, 'Une journée saine déclenche une alerte pour rien.');
-  assert.match(propre.texte, /Vérifié/, 'Une journée saine ne dit pas qu’elle a été vérifiée.');
+  assert.match(propre.texte, /Tout est là/, 'Une journée saine ne dit pas qu’elle a été vérifiée.');
 
   // Un journal illisible ne doit JAMAIS passer pour une journée saine.
   const aveugle = messageBilanDuSoir({ ...base, vuesAuPulse: null, manquantes: 0, identifiantsManquants: [] });
-  assert.match(aveugle.texte, /VÉRIFICATION IMPOSSIBLE/, 'Un contrôle impossible passe pour un contrôle réussi.');
-  assert.doesNotMatch(aveugle.texte, /Vérifié/, 'Un contrôle impossible s’annonce comme vérifié.');
+  assert.match(aveugle.texte, /IMPOSSIBLE À VÉRIFIER/, 'Un contrôle impossible passe pour un contrôle réussi.');
+  assert.doesNotMatch(aveugle.texte, /Tout est là/, 'Un contrôle impossible s’annonce comme vérifié.');
 });
 
 test('★ ACQUIS — le bilan porte les trois nombres, jamais un seul', () => {
@@ -132,14 +132,32 @@ test('★ ACQUIS — le bilan porte les trois nombres, jamais un seul', () => {
     cumulPrixDeVente: 1153500, cumulNet: 1095825, vuesAuPulse: 19,
     manquantes: 0, identifiantsManquants: [],
   });
-  const texte = normaliser(m.texte);
-  assert.match(texte, /Chez MakeTou 55 080 F/, 'Le nombre comparable au tableau de bord a disparu.');
-  assert.match(texte, /Prix de vente 54 000 F/, 'La base de la commission du partenaire a disparu.');
-  assert.match(texte, /Net pour vous 51 300 F/, 'Le net a disparu.');
-  // Le cumul aussi : c'est lui qu'on compare au « Revenus totaux » de MakeTou.
-  assert.match(texte, /Chez MakeTou 1 176 570 F/, 'Le cumul comparable à MakeTou a disparu.');
-  // Et le sujet porte le nombre que le propriétaire compare le premier.
-  assert.match(normaliser(m.sujet), /55 080 F chez MakeTou/, 'Le sujet ne permet plus la comparaison d’un coup d’œil.');
+  // Les points de conduite qui alignent les montants sont retirés AVANT de
+  // réduire les espaces : sinon « payé ...... 55 080 » devient « payé   55 080 »
+  // et aucune comparaison ne tombe juste.
+  const texte = normaliser(normaliser(m.texte).replace(/\.{2,}/g, ' '));
+
+  // ── LES TROIS LIGNES QUI SE VÉRIFIENT À LA MAIN ────────────────────────
+  //
+  // payé − gardé = reçu. Un propriétaire doit pouvoir refaire l'addition sur
+  // un coin de table : c'est ce qui a manqué dans la première version.
+  assert.match(texte, /Vos clients ont payé 55 080 F/, 'Ce que les clients ont payé a disparu.');
+  assert.match(texte, /MakeTou garde - 3 780 F/, 'Ce que la boutique garde a disparu.');
+  assert.match(texte, /IL VOUS REVIENT 51 300 F/, 'Ce qui revient au propriétaire a disparu.');
+  assert.equal(55080 - 3780, 51300, 'Les trois lignes ne s’additionnent plus.');
+
+  // ── LE NOMBRE À CONFRONTER AU TABLEAU DE BORD ──────────────────────────
+  assert.match(texte, /Revenus totaux 1 176 570 F/, 'Le cumul comparable à MakeTou a disparu.');
+  assert.match(texte, /Nombre de commandes 387/, 'Le nombre de commandes à comparer a disparu.');
+
+  // ── LA BASE DE LA COMMISSION, NOMMÉE ET EXPLIQUÉE ──────────────────────
+  assert.match(texte, /POUR PAYER VOTRE PARTENAIRE/, 'La section du partenaire a disparu.');
+  assert.match(texte, /Prix de vente du jour 54 000 F/, 'La base de la commission a disparu.');
+
+  // Le sujet dit ce que le propriétaire veut savoir en premier : ce qu'il a
+  // gagné, sans ouvrir le message.
+  assert.match(normaliser(m.sujet), /53 |51 300 F pour vous/, 'Le sujet ne dit plus ce qui lui revient.');
+  assert.match(normaliser(m.sujet), /19 ventes/, 'Le sujet ne dit plus combien de ventes.');
 });
 
 test('★ ACQUIS — la tâche du soir est planifiée', () => {

@@ -40,7 +40,6 @@
 import {
   recettesParJour,
   surcoutAcheteurMaketou,
-  tauxMaketou,
   totalMaketou,
   type RecettesParJour,
 } from './recettes-boutique';
@@ -157,50 +156,143 @@ export async function bilanDuSoir(jour = jourDuBilan()): Promise<BilanDuSoir> {
   };
 }
 
-const fcfa = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} F`;
+/**
+ * Les francs, en chiffres qu'on lit sans effort.
+ *
+ * L'espace est une espace ORDINAIRE, et c'est voulu : `toLocaleString`
+ * emploie une espace insécable étroite, que certains téléphones affichent en
+ * carré vide dans un courriel en texte simple.
+ */
+const fcfa = (n: number) =>
+  `${Math.round(n).toLocaleString('fr-FR').replace(/[  ]/g, ' ')} F`;
 
-/** Le message du soir, en français, lisible sur un téléphone. */
+const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const MOIS = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+];
+
+/** « jeudi 10 septembre 2026 » — une date qu'on lit, pas qu'on déchiffre. */
+export function dateEnToutesLettres(jour: string): string {
+  const d = new Date(`${jour}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return jour;
+  return `${JOURS[d.getUTCDay()]} ${d.getUTCDate()} ${MOIS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+/** Une ligne de tableau : libellé à gauche, montant aligné à droite. */
+function ligne(libelle: string, montant: string, largeur = 44): string {
+  const points = Math.max(1, largeur - libelle.length - montant.length);
+  return `${libelle} ${'.'.repeat(points)} ${montant}`;
+}
+
+/**
+ * LE MESSAGE DU SOIR.
+ *
+ * ── CE QUI A ÉTÉ REFAIT, ET POURQUOI ─────────────────────────────────────
+ *
+ * La première version alignait « Chez MakeTou », « Prix de vente »,
+ * « Commission », « Net pour vous » — quatre termes de comptable, dont trois
+ * désignent presque la même somme. Le propriétaire l'a lu à voix haute et
+ * s'est perdu dans ses propres chiffres.
+ *
+ * Sa consigne, le 10 septembre 2026 : « tu mets ça de façon professionnelle,
+ * pour que quand je le donne à mon frère de cinq ans, il comprenne ».
+ *
+ * Donc : une seule idée par ligne, dans l'ordre où l'argent circule.
+ *
+ *     ce que les clients ont payé
+ *   − ce que la boutique garde
+ *   = ce qui vous revient
+ *
+ * Ces trois lignes se suivent et se vérifient à la main. Le prix de vente —
+ * qui sert à payer le partenaire — vient APRÈS, dans son propre encadré, avec
+ * la phrase qui dit à quoi il sert. Et le nombre à confronter au tableau de
+ * bord de la boutique est désigné nommément, pour qu'aucun doute ne renaisse.
+ */
 export function messageBilanDuSoir(b: BilanDuSoir): { sujet: string; texte: string } {
-  const lignes: string[] = [];
+  const L: string[] = [];
+  const gardeBoutique = b.chezMaketou - b.net;
+  const s = b.ventes > 1 ? 's' : '';
 
-  lignes.push(`Journée du ${b.jour}`);
-  lignes.push('');
-  lignes.push(`${b.ventes} vente${b.ventes > 1 ? 's' : ''} aujourd'hui.`);
-  lignes.push('');
-  lignes.push(`Chez MakeTou      ${fcfa(b.chezMaketou)}`);
-  lignes.push(`Prix de vente     ${fcfa(b.prixDeVente)}`);
-  lignes.push(`Commission ${Math.round(tauxMaketou() * 100)} %     -${fcfa(b.commission)}`);
-  lignes.push(`Net pour vous     ${fcfa(b.net)}`);
-  lignes.push('');
-  lignes.push('« Chez MakeTou » est le nombre exact lisible sur leur tableau');
-  lignes.push('de bord : le prix plus les 2 % ajoutés aux acheteurs, qui ne');
-  lignes.push('vous ont jamais appartenu. La commission du partenaire se');
-  lignes.push('calcule sur le prix de vente.');
-  lignes.push('');
-  lignes.push('— DEPUIS L\'OUVERTURE DE MAKETOU —');
-  lignes.push(`${b.cumulVentes} ventes`);
-  lignes.push(`Chez MakeTou      ${fcfa(b.cumulChezMaketou)}`);
-  lignes.push(`Prix de vente     ${fcfa(b.cumulPrixDeVente)}`);
-  lignes.push(`Net               ${fcfa(b.cumulNet)}`);
-  lignes.push('');
+  L.push('═══════════════════════════════════════════');
+  L.push(`  BILAN DU ${dateEnToutesLettres(b.jour).toUpperCase()}`);
+  L.push('═══════════════════════════════════════════');
+  L.push('');
 
-  // ── LA PARTIE QUI COMPTE VRAIMENT ────────────────────────────────────────
-  if (b.vuesAuPulse == null) {
-    lignes.push('VÉRIFICATION IMPOSSIBLE : le journal de la boutique n\'a pas pu');
-    lignes.push('être relu. Les chiffres ci-dessus viennent de la base seule.');
-  } else if (b.manquantes > 0) {
-    lignes.push(`ATTENTION : ${b.manquantes} vente${b.manquantes > 1 ? 's' : ''} annoncée${b.manquantes > 1 ? 's' : ''} par la boutique`);
-    lignes.push('ne figure' + (b.manquantes > 1 ? 'nt' : '') + ' pas dans les comptes.');
-    for (const id of b.identifiantsManquants.slice(0, 5)) lignes.push(`  ${id}`);
-    lignes.push('');
-    lignes.push('Le total ci-dessus est donc SOUS-ÉVALUÉ.');
+  if (b.ventes === 0) {
+    L.push('  Aucun abonnement vendu aujourd’hui.');
+    L.push('');
   } else {
-    lignes.push(`Vérifié : les ${b.vuesAuPulse} vente${b.vuesAuPulse > 1 ? 's' : ''} annoncée${b.vuesAuPulse > 1 ? 's' : ''} par la boutique`);
-    lignes.push('aujourd\'hui figure' + (b.vuesAuPulse > 1 ? 'nt' : '') + ' bien dans les comptes.');
+    L.push(`  ${b.ventes} abonnement${s} vendu${s} aujourd’hui.`);
+    L.push('');
+    L.push('  L’ARGENT DE LA JOURNÉE');
+    L.push('');
+    L.push('  ' + ligne('Vos clients ont payé', fcfa(b.chezMaketou)));
+    L.push('  ' + ligne('MakeTou garde', `- ${fcfa(gardeBoutique)}`));
+    L.push('  ' + '─'.repeat(46));
+    L.push('  ' + ligne('IL VOUS REVIENT', fcfa(b.net)));
+    L.push('');
   }
 
-  return {
-    sujet: `ProFoot — ${b.ventes} vente${b.ventes > 1 ? 's' : ''}, ${fcfa(b.chezMaketou)} chez MakeTou (${b.jour})`,
-    texte: lignes.join('\n'),
-  };
+  L.push('  ─────────────────────────────────────────');
+  L.push('  À COMPARER AVEC MAKETOU');
+  L.push('');
+  L.push(`  Ouvrez MakeTou, ligne « Revenus totaux ».`);
+  L.push(`  Vous devez y lire, pour tout le mois :`);
+  L.push('');
+  L.push('  ' + ligne('Revenus totaux', fcfa(b.cumulChezMaketou)));
+  L.push('  ' + ligne('Nombre de commandes', String(b.cumulVentes)));
+  L.push('');
+  L.push('  Si vous lisez autre chose, dites-le moi :');
+  L.push('  c’est qu’une vente manque quelque part.');
+  L.push('');
+
+  L.push('  ─────────────────────────────────────────');
+  L.push('  POUR PAYER VOTRE PARTENAIRE');
+  L.push('');
+  L.push('  ' + ligne('Prix de vente du jour', fcfa(b.prixDeVente)));
+  L.push('  ' + ligne('Prix de vente depuis le début', fcfa(b.cumulPrixDeVente)));
+  L.push('');
+  L.push('  C’est le prix de vos offres, SANS les 2 %');
+  L.push('  que MakeTou ajoute aux acheteurs. Cet');
+  L.push('  argent-là n’est jamais entré chez vous :');
+  L.push('  c’est donc sur ce montant, et pas sur');
+  L.push('  l’autre, que se calcule sa commission.');
+  L.push('');
+
+  L.push('  ─────────────────────────────────────────');
+  L.push('  VÉRIFICATION');
+  L.push('');
+  if (b.vuesAuPulse == null) {
+    L.push('  ⚠ IMPOSSIBLE À VÉRIFIER CE SOIR.');
+    L.push('');
+    L.push('  Le journal de la boutique n’a pas pu être');
+    L.push('  relu. Les chiffres ci-dessus viennent de');
+    L.push('  nos comptes seuls, sans contrôle.');
+  } else if (b.manquantes > 0) {
+    L.push(`  ⚠ ATTENTION — ${b.manquantes} VENTE${b.manquantes > 1 ? 'S' : ''} MANQUE${b.manquantes > 1 ? 'NT' : ''}.`);
+    L.push('');
+    L.push(`  MakeTou a annoncé ${b.vuesAuPulse} vente${b.vuesAuPulse > 1 ? 's' : ''} aujourd’hui.`);
+    L.push(`  ${b.vuesAuPulse - b.manquantes} seulement figure${b.vuesAuPulse - b.manquantes > 1 ? 'nt' : ''} dans vos comptes.`);
+    L.push('');
+    L.push('  Les montants ci-dessus sont donc TROP BAS.');
+    L.push('  Vente' + (b.manquantes > 1 ? 's' : '') + ' concernée' + (b.manquantes > 1 ? 's' : '') + ' :');
+    for (const id of b.identifiantsManquants.slice(0, 5)) L.push(`    ${id}`);
+  } else {
+    L.push(`  ✓ Tout est là.`);
+    L.push('');
+    L.push(`  MakeTou a annoncé ${b.vuesAuPulse} vente${b.vuesAuPulse > 1 ? 's' : ''} aujourd’hui,`);
+    L.push(`  et les ${b.vuesAuPulse} sont dans vos comptes.`);
+  }
+  L.push('');
+  L.push('═══════════════════════════════════════════');
+  L.push('  Message automatique, envoyé chaque soir');
+  L.push('  à 23 h 59.');
+
+  const sujet =
+    b.ventes === 0
+      ? `ProFoot — aucune vente le ${b.jour}`
+      : `ProFoot — ${b.ventes} vente${s} aujourd’hui, ${fcfa(b.net)} pour vous`;
+
+  return { sujet, texte: L.join('\n') };
 }
