@@ -157,6 +157,10 @@ export default async function PartenairesPage() {
           { libelle: "Partenaires", valeur: String(eco.nombrePartenaires) },
           { libelle: "Part reversée", valeur: `${eco.partTotalePct} %`, accent: true },
           { libelle: `Recettes ${moisCourant}`, valeur: fcfa(eco.recettesMoisXof) },
+          // Le nombre que le propriétaire lit sur MakeTou, à côté du nôtre.
+          // Sans lui, les deux écrans se contredisent dès le premier coup
+          // d'œil et c'est l'application qu'on soupçonne.
+          { libelle: "Sur MakeTou (jusqu’à hier)", valeur: fcfa(veilleAffichee) },
         ]}
       />
 
@@ -210,6 +214,27 @@ export default async function PartenairesPage() {
                 </p>
                 <p className="text-[26px] sm:text-[32px] leading-none font-black text-white tabular-nums mt-2 tracking-tight">
                   {fcfa(eco.recettesMoisXof)}
+                </p>
+                {/* ── LE NOMBRE DE MAKETOU, SOUS CELUI-CI ─────────────────
+                    Le 10 septembre 2026, le propriétaire lit 812 500 ici et
+                    771 630 sur MakeTou, et conclut que la page est fausse.
+                    Les deux sont justes : leur écran ajoute 2 % et s'arrête
+                    la veille. Tant que ce n'était écrit qu'en bas de page, il
+                    ne le voyait pas — c'est ce chiffre-ci qu'il regarde. */}
+                <p className="mt-2 text-[12px] leading-relaxed text-cyan-300/70">
+                  Sur MakeTou :{" "}
+                  <span className="font-black text-cyan-300">{fcfa(veilleAffichee)}</span>
+                  <span className="text-white/35"> ({veille.ventes} ventes, jusqu’à hier)</span>
+                </p>
+                <p className="text-[11.5px] leading-relaxed text-white/35">
+                  Leur fenêtre exclut le jour en cours. Aujourd’hui compris :{" "}
+                  {fcfa(
+                    (moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].xof ?? 0) +
+                      surcoutAcheteurMaketou(
+                        moisMaketou.find(([m]) => m === cleMoisCourant)?.[1].xof ?? 0
+                      )
+                  )}
+                  .
                 </p>
               </div>
               {/* Un filet entre les colonnes sur grand écran : les quatre
