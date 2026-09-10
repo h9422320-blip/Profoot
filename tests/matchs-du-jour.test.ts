@@ -60,15 +60,22 @@ test('★ ACQUIS — le tap passe par le flux de la sélection manuelle', () => 
   );
 });
 
-test('★ ACQUIS — les cinq grands championnats, et pas les autres', () => {
+test('★ ACQUIS — les coupes d’Europe et les cinq grands championnats, et pas les autres', () => {
   // Un samedi ordinaire compte plusieurs centaines de rencontres dans le
   // monde ; un carrousel de trois cents cartes ne se parcourt pas sur un
-  // téléphone.
+  // téléphone. La liste reste donc courte et choisie.
+  //
+  // Les trois coupes continentales en font partie depuis le 10 septembre
+  // 2026 : sans elles, le carrousel proposait la Bundesliga un soir de
+  // Ligue des champions, parce qu'aucune carte de C1 ne lui parvenait.
   const s = sansCommentaires(lire(SOURCE));
-  for (const l of ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1']) {
-    assert.match(s, new RegExp(`LEAGUE_IDS\\.${l}`), `${l} ne fait plus partie des grands championnats.`);
+  for (const l of ['ucl', 'uel', 'uecl', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1']) {
+    assert.match(s, new RegExp(`LEAGUE_IDS\\.${l}\\b`), `${l} ne fait plus partie des grands matchs.`);
   }
   assert.match(s, /GRANDS_CHAMPIONNATS\.includes\(ligue\)/, 'Le filtre par championnat a sauté.');
+
+  // Et elles doivent passer DEVANT, pas simplement être présentes.
+  assert.match(s, /rangDeCompetition\(a\.championnat\) - rangDeCompetition\(b\.championnat\)/, 'La Ligue des champions ne passe plus en tête du carrousel.');
 });
 
 test('★ ACQUIS — un seul appel au fournisseur par jour, partagé', () => {

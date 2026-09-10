@@ -48,8 +48,25 @@ import { lireReserve, ecrireReserve } from './api-football';
 import { getLiveTeams } from './teams-live';
 import { rangDeCompetition } from './precalcul-selection';
 
-/** Angleterre, Espagne, Italie, Allemagne, France. */
+/**
+ * Les coupes d'Europe, puis l'Angleterre, l'Espagne, l'Italie, l'Allemagne,
+ * la France.
+ *
+ * POURQUOI LES COUPES SONT ARRIVÉES ICI
+ *
+ * Le carrousel savait ranger la Ligue des champions en tête — mais il n'en
+ * recevait jamais une seule carte : cette liste ne retenait que les cinq
+ * championnats nationaux, et tout ce qui portait le numéro 2 était écarté
+ * douze lignes plus bas. Un soir de Ligue des champions, la section
+ * « prochains grands matchs » proposait la Bundesliga pendant que le
+ * Bayern jouait.
+ *
+ * Aucun championnat n'a été retiré : les cinq suivent, simplement après.
+ */
 export const GRANDS_CHAMPIONNATS: number[] = [
+  LEAGUE_IDS.ucl,
+  LEAGUE_IDS.uel,
+  LEAGUE_IDS.uecl,
   LEAGUE_IDS.epl,
   LEAGUE_IDS.laliga,
   LEAGUE_IDS.seriea,
