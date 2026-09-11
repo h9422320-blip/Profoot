@@ -132,6 +132,25 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   fs.writeFileSync(FICHIER_TIRS, JSON.stringify(tirs));
   journal(`${tirs.length} rencontres avec leurs tirs exportées`);
 
+  // ── 3 BIS. TOUTES LES COTES DU JOUR, SANS LA LIMITE DE L'HÉBERGEUR ────────
+  //
+  // La production relève les cotes à minuit, dans une tâche plafonnée à trois
+  // cents secondes, avec son propre budget de quatre-vingt-dix : elle ne passe
+  // qu'une partie des championnats chaque jour, à tour de rôle. Mesuré le
+  // 11 septembre 2026 : une cinquantaine de matchs cotés et joués par semaine
+  // dans les grands championnats et les coupes d'Europe — trois à quatre
+  // semaines avant que la couche du marché ait de quoi être jugée.
+  //
+  // Ici, rien ne presse : on les passe TOUS, avec la même fonction, dans la
+  // même réserve. La production en profite aussi.
+  try {
+    const { releverCotes } = await import('../../src/lib/cotes-marche.js');
+    const r = await releverCotes(new Date(), 20 * 60_000);
+    journal(`${r.matchs} rencontres cotées relevées sur ${r.jours} journées (${r.ligues} championnats)`);
+  } catch (e: any) {
+    journal(`relevé complet des cotes impossible : ${e?.message}`);
+  }
+
   // ── 4. LES COTES, POUR LA COUCHE DU MARCHÉ ───────────────────────────────
   //
   // Relevées chaque jour par la production (`cotes-marche.ts`) et rangées

@@ -279,7 +279,15 @@ async function coterUnChampionnat(ligue: number, saison: number): Promise<CoteMa
  * mieux qu'un relevé interrompu.
  */
 export async function releverCotes(
-  maintenant = new Date()
+  maintenant = new Date(),
+  /**
+   * Budget de temps, en millisecondes. Sans argument : celui d'aujourd'hui,
+   * taillé pour la tâche de minuit et ses trois cents secondes. Le challenger
+   * de l'ordinateur du propriétaire, qui n'a pas cette limite, passe un budget
+   * plus long pour relever TOUS les championnats le même jour — ajouté le
+   * 11 septembre 2026, sans rien changer pour la production.
+   */
+  budgetMs = BUDGET_MS
 ): Promise<{ jours: number; matchs: number; ligues: number; detail: { jour: string; matchs: number }[] }> {
   const saison = saisonCourante(maintenant);
   // ── LA LISTE TOURNE D'UN JOUR À L'AUTRE ─────────────────────────────────
@@ -308,7 +316,7 @@ export async function releverCotes(
   let interroges = 0;
 
   for (let i = 0; i < ligues.length; i += DE_FRONT) {
-    if (Date.now() - debut > BUDGET_MS) {
+    if (Date.now() - debut > budgetMs) {
       console.warn(
         `[COTES] Budget épuisé après ${interroges} championnats sur ${ligues.length} : ` +
           'le reste sera relevé demain.'
@@ -338,7 +346,7 @@ export async function releverCotes(
     // Le budget couvre AUSSI cette étape. Sans cela, le relevé du 24 août 2026
     // a duré trois cent trente et une secondes — au-delà des trois cents que
     // la plateforme accorde à toute la tâche quotidienne, qui serait tombée.
-    if (Date.now() - debut > BUDGET_MS * 1.5) {
+    if (Date.now() - debut > budgetMs * 1.5) {
       console.warn('[COTES] Budget épuisé pendant la lecture des fiches : le reste attendra demain.');
       break;
     }
