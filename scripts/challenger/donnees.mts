@@ -145,7 +145,12 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   // même réserve. La production en profite aussi.
   try {
     const { releverCotes } = await import('../../src/lib/cotes-marche.js');
-    const r = await releverCotes(new Date(), 20 * 60_000);
+    // DOUCEMENT : la clé du fournisseur est la même que celle des abonnés qui
+    // lancent une analyse en pleine journée. Trois demandes à la fois et une
+    // seconde et demie entre deux paquets — une centaine par minute au plus —,
+    // là où un relevé à douze de front a dépassé la limite de l'abonnement le
+    // 11 septembre 2026. Trente minutes suffisent largement.
+    const r = await releverCotes(new Date(), 30 * 60_000, 3, 1_500);
     journal(`${r.matchs} rencontres cotées relevées sur ${r.jours} journées (${r.ligues} championnats)`);
   } catch (e: any) {
     journal(`relevé complet des cotes impossible : ${e?.message}`);

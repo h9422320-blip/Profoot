@@ -307,7 +307,17 @@ export async function releverCotes(
    * plus long pour relever TOUS les championnats le même jour — ajouté le
    * 11 septembre 2026, sans rien changer pour la production.
    */
-  budgetMs = BUDGET_MS
+  budgetMs = BUDGET_MS,
+  /**
+   * Combien de demandes à la fois, et quelle pause entre deux paquets. Sans
+   * argument : le rythme d'aujourd'hui. Le challenger de l'ordinateur du
+   * propriétaire, qui tourne en pleine journée, relève doucement : la clé du
+   * fournisseur est la même que celle des abonnés qui lancent une analyse,
+   * et le 11 septembre 2026 un relevé à douze de front a dépassé la limite
+   * de demandes par minute de l'abonnement.
+   */
+  deFront = DE_FRONT,
+  pauseMs = 0
 ): Promise<{ jours: number; matchs: number; ligues: number; detail: { jour: string; matchs: number }[] }> {
   const saison = saisonCourante(maintenant);
   // ── LA LISTE TOURNE D'UN JOUR À L'AUTRE ─────────────────────────────────
@@ -335,7 +345,8 @@ export async function releverCotes(
   const tous: CoteMatch[] = [];
   let interroges = 0;
 
-  for (let i = 0; i < ligues.length; i += DE_FRONT) {
+  for (let i = 0; i < ligues.length; i += deFront) {
+    if (pauseMs > 0 && i > 0) await new Promise((attente) => setTimeout(attente, pauseMs));
     if (Date.now() - debut > budgetMs) {
       console.warn(
         `[COTES] Budget épuisé après ${interroges} championnats sur ${ligues.length} : ` +
@@ -343,7 +354,7 @@ export async function releverCotes(
       );
       break;
     }
-    const paquet = ligues.slice(i, i + DE_FRONT);
+    const paquet = ligues.slice(i, i + deFront);
     const resultats = await Promise.all(paquet.map((l) => coterUnChampionnat(l, saison)));
     for (const r of resultats) tous.push(...r);
     interroges += paquet.length;
@@ -362,7 +373,8 @@ export async function releverCotes(
   const paquets: number[][] = [];
   for (let i = 0; i < identifiants.length; i += 20) paquets.push(identifiants.slice(i, i + 20));
 
-  for (let i = 0; i < paquets.length; i += DE_FRONT) {
+  for (let i = 0; i < paquets.length; i += deFront) {
+    if (pauseMs > 0 && i > 0) await new Promise((attente) => setTimeout(attente, pauseMs));
     // Le budget couvre AUSSI cette étape. Sans cela, le relevé du 24 août 2026
     // a duré trois cent trente et une secondes — au-delà des trois cents que
     // la plateforme accorde à toute la tâche quotidienne, qui serait tombée.
@@ -370,7 +382,7 @@ export async function releverCotes(
       console.warn('[COTES] Budget épuisé pendant la lecture des fiches : le reste attendra demain.');
       break;
     }
-    const lot = paquets.slice(i, i + DE_FRONT);
+    const lot = paquets.slice(i, i + deFront);
     const reponses = await Promise.all(
       lot.map((p) =>
         apiFootball<any>(`/fixtures?ids=${p.join('-')}`, CACHE_TTL.FIXTURES_UPCOMING).catch((e: any) => {
@@ -386,6 +398,30 @@ export async function releverCotes(
         m.dom = Number(f?.teams?.home?.id ?? 0);
         m.ext = Number(f?.teams?.away?.id ?? 0);
       }
+    }
+  }
+
+  // ── UNE SECONDE CHANCE, EN PETITS PAQUETS ──────────────────────────────
+  //
+  // Constaté le 11 septembre 2026 : dix-huit paquets de vingt fiches ont
+  // dépassé les dix secondes que le fournisseur a pour répondre, et 360 cotes
+  // ont été écartées faute d'équipes. Une fiche de cinq matchs répond bien
+  // plus vite. Les cotes restées sans équipes sont donc redemandées cinq par
+  // cinq, une demande à la fois, au même rythme et dans le même budget. Quand
+  // tout a répondu du premier coup, cette boucle ne fait rien.
+  const sansEquipes = [...parId.values()].filter((m) => !(m.dom > 0 && m.ext > 0)).map((m) => m.id);
+  for (let i = 0; i < sansEquipes.length; i += 5) {
+    if (Date.now() - debut > budgetMs * 1.5) break;
+    if (pauseMs > 0) await new Promise((attente) => setTimeout(attente, pauseMs));
+    const r = await apiFootball<any>(
+      `/fixtures?ids=${sansEquipes.slice(i, i + 5).join('-')}`,
+      CACHE_TTL.FIXTURES_UPCOMING
+    ).catch(() => null);
+    for (const f of r?.response ?? []) {
+      const m = parId.get(Number(f?.fixture?.id));
+      if (!m) continue;
+      m.dom = Number(f?.teams?.home?.id ?? 0);
+      m.ext = Number(f?.teams?.away?.id ?? 0);
     }
   }
 
