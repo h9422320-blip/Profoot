@@ -278,6 +278,26 @@ async function coterUnChampionnat(ligue: number, saison: number): Promise<CoteMa
  * Un échec sur un championnat n'arrête pas les autres : une case vide vaut
  * mieux qu'un relevé interrompu.
  */
+/**
+ * Relit une journée directement en base, sans le garde-temps de la réserve.
+ *
+ * Rend son contenu, `null` si elle n'existe pas encore — rien à perdre —, ou
+ * « illisible » si la base n'a pas répondu : dans ce cas on ne sait pas ce
+ * qu'elle contient, et on ne l'écrase pas.
+ */
+async function relireSansDelai(cle: string): Promise<{ contenu: ReleveDuJour } | null | 'illisible'> {
+  try {
+    const { createAdminClient } = await import('./supabase-admin');
+    const lecture = createAdminClient().from('cache_api').select('contenu').eq('cle', cle).maybeSingle();
+    const limite = new Promise<'delai'>((r) => setTimeout(() => r('delai'), 5_000));
+    const r: any = await Promise.race([lecture, limite]);
+    if (r === 'delai' || r?.error) return 'illisible';
+    return r?.data?.contenu ? { contenu: r.data.contenu as ReleveDuJour } : null;
+  } catch {
+    return 'illisible';
+  }
+}
+
 export async function releverCotes(
   maintenant = new Date(),
   /**
@@ -391,12 +411,35 @@ export async function releverCotes(
   for (const [jour, matchs] of [...parJour].sort((a, b) => a[0].localeCompare(b[0]))) {
     const fusion = new Map<number, CoteMatch>();
 
+    // ── ON NE RÉÉCRIT JAMAIS UNE JOURNÉE QU'ON N'A PAS PU RELIRE ─────────────
+    //
+    // Constaté le 11 septembre 2026 : sept journées déjà jouées, du 4 au 10
+    // septembre, réécrites en quelques secondes. Le fournisseur ne rend plus
+    // les cotes de certains matchs une fois joués ; la relecture par la
+    // réserve, qui abandonne au bout d'une seconde et demie, a rendu « rien »,
+    // et chaque journée a été réécrite avec les seules cotes encore
+    // disponibles. Une dizaine de matchs cotés perdus pour toujours — le
+    // fournisseur ne garde pas les cotes passées.
+    //
+    // La relecture rapide reste la première. Si elle ne rend rien, une
+    // relecture directe prend jusqu'à cinq secondes ; et si celle-là échoue
+    // aussi, la journée N'EST PAS réécrite : mieux vaut des cotes du jour en
+    // moins que celles d'hier effacées.
+    let ancien: { contenu: ReleveDuJour } | null = null;
     try {
-      const ancien = await lireReserve<ReleveDuJour>(cleDuJour(jour));
-      for (const m of ancien?.contenu?.matchs ?? []) fusion.set(m.id, m);
+      ancien = await lireReserve<ReleveDuJour>(cleDuJour(jour));
     } catch {
-      // Rien en réserve : on part de zéro, ce n'est pas une anomalie.
+      ancien = null;
     }
+    if (!ancien) {
+      const lu = await relireSansDelai(cleDuJour(jour));
+      if (lu === 'illisible') {
+        console.warn(`[COTES] Journée ${jour} illisible : laissée intacte plutôt que réécrite à l'aveugle.`);
+        continue;
+      }
+      ancien = lu;
+    }
+    for (const m of ancien?.contenu?.matchs ?? []) fusion.set(m.id, m);
 
     for (const m of matchs) fusion.set(m.id, m);
 
