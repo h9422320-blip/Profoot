@@ -34,7 +34,8 @@ import type { Pronostic } from './porte.js';
 
 type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
-  | { type: 'marche'; poids: number };
+  | { type: 'marche'; poids: number }
+  | { type: 'elo'; k: number; poids: number };
 
 chargerEnv();
 const tache: {
@@ -160,12 +161,60 @@ function avecMarche(poids: number): { pronostics: Pronostic[]; actifs: number[] 
   return { pronostics, actifs };
 }
 
+// ── LA COUCHE ELO : UNE NOTE PAR CLUB, BÂTIE SUR TOUS SES MATCHS ─────────────
+//
+// Chaque club part de 1 500. Chaque match déplace les deux notes selon le
+// résultat, l'écart de buts et ce qui était attendu. Toutes les compétitions
+// suivies comptent, coupes d'Europe comprises : c'est par elles que le niveau
+// d'un championnat se transmet à un autre. Le match du jour ne connaît que
+// les notes de la veille.
+//
+// La note se traduit en avis sur qui domine — mêmes probabilités que le
+// marché, nul fixé à 26 % — et passe par le même point d'entrée : le moteur
+// garde son total de buts et en ajuste la répartition.
+const AVANTAGE_TERRAIN_ELO = 65;
+const NUL_ELO = 0.26;
+const toutesLesRencontres = [...rencontres].sort((a, b) => a.date.localeCompare(b.date));
+function avecElo(k: number, poids: number): Pronostic[] {
+  const note = new Map<number, number>();
+  const lire = (id: number) => note.get(id) ?? 1500;
+  const attendu = (dom: number, ext: number) => 1 / (1 + Math.pow(10, -(lire(dom) + AVANTAGE_TERRAIN_ELO - lire(ext)) / 400));
+  const apprendre = (x: any) => {
+    const we = attendu(x.dom, x.ext);
+    const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
+    const n = Math.abs(x.bd - x.be);
+    const g = n <= 1 ? 1 : n === 2 ? 1.5 : (11 + n) / 8;
+    const delta = k * g * (w - we);
+    note.set(x.dom, lire(x.dom) + delta);
+    note.set(x.ext, lire(x.ext) - delta);
+  };
+  const out: Pronostic[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      // Tous les matchs des jours PRÉCÉDENTS, et rien d'autre.
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    const we = attendu(m.dom, m.ext);
+    const avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids };
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    out.push(versPronostic(m, r));
+  }
+  return out;
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'elo') {
+    sortie[v.nom] = avecElo(v.couche.k, v.couche.poids);
     continue;
   }
   if (v.couche?.type === 'marche') {

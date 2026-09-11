@@ -164,7 +164,8 @@ function champion(): Parametre[] {
 // aura grossi — c'est tout l'intérêt de la rejouer chaque jour.
 type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
-  | { type: 'marche'; poids: number };
+  | { type: 'marche'; poids: number }
+  | { type: 'elo'; k: number; poids: number };
 type Variante = { nom: string; couche: Couche; libelle: string };
 function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
@@ -184,6 +185,16 @@ function couchesAEssayer(): Variante[] {
       couche: { type: 'marche', poids },
       libelle: `Couche du marché (part ${poids})`,
     });
+  // La couche Elo : une note par club, bâtie sur tous ses matchs de deux
+  // saisons, coupes d'Europe comprises — ce qui fait circuler le niveau d'un
+  // championnat à l'autre.
+  for (const k of [20, 30])
+    for (const poids of [0.3, 0.5])
+      out.push({
+        nom: `ELO k=${k} part=${poids}`,
+        couche: { type: 'elo', k, poids },
+        libelle: `Couche Elo (k=${k}, part ${poids})`,
+      });
   return out;
 }
 
