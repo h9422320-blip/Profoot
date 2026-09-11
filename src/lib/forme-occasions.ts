@@ -292,9 +292,20 @@ export const EUROPEENNES = new Set<string>(
   CHAMPIONNATS.filter((c) => (c as { europeenne?: boolean }).europeenne).map((c) => c.nom)
 );
 
-const DEMI_VIE = 8;
-const RETRAIT = 4;
-const MINIMUM_RENCONTRES = 8;
+/**
+ * ── RÉGLABLES DE L'EXTÉRIEUR, POUR LE CHALLENGER DE NUIT ─────────────────
+ *
+ * Les trois valeurs ci-dessous sont celles de la production, et la production
+ * ne définit jamais de variable `BANC_*` : rien ne change pour un abonné.
+ *
+ * Les rendre réglables permet au challenger qui tourne chaque nuit sur
+ * l'ordinateur du propriétaire (`scripts/challenger/`) de rejouer le relevé
+ * avec d'autres valeurs, par le VRAI calcul, et de mesurer si l'une d'elles
+ * ferait mieux. Il propose ; il ne change jamais ces valeurs lui-même.
+ */
+const DEMI_VIE = Number(process.env.BANC_DEMI_VIE) || 8;
+const RETRAIT = Number(process.env.BANC_RETRAIT) || 4;
+const MINIMUM_RENCONTRES = Number(process.env.BANC_MINIMUM_RENCONTRES) || 8;
 
 /**
  * ── COMBIEN DE JOURS DE CALENDRIER ON RELIT ──────────────────────────────

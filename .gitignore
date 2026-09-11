@@ -38,6 +38,10 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# challenger de nuit : données, historique et rapports, propres à
+# l'ordinateur du propriétaire — jamais envoyés sur GitHub
+/.challenger/
 next-env.d.ts
 _*.js
 _*.txt
