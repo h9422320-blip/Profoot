@@ -54,9 +54,15 @@ test('★ ACQUIS — la couche est posée après tout le calcul existant', () =>
   const iMelange = s.indexOf('let butsAttendus2 = melanger(');
   const iCouche = s.indexOf('if (correctionErreurs && equipe1AJoueADomicile !== null)');
   assert.ok(iMelange > 0 && iCouche > iMelange, 'La couche n’est plus posée après le mélange des occasions.');
-  assert.match(
-    s,
-    /correctionErreurs\?: \{ domicile: number; exterieur: number \} \| null\r?\n\): ScoreProbable \{/,
-    'Le paramètre de la couche n’est plus le dernier : un appel existant pourrait changer de sens.'
+  // Les couches se suivent en fin de signature, dans l'ordre où elles ont été
+  // ajoutées — celle du marché est venue après celle-ci, le même jour. Ce qui
+  // compte : aucune ne s'est glissée AVANT les paramètres qui existaient, et
+  // aucun appel existant ne peut changer de sens.
+  const iOccasions = s.indexOf('occasions?: { domicile: number; exterieur: number } | null,');
+  const iErreurs = s.indexOf('correctionErreurs?: { domicile: number; exterieur: number } | null');
+  const iFin = s.indexOf('): ScoreProbable {');
+  assert.ok(
+    iOccasions > 0 && iErreurs > iOccasions && iFin > iErreurs,
+    'Le paramètre de la couche n’est plus après ceux qui existaient : un appel existant pourrait changer de sens.'
   );
 });

@@ -12,7 +12,7 @@
  * que dans la réserve des pages du fournisseur et dans `.challenger/`.
  */
 import fs from 'node:fs';
-import { chargerEnv, assurerDossiers, FICHIER_RENCONTRES, FICHIER_TIRS, journal } from './commun.mjs';
+import { chargerEnv, assurerDossiers, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, journal } from './commun.mjs';
 
 const nombre = (stats: any[] | undefined, type: string): number => {
   const s = (stats ?? []).find((x) => x?.type === type);
@@ -131,6 +131,33 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   }
   fs.writeFileSync(FICHIER_TIRS, JSON.stringify(tirs));
   journal(`${tirs.length} rencontres avec leurs tirs exportées`);
+
+  // ── 4. LES COTES, POUR LA COUCHE DU MARCHÉ ───────────────────────────────
+  //
+  // Relevées chaque jour par la production (`cotes-marche.ts`) et rangées
+  // par jour dans la réserve. On n'en garde que les probabilités, par
+  // rencontre.
+  const cotes: Record<string, { dom: number; nul: number; ext: number }> = {};
+  for (let de = 0; de < 20_000; de += 200) {
+    const { data, error } = await sb.from('cache_api').select('cle, contenu').ilike('cle', 'cotes:%').range(de, de + 199);
+    if (error) throw new Error('lecture des cotes : ' + error.message);
+    for (const r of data ?? []) {
+      const c: any = r.contenu;
+      const liste: any[] = Array.isArray(c)
+        ? c
+        : Array.isArray(c?.matchs)
+          ? c.matchs
+          : Array.isArray(c?.cotes)
+            ? c.cotes
+            : Object.values(c ?? {}).flatMap((v: any) => (Array.isArray(v) ? v : []));
+      for (const m of liste)
+        if (m?.id && m?.proba)
+          cotes[String(m.id)] = { dom: Number(m.proba.dom), nul: Number(m.proba.nul), ext: Number(m.proba.ext) };
+    }
+    if (!data || data.length < 200) break;
+  }
+  fs.writeFileSync(FICHIER_COTES, JSON.stringify(cotes));
+  journal(`${Object.keys(cotes).length} rencontres cotées exportées`);
 
   return { rencontres: rencontres.length, tirs: tirs.length, fichesLues };
 }

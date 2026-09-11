@@ -13,6 +13,8 @@ export const DOSSIER_TRAVAIL = path.join(DOSSIER, 'travail');
 export const DOSSIER_RAPPORTS = path.join(DOSSIER, 'rapports');
 export const FICHIER_RENCONTRES = path.join(DOSSIER, 'rencontres.json');
 export const FICHIER_TIRS = path.join(DOSSIER, 'tirs.json');
+/** Les probabilités tirées des cotes, par rencontre — pour la couche du marché. */
+export const FICHIER_COTES = path.join(DOSSIER, 'cotes.json');
 export const FICHIER_HISTORIQUE = path.join(DOSSIER, 'historique.jsonl');
 export const FICHIER_PROPOSITION = path.join(DOSSIER, 'proposition.json');
 

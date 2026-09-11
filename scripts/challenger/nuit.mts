@@ -162,7 +162,9 @@ function champion(): Parametre[] {
 // des couches posées par-dessus le calcul, chaque jour sur plus de matchs.
 // Une couche refusée aujourd'hui peut passer dans un mois, quand la matière
 // aura grossi — c'est tout l'intérêt de la rejouer chaque jour.
-type Couche = { type: 'erreurs-clubs'; retrecissement: number; poids: number };
+type Couche =
+  | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
+  | { type: 'marche'; poids: number };
 type Variante = { nom: string; couche: Couche; libelle: string };
 function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
@@ -173,6 +175,15 @@ function couchesAEssayer(): Variante[] {
         couche: { type: 'erreurs-clubs', retrecissement, poids },
         libelle: `Couche des erreurs apprises par club (k=${retrecissement}, poids ${poids})`,
       });
+  // La couche du marché : jugée sur les seuls matchs cotés. Le propriétaire a
+  // fixé 1 000 matchs cotés et jugés avant toute décision ; d'ici là, la porte
+  // la refuse d'elle-même faute de matchs, et le rapport dit où on en est.
+  for (const poids of [0.5, 0.75, 1])
+    out.push({
+      nom: `MARCHE part=${poids}`,
+      couche: { type: 'marche', poids },
+      libelle: `Couche du marché (part ${poids})`,
+    });
   return out;
 }
 
@@ -197,7 +208,7 @@ function evaluer(etiquette: string, envReleve: Record<string, string>, variantes
   });
   if (r.status !== 0 || !fs.existsSync(sortie))
     throw new Error(`évaluation « ${etiquette} » en échec (code ${r.status ?? r.signal})`);
-  return JSON.parse(fs.readFileSync(sortie, 'utf8')) as { matchs: number; variantes: Record<string, Pronostic[]> };
+  return JSON.parse(fs.readFileSync(sortie, 'utf8')) as { matchs: number; variantes: Record<string, Pronostic[]>; actifs?: Record<string, number[]> };
 }
 
 // ── 7. L'HISTORIQUE, NUIT APRÈS NUIT ───────────────────────────────────────
@@ -256,13 +267,14 @@ async function principal(): Promise<any> {
   // Le moteur actuel et chaque couche candidate, dans un même processus :
   // une couche se pose par-dessus le calcul, elle ne change aucun réglage.
   const resultats: Record<string, Pronostic[]> = {};
-  Object.assign(
-    resultats,
-    evaluer('champion', {}, [
-      { nom: 'champion', env: {} },
-      ...variantes.map((v) => ({ nom: v.nom, env: {}, couche: v.couche })),
-    ]).variantes
-  );
+  const evaluation = evaluer('champion', {}, [
+    { nom: 'champion', env: {} },
+    ...variantes.map((v) => ({ nom: v.nom, env: {}, couche: v.couche })),
+  ]);
+  Object.assign(resultats, evaluation.variantes);
+  // Une couche qui n'agit que sur une partie des matchs — le marché n'est
+  // coté que sur certains — est jugée sur CES matchs-là seulement.
+  const actifs: Record<string, number[]> = evaluation.actifs ?? {};
 
   const champ = resultats.champion;
   if (!champ?.length) throw new Error('aucun match évaluable');
@@ -304,14 +316,30 @@ async function principal(): Promise<any> {
       ligne(`| ${v.libelle} | — | — | évaluation absente |`);
       continue;
     }
-    const mv = parMoities(l);
-    const ve = verdict(mc, mv);
+    let mcV = mc;
+    let mv = parMoities(l);
+    let libelle = v.libelle;
+    const ids = actifs[v.nom];
+    if (ids) {
+      const ensemble = new Set(ids);
+      const sousChamp = champ.filter((p) => ensemble.has(p.id));
+      const [a1, a2] = moities(sousChamp);
+      const coupe: [Set<number>, Set<number>] = [new Set(a1.map((p) => p.id)), new Set(a2.map((p) => p.id))];
+      const sousMoities = (x: Pronostic[]): [Mesure, Mesure] => [
+        mesurer(x.filter((p) => coupe[0].has(p.id))),
+        mesurer(x.filter((p) => coupe[1].has(p.id))),
+      ];
+      mcV = sousMoities(sousChamp);
+      mv = sousMoities(l.filter((p) => ensemble.has(p.id)));
+      libelle = `${v.libelle} — sur ${ids.length} matchs cotés`;
+    }
+    const ve = verdict(mcV, mv);
     const cellule = (k: 0 | 1) => {
-      const e = mv[k].justes - mc[k].justes;
+      const e = mv[k].justes - mcV[k].justes;
       return `${e >= 0 ? '+' : ''}${e} juste(s), Brier ${mv[k].brier.toFixed(4)}`;
     };
-    ligne(`| ${v.libelle} | ${cellule(0)} | ${cellule(1)} | ${ve.gagne ? '✅ gagne' : '— ' + ve.raisons[0]} |`);
-    cetteNuit.push({ nuit: NUIT, variante: v.nom, libelle: v.libelle, env: {}, couche: v.couche, gagne: ve.gagne, champion: mc, challenger: mv });
+    ligne(`| ${libelle} | ${cellule(0)} | ${cellule(1)} | ${ve.gagne ? '✅ gagne' : '— ' + ve.raisons[0]} |`);
+    cetteNuit.push({ nuit: NUIT, variante: v.nom, libelle, env: {}, couche: v.couche, gagne: ve.gagne, champion: mcV, challenger: mv });
   }
   ligne('');
   const toutes = [...historique, ...cetteNuit];

@@ -18,20 +18,23 @@
  *
  * Depuis la décision du propriétaire du 11 septembre 2026, on n'essaie plus
  * de variantes des réglages existants : on essaie des COUCHES posées
- * par-dessus le moteur. Une variante peut porter une `couche` ; elle est alors
- * rejouée match par match, la couche n'apprenant que des JOURS PRÉCÉDENTS.
+ * par-dessus le moteur.
  *
- * Tous les essais sont jugés sur exactement la même liste de matchs : un
- * match dont un club manque au relevé est rejoué SANS les tirs, comme la
- * production le ferait, au lieu d'être écarté.
+ *   erreurs-clubs  ce que le moteur a appris de ses erreurs, club par club —
+ *                  n'apprend que des JOURS PRÉCÉDENTS ;
+ *   marche         l'avis du marché sur qui domine — n'agit que sur les
+ *                  matchs cotés, et la liste de ces matchs est rendue avec
+ *                  le résultat pour qu'on la juge sur eux seuls.
  *
  * Usage : `npx tsx scripts/challenger/evaluer.mts <tâche.json>`
  */
 import fs from 'node:fs';
-import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, GRANDS, COUPES_SUIVIES } from './commun.mjs';
+import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, COUPES_SUIVIES } from './commun.mjs';
 import type { Pronostic } from './porte.js';
 
-type Couche = { type: 'erreurs-clubs'; retrecissement: number; poids: number };
+type Couche =
+  | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
+  | { type: 'marche'; poids: number };
 
 chargerEnv();
 const tache: {
@@ -49,6 +52,9 @@ const { apprendreErreurs, correctionPour } = await import('../../src/lib/couche-
 const rencontres: any[] = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
 rencontres.sort((a, b) => a.date.localeCompare(b.date));
 const tirs: any[] = JSON.parse(fs.readFileSync(FICHIER_TIRS, 'utf8'));
+const cotes: Record<string, { dom: number; nul: number; ext: number }> = fs.existsSync(FICHIER_COTES)
+  ? JSON.parse(fs.readFileSync(FICHIER_COTES, 'utf8'))
+  : {};
 const quand = (x: any) => Date.parse(x.date);
 
 // ── LE RELEVÉ, TEL QU'IL AURAIT ÉTÉ LA VEILLE ──────────────────────────────
@@ -106,7 +112,7 @@ const versPronostic = (m: any, r: any): Pronostic => {
   };
 };
 
-// ── LES BUTS ATTENDUS DU MOTEUR ACTUEL, DONT LES COUCHES APPRENNENT ────────
+// ── LES BUTS ATTENDUS DU MOTEUR ACTUEL, DONT LA COUCHE DES ERREURS APPREND ──
 let attendus: Map<number, { a1: number; a2: number }> | null = null;
 function baseAttendus() {
   if (attendus) return attendus;
@@ -118,8 +124,8 @@ function baseAttendus() {
   return attendus;
 }
 
-// ── UNE COUCHE, REJOUÉE JOUR APRÈS JOUR ───────────────────────────────────
-function avecCouche(c: Couche): Pronostic[] {
+// ── LA COUCHE DES ERREURS, REJOUÉE JOUR APRÈS JOUR ────────────────────────
+function avecErreurs(retrecissement: number, poids: number): Pronostic[] {
   const base = baseAttendus();
   const out: Pronostic[] = [];
   const passes: any[] = [];
@@ -131,10 +137,7 @@ function avecCouche(c: Couche): Pronostic[] {
       clubs = apprendreErreurs(passes);
       jourCourant = jour;
     }
-    const corr = correctionPour(clubs, String(m.dom), String(m.ext), {
-      retrecissement: c.retrecissement,
-      poids: c.poids,
-    });
+    const corr = correctionPour(clubs, String(m.dom), String(m.ext), { retrecissement, poids });
     const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
     out.push(versPronostic(m, r));
     const a = base.get(Number(m.id))!;
@@ -143,11 +146,32 @@ function avecCouche(c: Couche): Pronostic[] {
   return out;
 }
 
+// ── LA COUCHE DU MARCHÉ, SUR LES MATCHS COTÉS ─────────────────────────────
+function avecMarche(poids: number): { pronostics: Pronostic[]; actifs: number[] } {
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  for (const { m, s1, s2, occ } of entrees) {
+    const c = cotes[String(m.id)];
+    const marche = c ? { ...c, poids } : null;
+    if (marche) actifs.push(Number(m.id));
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, marche);
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
+const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
-  if (v.couche) {
-    sortie[v.nom] = avecCouche(v.couche);
+  if (v.couche?.type === 'erreurs-clubs') {
+    sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'marche') {
+    const r = avecMarche(v.couche.poids);
+    sortie[v.nom] = r.pronostics;
+    actifs[v.nom] = r.actifs;
     continue;
   }
   const avant: Record<string, string | undefined> = {};
@@ -167,5 +191,8 @@ for (const v of tache.variantes) {
   }
 }
 
-fs.writeFileSync(tache.sortie, JSON.stringify({ matchs: entrees.length, variantes: sortie }));
-console.log(`  évaluation terminée : ${entrees.length} matchs, ${tache.variantes.length} essai(s), ${releves.size} relevés reconstruits`);
+fs.writeFileSync(tache.sortie, JSON.stringify({ matchs: entrees.length, variantes: sortie, actifs }));
+console.log(
+  `  évaluation terminée : ${entrees.length} matchs, ${tache.variantes.length} essai(s), ${releves.size} relevés reconstruits, ` +
+    `${Object.keys(cotes).length} rencontres cotées disponibles`
+);

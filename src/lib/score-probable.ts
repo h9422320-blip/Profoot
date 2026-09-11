@@ -1,3 +1,5 @@
+import { butsAttendusDuMarche } from './couche-marche';
+
 /**
  * Score le plus probable d'un match, calculé.
  *
@@ -534,7 +536,18 @@ export function calculerScoreProbable(
    * c'est une couche posée par-dessus, jamais un réglage modifié — décision du
    * propriétaire du 11 septembre 2026.
    */
-  correctionErreurs?: { domicile: number; exterieur: number } | null
+  correctionErreurs?: { domicile: number; exterieur: number } | null,
+  /**
+   * ── COUCHE AJOUTÉE : CE QUE DIT LE MARCHÉ ──────────────────────────────
+   *
+   * Les probabilités tirées des cotes du jour, et la part qu'on leur donne.
+   * Voir `couche-marche.ts`. Le moteur garde son total de buts et reprend
+   * l'avis du marché sur qui domine, dans cette proportion.
+   *
+   * Absente, nulle ou de part nulle, le moteur rend EXACTEMENT ce qu'il
+   * rendait — couche posée par-dessus, décision du 11 septembre 2026.
+   */
+  marche?: { dom: number; nul: number; ext: number; poids: number } | null
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -801,6 +814,22 @@ export function calculerScoreProbable(
     const d2 = ecart(equipe1Recoit ? correctionErreurs.exterieur : correctionErreurs.domicile);
     if (d1 !== 0) butsAttendus1 = borner(butsAttendus1 + d1, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
     if (d2 !== 0) butsAttendus2 = borner(butsAttendus2 + d2, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+  }
+
+  // ── LA COUCHE DU MARCHÉ, POSÉE PAR-DESSUS ────────────────────────────────
+  //
+  // Le total de buts reste celui du moteur ; seule la répartition entre les
+  // deux équipes se rapproche de ce que dit le marché, dans la part voulue.
+  // Absente, ces lignes ne font rien.
+  if (marche && equipe1AJoueADomicile !== null) {
+    const part = Math.min(1, Number(marche.poids));
+    const lu = Number.isFinite(part) && part > 0 ? butsAttendusDuMarche(marche, butsAttendus1 + butsAttendus2) : null;
+    if (lu) {
+      const cible1 = equipe1Recoit ? lu.dom : lu.ext;
+      const cible2 = equipe1Recoit ? lu.ext : lu.dom;
+      butsAttendus1 = borner(butsAttendus1 + part * (cible1 - butsAttendus1), BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+      butsAttendus2 = borner(butsAttendus2 + part * (cible2 - butsAttendus2), BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+    }
   }
 
   // Grille complète des scores : chaque case est la probabilité de ce score
