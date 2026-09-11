@@ -137,6 +137,24 @@ const DOMAINES_CONNUS: Record<string, string> = {
 };
 
 /**
+ * ── LE CHIFFRE COLLÉ AU DOMAINE APPARTIENT AU NOM ────────────────────────
+ *
+ * Constaté le 11 septembre 2026 : `babaoulare@4gmail.com` n'était pas un doigt
+ * qui avait glissé sur le « 4 » au-dessus du « g ». C'était
+ * `babaoulare4@gmail.com` — son vrai compte, créé le soir même de son premier
+ * paiement —, l'arobase tapée un caractère trop tôt.
+ *
+ * Corriger le domaine seul avait produit `babaoulare@gmail.com`, une adresse
+ * qui n'est pas la sienne. Un compte y a été créé le 10 septembre, où il
+ * n'entrerait jamais ; pendant ce temps il essayait d'entrer avec trois
+ * comptes à son vrai nom. Six jours dehors, quatre mille francs payés.
+ *
+ * Le chiffre n'est donc pas deviné : il est remis là où il a été tapé, juste
+ * avant l'arobase. Rien n'est inventé, rien n'est retiré.
+ */
+const CHIFFRE_AVANT_DOMAINE = /^(\d)(gmail\.com)$/;
+
+/**
  * L'adresse à laquelle écrire vraiment.
  *
  * Rend l'adresse telle quelle quand rien n'est sûr : ne jamais deviner.
@@ -147,8 +165,33 @@ export function adresseJoignable(email: string): string {
   if (arobase <= 0) return brut;
   const local = brut.slice(0, arobase);
   const domaine = brut.slice(arobase + 1).toLowerCase();
+  const deplace = domaine.match(CHIFFRE_AVANT_DOMAINE);
+  if (deplace) return `${local}${deplace[1]}@${deplace[2]}`;
   const corrige = DOMAINES_CONNUS[domaine];
   return corrige ? `${local}@${corrige}` : brut;
+}
+
+/**
+ * Toutes les lectures possibles d'une adresse de vente, de la plus sûre à la
+ * moins sûre : telle quelle, puis le chiffre remis dans le nom, puis le
+ * domaine seul corrigé.
+ *
+ * La livraison cherche un COMPTE EXISTANT sous chacune avant de conclure
+ * qu'il n'y en a pas : un compte réel à l'une de ces adresses est la preuve
+ * que c'était la bonne lecture.
+ */
+export function adressesCandidates(email: string): string[] {
+  const brut = String(email ?? '').trim().toLowerCase();
+  const arobase = brut.lastIndexOf('@');
+  if (arobase <= 0) return brut ? [brut] : [];
+  const local = brut.slice(0, arobase);
+  const domaine = brut.slice(arobase + 1);
+  const lectures = [brut];
+  const deplace = domaine.match(CHIFFRE_AVANT_DOMAINE);
+  if (deplace) lectures.push(`${local}${deplace[1]}@${deplace[2]}`);
+  const corrige = DOMAINES_CONNUS[domaine];
+  if (corrige) lectures.push(`${local}@${corrige}`);
+  return [...new Set(lectures)];
 }
 
 async function inviterAsInscrire(
@@ -407,7 +450,22 @@ export async function livrerVentesSansCompte(): Promise<BilanLivraison> {
       // `adresses-jumelles.ts` : même domaine, deux caractères d'écart au
       // plus, et UNE SEULE candidate. Ouvrir un accès payé sur le compte de
       // quelqu'un d'autre serait pire que le problème qu'on répare.
-      const jumelle = jumelleProbable(email, comptesConnus, vente.created_at || undefined);
+      //
+      // ── MAIS D'ABORD : UNE AUTRE LECTURE DE L'ADRESSE MÈNE-T-ELLE À UN COMPTE ?
+      //
+      // `babaoulare@4gmail.com` ne ressemble à aucun compte selon la règle
+      // des jumelles : les domaines diffèrent. Mais lue `babaoulare4@gmail.com`
+      // — le chiffre remis là où il a été tapé —, elle mène à son vrai
+      // compte. Le 6 septembre, ce compte existait déjà : son second paiement
+      // aurait été servi dans la seconde, au lieu de six jours d'attente.
+      //
+      // Une lecture n'est retenue que si un compte EXISTE exactement à cette
+      // adresse : c'est la preuve, pas une supposition.
+      const lecture = adressesCandidates(email)
+        .slice(1)
+        .find((a) => adressesConnues.has(a));
+      const compteLu = lecture ? comptesConnus.find((c) => c.email === lecture) : undefined;
+      const jumelle = compteLu ?? jumelleProbable(email, comptesConnus, vente.created_at || undefined);
 
       let userId: string;
       let adressePrevenue = email;

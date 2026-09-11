@@ -256,8 +256,42 @@ export async function POST(request: Request) {
     // Une vente déjà signalée ne se signale pas deux fois : la boutique peut
     // rejouer un pulse en échec, et la répétition noierait l'essentiel.
     const repetee = await dejaAlertee(trace.vente);
+
+    // ── UN DOUBLON QUI FINIT PREMIER NE DOIT PAS CRIER AU LOUP ──────────
+    //
+    // Le 11 septembre 2026 à 9 h 12, MakeTou a envoyé la même vente DEUX
+    // fois, à cinq secondes d'écart. Le premier message a livré l'accès sur
+    // le vrai compte de l'acheteur, reconnu à une faute de frappe près. Le
+    // second, arrivé pendant ce travail, n'a rien trouvé à faire — et comme
+    // il a fini le premier, c'est LUI qui a envoyé l'alerte : « une vente n'a
+    // PAS ouvert d'accès ». Le bon message, marqué « déjà alerté », n'est
+    // jamais parti. Le propriétaire a passé sa matinée sur un client servi
+    // depuis la première minute.
+    //
+    // Avant d'annoncer qu'une vente n'a rien ouvert, on regarde donc, quelques
+    // secondes durant, si elle n'a pas été servie entre-temps par son jumeau.
+    const venteServieEntreTemps = async (idVente: string): Promise<boolean> => {
+      const sb = createAdminClient();
+      for (let essai = 0; essai < 5; essai++) {
+        const [{ data: abo }, { data: intention }] = await Promise.all([
+          sb.from('subscriptions').select('id').eq('chariow_sale_id', idVente).limit(1),
+          sb.from('payment_intents').select('consumed_at').eq('sale_id', idVente).maybeSingle(),
+        ]);
+        if ((abo?.length ?? 0) > 0 || intention?.consumed_at) return true;
+        await new Promise((attente) => setTimeout(attente, 2000));
+      }
+      return false;
+    };
+    const servieEntreTemps =
+      !ignoree && !r.livree && /Aucun compte/i.test(r.motif) && !!trace.vente
+        ? await venteServieEntreTemps(String(trace.vente))
+        : false;
+    if (servieEntreTemps) {
+      console.log(`[MAKETOU] Vente ${trace.vente} servie par un message jumeau : aucune alerte.`);
+    }
+
     let alerte = false;
-    if (!ignoree && !repetee) {
+    if (!ignoree && !repetee && !servieEntreTemps) {
       // ── DEUX MESSAGES QUI SE CONTREDISENT, À LA MÊME MINUTE ─────────────
       //
       // Cette invitation — « créez votre compte, votre accès s'ouvrira

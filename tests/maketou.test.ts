@@ -390,7 +390,11 @@ test('★ ACQUIS — une même vente n’alerte jamais deux fois', () => {
   const iEnvoi = ROUTE.indexOf('messageAlerteVenteNonHonoree({');
   assert.ok(iMemoire > 0, 'La mémoire des ventes déjà signalées a disparu.');
   assert.ok(iMemoire < iEnvoi, 'L’alerte part avant d’avoir vérifié qu’elle est nouvelle.');
-  assert.match(ROUTE, /if \(!ignoree && !repetee\)/);
+  // La condition peut s'allonger d'une garde — le 11 septembre 2026,
+  // « servieEntreTemps » a été ajoutée pour qu'un message en double ne crie
+  // pas au loup —, mais la mémoire des ventes déjà signalées doit y rester,
+  // et en tête. Toute autre forme est refusée.
+  assert.match(ROUTE, /if \(!ignoree && !repetee(?: && !servieEntreTemps)?\)/);
 });
 
 test('★ ACQUIS — une réserve injoignable ne fait pas taire les alertes', () => {
