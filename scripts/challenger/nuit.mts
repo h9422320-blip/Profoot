@@ -6,7 +6,8 @@
  *   1. il vérifie que l'apprentissage quotidien de la production tourne ;
  *   2. il remet ses données à jour — rencontres, tirs des derniers matchs ;
  *   3. il lit dans le CODE les réglages actuels du moteur : c'est le champion ;
- *   4. il fabrique des variantes, un réglage à la fois, de part et d'autre ;
+ *   4. il essaie des COUCHES nouvelles posées par-dessus le moteur — jamais
+ *      une variante d'un réglage existant (décision du 11 septembre 2026) ;
  *   5. il rejoue champion et variantes par le VRAI moteur sur les matchs des
  *      sept grands championnats, de la Ligue des champions et de l'Europa
  *      League, chacun avec seulement ce qui était connu la veille ;
@@ -153,20 +154,25 @@ function champion(): Parametre[] {
   ];
 }
 
-type Variante = { nom: string; env: Record<string, string>; niveau: 'score' | 'releve'; libelle: string };
-function variantesDe(params: Parametre[]): Variante[] {
+// ── 4. LES COUCHES À ESSAYER ─────────────────────────────────────────────
+//
+// Décision du propriétaire, le 11 septembre 2026 : le moteur ne s'améliore
+// qu'en AJOUTANT des couches ; aucun réglage existant n'est jamais modifié.
+// Le challenger ne fabrique donc plus de variantes des réglages : il essaie
+// des couches posées par-dessus le calcul, chaque jour sur plus de matchs.
+// Une couche refusée aujourd'hui peut passer dans un mois, quand la matière
+// aura grossi — c'est tout l'intérêt de la rejouer chaque jour.
+type Couche = { type: 'erreurs-clubs'; retrecissement: number; poids: number };
+type Variante = { nom: string; couche: Couche; libelle: string };
+function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
-  for (const p of params)
-    for (const sens of [-1, 1]) {
-      const v = Math.round((p.valeur + sens * p.pas) * 100) / 100;
-      if (v < p.min || v > p.max || v === p.valeur) continue;
+  for (const retrecissement of [10, 20, 40])
+    for (const poids of [0.5, 1])
       out.push({
-        nom: `${p.env.replace('BANC_', '')}=${v}`,
-        env: { [p.env]: String(v) },
-        niveau: p.niveau,
-        libelle: `${p.nom} : ${p.valeur} → ${v}`,
+        nom: `ERREURS_CLUBS k=${retrecissement} poids=${poids}`,
+        couche: { type: 'erreurs-clubs', retrecissement, poids },
+        libelle: `Couche des erreurs apprises par club (k=${retrecissement}, poids ${poids})`,
       });
-    }
   return out;
 }
 
@@ -174,7 +180,7 @@ function variantesDe(params: Parametre[]): Variante[] {
 // Le processus de la nuit ne transmet aucun réglage BANC_* hérité : seul celui
 // de la variante évaluée doit compter.
 const envSansBanc = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('BANC_')));
-function evaluer(etiquette: string, envReleve: Record<string, string>, variantes: { nom: string; env: Record<string, string> }[]) {
+function evaluer(etiquette: string, envReleve: Record<string, string>, variantes: { nom: string; env: Record<string, string>; couche?: Couche }[]) {
   const nomFichier = etiquette.replace(/[^A-Za-z0-9_.=-]/g, '_');
   const tache = path.join(DOSSIER_TRAVAIL, `tache-${nomFichier}.json`);
   const sortie = path.join(DOSSIER_TRAVAIL, `resultat-${nomFichier}.json`);
@@ -200,6 +206,7 @@ type EntreeHistorique = {
   variante: string;
   libelle: string;
   env: Record<string, string>;
+  couche?: Couche;
   gagne: boolean;
   champion: [Mesure, Mesure];
   challenger: [Mesure, Mesure];
@@ -240,24 +247,22 @@ async function principal(): Promise<any> {
   ligne('');
 
   const params = champion();
-  const variantes = variantesDe(params);
+  const variantes = couchesAEssayer();
   ligne('## 3. Le moteur actuel (le champion)');
   ligne('');
   for (const p of params) ligne(`- ${p.nom} : **${p.valeur}**`);
   ligne('');
 
-  // Le champion et toutes les variantes du score dans un même processus ;
-  // chaque variante du relevé dans le sien.
+  // Le moteur actuel et chaque couche candidate, dans un même processus :
+  // une couche se pose par-dessus le calcul, elle ne change aucun réglage.
   const resultats: Record<string, Pronostic[]> = {};
   Object.assign(
     resultats,
     evaluer('champion', {}, [
       { nom: 'champion', env: {} },
-      ...variantes.filter((v) => v.niveau === 'score').map((v) => ({ nom: v.nom, env: v.env })),
+      ...variantes.map((v) => ({ nom: v.nom, env: {}, couche: v.couche })),
     ]).variantes
   );
-  for (const v of variantes.filter((x) => x.niveau === 'releve'))
-    Object.assign(resultats, evaluer(v.nom, v.env, [{ nom: v.nom, env: {} }]).variantes);
 
   const champ = resultats.champion;
   if (!champ?.length) throw new Error('aucun match évaluable');
@@ -287,9 +292,9 @@ async function principal(): Promise<any> {
   );
   ligne('');
 
-  ligne('## 4. Les variantes essayées cette nuit');
+  ligne('## 4. Les couches essayées cette nuit');
   ligne('');
-  ligne('| Variante | 1re moitié | 2e moitié | Verdict |');
+  ligne('| Couche | 1re moitié | 2e moitié | Verdict |');
   ligne('|---|---|---|---|');
   const historique = lireHistorique().filter((h) => h.nuit !== NUIT);
   const cetteNuit: EntreeHistorique[] = [];
@@ -306,7 +311,7 @@ async function principal(): Promise<any> {
       return `${e >= 0 ? '+' : ''}${e} juste(s), Brier ${mv[k].brier.toFixed(4)}`;
     };
     ligne(`| ${v.libelle} | ${cellule(0)} | ${cellule(1)} | ${ve.gagne ? '✅ gagne' : '— ' + ve.raisons[0]} |`);
-    cetteNuit.push({ nuit: NUIT, variante: v.nom, libelle: v.libelle, env: v.env, gagne: ve.gagne, champion: mc, challenger: mv });
+    cetteNuit.push({ nuit: NUIT, variante: v.nom, libelle: v.libelle, env: {}, couche: v.couche, gagne: ve.gagne, champion: mc, challenger: mv });
   }
   ligne('');
   const toutes = [...historique, ...cetteNuit];
@@ -323,7 +328,7 @@ async function principal(): Promise<any> {
     ligne(
       gagnantes.length
         ? `Pas encore de proposition : ${gagnantes.map((g) => g.libelle).join(' ; ')} a gagné cette nuit, il faut le confirmer une nuit de plus.`
-        : 'Aucune variante ne bat le moteur actuel cette nuit. Le moteur reste tel quel — c’est le résultat attendu la plupart des nuits.'
+        : 'Aucune couche ne bat le moteur actuel aujourd’hui. Le moteur reste tel quel — c’est le résultat attendu la plupart des nuits.'
     );
     ligne('');
     return null;
@@ -334,6 +339,7 @@ async function principal(): Promise<any> {
     variante: meilleure.variante,
     libelle: meilleure.libelle,
     env: meilleure.env,
+    couche: meilleure.couche,
     gain: gain(meilleure),
     preuves: { champion: meilleure.champion, challenger: meilleure.challenger },
   };
@@ -343,7 +349,7 @@ async function principal(): Promise<any> {
       `(${proposition.gain >= 0 ? '+' : ''}${proposition.gain} vainqueurs justes cette nuit).`
   );
   ligne('');
-  ligne('À valider en session de travail : la valeur par défaut du code change, les garanties ★ ACQUIS repassent, puis mise en ligne.');
+  ligne('À valider en session de travail : la couche est branchée en production avec ce réglage, les garanties ★ ACQUIS repassent, puis mise en ligne. Aucun réglage existant ne change.');
   ligne('');
   return proposition;
 }

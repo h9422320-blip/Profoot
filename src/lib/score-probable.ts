@@ -521,7 +521,20 @@ export function calculerScoreProbable(
    * Absents, tout ce qui suit rend exactement ce qu'il rendait avant : un
    * championnat non couvert par le fournisseur ne perd rien.
    */
-  occasions?: { domicile: number; exterieur: number } | null
+  occasions?: { domicile: number; exterieur: number } | null,
+  /**
+   * ── COUCHE AJOUTÉE : CE QUE LE MOTEUR A APPRIS DE SES PROPRES ERREURS ──
+   *
+   * Pour chaque club, l'écart moyen entre les buts que le moteur annonçait et
+   * les buts réellement marqués et encaissés, sur ses matchs déjà jugés — voir
+   * `couche-erreurs.ts`. Deux corrections, en BUTS, ajoutées aux buts
+   * attendus de l'équipe qui reçoit et de celle qui se déplace.
+   *
+   * Absente, nulle ou à zéro, le moteur rend EXACTEMENT ce qu'il rendait :
+   * c'est une couche posée par-dessus, jamais un réglage modifié — décision du
+   * propriétaire du 11 septembre 2026.
+   */
+  correctionErreurs?: { domicile: number; exterieur: number } | null
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -761,14 +774,34 @@ export function calculerScoreProbable(
 
   // `equipe1` n'est pas toujours celle qui reçoit : on aligne d'abord.
   const equipe1Recoit = equipe1AJoueADomicile === true;
-  const butsAttendus1 = melanger(
+  let butsAttendus1 = melanger(
     butsAttendus1Calcule,
     equipe1Recoit ? occasions?.domicile : occasions?.exterieur
   );
-  const butsAttendus2 = melanger(
+  let butsAttendus2 = melanger(
     butsAttendus2Calcule,
     equipe1Recoit ? occasions?.exterieur : occasions?.domicile
   );
+
+  // ── LA COUCHE DES ERREURS APPRISES, POSÉE PAR-DESSUS ─────────────────────
+  //
+  // Elle vient APRÈS tout le calcul existant — forces, rapport entre
+  // championnats, occasions — et ne fait qu'y ajouter la correction que le
+  // moteur a apprise de ses propres erreurs sur ces deux clubs. Rien de ce
+  // qui précède n'est touché ; absente, ces lignes ne font rien.
+  if (correctionErreurs && equipe1AJoueADomicile !== null) {
+    // Une correction ne pèse jamais plus d'un demi-but : au-delà, ce ne serait
+    // plus une leçon tirée d'erreurs passées mais un autre pronostic.
+    const CORRECTION_ERREURS_MAX = 0.5;
+    const ecart = (v: unknown) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.min(CORRECTION_ERREURS_MAX, Math.max(-CORRECTION_ERREURS_MAX, n)) : 0;
+    };
+    const d1 = ecart(equipe1Recoit ? correctionErreurs.domicile : correctionErreurs.exterieur);
+    const d2 = ecart(equipe1Recoit ? correctionErreurs.exterieur : correctionErreurs.domicile);
+    if (d1 !== 0) butsAttendus1 = borner(butsAttendus1 + d1, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+    if (d2 !== 0) butsAttendus2 = borner(butsAttendus2 + d2, BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+  }
 
   // Grille complète des scores : chaque case est la probabilité de ce score
   // exact. Tout le reste — issue, deux équipes marquent, nombre de buts — s'en
