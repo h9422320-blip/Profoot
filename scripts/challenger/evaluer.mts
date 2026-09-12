@@ -39,7 +39,13 @@ type Couche =
   | { type: 'terrain'; retrecissement: number; poids: number }
   | { type: 'duel'; retrecissement: number; poids: number }
   | { type: 'elan'; court: number; long: number; poids: number }
-  | { type: 'terrain-ligue'; retrecissement: number; poids: number };
+  | { type: 'terrain-ligue'; retrecissement: number; poids: number }
+  | {
+      type: 'melange';
+      elo?: { k: number; poids: number };
+      elan?: { court: number; long: number; poids: number };
+      terrainLigue?: { retrecissement: number; poids: number };
+    };
 
 chargerEnv();
 const tache: {
@@ -461,12 +467,125 @@ function avecTerrainLigue(retrecissement: number, poids: number): Pronostic[] {
   return out;
 }
 
+// ── LE MÉLANGE : PLUSIEURS COUCHES POSÉES ENSEMBLE ───────────────────────
+//
+// Chaque couche, seule, gagne un ou deux matchs — trop peu pour passer la
+// porte. Mais elles ne regardent pas la même chose : Elo mesure le niveau
+// de fond sur deux saisons, l'élan ce que le club produit en ce moment, le
+// terrain par championnat le poids de recevoir là où le match se joue.
+//
+// Le moteur a deux points d'entrée libres, et ils ne se gênent pas : les
+// corrections additives (élan + terrain, plafonnées à un demi-but par le
+// moteur lui-même) et l'avis extérieur sur qui domine (Elo), qui garde le
+// total de buts du moteur. On peut donc tout poser ensemble sans toucher à
+// un seul réglage.
+//
+// Les trois morceaux n'apprennent que des jours PRÉCÉDENTS, comme dans leurs
+// couches respectives.
+function avecMelange(couche: {
+  elo?: { k: number; poids: number };
+  elan?: { court: number; long: number; poids: number };
+  terrainLigue?: { retrecissement: number; poids: number };
+}): Pronostic[] {
+  // Elo : une note par club.
+  const note = new Map<number, number>();
+  const lireNote = (id: number) => note.get(id) ?? 1500;
+  const attendu = (dom: number, ext: number) =>
+    1 / (1 + Math.pow(10, -(lireNote(dom) + AVANTAGE_TERRAIN_ELO - lireNote(ext)) / 400));
+  // Terrain par championnat : écart de buts du club qui reçoit.
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const apprendre = (x: any) => {
+    if (couche.elo) {
+      const we = attendu(x.dom, x.ext);
+      const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
+      const e = Math.abs(x.bd - x.be);
+      const g = e <= 1 ? 1 : e === 2 ? 1.5 : (11 + e) / 8;
+      const delta = couche.elo.k * g * (w - we);
+      note.set(x.dom, lireNote(x.dom) + delta);
+      note.set(x.ext, lireNote(x.ext) - delta);
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const t = couche.terrainLigue;
+    const c = parLigue.get(Number(ligue));
+    if (!t || !c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return t.poids * (c.n / (c.n + t.retrecissement)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+  // Élan : les occasions des dernières rencontres contre la moyenne longue.
+  const dates = new Map<string, number[]>();
+  if (couche.elan)
+    for (const t of [...tirs].sort((a, b) => a.date - b.date))
+      for (const club of [String(t.dom), String(t.ext)]) {
+        const l = dates.get(club);
+        if (l) l.push(t.date);
+        else dates.set(club, [t.date]);
+      }
+  const vues = new Map<string, number>();
+  const moyenne = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const ecartDelan = (club: string, veille: number) => {
+    const e = couche.elan;
+    const passe = elanParClub.get(club);
+    const quand = dates.get(club);
+    if (!e || !passe || !quand) return null;
+    let n = vues.get(club) ?? 0;
+    while (n < quand.length && quand[n] < veille) n++;
+    vues.set(club, n);
+    if (n < e.long) return null;
+    const recents = passe.slice(n - e.court, n);
+    const longs = passe.slice(n - e.long, n);
+    return {
+      attaque: moyenne(recents.map((x) => x.produit)) - moyenne(longs.map((x) => x.produit)),
+      defense: moyenne(recents.map((x) => x.concede)) - moyenne(longs.map((x) => x.concede)),
+    };
+  };
+  const out: Pronostic[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    const veille = Date.parse(`${jour}T00:00:00Z`);
+    // Les deux corrections additives s'ajoutent ; le moteur les plafonne.
+    const a = ecartDelan(String(m.nomDom), veille);
+    const b = ecartDelan(String(m.nomExt), veille);
+    const part = couche.elan?.poids ?? 0;
+    const ligue = ecartDeLigue(Number(m.ligue));
+    const dom = (part * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+    const ext = (part * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+    const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    // Et l'avis d'Elo sur qui domine, par l'autre point d'entrée.
+    let avis: { dom: number; nul: number; ext: number; poids: number } | null = null;
+    if (couche.elo) {
+      const we = attendu(m.dom, m.ext);
+      avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids: couche.elo.poids };
+    }
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avis);
+    out.push(versPronostic(m, r));
+  }
+  return out;
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'melange') {
+    sortie[v.nom] = avecMelange(v.couche);
     continue;
   }
   if (v.couche?.type === 'terrain-ligue') {

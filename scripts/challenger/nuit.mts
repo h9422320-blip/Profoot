@@ -169,7 +169,13 @@ type Couche =
   | { type: 'terrain'; retrecissement: number; poids: number }
   | { type: 'duel'; retrecissement: number; poids: number }
   | { type: 'elan'; court: number; long: number; poids: number }
-  | { type: 'terrain-ligue'; retrecissement: number; poids: number };
+  | { type: 'terrain-ligue'; retrecissement: number; poids: number }
+  | {
+      type: 'melange';
+      elo?: { k: number; poids: number };
+      elan?: { court: number; long: number; poids: number };
+      terrainLigue?: { retrecissement: number; poids: number };
+    };
 type Variante = { nom: string; couche: Couche; libelle: string };
 function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
@@ -236,6 +242,37 @@ function couchesAEssayer(): Variante[] {
       couche: { type: 'terrain-ligue', retrecissement: 20, poids },
       libelle: `Couche du terrain par championnat (k=20, part ${poids})`,
     });
+  // ── LES MÉLANGES ──────────────────────────────────────────────────────
+  //
+  // Mesuré le 12 septembre 2026 : posées ENSEMBLE, les couches font bien
+  // mieux que seules. Elles ne regardent pas la même chose — Elo le niveau de
+  // fond, l'élan la forme du moment, le terrain le poids de recevoir dans ce
+  // championnat — et le moteur a deux points d'entrée libres.
+  //
+  // Sur 1 189 matchs : élan 0,2 + terrain 0,2 gagne +2 et +7 vainqueurs, des
+  // DEUX côtés — refusé sur cinq dix-millièmes de Brier. Elo + élan monte la
+  // précision « sûr de lui » à 68 % contre 65,3. Sur les trois derniers mois,
+  // les trois appuyés donnent 75 % quand le moteur est sûr.
+  out.push({
+    nom: 'MELANGE elan=0.2 terrain=0.2',
+    couche: { type: 'melange', elan: { court: 5, long: 10, poids: 0.2 }, terrainLigue: { retrecissement: 20, poids: 0.2 } },
+    libelle: 'Mélange élan (5/10, part 0.2) + terrain par championnat (part 0.2)',
+  });
+  out.push({
+    nom: 'MELANGE elo=0.3 elan=0.2',
+    couche: { type: 'melange', elo: { k: 30, poids: 0.3 }, elan: { court: 5, long: 10, poids: 0.2 } },
+    libelle: 'Mélange Elo (k=30, part 0.3) + élan (5/10, part 0.2)',
+  });
+  out.push({
+    nom: 'MELANGE les trois',
+    couche: {
+      type: 'melange',
+      elo: { k: 30, poids: 0.5 },
+      elan: { court: 5, long: 10, poids: 0.25 },
+      terrainLigue: { retrecissement: 20, poids: 0.25 },
+    },
+    libelle: 'Mélange des trois (Elo 0.5, élan 0.25, terrain 0.25)',
+  });
   return out;
 }
 
