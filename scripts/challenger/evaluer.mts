@@ -103,12 +103,17 @@ const cotes: Record<string, { dom: number; nul: number; ext: number }> = fs.exis
 const quand = (x: any) => Date.parse(x.date);
 
 // ── LE RELEVÉ, TEL QU'IL AURAIT ÉTÉ LA VEILLE ──────────────────────────────
-// ── DEUX RELEVÉS : CELUI DE LA PRODUCTION, ET UN ÉLARGI ──────────────────
+// ── LE RELEVÉ DE RÉFÉRENCE, ET UN RELEVÉ D'ESSAI ─────────────────────────
 //
-// Le fichier des tirs contient aussi les quatre championnats à l'essai
-// (Roumanie, Serbie, Irlande, Finlande). Le relevé de la PRODUCTION ne les
-// connaît pas : il faut donc les écarter ici, sinon le moteur de référence
-// serait meilleur que le vrai et toutes les mesures seraient fausses.
+// Les quatre championnats ajoutés le 12 septembre 2026 (Roumanie, Serbie,
+// Irlande, Finlande) sont EN PRODUCTION depuis le commit 5819d10 : le relevé
+// de référence doit donc les inclure, sinon le moteur de référence serait
+// plus faible que le vrai et toute couche paraîtrait meilleure qu'elle n'est.
+//
+// `construireReleve(jour, false)` reste là pour la prochaine vague : le jour
+// où d'autres championnats seront candidats, il suffira de les déclarer dans
+// `TIRS_EN_PLUS` et de les juger par la couche `tirs-elargis` avant de les
+// mettre en ligne.
 const NOMS_EN_PLUS = new Set(Object.values(TIRS_EN_PLUS));
 const releves = new Map<string, any>();
 const relevesElargis = new Map<string, any>();
@@ -124,7 +129,8 @@ function construireReleve(jour: string, avecLesQuatre: boolean) {
 }
 function releveLaVeille(jour: string) {
   if (releves.has(jour)) return releves.get(jour);
-  const r = construireReleve(jour, false);
+  // `true` : la production connaît désormais ces championnats.
+  const r = construireReleve(jour, true);
   releves.set(jour, r);
   return r;
 }

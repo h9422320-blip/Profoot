@@ -17,8 +17,10 @@
  * ── CE QUI EST GARANTI ───────────────────────────────────────────────────
  *
  * 1. Le moteur de référence reçoit l'avis de la mémoire sur les matchs aveugles.
- * 2. Ce relevé-là écarte les quatre championnats à l'essai ; seule la couche
- *    `tirs-elargis` les ajoute.
+ * 2. Le relevé de référence inclut les championnats que la production connaît
+ *    — les quatre ajoutés le 12 septembre 2026 compris — et la mécanique
+ *    d'essai (`TIRS_EN_PLUS` + couche `tirs-elargis`) reste en place pour la
+ *    prochaine vague.
  * 3. Les mêmes conditions qu'en production : occasions absentes, et cinq
  *    rencontres au moins pour chaque club.
  */
@@ -47,15 +49,24 @@ test('★ ACQUIS — le banc applique les mêmes conditions que la production', 
   assert.match(s, /const PART_PRODUCTION = 0\.6;/, 'La part de la mémoire doit être celle de la production (0,6).');
 });
 
-test('★ ACQUIS — le relevé de référence écarte les quatre championnats à l’essai', () => {
+test('★ ACQUIS — le relevé de référence inclut ce que la production connaît', () => {
+  // Les quatre championnats ajoutés le 12 septembre 2026 (Roumanie, Serbie,
+  // Irlande, Finlande) sont en production depuis le commit 5819d10. Un moteur de
+  // référence qui les ignorerait serait PLUS FAIBLE que le vrai, et toute couche
+  // paraîtrait meilleure qu'elle n'est.
   const s = source();
-  assert.match(s, /const NOMS_EN_PLUS = new Set\(Object\.values\(TIRS_EN_PLUS\)\)/, 'Le banc ne sait plus quels championnats sont à l’essai.');
+  const iDefaut = s.indexOf('function releveLaVeille');
+  const bloc = s.slice(iDefaut, iDefaut + 300);
+  assert.match(
+    bloc,
+    /construireReleve\(jour, true\)/,
+    'Le relevé de référence doit inclure les championnats que la production connaît.'
+  );
+  // Et la mécanique d'essai reste disponible pour la vague suivante.
+  assert.match(s, /const NOMS_EN_PLUS = new Set\(Object\.values\(TIRS_EN_PLUS\)\)/, 'La mécanique d’essai des nouveaux championnats a disparu.');
   assert.match(
     s,
     /avecLesQuatre \|\| !NOMS_EN_PLUS\.has\(String\(t\.ligue\)\)/,
-    'Le relevé du moteur de référence doit écarter les championnats à l’essai : sinon il est meilleur que la production et toute mesure est faussée.'
+    'Le relevé doit pouvoir ÉCARTER les championnats à l’essai : c’est ainsi qu’on mesure ce qu’ils apportent avant de les mettre en ligne.'
   );
-  const iNarrow = s.indexOf('function releveLaVeille');
-  const bloc = s.slice(iNarrow, iNarrow + 260);
-  assert.match(bloc, /construireReleve\(jour, false\)/, 'Le relevé par défaut doit être le relevé ÉTROIT, celui de la production.');
 });
