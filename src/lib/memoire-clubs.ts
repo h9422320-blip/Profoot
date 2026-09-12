@@ -60,6 +60,48 @@ const PERIME_APRES_MS = 45 * 24 * 60 * 60 * 1000;
 export const K_MEMOIRE = 30;
 export const PART_MEMOIRE = 0.6;
 
+/**
+ * ── LA PART MONTE QUAND LE MOTEUR SAIT MOINS, AJOUTÉ LE 12 SEPTEMBRE 2026 ─
+ *
+ * La mémoire entrait à part fixe (0,6) sur tous les matchs aveugles. Or le
+ * moteur n'est pas également démuni : sur Manchester United — Sabah du
+ * 10 septembre, United n'avait joué AUCUN match de la compétition et ses
+ * moyennes venaient d'un complément ; sur un match de championnat de
+ * milieu de saison, le moteur a vingt matchs par club.
+ *
+ * La part suit donc ce que le moteur sait : PLEINE quand le club le moins
+ * renseigné des deux a moins de cinq matchs dans la compétition, 0,6 au-delà,
+ * en dégradé entre les deux.
+ *
+ * Mesuré (vrai moteur, veille seulement, 7 785 rencontres de toutes
+ * compétitions, 4 042 matchs concernés) :
+ *
+ *   | période | 1re moitié | 2e moitié | sûr ≥ 60 % |
+ *   |---|---|---|---|
+ *   | tout l'historique | +1 juste | **+10 justes** | 71,9 / 70,6 % |
+ *   | trois derniers mois | +7 justes | +4 justes | 73,3 / 67,6 % |
+ *
+ * contre 67,5 % pour la part fixe. Les deux fenêtres passent la porte du
+ * challenger. Dans les coupes d'Europe : +1 et +4 justes, et 80 / 87,5 % de
+ * réussite quand le moteur est sûr de lui. Sur les 37 matchs de coupe où un
+ * club exotique rencontre un club connu : 21 bons vainqueurs contre 20.
+ */
+export const PART_MEMOIRE_HAUTE = 1;
+
+/** En dessous de ce nombre de matchs connus, la mémoire prend toute la place. */
+export const MATCHS_POUR_PART_PLEINE = 5;
+
+/**
+ * La part à donner à la mémoire pour CE match, selon le nombre de matchs que
+ * le moteur connaît du club le moins renseigné des deux.
+ */
+export function partDeLaMemoire(matchsConnus: number | null | undefined): number {
+  const n = Number(matchsConnus);
+  if (!Number.isFinite(n) || n <= 0) return PART_MEMOIRE_HAUTE;
+  if (n >= MATCHS_POUR_PART_PLEINE) return PART_MEMOIRE;
+  return PART_MEMOIRE_HAUTE - ((PART_MEMOIRE_HAUTE - PART_MEMOIRE) * n) / MATCHS_POUR_PART_PLEINE;
+}
+
 /** L'avantage de recevoir, en points de note — l'usage du domaine. */
 const AVANTAGE_TERRAIN = 65;
 

@@ -18,7 +18,7 @@ import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
 import { lireForcesLigue } from "@/lib/forces-equipes";
 import { lireForcesChampionnats, rapportEntreChampionnats } from "@/lib/forces-championnats";
-import { avisDeLaMemoire, lireMemoireClubs } from "@/lib/memoire-clubs";
+import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from "@/lib/memoire-clubs";
 import { lirePredictionFigee, figerPrediction, remplacerPredictionFigee, predictionIndecise } from "@/lib/prediction-figee";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
@@ -1520,7 +1520,10 @@ async function analyser(req: Request, billet: BilletQuota) {
       : avisDeLaMemoire(
           await lireMemoireClubs(),
           equipe1AJoueADomicile === true ? team1.id : team2.id,
-          equipe1AJoueADomicile === true ? team2.id : team1.id
+          equipe1AJoueADomicile === true ? team2.id : team1.id,
+          // La part monte quand le moteur sait moins : pleine sous cinq matchs
+          // connus dans la compétition. Voir `partDeLaMemoire`.
+          partDeLaMemoire(Math.min(Number(brutes1?.matchsJoues ?? 0), Number(brutes2?.matchsJoues ?? 0)))
         )
   );
 

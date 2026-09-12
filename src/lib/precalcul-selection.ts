@@ -44,7 +44,7 @@ import {
   butsAttendusOccasions,
   CHAMPIONNATS as COMPETITIONS_APPRISES,
 } from './forme-occasions';
-import { avisDeLaMemoire, lireMemoireClubs } from './memoire-clubs';
+import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from './memoire-clubs';
 import { lireForcesLigue } from './forces-equipes';
 import { figerPrediction } from './prediction-figee';
 
@@ -430,7 +430,15 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
           // championnat ; sans ancrage elle se tait. Mesuré sur 4 409 matchs
           // aveugles : +29 vainqueurs justes, et 72,0 / 68,9 % quand le moteur
           // est sûr de lui contre 64,0 %.
-          occasionsDuMatch ? null : avisDeLaMemoire(memoireDesClubs, domId, extId)
+          occasionsDuMatch
+            ? null
+            : avisDeLaMemoire(
+                memoireDesClubs,
+                domId,
+                extId,
+                // Pleine part sous cinq matchs connus dans la compétition.
+                partDeLaMemoire(Math.min(brut(sDom).matchsJoues, brut(sExt).matchsJoues))
+              )
         );
 
         await figerPrediction({

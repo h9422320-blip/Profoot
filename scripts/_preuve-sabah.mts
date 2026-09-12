@@ -56,7 +56,11 @@ const memoire = calculerMemoireClubs(rencontres.filter((m) => m.date.slice(0, 10
 
 const s1 = statsAvant(match.dom);
 const s2 = statsAvant(match.ext);
-const avis = avisDeLaMemoire(memoire, match.dom, match.ext);
+// La part est réglable : la mémoire pèse davantage quand le moteur a peu de
+// matchs dans la compétition (voir la couche à poids variable).
+const part = Number(process.argv[3]);
+const avis = avisDeLaMemoire(memoire, match.dom, match.ext, Number.isFinite(part) && part > 0 ? part : undefined);
+console.log(`part de la mémoire : ${avis ? avis.poids : "—"}`);
 
 const sans: any = calculerScoreProbable(s1 as any, s2 as any, true, false, undefined, null, undefined, false, 1, null);
 const avec: any = calculerScoreProbable(s1 as any, s2 as any, true, false, undefined, null, undefined, false, 1, null, null, avis);

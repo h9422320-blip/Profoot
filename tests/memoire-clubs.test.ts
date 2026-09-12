@@ -40,6 +40,9 @@ import {
   calculerMemoireClubs,
   ECHELLE_HIERARCHIE,
   PART_MEMOIRE,
+  PART_MEMOIRE_HAUTE,
+  MATCHS_POUR_PART_PLEINE,
+  partDeLaMemoire,
   type MemoireClubs,
 } from '../src/lib/memoire-clubs';
 import { calculerScoreProbable } from '../src/lib/score-probable';
@@ -137,5 +140,34 @@ test('★ ACQUIS — la production ne consulte la mémoire que si les occasions 
       /occasionsDuMatch\s*\r?\n?\s*\?\s*null\s*\r?\n?\s*:\s*avisDeLaMemoire|occasionsDuMatch \? null : avisDeLaMemoire/,
       `${f} doit passer la mémoire UNIQUEMENT quand les occasions manquent : appliquée partout, elle dégrade le pronostic (couche Elo refusée le 11 septembre 2026).`
     );
+  }
+});
+
+test('★ ACQUIS — la part de la mémoire monte quand le moteur sait moins', () => {
+  // ── POURQUOI ────────────────────────────────────────────────────────────
+  //
+  // Sur Manchester United — Sabah du 10 septembre 2026, United n'avait joué
+  // AUCUN match de la compétition : les moyennes du moteur venaient d'un
+  // complément, et la mémoire n'entrait pourtant qu'à 60 %. Mesuré sur 4 042
+  // matchs : part pleine sous cinq matchs connus, +11 vainqueurs justes et
+  // 71,9 / 70,6 % de réussite quand le moteur est sûr de lui contre 67,5 %.
+  // Les deux fenêtres de mesure passent la porte du challenger.
+  assert.equal(partDeLaMemoire(0), PART_MEMOIRE_HAUTE, 'Aucun match connu : la mémoire doit prendre toute la place.');
+  assert.equal(partDeLaMemoire(null), PART_MEMOIRE_HAUTE, 'Sans information, la mémoire doit prendre toute la place.');
+  assert.equal(partDeLaMemoire(MATCHS_POUR_PART_PLEINE), PART_MEMOIRE, 'Au seuil, on revient à la part ordinaire.');
+  assert.equal(partDeLaMemoire(25), PART_MEMOIRE, 'Bien renseigné, le moteur garde la main.');
+
+  const entreDeux = partDeLaMemoire(2);
+  assert.ok(
+    entreDeux < PART_MEMOIRE_HAUTE && entreDeux > PART_MEMOIRE,
+    'Entre les deux, la part doit descendre en dégradé et non d’un coup.'
+  );
+  assert.ok(partDeLaMemoire(1) > partDeLaMemoire(4), 'Plus le moteur en sait, moins la mémoire pèse.');
+});
+
+test('★ ACQUIS — la production calcule cette part à partir des matchs connus', () => {
+  for (const f of ['src/app/api/analyze/route.ts', 'src/lib/precalcul-selection.ts']) {
+    const s = sansCommentaires(fs.readFileSync(f, 'utf8'));
+    assert.match(s, /partDeLaMemoire\(Math\.min\(/, `${f} ne règle plus la part selon ce que le moteur sait du match.`);
   }
 });

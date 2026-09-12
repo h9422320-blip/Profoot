@@ -44,11 +44,29 @@ export const COUPES_SUIVIES: Record<number, string> = { 2: 'Ligue des champions'
  * qu'on mesure exactement ce qu'elles apportent.
  */
 export const TIRS_EN_PLUS: Record<number, string> = {
-  283: 'Liga I',
-  286: 'Super liga serbe',
-  357: 'Premier Division irlandaise',
-  244: 'Veikkausliiga',
+  // ── CINQUIÈME VAGUE, BALAYÉE LE 12 SEPTEMBRE 2026 ──────────────────────
+  //
+  // `scripts/_quelles-competitions-ont-des-tirs.mts` a interrogé les 27
+  // compétitions hors relevé : 23 n'ont AUCUNE statistique de tir chez le
+  // fournisseur (Azerbaïdjan, Estonie, Lituanie, Arménie, Géorgie, îles
+  // Féroé, Malte, Saint-Marin, Andorre…). Aucun relevé ne les couvrira jamais,
+  // et c'est la mémoire des clubs qui s'en charge.
+  //
+  // Ces quatre-là, elles, sont documentées. La 2. Bundesliga est de plus
+  // ANALYSÉE par les abonnés — vingt fois, pour 25 % de réussite seulement,
+  // la plus mauvaise de toutes
+  // (`scripts/_quelles-competitions-les-abonnes-analysent.mts`).
+  79: '2. Bundesliga',
+  6: "Coupe d'Afrique des nations",
+  235: 'Première division russe',
+  116: 'Première division biélorusse',
 };
+
+/**
+ * Les quatre de la QUATRIÈME vague sont entrées en production le 12 septembre
+ * 2026 (commit 5819d10) : Roumanie 283, Serbie 286, Irlande 357, Finlande 244.
+ * Elles ne sont donc plus à l'essai, elles sont dans `CHAMPIONNATS`.
+ */
 /** Les coupes, qui ne sont le championnat de personne. */
 export const COUPES = new Set([2, 3, 848, 531]);
 
