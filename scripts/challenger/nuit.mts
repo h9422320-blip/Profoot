@@ -167,7 +167,8 @@ type Couche =
   | { type: 'marche'; poids: number }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
-  | { type: 'duel'; retrecissement: number; poids: number };
+  | { type: 'duel'; retrecissement: number; poids: number }
+  | { type: 'elan'; court: number; long: number; poids: number };
 type Variante = { nom: string; couche: Couche; libelle: string };
 function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
@@ -211,6 +212,19 @@ function couchesAEssayer(): Variante[] {
     couche: { type: 'duel', retrecissement: 4, poids: 0.5 },
     libelle: 'Couche des confrontations directes (k=4, part 0.5)',
   });
+  // L'élan : l'écart entre ce qu'un club produit en ce moment et sa moyenne
+  // longue. Les trois meilleurs dosages des 48 mesurés le 12 septembre —
+  // égalité puis +5 ou +6 justes, le plus près qu'une couche soit venue.
+  for (const [court, long, poids] of [
+    [5, 10, 0.2],
+    [5, 10, 0.25],
+    [5, 12, 0.15],
+  ] as [number, number, number][])
+    out.push({
+      nom: `ELAN ${court}/${long} part=${poids}`,
+      couche: { type: 'elan', court, long, poids },
+      libelle: `Couche de l'élan (${court} derniers contre ${long}, part ${poids})`,
+    });
   return out;
 }
 

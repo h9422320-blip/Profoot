@@ -37,7 +37,8 @@ type Couche =
   | { type: 'marche'; poids: number }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
-  | { type: 'duel'; retrecissement: number; poids: number };
+  | { type: 'duel'; retrecissement: number; poids: number }
+  | { type: 'elan'; court: number; long: number; poids: number };
 
 chargerEnv();
 const tache: {
@@ -329,12 +330,92 @@ function avecDuel(retrecissement: number, poids: number): Pronostic[] {
   return out;
 }
 
+// ── LA COUCHE DE L'ÉLAN : CE QU'UN CLUB FAIT EN CE MOMENT ────────────────
+//
+// Le relevé des tirs pèse la forme sur huit rencontres environ, avec une
+// décroissance douce : excellent pour le fond, lent à voir une équipe qui
+// vient de changer de visage. On mesure donc, pour chaque club, l'écart
+// entre ce qu'il produit sur ses TOUTES DERNIÈRES rencontres et sa moyenne
+// longue — et la même chose pour ce qu'il concède.
+//
+// Les occasions sont comptées aux valeurs mesurées du projet : un tir cadré
+// vaut 0,325 but, un tir dans la surface 0,170. La couche comparant un club
+// à LUI-MÊME, l'échelle ne change que le dosage.
+//
+// Seules les rencontres des jours PRÉCÉDENTS comptent, et un club sans
+// assez de matchs ne pèse rien.
+const BUT_PAR_CADRE = 0.325;
+const BUT_PAR_SURFACE = 0.17;
+type PasseElan = { produit: number; concede: number };
+const elanParClub = new Map<string, PasseElan[]>();
+{
+  const ajouter = (club: string, p: PasseElan) => {
+    const l = elanParClub.get(club);
+    if (l) l.push(p);
+    else elanParClub.set(club, [p]);
+  };
+  // `tirs` est déjà rangé par date dans le fichier ; on s'en assure.
+  for (const t of [...tirs].sort((a, b) => a.date - b.date)) {
+    const od = BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD);
+    const oe = BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE);
+    if (!Number.isFinite(od) || !Number.isFinite(oe)) continue;
+    ajouter(String(t.dom), { produit: od, concede: oe });
+    ajouter(String(t.ext), { produit: oe, concede: od });
+  }
+}
+function avecElan(court: number, long: number, poids: number): Pronostic[] {
+  // Jusqu'où chaque club a déjà joué, à mesure que les jours avancent.
+  const vues = new Map<string, number>();
+  const dates = new Map<string, number[]>();
+  for (const t of [...tirs].sort((a, b) => a.date - b.date))
+    for (const club of [String(t.dom), String(t.ext)]) {
+      const l = dates.get(club);
+      if (l) l.push(t.date);
+      else dates.set(club, [t.date]);
+    }
+  const moyenne = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const ecart = (club: string, veille: number) => {
+    const passe = elanParClub.get(club);
+    const quand = dates.get(club);
+    if (!passe || !quand) return null;
+    let n = vues.get(club) ?? 0;
+    while (n < quand.length && quand[n] < veille) n++;
+    vues.set(club, n);
+    if (n < long) return null;
+    const recents = passe.slice(n - court, n);
+    const longs = passe.slice(n - long, n);
+    return {
+      attaque: moyenne(recents.map((x) => x.produit)) - moyenne(longs.map((x) => x.produit)),
+      defense: moyenne(recents.map((x) => x.concede)) - moyenne(longs.map((x) => x.concede)),
+    };
+  };
+  const out: Pronostic[] = [];
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    const veille = Date.parse(`${jour}T00:00:00Z`);
+    const a = ecart(String(m.nomDom), veille);
+    const b = ecart(String(m.nomExt), veille);
+    let corr: { domicile: number; exterieur: number } | null = null;
+    if (a || b) {
+      const dom = (poids * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2;
+      const ext = (poids * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2;
+      if (dom !== 0 || ext !== 0) corr = { domicile: dom, exterieur: ext };
+    }
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
+    out.push(versPronostic(m, r));
+  }
+  return out;
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'elan') {
+    sortie[v.nom] = avecElan(v.couche.court, v.couche.long, v.couche.poids);
     continue;
   }
   if (v.couche?.type === 'duel') {
