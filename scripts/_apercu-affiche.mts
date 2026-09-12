@@ -19,6 +19,7 @@ const { donneesAffiche, verifierConformite, afficheAutorisee, AFFICHE_PUBLIQUE, 
   '../src/lib/affiche-du-jour.js'
 );
 const { default: AfficheVisuel, textesDeLAffiche } = await import('../src/components/affiche/AfficheVisuel.js');
+const { polices } = await import('../src/lib/polices-affiche.js');
 
 const courriel = (process.argv[2] ?? ESSAI_PRIVE[0]).toLowerCase();
 const jour = process.argv[3] ?? new Date().toISOString().slice(0, 10);
@@ -73,7 +74,7 @@ for (const [nom, largeur, hauteur] of [
   ['story-1080x1920', 1080, 1920],
   ['carre-1080x1080', 1080, 1080],
 ] as [string, number, number][]) {
-  const image = new ImageResponse(AfficheVisuel({ d, logo, largeur, hauteur }) as any, { width: largeur, height: hauteur });
+  const image = new ImageResponse(AfficheVisuel({ d, logo, largeur, hauteur }) as any, { width: largeur, height: hauteur, fonts: polices() as any });
   const octets = Buffer.from(await image.arrayBuffer());
   const sortie = path.join(dossier, `affiche-${jour}-${nom}.png`);
   fs.writeFileSync(sortie, octets);

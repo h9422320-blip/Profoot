@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { requireUser } from '@/lib/subscription';
 import { afficheAutorisee, donneesAffiche, verifierConformite } from '@/lib/affiche-du-jour';
 import AfficheVisuel, { textesDeLAffiche } from '@/components/affiche/AfficheVisuel';
+import { polices } from '@/lib/polices-affiche';
 
 /**
  * L'AFFICHE DU JOUR, EN IMAGE.
@@ -75,6 +76,7 @@ export async function GET(requete: Request) {
   return new ImageResponse(<AfficheVisuel d={d} logo={logo} largeur={largeur} hauteur={hauteur} />, {
     width: largeur,
     height: hauteur,
+    fonts: polices() as any,
     // Une affiche est un instantané du jour : elle ne doit pas être resservie
     // demain, ni mise en cache par un intermédiaire partagé.
     headers: { 'Cache-Control': 'private, max-age=60' },
