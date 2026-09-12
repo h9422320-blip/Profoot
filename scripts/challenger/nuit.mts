@@ -289,6 +289,45 @@ async function principal(): Promise<any> {
   ligne(`- ${d.rencontres} rencontres terminées, dont ${d.tirs} avec leurs tirs ; ${d.fichesLues} fiche(s) de tirs lue(s) cette nuit.`);
   ligne('');
 
+  // ── LA HIÉRARCHIE DES CHAMPIONNATS, QUE LA PRODUCTION N'ATTEINT JAMAIS ──
+  //
+  // Elle dit ce que vaut un championnat face à un autre, et sert aux matchs
+  // de coupe d'Europe. Son calcul lit près de deux cents pages et dure deux
+  // minutes : il ne tient pas dans les soixante secondes que l'hébergeur
+  // accorde à une fonction, et il est la QUATRIÈME étape de la tâche de
+  // minuit — jamais atteinte. Constaté le 12 septembre 2026 : dix-neuf jours
+  // sans recalcul.
+  //
+  // Cet ordinateur n'a pas de limite de temps : le calcul se fait ici. La
+  // fraîcheur est décidée par `recalculerForcesChampionnats` lui-même — une
+  // semaine —, aucun réglage n'est touché. Les demandes partent une par une,
+  // la clé du fournisseur étant partagée avec les abonnés. Un échec ici ne
+  // doit jamais faire tomber la journée.
+  ligne('## 2 bis. La hiérarchie des championnats');
+  ligne('');
+  try {
+    const { lireForcesChampionnats, recalculerForcesChampionnats } = await import('../../src/lib/forces-championnats.js');
+    const avant = await lireForcesChampionnats();
+    const debutHierarchie = Date.now();
+    const neuve = await recalculerForcesChampionnats();
+    const jours = (quand: string) => Math.round((Date.now() - Date.parse(quand)) / 86_400_000);
+    if (!neuve) {
+      ligne('- Aucune hiérarchie disponible : le calcul n’a rien rendu.');
+    } else if (avant && avant.calculeLe === neuve.calculeLe) {
+      ligne(`- Calculée il y a ${jours(neuve.calculeLe)} jour(s), sur ${neuve.matchsUtilises} matchs : conservée (elle ne bouge pas en une semaine).`);
+    } else {
+      ligne(
+        `- **Recalculée** en ${Math.round((Date.now() - debutHierarchie) / 1000)} s : ` +
+          `${Object.keys(neuve.coefficients ?? {}).length} championnats, ${neuve.matchsUtilises} matchs, ` +
+          `${neuve.confrontations} confrontation(s) entre championnats.` +
+          (avant ? ` La précédente datait du ${String(avant.calculeLe).slice(0, 10)}.` : '')
+      );
+    }
+  } catch (e: any) {
+    ligne(`- Recalcul impossible aujourd’hui : ${e?.message ?? String(e)}`);
+  }
+  ligne('');
+
   const params = champion();
   const variantes = couchesAEssayer();
   ligne('## 3. Le moteur actuel (le champion)');
