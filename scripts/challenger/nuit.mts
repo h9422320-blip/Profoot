@@ -368,9 +368,26 @@ async function principal(): Promise<any> {
 
   ligne('## 2. Les données');
   ligne('');
+  // ── UN RAFRAÎCHISSEMENT MANQUÉ NE TUE PLUS LA JOURNÉE ──────────────────
+  //
+  // Le 12 septembre 2026, deux journées entières ont été perdues ainsi : une
+  // coupure de la base à 11 h 06, une coupure réseau à 13 h 53. Or les
+  // fichiers de la veille sont encore là, et le rejeu n'a besoin que d'eux :
+  // mieux vaut mesurer sur des données d'hier que ne rien mesurer du tout.
   const { rafraichirDonnees } = await import('./donnees.mjs');
-  const d = await rafraichirDonnees();
-  ligne(`- ${d.rencontres} rencontres terminées, dont ${d.tirs} avec leurs tirs ; ${d.fichesLues} fiche(s) de tirs lue(s) cette nuit.`);
+  let d: { rencontres: number; tirs: number; fichesLues: number } | null = null;
+  try {
+    d = await rafraichirDonnees();
+  } catch (e: any) {
+    journal(`rafraîchissement manqué : ${e?.message ?? String(e)} — on travaille sur les fichiers existants`);
+  }
+  if (d)
+    ligne(`- ${d.rencontres} rencontres terminées, dont ${d.tirs} avec leurs tirs ; ${d.fichesLues} fiche(s) de tirs lue(s) cette nuit.`);
+  else
+    ligne(
+      '- ⚠️ Données NON rafraîchies aujourd’hui (coupure du réseau ou de la base).' +
+        ' Le rejeu ci-dessous porte sur les fichiers de la dernière fois : les conclusions restent valables, elles sont juste moins fraîches.'
+    );
   ligne('');
 
   // ── LA HIÉRARCHIE DES CHAMPIONNATS, QUE LA PRODUCTION N'ATTEINT JAMAIS ──

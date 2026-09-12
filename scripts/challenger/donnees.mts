@@ -95,21 +95,35 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   // TOUTE la journée du challenger est tombée : aucun rapport, aucune couche
   // essayée. Une page refusée est désormais redemandée trois fois, en
   // patientant de plus en plus, avant d'abandonner.
-  const lirePage = async (colonnes: string, de: number, etiquette: string) => {
+  // ── ET UNE COUPURE RÉSEAU NE REND PAS UNE ERREUR : ELLE EN LÈVE UNE ────
+  //
+  // Le 12 septembre 2026 à 13 h 53, « lecture des cotes : TypeError: fetch
+  // failed » a de nouveau emporté toute la journée — la patience posée le
+  // matin ne regardait que l'erreur RENDUE par la base, pas l'exception LEVÉE
+  // par le réseau. Celle-ci attrape les deux, et sert les trois lectures.
+  const lireAvecPatience = async (etiquette: string, construire: () => any): Promise<any[]> => {
     let dernier = '';
-    for (let essai = 1; essai <= 3; essai++) {
-      const { data, error } = await sb
-        .from('cache_api')
-        .select(colonnes)
-        .ilike('cle', 'apifb:/fixtures/statistics?fixture=%')
-        .range(de, de + 999);
-      if (!error) return (data ?? []) as any[];
-      dernier = error.message;
-      journal(`${etiquette} : page ${de} refusée (${dernier}) — nouvel essai dans ${3 * essai} s`);
+    for (let essai = 1; essai <= 4; essai++) {
+      try {
+        const { data, error } = await construire();
+        if (!error) return (data ?? []) as any[];
+        dernier = error.message ?? String(error);
+      } catch (e: any) {
+        dernier = e?.message ?? String(e);
+      }
+      journal(`${etiquette} : essai ${essai} refusé (${dernier}) — on patiente ${3 * essai} s`);
       await new Promise((r) => setTimeout(r, 3000 * essai));
     }
     throw new Error(`${etiquette} : ${dernier}`);
   };
+  const lirePage = (colonnes: string, de: number, etiquette: string) =>
+    lireAvecPatience(`${etiquette} (page ${de})`, () =>
+      sb
+        .from('cache_api')
+        .select(colonnes)
+        .ilike('cle', 'apifb:/fixtures/statistics?fixture=%')
+        .range(de, de + 999)
+    );
 
   // ── 2. LES FICHES DE TIRS QUI MANQUENT ───────────────────────────────────
   const nomDe = new Map<number, string>(CHAMPIONNATS.map((c: any) => [Number(c.id), String(c.nom)]));
@@ -217,13 +231,10 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   let journeesGardees = 0;
   let journeesEcartees = 0;
   for (let de = 0; de < 20_000; de += 200) {
-    const { data, error } = await sb
-      .from('cache_api')
-      .select('cle, contenu, ecrit_le')
-      .ilike('cle', 'cotes:%')
-      .range(de, de + 199);
-    if (error) throw new Error('lecture des cotes : ' + error.message);
-    for (const r of data ?? []) {
+    const data = await lireAvecPatience(`lecture des cotes (page ${de})`, () =>
+      sb.from('cache_api').select('cle, contenu, ecrit_le').ilike('cle', 'cotes:%').range(de, de + 199)
+    );
+    for (const r of data) {
       const jour = String(r.cle).slice('cotes:'.length);
       const ecrit = String(r.ecrit_le ?? '').slice(0, 10);
       if (!ecrit || Date.parse(ecrit) > Date.parse(jour)) {
@@ -243,7 +254,7 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
         if (m?.id && m?.proba)
           cotes[String(m.id)] = { dom: Number(m.proba.dom), nul: Number(m.proba.nul), ext: Number(m.proba.ext) };
     }
-    if (!data || data.length < 200) break;
+    if (data.length < 200) break;
   }
   fs.writeFileSync(FICHIER_COTES, JSON.stringify(cotes));
   journal(
