@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { User, Bell, CreditCard, Palette, Globe, Check, Upload } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import AfficheDuJour from "./AfficheDuJour";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -245,7 +246,13 @@ export default function SettingsPage() {
             </div>
           )}
 
-
+          {/* MON AFFICHE DU JOUR — ESSAI PRIVÉ.
+              Dans le profil, avec ce qui appartient à la personne : son
+              avatar, son nom, son club de cœur. Le composant interroge le
+              serveur et ne rend RIEN hors des adresses autorisées — les autres
+              abonnés n'en voient aucune trace. Il ne parle que d'activité
+              d'analyse. Voir `src/lib/affiche-du-jour.ts`. */}
+          {activeTab === "profil" && <AfficheDuJour />}
 
         </div>
       </div>

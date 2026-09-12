@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import MurAbonnement from "./MurAbonnement";
-import AfficheDuJour from "./AfficheDuJour";
 import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw, Lock, ArrowRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
@@ -1244,14 +1243,6 @@ export default function AnalyzePage({
           Notre IA est connectée à l'actualité foot et croise des millions de données pour chaque analyse.
         </p>
       </div>
-
-      {/* MON AFFICHE DU JOUR — ESSAI PRIVÉ.
-          EN HAUT DE PAGE, et non en bas : placée avant la section des preuves,
-          elle était sous plusieurs écrans de défilement et personne ne la
-          voyait. Le composant interroge le serveur et ne rend RIEN hors des
-          adresses autorisées : les autres abonnés n'en voient aucune trace.
-          Il ne parle que d'activité d'analyse. Voir `src/lib/affiche-du-jour.ts`. */}
-      <AfficheDuJour />
 
       {/* 2. MATCH À ANALYSER CARD */}
       {!result && (

@@ -133,7 +133,10 @@ test('★ ACQUIS — la route et le bouton n’existent pas pour les autres comp
   const etat = sansCommentaires(fs.readFileSync('src/app/api/affiche/etat/route.ts', 'utf8'));
   assert.match(etat, /disponible: false/, 'La route d’état doit pouvoir répondre « indisponible » sans rien révéler.');
 
-  const bouton = sansCommentaires(fs.readFileSync('src/app/(dashboard)/analyze/AfficheDuJour.tsx', 'utf8'));
+  // Le bloc vit dans la section PROFIL des réglages, avec ce qui appartient à
+  // la personne — il était sur la page d'analyse, sous plusieurs écrans de
+  // défilement, et personne ne le voyait.
+  const bouton = sansCommentaires(fs.readFileSync('src/app/(dashboard)/settings/AfficheDuJour.tsx', 'utf8'));
   assert.match(bouton, /if \(!etat\?\.disponible\) return null;/, 'Le bouton doit ne RIEN rendre hors essai privé.');
 });
 

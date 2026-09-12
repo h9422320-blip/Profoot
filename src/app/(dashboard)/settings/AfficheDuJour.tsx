@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Share2, Download, Link2, Image as ImageIcon } from 'lucide-react';
 
 /**
- * LE BOUTON « PARTAGER MON AFFICHE DU JOUR ».
+ * « MON AFFICHE DU JOUR » — LE BLOC DE LA SECTION PROFIL.
  *
  * ── CE QU'IL FAIT ────────────────────────────────────────────────────────
  *
@@ -15,12 +16,17 @@ import { useEffect, useState } from 'react';
  * natif du téléphone (statut WhatsApp, story Instagram) et, à défaut, au
  * téléchargement.
  *
- * ── POURQUOI L'API DE PARTAGE AVEC FICHIER ──────────────────────────────
+ * ── POURQUOI ICI, ET PLUS SUR LA PAGE D'ANALYSE ─────────────────────────
  *
- * Sur mobile, `navigator.share({ files })` ouvre la feuille de partage du
- * système : deux tapes et l'affiche est sur le statut. Tous les navigateurs ne
- * l'acceptent pas — d'où `canShare` demandé AVANT, et le téléchargement en
- * repli. Aucun écran ne doit rester bloqué parce qu'une API manque.
+ * Il y était placé au bas de la page, sous plusieurs écrans de défilement :
+ * personne ne le voyait. Sa place est dans le profil, avec ce qui appartient à
+ * la personne — son avatar, son nom, son club de cœur.
+ *
+ * ── L'HABILLAGE SUIT CELUI DES RÉGLAGES ─────────────────────────────────
+ *
+ * Mêmes classes que les autres cartes de cette page (`bg-card`,
+ * `border-border-card`, `rounded-[28px]`, couleur `primary`) : une carte qui
+ * aurait ses propres couleurs et ses propres coins jurerait avec le reste.
  */
 
 interface Etat {
@@ -56,9 +62,12 @@ export default function AfficheDuJour() {
   }, []);
 
   // Libérer l'aperçu quand il est remplacé ou que le composant disparaît.
-  useEffect(() => () => {
-    if (apercu) URL.revokeObjectURL(apercu);
-  }, [apercu]);
+  useEffect(
+    () => () => {
+      if (apercu) URL.revokeObjectURL(apercu);
+    },
+    [apercu]
+  );
 
   if (!etat?.disponible) return null;
 
@@ -87,6 +96,9 @@ export default function AfficheDuJour() {
         canShare?: (d: { files?: File[] }) => boolean;
         share?: (d: { files?: File[]; title?: string; text?: string }) => Promise<void>;
       };
+      // `canShare` demandé AVANT : tous les navigateurs n'acceptent pas le
+      // partage de fichiers, et un écran ne doit jamais rester bloqué parce
+      // qu'une interface manque.
       if (partageur.share && partageur.canShare?.({ files: [fichier] })) {
         await partageur.share({
           files: [fichier],
@@ -96,7 +108,6 @@ export default function AfficheDuJour() {
         return;
       }
 
-      // Repli : on télécharge, l'abonné partage depuis sa galerie.
       const lien = document.createElement('a');
       lien.href = URL.createObjectURL(fichier);
       lien.download = nomFichier;
@@ -104,7 +115,7 @@ export default function AfficheDuJour() {
       URL.revokeObjectURL(lien.href);
       setMessage('Affiche enregistrée dans vos images — partagez-la depuis votre galerie.');
     } catch (e: any) {
-      // Un partage annulé par l'utilisateur n'est pas une erreur.
+      // Un partage annulé par la personne n'est pas une erreur.
       if (e?.name !== 'AbortError') setMessage("Le partage n'a pas abouti. L'affiche reste téléchargeable.");
     } finally {
       setEnCours(null);
@@ -129,99 +140,74 @@ export default function AfficheDuJour() {
         : `${n} matchs analysés aujourd’hui`;
 
   return (
-    <section
-      style={{
-        marginTop: 24,
-        padding: 18,
-        borderRadius: 18,
-        border: '1px solid rgba(16,185,129,0.28)',
-        background: 'rgba(16,185,129,0.06)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ color: '#e8f0f8', fontSize: 16, fontWeight: 600 }}>Mon affiche du jour ⚽🔍</div>
-          <div style={{ color: '#9fb3c8', fontSize: 13, marginTop: 2 }}>
-            {resume}
-            {etat.serie && etat.serie > 1 ? ` · 🔥 ${etat.serie} jours d’affilée` : ''}
-            {etat.analysesDuMois ? ` · ${etat.analysesDuMois} ce mois-ci` : ''}
+    <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-[28px] p-8 shadow-2xl animate-fade-in">
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-[16px] bg-primary/10 border border-primary/25 flex items-center justify-center">
+            <ImageIcon className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h2
+              className="text-xl font-black text-foreground"
+              style={{ fontFamily: 'var(--police-titre), sans-serif' }}
+            >
+              Mon affiche du jour
+            </h2>
+            <p className="text-xs text-foreground/50 font-medium mt-0.5">
+              {resume}
+              {etat.serie && etat.serie > 1 ? ` · ${etat.serie} jours d’affilée` : ''}
+              {etat.analysesDuMois ? ` · ${etat.analysesDuMois} ce mois-ci` : ''}
+            </p>
           </div>
         </div>
-        <span
-          style={{
-            fontSize: 11,
-            color: '#10b981',
-            border: '1px solid rgba(16,185,129,0.4)',
-            borderRadius: 999,
-            padding: '3px 10px',
-          }}
-        >
+        <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/40 rounded-full px-3 py-1">
           essai privé
         </span>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+      <p className="text-sm text-foreground/60 leading-relaxed mb-6">
+        Une image de votre activité d’analyse, prête pour votre statut WhatsApp.
+      </p>
+
+      <div className="flex flex-col sm:flex-row gap-3">
         <button
           type="button"
           onClick={() => partager('story')}
           disabled={enCours !== null}
-          style={{
-            flex: '1 1 220px',
-            padding: '12px 16px',
-            borderRadius: 12,
-            border: 'none',
-            background: enCours ? '#0f3d30' : 'linear-gradient(135deg,#10b981,#059669)',
-            color: '#04110c',
-            fontSize: 15,
-            fontWeight: 700,
-            cursor: enCours ? 'wait' : 'pointer',
-          }}
+          className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 rounded-[16px] bg-primary hover:bg-primary-hover disabled:opacity-60 text-white text-sm font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.25)]"
         >
-          {enCours === 'story' ? 'Création…' : 'Partager mon affiche du jour'}
+          <Share2 className="w-4 h-4" />
+          {enCours === 'story' ? 'Création…' : 'Partager mon affiche'}
         </button>
         <button
           type="button"
           onClick={() => partager('carre')}
           disabled={enCours !== null}
-          style={{
-            padding: '12px 16px',
-            borderRadius: 12,
-            border: '1px solid rgba(255,255,255,0.14)',
-            background: 'transparent',
-            color: '#e8f0f8',
-            fontSize: 14,
-            cursor: enCours ? 'wait' : 'pointer',
-          }}
+          className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-[16px] border border-border-card text-foreground/80 hover:text-foreground hover:bg-foreground/5 disabled:opacity-60 text-sm font-bold transition-all"
         >
+          <Download className="w-4 h-4" />
           {enCours === 'carre' ? 'Création…' : 'Format carré'}
         </button>
         <button
           type="button"
           onClick={copierLeLien}
-          style={{
-            padding: '12px 16px',
-            borderRadius: 12,
-            border: '1px solid rgba(255,255,255,0.14)',
-            background: 'transparent',
-            color: '#9fb3c8',
-            fontSize: 14,
-            cursor: 'pointer',
-          }}
+          className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-[16px] border border-border-card text-foreground/60 hover:text-foreground hover:bg-foreground/5 text-sm font-bold transition-all"
         >
+          <Link2 className="w-4 h-4" />
           Copier le lien
         </button>
       </div>
 
-      {message ? <div style={{ marginTop: 10, color: '#9fb3c8', fontSize: 13 }}>{message}</div> : null}
+      {message ? <p className="mt-4 text-xs text-foreground/60">{message}</p> : null}
 
       {apercu ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={apercu}
           alt="Aperçu de mon affiche du jour"
-          style={{ marginTop: 14, width: '100%', maxWidth: 300, borderRadius: 14, display: 'block' }}
+          className="mt-6 w-full max-w-[260px] rounded-[20px] border border-border-card block"
         />
       ) : null}
-    </section>
+    </div>
   );
 }
