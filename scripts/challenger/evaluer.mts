@@ -52,7 +52,9 @@ type Couche =
   | { type: 'memoire-ancree'; k: number; poids: number; echelle: number }
   | { type: 'demi-vue-memoire'; echelle: number; force: number }
   | { type: 'forces-globales'; pas: number; rappel: number; minimum?: number; repartitionMemoire?: boolean }
-  | { type: 'memoire-poids-variable'; echelle: number; base: number; haut: number; seuil: number };
+  | { type: 'memoire-poids-variable'; echelle: number; base: number; haut: number; seuil: number }
+  | { type: 'memoire-nul-variable'; echelle: number; nulEgal: number; nulEcarte: number; ecartPlein: number }
+  | { type: 'memoire-terrain-ligue'; echelle: number; parPoint: number };
 
 chargerEnv();
 const tache: {
@@ -133,8 +135,12 @@ function construireReleve(jour: string, avecLesQuatre: boolean) {
 }
 function releveLaVeille(jour: string) {
   if (releves.has(jour)) return releves.get(jour);
-  // `true` : la production connaît désormais ces championnats.
-  const r = construireReleve(jour, true);
+  // `false` : le relevé de référence ne connaît QUE ce que la production
+  // connaît. `TIRS_EN_PLUS` porte la vague SUIVANTE, à l essai — la quatrième
+  // (Roumanie, Serbie, Irlande, Finlande) est passée dans CHAMPIONNATS le
+  // 12 septembre 2026, la cinquième (2. Bundesliga, CAN, Russie, Biélorussie)
+  // attend son verdict.
+  const r = construireReleve(jour, false);
   releves.set(jour, r);
   return r;
 }
@@ -1290,12 +1296,203 @@ function avecMemoirePoidsVariable(
   return { pronostics, actifs };
 }
 
+// ── LE NUL N'EST PAS LE MÊME DANS UN MATCH ÉQUILIBRÉ ET DANS UN ÉCRASEMENT ─
+//
+// La mémoire fixe le nul à 26 % partout : c'est la moyenne mesurée sur toutes
+// les rencontres (26,0 % annoncés pour 25,7 % réels). Mais un match entre deux
+// clubs de même niveau produit bien plus de nuls qu'un match où l'un écrase
+// l'autre — et c'est justement sur les matchs aveugles, souvent très
+// déséquilibrés (un grand club contre un champion d'un petit pays), que la
+// mémoire parle.
+//
+// Ici la part du nul descend avec l'écart de notes : `nulEgal` à notes égales,
+// `nulEcarte` quand l'écart atteint `ecartPlein` points, en dégradé entre les
+// deux. Le reste est réparti comme avant.
+function avecMemoireNulVariable(
+  echelle: number,
+  nulEgal: number,
+  nulEcarte: number,
+  ecartPlein: number
+): { pronostics: Pronostic[]; actifs: number[] } {
+  const note = new Map<number, number>();
+  const joues = new Map<number, number>();
+  const somme = new Map<number, number>();
+  const combien = new Map<number, number>();
+  const lire = (id: number) => note.get(id) ?? 1500;
+  const poser = (id: number, valeur: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const avant = note.has(id) ? note.get(id)! : null;
+    if (avant === null) {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + valeur);
+      combien.set(ligue, (combien.get(ligue) ?? 0) + 1);
+    } else {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + (valeur - avant));
+    }
+    note.set(id, valeur);
+  };
+  const ancrage = (ligue: number) => echelle * Math.log(coefficientDe(hierarchie as any, ligue) || 1);
+  const ancree = (id: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const n = combien.get(ligue) ?? 0;
+    const moyenne = n > 0 ? (somme.get(ligue) ?? 0) / n : 1500;
+    return lire(id) - moyenne + 1500 + ancrage(ligue);
+  };
+  const apprendre = (x: any) => {
+    const brutDom = lire(x.dom);
+    const brutExt = lire(x.ext);
+    const prevu = 1 / (1 + Math.pow(10, -(brutDom + AVANTAGE_TERRAIN_ELO - brutExt) / 400));
+    const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
+    const e = Math.abs(x.bd - x.be);
+    const g = e <= 1 ? 1 : e === 2 ? 1.5 : (11 + e) / 8;
+    const delta = 30 * g * (w - prevu);
+    poser(x.dom, brutDom + delta);
+    poser(x.ext, brutExt - delta);
+    joues.set(x.dom, (joues.get(x.dom) ?? 0) + 1);
+    joues.set(x.ext, (joues.get(x.ext) ?? 0) + 1);
+  };
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    let avis: { dom: number; nul: number; ext: number; poids: number } | null = null;
+    if (!occ && (joues.get(m.dom) ?? 0) >= 5 && (joues.get(m.ext) ?? 0) >= 5) {
+      // La part de la production : pleine sous cinq matchs connus.
+      const su = Math.min(Number(s1?.matchsJoues ?? 0), Number(s2?.matchsJoues ?? 0));
+      const part = su >= 5 ? 0.6 : 1 - (0.4 * su) / 5;
+      const noteDom = ancree(m.dom) + AVANTAGE_TERRAIN_ELO;
+      const noteExt = ancree(m.ext);
+      const we = 1 / (1 + Math.pow(10, -(noteDom - noteExt) / 400));
+      // Le nul suit l'écart de niveaux.
+      const ecart = Math.min(1, Math.abs(noteDom - noteExt) / Math.max(1, ecartPlein));
+      const nul = nulEgal + (nulEcarte - nulEgal) * ecart;
+      avis = { dom: (1 - nul) * we, nul, ext: (1 - nul) * (1 - we), poids: part };
+      actifs.push(Number(m.id));
+    }
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
+// ── L'AVANTAGE DE RECEVOIR N'EST PAS LE MÊME PARTOUT ─────────────────────
+//
+// La mémoire accorde 65 points de note au club qui reçoit, partout. Or
+// recevoir ne vaut pas la même chose d'un championnat à l'autre : mesuré sur
+// les rencontres rangées, 42,4 % de victoires à domicile en Premier League
+// contre 49,1 % en Liga — et les matchs aveugles sont souvent des coupes, où
+// l'écart entre les deux pays s'ajoute à celui des deux clubs.
+//
+// On mesure donc l'avantage RÉEL du championnat du match — la part de
+// victoires à domicile, tenue à jour match par match — et on le traduit en
+// points de note : `parPoint` points par point de pourcentage d'écart à la
+// moyenne générale. Un championnat mal connu garde les 65 points d'usage.
+const MIN_POUR_TERRAIN_LIGUE = 40;
+function avecMemoireTerrainLigue(echelle: number, parPoint: number): { pronostics: Pronostic[]; actifs: number[] } {
+  const note = new Map<number, number>();
+  const joues = new Map<number, number>();
+  const somme = new Map<number, number>();
+  const combien = new Map<number, number>();
+  // Part de victoires à domicile, par championnat et en tout.
+  const domLigue = new Map<number, { gagnes: number; n: number }>();
+  let domTotal = 0;
+  let nTotal = 0;
+  const lire = (id: number) => note.get(id) ?? 1500;
+  const poser = (id: number, valeur: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const avant = note.has(id) ? note.get(id)! : null;
+    if (avant === null) {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + valeur);
+      combien.set(ligue, (combien.get(ligue) ?? 0) + 1);
+    } else {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + (valeur - avant));
+    }
+    note.set(id, valeur);
+  };
+  const ancrage = (ligue: number) => echelle * Math.log(coefficientDe(hierarchie as any, ligue) || 1);
+  const ancree = (id: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const n = combien.get(ligue) ?? 0;
+    const moyenne = n > 0 ? (somme.get(ligue) ?? 0) / n : 1500;
+    return lire(id) - moyenne + 1500 + ancrage(ligue);
+  };
+  // L'avantage du terrain de CE championnat, en points de note.
+  const terrainDe = (ligue: number) => {
+    const c = domLigue.get(Number(ligue));
+    if (!c || c.n < MIN_POUR_TERRAIN_LIGUE || nTotal < 200) return AVANTAGE_TERRAIN_ELO;
+    const partLigue = c.gagnes / c.n;
+    const partPartout = domTotal / nTotal;
+    return AVANTAGE_TERRAIN_ELO + parPoint * 100 * (partLigue - partPartout);
+  };
+  const apprendre = (x: any) => {
+    const brutDom = lire(x.dom);
+    const brutExt = lire(x.ext);
+    const prevu = 1 / (1 + Math.pow(10, -(brutDom + AVANTAGE_TERRAIN_ELO - brutExt) / 400));
+    const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
+    const e = Math.abs(x.bd - x.be);
+    const g = e <= 1 ? 1 : e === 2 ? 1.5 : (11 + e) / 8;
+    const delta = 30 * g * (w - prevu);
+    poser(x.dom, brutDom + delta);
+    poser(x.ext, brutExt - delta);
+    joues.set(x.dom, (joues.get(x.dom) ?? 0) + 1);
+    joues.set(x.ext, (joues.get(x.ext) ?? 0) + 1);
+    const ligue = Number(x.ligue);
+    const c = domLigue.get(ligue) ?? { gagnes: 0, n: 0 };
+    if (x.bd > x.be) { c.gagnes++; domTotal++; }
+    c.n++;
+    nTotal++;
+    domLigue.set(ligue, c);
+  };
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    let avis: { dom: number; nul: number; ext: number; poids: number } | null = null;
+    if (!occ && (joues.get(m.dom) ?? 0) >= 5 && (joues.get(m.ext) ?? 0) >= 5) {
+      const su = Math.min(Number(s1?.matchsJoues ?? 0), Number(s2?.matchsJoues ?? 0));
+      const part = su >= 5 ? 0.6 : 1 - (0.4 * su) / 5;
+      const we = 1 / (1 + Math.pow(10, -(ancree(m.dom) + terrainDe(Number(m.ligue)) - ancree(m.ext)) / 400));
+      avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids: part };
+      actifs.push(Number(m.id));
+    }
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'memoire-terrain-ligue') {
+    const { pronostics, actifs: ids } = avecMemoireTerrainLigue(v.couche.echelle, v.couche.parPoint);
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
+  if (v.couche?.type === 'memoire-nul-variable') {
+    const { pronostics, actifs: ids } = avecMemoireNulVariable(
+      v.couche.echelle,
+      v.couche.nulEgal,
+      v.couche.nulEcarte,
+      v.couche.ecartPlein
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
     continue;
   }
   if (v.couche?.type === 'memoire-poids-variable') {

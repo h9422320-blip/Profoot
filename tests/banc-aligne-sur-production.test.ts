@@ -59,8 +59,8 @@ test('★ ACQUIS — le relevé de référence inclut ce que la production conna
   const bloc = s.slice(iDefaut, iDefaut + 300);
   assert.match(
     bloc,
-    /construireReleve\(jour, true\)/,
-    'Le relevé de référence doit inclure les championnats que la production connaît.'
+    /construireReleve\(jour, false\)/,
+    'Le relevé de référence ne doit contenir QUE ce que la production connaît : TIRS_EN_PLUS porte la vague à l’essai, pas celle qui est déjà en ligne.'
   );
   // Et la mécanique d'essai reste disponible pour la vague suivante.
   assert.match(s, /const NOMS_EN_PLUS = new Set\(Object\.values\(TIRS_EN_PLUS\)\)/, 'La mécanique d’essai des nouveaux championnats a disparu.');

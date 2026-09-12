@@ -177,7 +177,8 @@ type Couche =
       terrainLigue?: { retrecissement: number; poids: number };
     }
   | { type: 'memoire'; k: number; poids: number }
-  | { type: 'demi-vue' };
+  | { type: 'demi-vue' }
+  | { type: 'memoire-nul-variable'; echelle: number; nulEgal: number; nulEcarte: number; ecartPlein: number };
 type Variante = { nom: string; couche: Couche; libelle: string };
 function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
@@ -295,6 +296,19 @@ function couchesAEssayer(): Variante[] {
     couche: { type: 'demi-vue' },
     libelle: 'Demi-vue (un seul club connu du relevé des tirs)',
   });
+  // Le nul de la mémoire suit l'écart de niveaux au lieu d'être fixé à 26 %.
+  // Mesuré le 12 septembre 2026 : +2/+6 justes sur tout l'historique — la
+  // porte passe — mais +0/+1 seulement sur les trois derniers mois. Une
+  // fenêtre sur deux ne suffit pas pour mettre en ligne : au banc.
+  for (const [nulEgal, nulEcarte] of [
+    [0.32, 0.15],
+    [0.3, 0.18],
+  ] as [number, number][])
+    out.push({
+      nom: `NUL ${nulEgal}->${nulEcarte}`,
+      couche: { type: 'memoire-nul-variable', echelle: 400, nulEgal, nulEcarte, ecartPlein: 400 },
+      libelle: `Nul de la mémoire selon l'écart (${nulEgal} à notes égales, ${nulEcarte} à 400 points d'écart)`,
+    });
   return out;
 }
 
