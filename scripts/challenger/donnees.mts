@@ -64,18 +64,36 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   fs.writeFileSync(FICHIER_RENCONTRES, JSON.stringify(rencontres));
   journal(`${rencontres.length} rencontres terminées rangées`);
 
+  // ── UNE LECTURE QUI NE LÂCHE PAS À LA PREMIÈRE COUPURE ───────────────────
+  //
+  // Le 12 septembre 2026 à 11 h 06, la base a coupé une lecture volumineuse
+  // en route (« TypeError: terminated » après cinq minutes de pagination) et
+  // TOUTE la journée du challenger est tombée : aucun rapport, aucune couche
+  // essayée. Une page refusée est désormais redemandée trois fois, en
+  // patientant de plus en plus, avant d'abandonner.
+  const lirePage = async (colonnes: string, de: number, etiquette: string) => {
+    let dernier = '';
+    for (let essai = 1; essai <= 3; essai++) {
+      const { data, error } = await sb
+        .from('cache_api')
+        .select(colonnes)
+        .ilike('cle', 'apifb:/fixtures/statistics?fixture=%')
+        .range(de, de + 999);
+      if (!error) return (data ?? []) as any[];
+      dernier = error.message;
+      journal(`${etiquette} : page ${de} refusée (${dernier}) — nouvel essai dans ${3 * essai} s`);
+      await new Promise((r) => setTimeout(r, 3000 * essai));
+    }
+    throw new Error(`${etiquette} : ${dernier}`);
+  };
+
   // ── 2. LES FICHES DE TIRS QUI MANQUENT ───────────────────────────────────
   const nomDe = new Map<number, string>(CHAMPIONNATS.map((c: any) => [Number(c.id), String(c.nom)]));
   const cles = new Set<string>();
   for (let de = 0; de < 200_000; de += 1000) {
-    const { data, error } = await sb
-      .from('cache_api')
-      .select('cle')
-      .ilike('cle', 'apifb:/fixtures/statistics?fixture=%')
-      .range(de, de + 999);
-    if (error) throw new Error('lecture des clés de la réserve : ' + error.message);
-    for (const d of data ?? []) cles.add(String(d.cle));
-    if (!data || data.length < 1000) break;
+    const data = await lirePage('cle', de, 'lecture des clés de la réserve');
+    for (const d of data) cles.add(String(d.cle));
+    if (data.length < 1000) break;
   }
   const depuis = Date.now() - 45 * 86_400_000;
   const manquants = rencontres.filter(
@@ -96,13 +114,8 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   // ── 3. L'EXPORT DES TIRS, LUS COMME LES LIT LA CONSTRUCTION ──────────────
   const tirs: any[] = [];
   for (let de = 0; de < 200_000; de += 1000) {
-    const { data, error } = await sb
-      .from('cache_api')
-      .select('cle, contenu')
-      .ilike('cle', 'apifb:/fixtures/statistics?fixture=%')
-      .range(de, de + 999);
-    if (error) throw new Error('lecture des tirs : ' + error.message);
-    for (const d of data ?? []) {
+    const data = await lirePage('cle, contenu', de, 'lecture des tirs');
+    for (const d of data) {
       const m = parId.get(Number(String(d.cle).split('=').pop()));
       if (!m) continue;
       const ligue = nomDe.get(m.ligue);
@@ -161,11 +174,33 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   // Relevées chaque jour par la production (`cotes-marche.ts`) et rangées
   // par jour dans la réserve. On n'en garde que les probabilités, par
   // rencontre.
+  // ── ET SEULEMENT CELLES RELEVÉES AVANT LES MATCHS ──────────────────────
+  //
+  // Constaté le 12 septembre 2026 : TOUTES les journées du 17 août au 10
+  // septembre avaient été rangées APRÈS coup, jusqu'à huit jours plus tard.
+  // Ce sont donc des cotes de CLÔTURE : elles contiennent déjà les
+  // compositions, les blessures de dernière minute et l'argent engagé.
+  // Mesurée là-dessus, la couche du marché gagnait +32 et +33 vainqueurs —
+  // un mirage, qui aurait pu être mis en ligne. Une journée écrite après
+  // son propre jour est désormais ÉCARTÉE, et sans date d'écriture aussi.
   const cotes: Record<string, { dom: number; nul: number; ext: number }> = {};
+  let journeesGardees = 0;
+  let journeesEcartees = 0;
   for (let de = 0; de < 20_000; de += 200) {
-    const { data, error } = await sb.from('cache_api').select('cle, contenu').ilike('cle', 'cotes:%').range(de, de + 199);
+    const { data, error } = await sb
+      .from('cache_api')
+      .select('cle, contenu, ecrit_le')
+      .ilike('cle', 'cotes:%')
+      .range(de, de + 199);
     if (error) throw new Error('lecture des cotes : ' + error.message);
     for (const r of data ?? []) {
+      const jour = String(r.cle).slice('cotes:'.length);
+      const ecrit = String(r.ecrit_le ?? '').slice(0, 10);
+      if (!ecrit || Date.parse(ecrit) > Date.parse(jour)) {
+        journeesEcartees++;
+        continue;
+      }
+      journeesGardees++;
       const c: any = r.contenu;
       const liste: any[] = Array.isArray(c)
         ? c
@@ -181,7 +216,10 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
     if (!data || data.length < 200) break;
   }
   fs.writeFileSync(FICHIER_COTES, JSON.stringify(cotes));
-  journal(`${Object.keys(cotes).length} rencontres cotées exportées`);
+  journal(
+    `${Object.keys(cotes).length} rencontres cotées exportées — ${journeesGardees} journée(s) relevée(s) avant les matchs, ` +
+      `${journeesEcartees} écartée(s) parce que relevée(s) après (cote de clôture)`
+  );
 
   return { rencontres: rencontres.length, tirs: tirs.length, fichesLues };
 }

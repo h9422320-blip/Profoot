@@ -5,7 +5,11 @@
  * même porte que le challenger, contre le moteur actuel. Une couche qui
  * n'agit que sur une partie des matchs est jugée sur ceux-là seulement.
  *
- *   npx tsx scripts/challenger/juger.mts <resultat.json>
+ *   npx tsx scripts/challenger/juger.mts <resultat.json> [jour minimal]
+ *
+ * Le jour minimal sert à ne garder que les matchs dont les cotes ont été
+ * relevées AVANT le coup d'envoi (voir
+ * `scripts/_quand-les-cotes-sont-relevees.mts`).
  */
 import fs from 'node:fs';
 import { mesurer, moities, verdict, type Mesure, type Pronostic } from './porte.js';
@@ -13,14 +17,17 @@ import { mesurer, moities, verdict, type Mesure, type Pronostic } from './porte.
 const res: { matchs: number; variantes: Record<string, Pronostic[]>; actifs?: Record<string, number[]> } = JSON.parse(
   fs.readFileSync(process.argv[2], 'utf8')
 );
-const champ = res.variantes.champion;
+const depuis = process.argv[3] ?? '';
+const assezRecent = (p: Pronostic) => !depuis || p.date.slice(0, 10) >= depuis;
+const champ = (res.variantes.champion ?? []).filter(assezRecent);
 if (!champ?.length) {
   console.log('aucun moteur de référence dans ce résultat');
   process.exit(1);
 }
 const pc = (a: number, n: number) => (n ? `${((100 * a) / n).toFixed(1)} %` : '—');
 
-function juger(nom: string, liste: Pronostic[], ids?: number[]) {
+function juger(nom: string, listeBrute: Pronostic[], ids?: number[]) {
+  const liste = listeBrute.filter(assezRecent);
   const garder = ids ? new Set(ids) : null;
   const base = garder ? champ.filter((p) => garder.has(p.id)) : champ;
   const [h1, h2] = moities(base);

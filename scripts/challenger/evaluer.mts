@@ -44,6 +44,19 @@ const tache: {
   debut: string;
   fin: string;
   variantes: { nom: string; env: Record<string, string>; couche?: Couche }[];
+  /**
+   * ── LE BANC ÉLARGI, AJOUTÉ LE 12 SEPTEMBRE 2026 ──────────────────────
+   *
+   * Par défaut (champ absent), le rejeu porte sur les 7 grands
+   * championnats + C1 + C3 : le périmètre du produit, celui de l'épreuve
+   * officielle, INCHANGÉ.
+   *
+   * `'cotes'` rejoue À LA PLACE toutes les rencontres COTÉES, quelle que
+   * soit la compétition. La couche du marché n'agit que sur celles-là, et
+   * le périmètre étroit n'en compte que 188 contre 1 035 au total : la
+   * porte refusait faute de matchs, pas faute de résultats.
+   */
+  univers?: 'suivies' | 'cotes';
   sortie: string;
 } = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 
@@ -93,8 +106,10 @@ function statsAvant(equipe: number, m: any) {
 // ── LA LISTE DES MATCHS, LA MÊME POUR TOUS LES ESSAIS ──────────────────────
 const suivies = new Set([...Object.keys(GRANDS), ...Object.keys(COUPES_SUIVIES)].map(Number));
 const entrees: { m: any; s1: any; s2: any; occ: any; jour: string }[] = [];
+const surCotes = tache.univers === 'cotes';
 for (const m of rencontres) {
-  if (!suivies.has(Number(m.ligue)) || m.date < tache.debut || m.date >= tache.fin) continue;
+  const retenue = surCotes ? cotes[String(m.id)] !== undefined : suivies.has(Number(m.ligue));
+  if (!retenue || m.date < tache.debut || m.date >= tache.fin) continue;
   const s1 = statsAvant(m.dom, m);
   const s2 = statsAvant(m.ext, m);
   if (s1.matchsJoues < 1 || s2.matchsJoues < 1) continue;

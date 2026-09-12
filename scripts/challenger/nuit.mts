@@ -218,12 +218,17 @@ function couchesAEssayer(): Variante[] {
 // Le processus de la nuit ne transmet aucun réglage BANC_* hérité : seul celui
 // de la variante évaluée doit compter.
 const envSansBanc = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('BANC_')));
-function evaluer(etiquette: string, envReleve: Record<string, string>, variantes: { nom: string; env: Record<string, string>; couche?: Couche }[]) {
+function evaluer(
+  etiquette: string,
+  envReleve: Record<string, string>,
+  variantes: { nom: string; env: Record<string, string>; couche?: Couche }[],
+  univers?: 'cotes'
+) {
   const nomFichier = etiquette.replace(/[^A-Za-z0-9_.=-]/g, '_');
   const tache = path.join(DOSSIER_TRAVAIL, `tache-${nomFichier}.json`);
   const sortie = path.join(DOSSIER_TRAVAIL, `resultat-${nomFichier}.json`);
   if (fs.existsSync(sortie)) fs.rmSync(sortie);
-  fs.writeFileSync(tache, JSON.stringify({ debut: DEBUT_EVALUATION, fin: NUIT, variantes, sortie }));
+  fs.writeFileSync(tache, JSON.stringify({ debut: DEBUT_EVALUATION, fin: NUIT, variantes, univers, sortie }));
   journal(`évaluation « ${etiquette} » : ${variantes.length} variante(s)`);
   const r = spawnSync(process.execPath, [TSX, path.join('scripts', 'challenger', 'evaluer.mts'), tache], {
     cwd: RACINE,
@@ -371,6 +376,64 @@ async function principal(): Promise<any> {
   ligne('');
   const toutes = [...historique, ...cetteNuit];
   ecrireHistorique(toutes);
+
+  // ── LE BANC ÉLARGI ─────────────────────────────────────────────────────
+  //
+  // La couche du marché n'agit que sur les matchs COTÉS, et le périmètre du
+  // produit n'en compte que 188 sur les 1 035 rangés : la porte refusait
+  // faute de matchs, pas faute de résultats. Ici les MÊMES couches sont
+  // rejouées sur toutes les rencontres cotées, quelle que soit la
+  // compétition.
+  //
+  // Section d'INFORMATION : aucune proposition n'en sort, et l'épreuve
+  // officielle ci-dessus n'est pas touchée. Un échec ici ne doit jamais
+  // faire tomber la journée.
+  ligne('## 4 bis. Le banc élargi — toutes les compétitions cotées');
+  ligne('');
+  try {
+    const large = evaluer(
+      'elargi',
+      {},
+      [{ nom: 'champion', env: {} }, ...variantes.map((v) => ({ nom: v.nom, env: {}, couche: v.couche }))],
+      'cotes'
+    );
+    const base = large.variantes.champion ?? [];
+    if (base.length < 2) throw new Error('aucune rencontre cotée évaluable');
+    const [l1, l2] = moities(base);
+    const coupe: [Set<number>, Set<number>] = [new Set(l1.map((p) => p.id)), new Set(l2.map((p) => p.id))];
+    const parMoitiesLarge = (x: Pronostic[]): [Mesure, Mesure] => [
+      mesurer(x.filter((p) => coupe[0].has(p.id))),
+      mesurer(x.filter((p) => coupe[1].has(p.id))),
+    ];
+    const mcLarge = parMoitiesLarge(base);
+    const tout = mesurer(base);
+    ligne(
+      `Rejoué sur **${base.length} rencontres cotées** de toutes compétitions, du ${l1[0]?.date.slice(0, 10)} au ${l2[l2.length - 1]?.date.slice(0, 10)} : ` +
+        `le moteur actuel trouve **${pc(tout.justes, tout.n)}** de bons vainqueurs, **${pc(tout.sursJustes, tout.surs)}** quand il est sûr de lui (${tout.surs} matchs).`
+    );
+    ligne('');
+    ligne('| Couche | 1re moitié | 2e moitié | Verdict (information) |');
+    ligne('|---|---|---|---|');
+    for (const v of variantes) {
+      const l = large.variantes[v.nom];
+      if (!l) {
+        ligne(`| ${v.libelle} | — | — | évaluation absente |`);
+        continue;
+      }
+      const mv = parMoitiesLarge(l);
+      const ve = verdict(mcLarge, mv);
+      const cellule = (k: 0 | 1) => {
+        const e = mv[k].justes - mcLarge[k].justes;
+        return `${e >= 0 ? '+' : ''}${e} juste(s), Brier ${mv[k].brier.toFixed(4)}`;
+      };
+      ligne(`| ${v.libelle} | ${cellule(0)} | ${cellule(1)} | ${ve.gagne ? '✅ gagne' : '— ' + ve.raisons[0]} |`);
+    }
+    ligne('');
+    ligne('_Cette section informe, elle ne propose rien : brancher une couche reste soumis à l’épreuve officielle et à la décision du propriétaire._');
+  } catch (e: any) {
+    ligne(`Banc élargi indisponible aujourd’hui : ${e?.message ?? String(e)}`);
+  }
+  ligne('');
 
   ligne('## 5. Proposition');
   ligne('');
