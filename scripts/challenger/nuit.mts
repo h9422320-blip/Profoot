@@ -168,7 +168,8 @@ type Couche =
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
   | { type: 'duel'; retrecissement: number; poids: number }
-  | { type: 'elan'; court: number; long: number; poids: number };
+  | { type: 'elan'; court: number; long: number; poids: number }
+  | { type: 'terrain-ligue'; retrecissement: number; poids: number };
 type Variante = { nom: string; couche: Couche; libelle: string };
 function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
@@ -224,6 +225,16 @@ function couchesAEssayer(): Variante[] {
       nom: `ELAN ${court}/${long} part=${poids}`,
       couche: { type: 'elan', court, long, poids },
       libelle: `Couche de l'élan (${court} derniers contre ${long}, part ${poids})`,
+    });
+  // Le terrain PAR CHAMPIONNAT : le moteur applique le même avantage de
+  // recevoir partout (1,15 / 0,92), or il ne vaut pas la même chose en
+  // Premier League et en Serie A. Sur la période récente, cette couche gagne
+  // des deux côtés avec un meilleur Brier (mesuré le 12 septembre).
+  for (const poids of [0.25, 0.5])
+    out.push({
+      nom: `TERRAIN-LIGUE k=20 part=${poids}`,
+      couche: { type: 'terrain-ligue', retrecissement: 20, poids },
+      libelle: `Couche du terrain par championnat (k=20, part ${poids})`,
     });
   return out;
 }
@@ -485,6 +496,60 @@ async function principal(): Promise<any> {
     ligne('_Cette section informe, elle ne propose rien : brancher une couche reste soumis à l’épreuve officielle et à la décision du propriétaire._');
   } catch (e: any) {
     ligne(`Banc élargi indisponible aujourd’hui : ${e?.message ?? String(e)}`);
+  }
+  ligne('');
+
+  // ── LA PÉRIODE RÉCENTE, QUI N'A JAMAIS SERVI À RÉGLER LE MOTEUR ─────────
+  //
+  // Constat du 12 septembre 2026 : les SEPT familles de couches essayées
+  // perdent sur la première moitié (févr.-juin) et gagnent sur la seconde.
+  // Ce n'est pas un hasard : les réglages actuels ont été choisis sur des
+  // données qui couvrent cette première période, elle leur est favorable.
+  //
+  // Cette section rejuge donc les MÊMES essais sur les quatre-vingt-dix
+  // derniers jours seulement, coupés en deux moitiés comme ailleurs. Elle
+  // INFORME : la porte officielle, au-dessus, ne bouge pas, et aucune
+  // proposition ne sort d'ici. Tant que chaque moitié n'atteint pas cent
+  // cinquante matchs, le verdict dira « il en faut 150 » — c'est normal, la
+  // matière arrive.
+  const SEUIL_RECENT = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  ligne(`## 4 ter. Sur la période récente (depuis le ${SEUIL_RECENT})`);
+  ligne('');
+  try {
+    const recents = (l: Pronostic[]) => l.filter((p) => p.date.slice(0, 10) >= SEUIL_RECENT);
+    const baseRecente = recents(champ);
+    if (baseRecente.length < 4) throw new Error('trop peu de matchs récents');
+    const [r1, r2] = moities(baseRecente);
+    const coupeR: [Set<number>, Set<number>] = [new Set(r1.map((p) => p.id)), new Set(r2.map((p) => p.id))];
+    const parMoitiesRecentes = (x: Pronostic[]): [Mesure, Mesure] => [
+      mesurer(x.filter((p) => coupeR[0].has(p.id))),
+      mesurer(x.filter((p) => coupeR[1].has(p.id))),
+    ];
+    const mcR = parMoitiesRecentes(baseRecente);
+    const toutR = mesurer(baseRecente);
+    ligne(
+      `Sur **${baseRecente.length} matchs** : le moteur actuel trouve **${pc(toutR.justes, toutR.n)}** de bons vainqueurs, ` +
+        `**${pc(toutR.sursJustes, toutR.surs)}** quand il est sûr de lui (${toutR.surs} matchs). ` +
+        `Il faut ${150 * 2} matchs pour que cette section puisse conclure ; il y en a ${baseRecente.length}.`
+    );
+    ligne('');
+    ligne('| Couche | 1re moitié | 2e moitié | Verdict (information) |');
+    ligne('|---|---|---|---|');
+    for (const v of variantes) {
+      const l = resultats[v.nom];
+      if (!l) continue;
+      const mvR = parMoitiesRecentes(recents(l));
+      const veR = verdict(mcR, mvR);
+      const cellule = (k: 0 | 1) => {
+        const e = mvR[k].justes - mcR[k].justes;
+        return `${e >= 0 ? '+' : ''}${e} juste(s), Brier ${mvR[k].brier.toFixed(4)}`;
+      };
+      ligne(`| ${v.libelle} | ${cellule(0)} | ${cellule(1)} | ${veR.gagne ? '✅ gagne' : '— ' + veR.raisons[0]} |`);
+    }
+    ligne('');
+    ligne('_Section d’information : la porte officielle reste celle de la partie 4._');
+  } catch (e: any) {
+    ligne(`Période récente indisponible aujourd’hui : ${e?.message ?? String(e)}`);
   }
   ligne('');
 

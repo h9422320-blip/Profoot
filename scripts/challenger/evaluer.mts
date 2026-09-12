@@ -38,7 +38,8 @@ type Couche =
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
   | { type: 'duel'; retrecissement: number; poids: number }
-  | { type: 'elan'; court: number; long: number; poids: number };
+  | { type: 'elan'; court: number; long: number; poids: number }
+  | { type: 'terrain-ligue'; retrecissement: number; poids: number };
 
 chargerEnv();
 const tache: {
@@ -406,12 +407,70 @@ function avecElan(court: number, long: number, poids: number): Pronostic[] {
   return out;
 }
 
+// ── LA COUCHE DU TERRAIN PAR CHAMPIONNAT ─────────────────────────────────
+//
+// Le moteur applique le MÊME avantage du terrain partout : 1,15 à domicile,
+// 0,92 dehors, de la Premier League à la Primeira Liga. Or recevoir ne vaut
+// pas la même chose dans chaque championnat : les deux que nos abonnés
+// suivent le plus — Premier League et Ligue 1 — sont justement nos deux plus
+// faibles quand le moteur se prononce (54 et 58 % contre 73 % en Serie A).
+//
+// On mesure donc, championnat par championnat, l'écart de buts moyen du club
+// qui reçoit, et on le compare à la moyenne de TOUS les championnats. Un
+// championnat n'est jugé qu'à partir de cinquante rencontres, et son écart
+// est ramené vers zéro par n/(n+retrecissement) : un championnat mal connu
+// ne bouge rien.
+//
+// À la différence de la couche du terrain PAR CLUB (mesurée et refusée le
+// 12 septembre), la quantité est ici grossière donc bien estimée : des
+// centaines de rencontres par championnat au lieu de quelques-unes par club.
+// Seules les rencontres des jours PRÉCÉDENTS comptent.
+const MIN_RENCONTRES_LIGUE = 50;
+function avecTerrainLigue(retrecissement: number, poids: number): Pronostic[] {
+  const par = new Map<number, { n: number; somme: number }>();
+  let nTotal = 0;
+  let sommeTotale = 0;
+  const apprendre = (x: any) => {
+    const ligue = Number(x.ligue);
+    let c = par.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; par.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nTotal++;
+    sommeTotale += x.bd - x.be;
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = par.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nTotal === 0) return 0;
+    const partout = sommeTotale / nTotal;
+    return (c.n / (c.n + retrecissement)) * (c.somme / c.n - partout);
+  };
+  const out: Pronostic[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    const d = poids * ecartDeLigue(Number(m.ligue));
+    const corr = d === 0 ? null : { domicile: d / 2, exterieur: -d / 2 };
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
+    out.push(versPronostic(m, r));
+  }
+  return out;
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'terrain-ligue') {
+    sortie[v.nom] = avecTerrainLigue(v.couche.retrecissement, v.couche.poids);
     continue;
   }
   if (v.couche?.type === 'elan') {
