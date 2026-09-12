@@ -73,14 +73,24 @@ test('★ ACQUIS — le moteur ne bouge pas d’un centième quand la mémoire e
   assert.equal(apres.probaVictoire2, avant.probaVictoire2);
 });
 
-test('★ ACQUIS — la production ne consulte la mémoire que si les occasions manquent', () => {
+test('★ ACQUIS — la mémoire NE SERT PAS au calcul tant qu’elle n’est pas ancrée sur la hiérarchie', () => {
+  // ── CE QUI S'EST PASSÉ LE 12 SEPTEMBRE 2026 ─────────────────────────────
+  //
+  // Branchée le matin sur les matchs aveugles, elle gagnait 31 vainqueurs sur
+  // 4 922 matchs. Rejouée le même jour sur Manchester United — Sabah, LE cas
+  // qui a coûté des abonnés, elle annonçait 0-1 Sabah là où le moteur seul
+  // annonçait 2-0 United (réel 4-0) : sa note gonfle pour le champion d'un
+  // championnat faible, faute de matchs entre pays.
+  //
+  // Elle a donc été retirée du calcul le même jour. Elle n'y reviendra
+  // qu'ancrée sur la hiérarchie MESURÉE des championnats, et après avoir
+  // repassé ce cas. Ce verrou protège le pronostic en attendant.
   for (const f of ['src/app/api/analyze/route.ts', 'src/lib/precalcul-selection.ts']) {
     const s = sansCommentaires(fs.readFileSync(f, 'utf8'));
-    assert.match(s, /avisDeLaMemoire/, `${f} ne consulte plus la mémoire des clubs.`);
-    assert.match(
+    assert.doesNotMatch(
       s,
-      /occasionsDuMatch\s*\r?\n?\s*\?\s*null\s*\r?\n?\s*:\s*avisDeLaMemoire|occasionsDuMatch \? null : avisDeLaMemoire/,
-      `${f} doit passer la mémoire UNIQUEMENT quand les occasions manquent : sinon elle dégrade le pronostic (couche Elo refusée le 11 septembre 2026).`
+      /avisDeLaMemoire/,
+      `${f} consulte la mémoire des clubs : elle annonce Sabah vainqueur de Manchester United. À ne rebrancher qu'ancrée sur la hiérarchie des championnats, mesures refaites.`
     );
   }
 });

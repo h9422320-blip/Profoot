@@ -30,6 +30,25 @@ export const GRANDS: Record<number, string> = {
 };
 /** …puis la Ligue des champions, puis l'Europa League. */
 export const COUPES_SUIVIES: Record<number, string> = { 2: 'Ligue des champions', 3: 'Europa League' };
+
+/**
+ * ── LES QUATRE CHAMPIONNATS QUI POURRAIENT ENTRER AU RELEVÉ DES TIRS ──────
+ *
+ * Le relevé de production couvre 34 compétitions. Parmi les pays qui privent
+ * le plus de matchs de coupe d'Europe de leurs tirs, SEULS ces quatre ont des
+ * statistiques chez le fournisseur — l'Azerbaïdjan (Sabah, Qarabağ), l'Estonie
+ * ou l'Arménie n'en ont pas, et aucun relevé ne pourra jamais les couvrir.
+ *
+ * Le challenger range leurs fiches et les exporte, mais le relevé du MOTEUR DE
+ * RÉFÉRENCE les ignore : c'est la couche `tirs-elargis` qui les ajoute, pour
+ * qu'on mesure exactement ce qu'elles apportent.
+ */
+export const TIRS_EN_PLUS: Record<number, string> = {
+  283: 'Liga I',
+  286: 'Super liga serbe',
+  357: 'Premier Division irlandaise',
+  244: 'Veikkausliiga',
+};
 /** Les coupes, qui ne sont le championnat de personne. */
 export const COUPES = new Set([2, 3, 848, 531]);
 

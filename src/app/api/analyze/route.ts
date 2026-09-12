@@ -18,7 +18,6 @@ import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
 import { lireForcesLigue } from "@/lib/forces-equipes";
 import { lireForcesChampionnats, rapportEntreChampionnats } from "@/lib/forces-championnats";
-import { avisDeLaMemoire, lireMemoireClubs } from "@/lib/memoire-clubs";
 import { lirePredictionFigee, figerPrediction, remplacerPredictionFigee, predictionIndecise } from "@/lib/prediction-figee";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
@@ -1495,13 +1494,22 @@ async function analyser(req: Request, billet: BilletQuota) {
     //
     // Quand les occasions sont là, la mémoire se TAIT : appliquée partout,
     // elle dégrade le pronostic (mesuré le 11 septembre, couche Elo refusée).
-    occasionsDuMatch
-      ? null
-      : avisDeLaMemoire(
-          await lireMemoireClubs(),
-          equipe1AJoueADomicile === true ? team1.id : team2.id,
-          equipe1AJoueADomicile === true ? team2.id : team1.id
-        )
+    // ── LA MÉMOIRE DES CLUBS EST RETIRÉE DU CALCUL LE 12 SEPTEMBRE 2026 ──
+    //
+    // Branchée le matin, retirée l'après-midi. Sur 4 922 matchs aveugles elle
+    // gagnait 31 vainqueurs ; mais rejouée sur Manchester United — Sabah du
+    // 10 septembre, LE cas qui a coûté des abonnés, elle annonce 0-1 Sabah là
+    // où le moteur seul annonçait 2-0 United (réel 4-0).
+    //
+    // La cause est connue : une note de type Elo gonfle pour le champion d'un
+    // championnat faible, faute de matchs entre pays. Le gain moyen ne paie
+    // pas le type d'erreur le plus visible pour un abonné — un grand club
+    // annoncé perdant contre un inconnu.
+    //
+    // `src/lib/memoire-clubs.ts` reste en place et le challenger continue de
+    // l'essayer chaque jour. Elle ne reviendra ici qu'ancrée sur la hiérarchie
+    // MESURÉE des championnats, et après avoir repassé le cas Sabah.
+    null
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────

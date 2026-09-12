@@ -12,7 +12,7 @@
  * que dans la réserve des pages du fournisseur et dans `.challenger/`.
  */
 import fs from 'node:fs';
-import { chargerEnv, assurerDossiers, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, journal } from './commun.mjs';
+import { chargerEnv, assurerDossiers, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, journal, TIRS_EN_PLUS } from './commun.mjs';
 
 const nombre = (stats: any[] | undefined, type: string): number => {
   const s = (stats ?? []).find((x) => x?.type === type);
@@ -108,6 +108,12 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
 
   // ── 2. LES FICHES DE TIRS QUI MANQUENT ───────────────────────────────────
   const nomDe = new Map<number, string>(CHAMPIONNATS.map((c: any) => [Number(c.id), String(c.nom)]));
+  // ── ET LES QUATRE CHAMPIONNATS À L'ESSAI ────────────────────────────────
+  //
+  // Leurs fiches sont rangées et exportées, mais le relevé du moteur de
+  // référence les ignore : seule la couche `tirs-elargis` les lit. Le jour où
+  // elle gagnera, il suffira de les ajouter à CHAMPIONNATS en production.
+  for (const [id, nom] of Object.entries(TIRS_EN_PLUS)) nomDe.set(Number(id), nom);
   const cles = new Set<string>();
   for (let de = 0; de < 200_000; de += 1000) {
     const data = await lirePage('cle', de, 'lecture des clés de la réserve');

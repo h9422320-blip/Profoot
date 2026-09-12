@@ -44,7 +44,6 @@ import {
   butsAttendusOccasions,
   CHAMPIONNATS as COMPETITIONS_APPRISES,
 } from './forme-occasions';
-import { avisDeLaMemoire, lireMemoireClubs } from './memoire-clubs';
 import { lireForcesLigue } from './forces-equipes';
 import { figerPrediction } from './prediction-figee';
 
@@ -326,12 +325,6 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
     // rencontre : c'est le même pour toutes, et le relire soixante fois
     // coûterait soixante allers-retours pour un résultat identique.
     const releveOccasions = await lireForces();
-    // ── LA MÉMOIRE DE TOUS LES CLUBS, LUE UNE FOIS POUR TOUTE LA PASSE ──
-    //
-    // Elle ne servira QUE sur les matchs dont le relevé des tirs ignore un
-    // club. Absente, tout reste exactement comme avant. Voir
-    // `memoire-clubs.ts`.
-    const memoireDesClubs = await lireMemoireClubs();
 
     for (const f of aPreparer.slice(0, MAX_PAR_PASSAGE)) {
       const ligue = Number(f?.league?.id);
@@ -426,7 +419,10 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
           // l'avis de la mémoire sur qui domine, à 60 %. Mesuré sur 4 922
           // matchs aveugles : +31 vainqueurs justes, 71,8 et 68,1 % quand le
           // moteur est sûr de lui contre 63,7 %.
-          occasionsDuMatch ? null : avisDeLaMemoire(memoireDesClubs, domId, extId)
+          // La mémoire des clubs a été retirée du calcul le 12 septembre 2026,
+          // le jour de son branchement : elle annonçait Sabah vainqueur de
+          // Manchester United. Voir la route d'analyse et `memoire-clubs.ts`.
+          null
         );
 
         await figerPrediction({

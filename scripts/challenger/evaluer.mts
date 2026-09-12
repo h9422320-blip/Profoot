@@ -29,7 +29,7 @@
  * Usage : `npx tsx scripts/challenger/evaluer.mts <tâche.json>`
  */
 import fs from 'node:fs';
-import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, COUPES_SUIVIES } from './commun.mjs';
+import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, COUPES_SUIVIES, TIRS_EN_PLUS } from './commun.mjs';
 import type { Pronostic } from './porte.js';
 
 type Couche =
@@ -47,7 +47,8 @@ type Couche =
       terrainLigue?: { retrecissement: number; poids: number };
     }
   | { type: 'memoire'; k: number; poids: number }
-  | { type: 'demi-vue' };
+  | { type: 'demi-vue' }
+  | { type: 'tirs-elargis' };
 
 chargerEnv();
 const tache: {
@@ -90,15 +91,35 @@ const cotes: Record<string, { dom: number; nul: number; ext: number }> = fs.exis
 const quand = (x: any) => Date.parse(x.date);
 
 // ── LE RELEVÉ, TEL QU'IL AURAIT ÉTÉ LA VEILLE ──────────────────────────────
+// ── DEUX RELEVÉS : CELUI DE LA PRODUCTION, ET UN ÉLARGI ──────────────────
+//
+// Le fichier des tirs contient aussi les quatre championnats à l'essai
+// (Roumanie, Serbie, Irlande, Finlande). Le relevé de la PRODUCTION ne les
+// connaît pas : il faut donc les écarter ici, sinon le moteur de référence
+// serait meilleur que le vrai et toutes les mesures seraient fausses.
+const NOMS_EN_PLUS = new Set(Object.values(TIRS_EN_PLUS));
 const releves = new Map<string, any>();
-function releveLaVeille(jour: string) {
-  if (releves.has(jour)) return releves.get(jour);
+const relevesElargis = new Map<string, any>();
+function construireReleve(jour: string, avecLesQuatre: boolean) {
   const fin = Date.parse(`${jour}T00:00:00Z`);
   // Une copie : le calcul trie sur place.
-  const liste = tirs.filter((t) => t.date >= fin - 240 * 86_400_000 && t.date < fin).map((t) => ({ ...t }));
+  const liste = tirs
+    .filter((t) => t.date >= fin - 240 * 86_400_000 && t.date < fin)
+    .filter((t) => avecLesQuatre || !NOMS_EN_PLUS.has(String(t.ligue)))
+    .map((t) => ({ ...t }));
   // Comme en production : rien sous cent rencontres.
-  const r = liste.length >= 100 ? forcesDepuisRencontres(liste as any, undefined, new Date(fin).toISOString()) : null;
+  return liste.length >= 100 ? forcesDepuisRencontres(liste as any, undefined, new Date(fin).toISOString()) : null;
+}
+function releveLaVeille(jour: string) {
+  if (releves.has(jour)) return releves.get(jour);
+  const r = construireReleve(jour, false);
   releves.set(jour, r);
+  return r;
+}
+function releveElargiLaVeille(jour: string) {
+  if (relevesElargis.has(jour)) return relevesElargis.get(jour);
+  const r = construireReleve(jour, true);
+  relevesElargis.set(jour, r);
   return r;
 }
 
@@ -692,6 +713,42 @@ function avecDemiVue(): { pronostics: Pronostic[]; actifs: number[] } {
   return { pronostics, actifs };
 }
 
+// ── LE RELEVÉ ÉLARGI : QUATRE CHAMPIONNATS DE PLUS ───────────────────────
+//
+// Roumanie, Serbie, Irlande, Finlande. Ce sont les SEULS pays, parmi ceux qui
+// privent le plus de matchs de coupe d'Europe de leurs tirs, dont le
+// fournisseur tient des statistiques. Leurs clubs reviennent sans cesse dans
+// les tours préliminaires : Universitatea Craiova, l'Étoile Rouge, Shamrock
+// Rovers, KuPS.
+//
+// La couche rejoue avec le relevé élargi. Les matchs qu'elle ÉCLAIRE — ceux
+// que la production ne voyait pas et qu'elle voit — sont rendus comme liste
+// active, pour qu'on la juge là où elle agit.
+function avecTirsElargis(): { pronostics: Pronostic[]; actifs: number[] } {
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    const vue = butsAttendusOccasions(releveElargiLaVeille(jour), m.nomDom, m.nomExt);
+    if (!occ && vue) actifs.push(Number(m.id));
+    const r: any = calculerScoreProbable(
+      s1,
+      s2,
+      true,
+      false,
+      undefined,
+      null,
+      undefined,
+      false,
+      1,
+      vue,
+      null,
+      vue ? null : avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CE QUE LA PRODUCTION FAIT DEPUIS LE 12 SEPTEMBRE 2026 ────────────────
 //
 // La mémoire des clubs est EN LIGNE : là où les occasions manquent, le moteur
@@ -751,6 +808,12 @@ const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'tirs-elargis') {
+    const { pronostics, actifs: ids } = avecTirsElargis();
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
     continue;
   }
   if (v.couche?.type === 'demi-vue') {
