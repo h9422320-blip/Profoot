@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { logout } from "@/app/login/actions";
+import BlocAfficheDuJour from "@/components/affiche/BlocAfficheDuJour";
 
 interface HistoryItem {
   id: string;
@@ -217,6 +218,12 @@ export default function HistoryPage() {
           ========================================= */}
       <div className="block lg:hidden space-y-6 pt-6">
         <h1 className="text-2xl font-black text-white tracking-tight" style={{fontFamily: "var(--police-titre), sans-serif"}}>Mon Profil</h1>
+
+        {/* MON AFFICHE DU JOUR — ESSAI PRIVÉ.
+            En tête du profil : c est ici que mène la petite tête de la barre
+            du bas. Le bloc interroge le serveur et ne rend RIEN hors des
+            adresses autorisées. Voir src/lib/affiche-du-jour.ts. */}
+        <BlocAfficheDuJour />
         <div className="bg-[#1d2f3a]/80 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-2xl">
            
            <div className="flex items-center gap-4 border-b border-white/5 pb-6 mb-6">
@@ -295,6 +302,12 @@ export default function HistoryPage() {
           💻 DESKTOP EXPERIENCE (HISTORY VIEW)
           ========================================= */}
       <div className="hidden lg:block space-y-8 pt-4">
+      {/* MON AFFICHE DU JOUR — ESSAI PRIVÉ.
+          Le même bloc qu'en haut du profil mobile : sur grand écran, cette
+          page est l'historique, et c'est là que l'abonné retrouve son
+          activité. Il ne rend RIEN hors des adresses autorisées. */}
+      <BlocAfficheDuJour />
+
       {/* 1. HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div>
