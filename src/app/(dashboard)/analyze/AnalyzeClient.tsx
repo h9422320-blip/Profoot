@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import MurAbonnement from "./MurAbonnement";
+import AfficheDuJour from "./AfficheDuJour";
 import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, ChevronLeft, Search, Pin, Award, Trophy, Timer, X, Activity, History, Loader, AlertTriangle, RefreshCcw, Lock, ArrowRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
@@ -2963,6 +2964,13 @@ export default function AnalyzePage({
 
         </div>
       )}
+
+      {/* MON AFFICHE DU JOUR — ESSAI PRIVÉ.
+          Le composant demande au serveur si la fonctionnalité est ouverte pour
+          ce compte et ne rend RIEN dans le cas contraire : pendant l'essai, les
+          autres abonnés n'en voient aucune trace. Il ne parle que d'activité
+          d'analyse — jamais d'un résultat. Voir `src/lib/affiche-du-jour.ts`. */}
+      <AfficheDuJour />
 
       {/* NOS PRONOSTICS VÉRIFIÉS.
           Hors de toute condition : la section reste visible avant l'analyse,

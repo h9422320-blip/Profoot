@@ -227,13 +227,26 @@ test('★ ACQUIS — la fête reste compacte', () => {
 
 // ── ET SURTOUT : ELLE NE DÉCIDE DE RIEN ────────────────────────────────────
 
+/** L'affiche du jour : le seul autre lecteur, et seulement pour l'AFFICHER. */
+const AFFICHE = 'src/lib/affiche-du-jour.ts';
+
 test('★ ACQUIS — aucune autre partie de l’application ne lit l’équipe préférée', () => {
   // C'est LA règle de cette fonctionnalité. Le jour où un autre écran la lit,
   // l'application cesse d'être neutre : elle propose, elle oriente, elle
   // filtre. Ce test échouera à la première lecture de trop.
+  //
+  // ── LA SEULE EXCEPTION, ET CE QUI LA REND ACCEPTABLE ────────────────────
+  //
+  // L'affiche du jour (12 septembre 2026, à la demande du propriétaire) écrit
+  // « Club de cœur : FC Barcelone » sur une image que l'abonné partage lui-même.
+  // Elle AFFICHE la donnée, elle ne s'en sert pour rien d'autre : aucun filtre,
+  // aucune présélection, aucun calcul, aucun accès. La règle d'origine — cette
+  // donnée ne décide de rien — reste donc entière, et le test suivant le
+  // vérifie ligne par ligne.
   const attendus = new Set([
     path.normalize(ECRAN),
     path.normalize(ACTIONS),
+    path.normalize(AFFICHE),
   ]);
 
   const trouves: string[] = [];
@@ -254,7 +267,25 @@ test('★ ACQUIS — aucune autre partie de l’application ne lit l’équipe p
       `${f} lit l’équipe préférée : cette donnée ne doit décider de rien.`
     );
   }
-  assert.equal(trouves.length, 2, 'Les deux fichiers de la fonctionnalité devraient être les seuls.');
+  assert.equal(
+    trouves.length,
+    3,
+    'Les deux fichiers de la fonctionnalité, plus l’affiche du jour qui ne fait que l’écrire, devraient être les seuls.'
+  );
+});
+
+test('★ ACQUIS — l’affiche du jour ne fait qu’AFFICHER l’équipe préférée', () => {
+  // L'exception accordée à l'affiche tient à une condition : elle écrit le nom
+  // du club sur une image, point. Si elle s'en servait un jour pour filtrer une
+  // lecture, choisir un match ou ouvrir quoi que ce soit, la donnée
+  // recommencerait à décider — et ce test le dirait.
+  const affiche = lire(AFFICHE);
+  const lignes = affiche.split(/\r?\n/).filter((l) => l.includes('equipe_preferee'));
+  assert.ok(lignes.length > 0, 'L’affiche ne lit plus l’équipe préférée.');
+  for (const ligne of lignes) {
+    assert.doesNotMatch(ligne, /\.eq\(|\.filter\(|\.in\(|where/i, `L’affiche filtre avec l’équipe préférée : ${ligne.trim()}`);
+    assert.doesNotMatch(ligne, /if\s*\(/, `L’affiche décide selon l’équipe préférée : ${ligne.trim()}`);
+  }
 });
 
 test('★ ACQUIS — rien n’est présélectionné pour l’analyse', () => {
