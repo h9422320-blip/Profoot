@@ -165,7 +165,9 @@ function champion(): Parametre[] {
 type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
-  | { type: 'elo'; k: number; poids: number };
+  | { type: 'elo'; k: number; poids: number }
+  | { type: 'terrain'; retrecissement: number; poids: number }
+  | { type: 'duel'; retrecissement: number; poids: number };
 type Variante = { nom: string; couche: Couche; libelle: string };
 function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
@@ -195,6 +197,20 @@ function couchesAEssayer(): Variante[] {
         couche: { type: 'elo', k, poids },
         libelle: `Couche Elo (k=${k}, part ${poids})`,
       });
+  // La couche du terrain : l'avantage de recevoir, propre à chaque club.
+  for (const retrecissement of [5, 10])
+    for (const poids of [0.5, 1])
+      out.push({
+        nom: `TERRAIN k=${retrecissement} part=${poids}`,
+        couche: { type: 'terrain', retrecissement, poids },
+        libelle: `Couche du terrain propre au club (k=${retrecissement}, part ${poids})`,
+      });
+  // Les confrontations directes, au meilleur dosage mesuré le 12 septembre.
+  out.push({
+    nom: 'DUEL k=4 part=0.5',
+    couche: { type: 'duel', retrecissement: 4, poids: 0.5 },
+    libelle: 'Couche des confrontations directes (k=4, part 0.5)',
+  });
   return out;
 }
 

@@ -35,7 +35,9 @@ import type { Pronostic } from './porte.js';
 type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
-  | { type: 'elo'; k: number; poids: number };
+  | { type: 'elo'; k: number; poids: number }
+  | { type: 'terrain'; retrecissement: number; poids: number }
+  | { type: 'duel'; retrecissement: number; poids: number };
 
 chargerEnv();
 const tache: {
@@ -205,12 +207,127 @@ function avecElo(k: number, poids: number): Pronostic[] {
   return out;
 }
 
+// ── LA COUCHE DU TERRAIN, PROPRE À CHAQUE CLUB ───────────────────────────
+//
+// Le moteur applique un avantage du terrain UNIQUE pour tous. Or certains
+// clubs sont transformés chez eux et s'effondrent au loin. On mesure, pour
+// chaque club, l'écart entre ce qu'il fait chez lui et ce qu'il fait
+// dehors, puis on en retire ce que TOUT club gagne à recevoir : ce qui
+// reste est sa spécialité propre, en buts par match.
+//
+// Un club n'est jugé qu'à partir de quatre matchs de chaque côté, et sa
+// spécialité est ramenée vers zéro par n/(n+retrecissement). Elle entre
+// par le point d'entrée des corrections additives, plafonné à un demi-but
+// par le moteur lui-même. Comme pour Elo, le match du jour ne connaît que
+// les matchs des jours précédents.
+const MIN_COTES_TERRAIN = 4;
+function avecTerrain(retrecissement: number, poids: number): Pronostic[] {
+  type Cotes = { nD: number; dD: number; nE: number; dE: number };
+  const par = new Map<number, Cotes>();
+  let nTotal = 0;
+  let diffTotale = 0;
+  const cotes = (id: number) => {
+    let c = par.get(id);
+    if (!c) { c = { nD: 0, dD: 0, nE: 0, dE: 0 }; par.set(id, c); }
+    return c;
+  };
+  const apprendre = (x: any) => {
+    const d = cotes(x.dom); d.nD++; d.dD += x.bd - x.be;
+    const e = cotes(x.ext); e.nE++; e.dE += x.be - x.bd;
+    nTotal++; diffTotale += x.bd - x.be;
+  };
+  const specialite = (id: number) => {
+    const c = par.get(id);
+    if (!c || c.nD < MIN_COTES_TERRAIN || c.nE < MIN_COTES_TERRAIN) return 0;
+    const moyen = nTotal ? diffTotale / nTotal : 0;
+    const ecart = c.dD / c.nD - c.dE / c.nE - 2 * moyen;
+    const n = Math.min(c.nD, c.nE);
+    return ((n / (n + retrecissement)) * ecart) / 2;
+  };
+  const out: Pronostic[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    const d = (poids * (specialite(m.dom) + specialite(m.ext))) / 2;
+    const corr = d === 0 ? null : { domicile: d / 2, exterieur: -d / 2 };
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
+    out.push(versPronostic(m, r));
+  }
+  return out;
+}
+
+// ── LA COUCHE DES CONFRONTATIONS DIRECTES ────────────────────────────────
+//
+// Certaines équipes ne se valent pas entre elles : l'une gêne l'autre
+// match après match, quel que soit son niveau général. On ne garde QUE
+// cette part-là : pour chaque duel passé, l'écart de buts réel moins
+// l'écart que le moteur d'aujourd'hui attendrait, avantage du terrain
+// retiré. La moyenne de ces surprises, ramenée vers zéro par
+// n/(n+retrecissement), entre par les corrections additives.
+//
+// Toutes compétitions confondues, deux saisons, et seulement les duels
+// joués AVANT le jour du match.
+const TERRAIN_MOYEN_DUEL = 0.3;
+function avecDuel(retrecissement: number, poids: number): Pronostic[] {
+  const base = baseAttendus();
+  const vus = new Map<string, { n: number; somme: number }>();
+  const cle = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+  const apprendre = (x: any) => {
+    const a = base.get(Number(x.id));
+    // Sans attente du moteur pour ce duel, on ne sait pas ce qui est une
+    // surprise : on le laisse de côté.
+    if (!a) return;
+    const petit = Math.min(x.dom, x.ext);
+    const reel = x.bd - x.be - TERRAIN_MOYEN_DUEL;
+    const attendu = a.a1 - a.a2 - TERRAIN_MOYEN_DUEL;
+    const surprise = reel - attendu;
+    const k = cle(x.dom, x.ext);
+    let v = vus.get(k);
+    if (!v) { v = { n: 0, somme: 0 }; vus.set(k, v); }
+    v.n++;
+    // Toujours du point de vue du club au plus petit numéro.
+    v.somme += x.dom === petit ? surprise : -surprise;
+  };
+  const out: Pronostic[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    const v = vus.get(cle(m.dom, m.ext));
+    let d = 0;
+    if (v && v.n > 0) {
+      const moyenne = v.somme / v.n;
+      const vu = Math.min(m.dom, m.ext) === m.dom ? moyenne : -moyenne;
+      d = poids * (v.n / (v.n + retrecissement)) * vu;
+    }
+    const corr = d === 0 ? null : { domicile: d / 2, exterieur: -d / 2 };
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
+    out.push(versPronostic(m, r));
+  }
+  return out;
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'duel') {
+    sortie[v.nom] = avecDuel(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'terrain') {
+    sortie[v.nom] = avecTerrain(v.couche.retrecissement, v.couche.poids);
     continue;
   }
   if (v.couche?.type === 'elo') {
