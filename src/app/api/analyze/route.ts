@@ -18,6 +18,7 @@ import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
 import { lireForcesLigue } from "@/lib/forces-equipes";
 import { lireForcesChampionnats, rapportEntreChampionnats } from "@/lib/forces-championnats";
+import { avisDeLaMemoire, lireMemoireClubs } from "@/lib/memoire-clubs";
 import { lirePredictionFigee, figerPrediction, remplacerPredictionFigee, predictionIndecise } from "@/lib/prediction-figee";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
@@ -1417,6 +1418,14 @@ async function analyser(req: Request, billet: BilletQuota) {
     }
   }
 
+  // La rencontre vue par les occasions, ou `null` si un des deux clubs est
+  // inconnu du relevé des tirs. On garde le résultat pour savoir si le moteur
+  // voit cette rencontre — c'est ce qui décide si la mémoire des clubs parle.
+  const occasionsDuMatch = butsAttendusOccasions(
+    await lireForces(),
+    equipe1AJoueADomicile === true ? team1.name : team2.name,
+    equipe1AJoueADomicile === true ? team2.name : team1.name
+  );
   const scoreCalcule = calculerScoreProbable(
     brutes1,
     brutes2,
@@ -1467,11 +1476,32 @@ async function analyser(req: Request, billet: BilletQuota) {
     //
     // Rend `null` dès qu'un des deux clubs est inconnu du relevé — un
     // championnat non couvert garde exactement le calcul d'avant.
-    butsAttendusOccasions(
-      await lireForces(),
-      equipe1AJoueADomicile === true ? team1.name : team2.name,
-      equipe1AJoueADomicile === true ? team2.name : team1.name
-    )
+    occasionsDuMatch,
+    // Aucune correction apprise des erreurs : ce point d'entrée reste inerte,
+    // il n'est nommé que pour atteindre le suivant.
+    null,
+    // ── ET LÀ OÙ LE MOTEUR NE VOIT RIEN, LA MÉMOIRE PARLE ────────────────
+    //
+    // Les occasions manquent dès qu'un des deux clubs est hors des sept
+    // grands championnats : 50 % des matchs de Ligue des champions, 41 % de
+    // l'Europa League (mesuré le 12 septembre 2026). Le moteur perdait alors
+    // toute cette moitié de son calcul — Manchester United annoncé perdant à
+    // 66 % contre Sabah, pour finir 4-0.
+    //
+    // La mémoire connaît TOUS les clubs (18 977 rencontres, 62 compétitions).
+    // Le moteur garde son total de buts et reprend son avis sur qui domine, à
+    // 60 %. Mesuré sur 4 922 matchs aveugles : +31 vainqueurs justes, et
+    // 71,8 / 68,1 % quand le moteur est sûr de lui contre 63,7 %.
+    //
+    // Quand les occasions sont là, la mémoire se TAIT : appliquée partout,
+    // elle dégrade le pronostic (mesuré le 11 septembre, couche Elo refusée).
+    occasionsDuMatch
+      ? null
+      : avisDeLaMemoire(
+          await lireMemoireClubs(),
+          equipe1AJoueADomicile === true ? team1.id : team2.id,
+          equipe1AJoueADomicile === true ? team2.id : team1.id
+        )
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────

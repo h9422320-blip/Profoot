@@ -45,7 +45,9 @@ type Couche =
       elo?: { k: number; poids: number };
       elan?: { court: number; long: number; poids: number };
       terrainLigue?: { retrecissement: number; poids: number };
-    };
+    }
+  | { type: 'memoire'; k: number; poids: number }
+  | { type: 'demi-vue' };
 
 chargerEnv();
 const tache: {
@@ -63,8 +65,14 @@ const tache: {
    * soit la compétition. La couche du marché n'agit que sur celles-là, et
    * le périmètre étroit n'en compte que 188 contre 1 035 au total : la
    * porte refusait faute de matchs, pas faute de résultats.
+   *
+   * `'tout'` rejoue TOUTES les compétitions rangées — 62 au 12 septembre
+   * 2026, 18 977 rencontres. C'est le seul périmètre où les couches qui
+   * soignent les clubs HORS grands championnats (demi-vue, mémoire) ont
+   * assez de matchs pour être jugées : dans le périmètre du produit, la
+   * demi-vue n'en concerne que 132.
    */
-  univers?: 'suivies' | 'cotes';
+  univers?: 'suivies' | 'cotes' | 'tout';
   sortie: string;
 } = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 
@@ -115,8 +123,9 @@ function statsAvant(equipe: number, m: any) {
 const suivies = new Set([...Object.keys(GRANDS), ...Object.keys(COUPES_SUIVIES)].map(Number));
 const entrees: { m: any; s1: any; s2: any; occ: any; jour: string }[] = [];
 const surCotes = tache.univers === 'cotes';
+const toutesCompetitions = tache.univers === 'tout';
 for (const m of rencontres) {
-  const retenue = surCotes ? cotes[String(m.id)] !== undefined : suivies.has(Number(m.ligue));
+  const retenue = surCotes ? cotes[String(m.id)] !== undefined : toutesCompetitions ? true : suivies.has(Number(m.ligue));
   if (!retenue || m.date < tache.debut || m.date >= tache.fin) continue;
   const s1 = statsAvant(m.dom, m);
   const s2 = statsAvant(m.ext, m);
@@ -164,7 +173,7 @@ function avecErreurs(retrecissement: number, poids: number): Pronostic[] {
       jourCourant = jour;
     }
     const corr = correctionPour(clubs, String(m.dom), String(m.ext), { retrecissement, poids });
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
     const a = base.get(Number(m.id))!;
     passes.push({ dom: String(m.dom), ext: String(m.ext), attenduDom: a.a1, attenduExt: a.a2, reelDom: m.bd, reelExt: m.be });
@@ -277,7 +286,7 @@ function avecTerrain(retrecissement: number, poids: number): Pronostic[] {
     }
     const d = (poids * (specialite(m.dom) + specialite(m.ext))) / 2;
     const corr = d === 0 ? null : { domicile: d / 2, exterieur: -d / 2 };
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -331,7 +340,7 @@ function avecDuel(retrecissement: number, poids: number): Pronostic[] {
       d = poids * (v.n / (v.n + retrecissement)) * vu;
     }
     const corr = d === 0 ? null : { domicile: d / 2, exterieur: -d / 2 };
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -407,7 +416,7 @@ function avecElan(court: number, long: number, poids: number): Pronostic[] {
       const ext = (poids * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2;
       if (dom !== 0 || ext !== 0) corr = { domicile: dom, exterieur: ext };
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -461,7 +470,7 @@ function avecTerrainLigue(retrecissement: number, poids: number): Pronostic[] {
     }
     const d = poids * ecartDeLigue(Number(m.ligue));
     const corr = d === 0 ? null : { domicile: d / 2, exterieur: -d / 2 };
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr);
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -570,11 +579,171 @@ function avecMelange(couche: {
       const we = attendu(m.dom, m.ext);
       avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids: couche.elo.poids };
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avis);
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avis ?? avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
 }
+
+// ── LA MÉMOIRE DE TOUS LES CLUBS, LÀ OÙ LE MOTEUR EST AVEUGLE ────────────
+//
+// Le relevé des tirs ne couvre que les sept grands championnats. Dès qu'un
+// club en sort — Sabah, Qarabağ, Ararat-Armenia, un tour préliminaire, un
+// promu sans fiches — `butsAttendusOccasions` rend « rien » et le moteur
+// perd d'un coup TOUTE la moitié occasions de son calcul, sans le dire.
+// Mesuré le 12 septembre 2026 : 50 % des matchs de Ligue des champions,
+// 41 % de l'Europa League, 14 à 25 % des grands championnats. C'est
+// l'erreur Manchester United 0-3 Sabah, annoncée 66 % pour Sabah.
+//
+// La mémoire, elle, connaît TOUS les clubs : une note bâtie sur les 18 977
+// rencontres des 62 compétitions rangées, coupes comprises, veille
+// seulement. Elle n'entre QUE sur les matchs aveugles — ailleurs le moteur
+// voit mieux qu'elle, c'est mesuré (couche Elo refusée). La liste des
+// matchs où elle agit est rendue avec le résultat, pour qu'on la juge sur
+// ceux-là seulement.
+function avecMemoire(k: number, poids: number): { pronostics: Pronostic[]; actifs: number[] } {
+  const note = new Map<number, number>();
+  const lire = (id: number) => note.get(id) ?? 1500;
+  const attendu = (dom: number, ext: number) =>
+    1 / (1 + Math.pow(10, -(lire(dom) + AVANTAGE_TERRAIN_ELO - lire(ext)) / 400));
+  const apprendre = (x: any) => {
+    const we = attendu(x.dom, x.ext);
+    const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
+    const e = Math.abs(x.bd - x.be);
+    const g = e <= 1 ? 1 : e === 2 ? 1.5 : (11 + e) / 8;
+    const delta = k * g * (w - we);
+    note.set(x.dom, lire(x.dom) + delta);
+    note.set(x.ext, lire(x.ext) - delta);
+  };
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    // Le moteur voit-il ce match ? S'il voit, la mémoire se tait.
+    const aveugle = !occ;
+    let avis: { dom: number; nul: number; ext: number; poids: number } | null = null;
+    if (aveugle) {
+      actifs.push(Number(m.id));
+      const we = attendu(m.dom, m.ext);
+      avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids };
+    }
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
+// ── LA DEMI-VUE : NE PLUS JETER CE QU'ON SAIT DU CLUB CONNU ──────────────
+//
+// `butsAttendusOccasions` exige les DEUX clubs dans le relevé des tirs. Si
+// un seul manque — Sabah, Qarabağ, un promu sans fiches —, il rend « rien »
+// et le moteur jette TOUTE la moitié occasions, y compris ce qu'il sait
+// parfaitement du club connu. C'est ainsi que Manchester United, dont le
+// relevé savait tout, a été annoncé perdant 66 % contre Sabah le
+// 10 septembre 2026, pour finir 4-0.
+//
+// La formule du relevé est : attaque de l'un contre défense de l'autre,
+// rapportées à l'étalon de la rencontre. En traitant le club inconnu comme
+// un club MOYEN (attaque = défense = étalon), tout se simplifie :
+//
+//   buts du club qui reçoit  = (attaque du connu, ou défense du connu s'il
+//                               est à l'extérieur) × avantage du terrain
+//
+// La demi-vue n'agit QUE sur ces matchs-là : deux clubs connus, le moteur
+// garde exactement son calcul ; deux clubs inconnus, elle n'a rien à dire.
+// L'estimation est donnée ENTIÈRE : c'est le moteur qui la mélange à son
+// propre calcul, au poids des occasions déjà réglé (0,6). La doser ici
+// n'aurait pas de sens — rapprocher les deux buts attendus de zéro ne
+// rapproche pas de l'aveuglement, cela change le total du match.
+function avecDemiVue(): { pronostics: Pronostic[]; actifs: number[] } {
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    let vue = occ;
+    if (!occ) {
+      const releve: any = releveLaVeille(jour);
+      const d = releve?.clubs?.[m.nomDom];
+      const e = releve?.clubs?.[m.nomExt];
+      // Exactement un club connu : c'est là que le moteur jetait tout.
+      if (releve && !!d !== !!e) {
+        const connu: any = d ?? e;
+        const avDom = Number(releve.avantageDomicile);
+        const avExt = Number(releve.avantageExterieur);
+        const attaque = Number(connu.attaque);
+        const defense = Number(connu.defense);
+        if ([avDom, avExt, attaque, defense].every((x) => Number.isFinite(x) && x > 0)) {
+          const domicile = (d ? attaque : defense) * avDom;
+          const exterieur = (e ? attaque : defense) * avExt;
+          if (domicile > 0 && exterieur > 0) {
+            vue = { domicile, exterieur } as any;
+            actifs.push(Number(m.id));
+          }
+        }
+      }
+    }
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, vue, null, vue ? null : avisDeLaProduction(m));
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
+// ── CE QUE LA PRODUCTION FAIT DEPUIS LE 12 SEPTEMBRE 2026 ────────────────
+//
+// La mémoire des clubs est EN LIGNE : là où les occasions manquent, le moteur
+// reprend son avis sur qui domine, à 60 % (voir `src/lib/memoire-clubs.ts`).
+// Le moteur de référence du challenger doit donc l'inclure, sinon on
+// comparerait les couches à un moteur qui n'existe plus. Chaque couche
+// additive l'inclut également : elle est mesurée COMME UN AJOUT à la
+// production, pas comme son remplacement.
+//
+// Les couches qui se servent elles-mêmes de l'avis extérieur — Elo, mémoire à
+// un autre dosage, marché — le remplacent : c'est leur sujet même.
+const K_PRODUCTION = 30;
+const PART_PRODUCTION = 0.6;
+const avisProduction = new Map<number, { dom: number; nul: number; ext: number; poids: number }>();
+{
+  const note = new Map<number, number>();
+  const lire = (id: number) => note.get(id) ?? 1500;
+  const attendu = (dom: number, ext: number) =>
+    1 / (1 + Math.pow(10, -(lire(dom) + AVANTAGE_TERRAIN_ELO - lire(ext)) / 400));
+  const joues = new Map<number, number>();
+  const apprendre = (x: any) => {
+    const we = attendu(x.dom, x.ext);
+    const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
+    const e = Math.abs(x.bd - x.be);
+    const g = e <= 1 ? 1 : e === 2 ? 1.5 : (11 + e) / 8;
+    const delta = K_PRODUCTION * g * (w - we);
+    note.set(x.dom, lire(x.dom) + delta);
+    note.set(x.ext, lire(x.ext) - delta);
+    joues.set(x.dom, (joues.get(x.dom) ?? 0) + 1);
+    joues.set(x.ext, (joues.get(x.ext) ?? 0) + 1);
+  };
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    // Mêmes conditions que `avisDeLaMemoire` : occasions absentes, et cinq
+    // rencontres au moins pour chacun des deux clubs.
+    if (occ) continue;
+    if ((joues.get(m.dom) ?? 0) < 5 || (joues.get(m.ext) ?? 0) < 5) continue;
+    const we = attendu(m.dom, m.ext);
+    avisProduction.set(Number(m.id), {
+      dom: (1 - NUL_ELO) * we,
+      nul: NUL_ELO,
+      ext: (1 - NUL_ELO) * (1 - we),
+      poids: PART_PRODUCTION,
+    });
+  }
+}
+const avisDeLaProduction = (m: any) => avisProduction.get(Number(m.id)) ?? null;
 
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
@@ -582,6 +751,18 @@ const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'demi-vue') {
+    const { pronostics, actifs: ids } = avecDemiVue();
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
+  if (v.couche?.type === 'memoire') {
+    const { pronostics, actifs: ids } = avecMemoire(v.couche.k, v.couche.poids);
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
     continue;
   }
   if (v.couche?.type === 'melange') {
@@ -621,7 +802,10 @@ for (const v of tache.variantes) {
   }
   try {
     sortie[v.nom] = entrees.map(({ m, s1, s2, occ }) =>
-      versPronostic(m, calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ))
+      versPronostic(
+        m,
+        calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avisDeLaProduction(m))
+      )
     );
   } finally {
     for (const [k, val] of Object.entries(avant)) {

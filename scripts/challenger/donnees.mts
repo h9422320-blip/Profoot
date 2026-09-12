@@ -64,6 +64,25 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   fs.writeFileSync(FICHIER_RENCONTRES, JSON.stringify(rencontres));
   journal(`${rencontres.length} rencontres terminées rangées`);
 
+  // ── LA MÉMOIRE DE TOUS LES CLUBS, RANGÉE POUR LA PRODUCTION ──────────────
+  //
+  // Une note par club, bâtie sur TOUTES les rencontres ci-dessus — 62
+  // compétitions, coupes comprises. La production ne sait pas la calculer :
+  // l'hébergeur coupe ses fonctions à soixante secondes. Ici, les rencontres
+  // sont déjà en local, le calcul ne coûte donc AUCUNE demande au
+  // fournisseur.
+  //
+  // Le moteur ne s'en sert que là où il est aveugle : un club hors des sept
+  // grands championnats, donc sans tirs. Voir `src/lib/memoire-clubs.ts`.
+  try {
+    const { calculerMemoireClubs, rangerMemoireClubs } = await import('../../src/lib/memoire-clubs.js');
+    const memoire = calculerMemoireClubs(rencontres as any);
+    await rangerMemoireClubs(memoire);
+    journal(`mémoire des clubs rangée : ${memoire.clubs} clubs sur ${memoire.rencontres} rencontres`);
+  } catch (e: any) {
+    journal(`mémoire des clubs non rangée : ${e?.message ?? String(e)}`);
+  }
+
   // ── UNE LECTURE QUI NE LÂCHE PAS À LA PREMIÈRE COUPURE ───────────────────
   //
   // Le 12 septembre 2026 à 11 h 06, la base a coupé une lecture volumineuse

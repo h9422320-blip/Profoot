@@ -175,7 +175,9 @@ type Couche =
       elo?: { k: number; poids: number };
       elan?: { court: number; long: number; poids: number };
       terrainLigue?: { retrecissement: number; poids: number };
-    };
+    }
+  | { type: 'memoire'; k: number; poids: number }
+  | { type: 'demi-vue' };
 type Variante = { nom: string; couche: Couche; libelle: string };
 function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
@@ -272,6 +274,26 @@ function couchesAEssayer(): Variante[] {
       terrainLigue: { retrecissement: 20, poids: 0.25 },
     },
     libelle: 'Mélange des trois (Elo 0.5, élan 0.25, terrain 0.25)',
+  });
+  // ── CE QUI SOIGNE LES MATCHS QUE LE MOTEUR NE VOIT PAS ────────────────
+  //
+  // La mémoire des clubs est EN PRODUCTION depuis le 12 septembre 2026 à
+  // k=30 part 0,6. On continue d'essayer d'AUTRES dosages : si l'un se
+  // montre meilleur deux jours sur trois, il sera proposé.
+  for (const poids of [0.5, 0.75])
+    out.push({
+      nom: `MEMOIRE k=30 part=${poids}`,
+      couche: { type: 'memoire', k: 30, poids },
+      libelle: `Mémoire des clubs à un autre dosage (k=30, part ${poids})`,
+    });
+  // La demi-vue : quand UN SEUL club manque au relevé des tirs, se servir de
+  // ce qu'on sait de l'autre au lieu de tout jeter. Mesurée le 12 septembre
+  // sur toutes compétitions : -2/+14 justes, Brier bien meilleur — refusée
+  // sur la 1re moitié, à deux matchs près.
+  out.push({
+    nom: 'DEMI-VUE',
+    couche: { type: 'demi-vue' },
+    libelle: 'Demi-vue (un seul club connu du relevé des tirs)',
   });
   return out;
 }
