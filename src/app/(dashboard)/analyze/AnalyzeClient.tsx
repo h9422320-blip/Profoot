@@ -1245,6 +1245,14 @@ export default function AnalyzePage({
         </p>
       </div>
 
+      {/* MON AFFICHE DU JOUR — ESSAI PRIVÉ.
+          EN HAUT DE PAGE, et non en bas : placée avant la section des preuves,
+          elle était sous plusieurs écrans de défilement et personne ne la
+          voyait. Le composant interroge le serveur et ne rend RIEN hors des
+          adresses autorisées : les autres abonnés n'en voient aucune trace.
+          Il ne parle que d'activité d'analyse. Voir `src/lib/affiche-du-jour.ts`. */}
+      <AfficheDuJour />
+
       {/* 2. MATCH À ANALYSER CARD */}
       {!result && (
         <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[28px] p-4 md:p-5 flex flex-col shadow-lg relative overflow-hidden">
@@ -2964,13 +2972,6 @@ export default function AnalyzePage({
 
         </div>
       )}
-
-      {/* MON AFFICHE DU JOUR — ESSAI PRIVÉ.
-          Le composant demande au serveur si la fonctionnalité est ouverte pour
-          ce compte et ne rend RIEN dans le cas contraire : pendant l'essai, les
-          autres abonnés n'en voient aucune trace. Il ne parle que d'activité
-          d'analyse — jamais d'un résultat. Voir `src/lib/affiche-du-jour.ts`. */}
-      <AfficheDuJour />
 
       {/* NOS PRONOSTICS VÉRIFIÉS.
           Hors de toute condition : la section reste visible avant l'analyse,
