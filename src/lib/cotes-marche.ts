@@ -477,6 +477,26 @@ export async function releverCotes(
     }
     for (const m of ancien?.contenu?.matchs ?? []) fusion.set(m.id, m);
 
+    // ── UNE JOURNÉE COMMENCÉE NE SE RÉÉCRIT PLUS ─────────────────────────────
+    //
+    // Constaté le 12 septembre 2026 : le relevé englobe aussi des jours
+    // PASSÉS, et il les réécrivait. La journée du 11 septembre, rangée la
+    // veille AVANT les matchs, est ainsi devenue une cote de CLÔTURE datée du
+    // 12 : inutilisable pour mesurer quoi que ce soit, puisqu'elle contient
+    // déjà les compositions, les blessures de dernière minute et l'argent
+    // engagé. La matière honnête était détruite chaque jour.
+    //
+    // Une journée dont le jour est arrivé garde donc la PREMIÈRE version
+    // rangée — la seule qui était connue avant le coup d'envoi. Les journées à
+    // VENIR continuent d'être rafraîchies : leurs cotes se précisent jusqu'à
+    // la veille, et elles restent écrites avant les matchs.
+    const aujourdhui = maintenant.toISOString().slice(0, 10);
+    if (jour <= aujourdhui && fusion.size > 0) {
+      detail.push({ jour, matchs: fusion.size });
+      total += fusion.size;
+      continue;
+    }
+
     for (const m of matchs) fusion.set(m.id, m);
 
     const releve: ReleveDuJour = {
