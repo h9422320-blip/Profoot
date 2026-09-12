@@ -178,7 +178,8 @@ type Couche =
     }
   | { type: 'memoire'; k: number; poids: number }
   | { type: 'demi-vue' }
-  | { type: 'memoire-nul-variable'; echelle: number; nulEgal: number; nulEcarte: number; ecartPlein: number };
+  | { type: 'memoire-nul-variable'; echelle: number; nulEgal: number; nulEcarte: number; ecartPlein: number }
+  | { type: 'memoire-releve-mince'; echelle: number; seuil: number; partMax: number };
 type Variante = { nom: string; couche: Couche; libelle: string };
 function couchesAEssayer(): Variante[] {
   const out: Variante[] = [];
@@ -308,6 +309,19 @@ function couchesAEssayer(): Variante[] {
       nom: `NUL ${nulEgal}->${nulEcarte}`,
       couche: { type: 'memoire-nul-variable', echelle: 400, nulEgal, nulEcarte, ecartPlein: 400 },
       libelle: `Nul de la mémoire selon l'écart (${nulEgal} à notes égales, ${nulEcarte} à 400 points d'écart)`,
+    });
+  // La mémoire reprend la parole quand la lecture des tirs tient à trop peu
+  // de rencontres (le relevé accepte un club dès huit). Mesuré le
+  // 12 septembre 2026 : +1 et +12 justes — treize matchs de plus — refusé sur
+  // six dix-millièmes de Brier. Au banc, la matière fraîche tranchera.
+  for (const [seuil, partMax] of [
+    [20, 0.5],
+    [12, 0.3],
+  ] as [number, number][])
+    out.push({
+      nom: `MINCE seuil=${seuil} part=${partMax}`,
+      couche: { type: 'memoire-releve-mince', echelle: 400, seuil, partMax },
+      libelle: `Mémoire quand le relevé des tirs est mince (moins de ${seuil} rencontres, part ${partMax})`,
     });
   return out;
 }

@@ -54,7 +54,8 @@ type Couche =
   | { type: 'forces-globales'; pas: number; rappel: number; minimum?: number; repartitionMemoire?: boolean }
   | { type: 'memoire-poids-variable'; echelle: number; base: number; haut: number; seuil: number }
   | { type: 'memoire-nul-variable'; echelle: number; nulEgal: number; nulEcarte: number; ecartPlein: number }
-  | { type: 'memoire-terrain-ligue'; echelle: number; parPoint: number };
+  | { type: 'memoire-terrain-ligue'; echelle: number; parPoint: number }
+  | { type: 'memoire-releve-mince'; echelle: number; seuil: number; partMax: number };
 
 chargerEnv();
 const tache: {
@@ -1470,12 +1471,105 @@ function avecMemoireTerrainLigue(echelle: number, parPoint: number): { pronostic
   return { pronostics, actifs };
 }
 
+// ── QUAND LA LECTURE DES TIRS TIENT À HUIT MATCHS ─────────────────────────
+//
+// La mémoire ne parle que là où le relevé des tirs est MUET. Mais le relevé
+// n'est pas toujours bavard : il accepte un club dès huit rencontres
+// (`MINIMUM_RENCONTRES`), et une force bâtie sur huit matchs est fragile —
+// un promu, un club revenu de blessures, un début de saison.
+//
+// Ici la mémoire reprend une part de voix quand le club le moins vu des deux
+// a moins de `seuil` rencontres de tirs, proportionnellement à cette
+// fragilité : rien à `seuil`, `partMax` au minimum de huit. Le relevé garde
+// la main partout ailleurs.
+//
+// C'est l'extension de ce qui a gagné le 12 septembre 2026 — la part qui suit
+// ce que le moteur sait — au côté des tirs.
+function avecMemoireReleveMince(
+  echelle: number,
+  seuil: number,
+  partMax: number
+): { pronostics: Pronostic[]; actifs: number[] } {
+  const note = new Map<number, number>();
+  const joues = new Map<number, number>();
+  const somme = new Map<number, number>();
+  const combien = new Map<number, number>();
+  const lire = (id: number) => note.get(id) ?? 1500;
+  const poser = (id: number, valeur: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const avant = note.has(id) ? note.get(id)! : null;
+    if (avant === null) {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + valeur);
+      combien.set(ligue, (combien.get(ligue) ?? 0) + 1);
+    } else {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + (valeur - avant));
+    }
+    note.set(id, valeur);
+  };
+  const ancrage = (ligue: number) => echelle * Math.log(coefficientDe(hierarchie as any, ligue) || 1);
+  const ancree = (id: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const n = combien.get(ligue) ?? 0;
+    const moyenne = n > 0 ? (somme.get(ligue) ?? 0) / n : 1500;
+    return lire(id) - moyenne + 1500 + ancrage(ligue);
+  };
+  const apprendre = (x: any) => {
+    const brutDom = lire(x.dom);
+    const brutExt = lire(x.ext);
+    const prevu = 1 / (1 + Math.pow(10, -(brutDom + AVANTAGE_TERRAIN_ELO - brutExt) / 400));
+    const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
+    const e = Math.abs(x.bd - x.be);
+    const g = e <= 1 ? 1 : e === 2 ? 1.5 : (11 + e) / 8;
+    const delta = 30 * g * (w - prevu);
+    poser(x.dom, brutDom + delta);
+    poser(x.ext, brutExt - delta);
+    joues.set(x.dom, (joues.get(x.dom) ?? 0) + 1);
+    joues.set(x.ext, (joues.get(x.ext) ?? 0) + 1);
+  };
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    let avis = avisDeLaProduction(m);
+    // Les occasions existent : la production se taisait. Ici, on regarde sur
+    // combien de rencontres elles reposent.
+    if (occ && (joues.get(m.dom) ?? 0) >= 5 && (joues.get(m.ext) ?? 0) >= 5) {
+      const releve: any = releveLaVeille(jour);
+      const rd = Number(releve?.clubs?.[m.nomDom]?.rencontres ?? 0);
+      const re = Number(releve?.clubs?.[m.nomExt]?.rencontres ?? 0);
+      const vues = Math.min(rd, re);
+      if (vues > 0 && vues < seuil) {
+        const part = partMax * (1 - vues / seuil);
+        if (part > 0.02) {
+          const we = 1 / (1 + Math.pow(10, -(ancree(m.dom) + AVANTAGE_TERRAIN_ELO - ancree(m.ext)) / 400));
+          avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids: part };
+          actifs.push(Number(m.id));
+        }
+      }
+    }
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'memoire-releve-mince') {
+    const { pronostics, actifs: ids } = avecMemoireReleveMince(v.couche.echelle, v.couche.seuil, v.couche.partMax);
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
     continue;
   }
   if (v.couche?.type === 'memoire-terrain-ligue') {
