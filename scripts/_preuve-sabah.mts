@@ -47,7 +47,12 @@ const statsAvant = (equipe: number) => {
 
 // La mémoire telle qu'elle était la VEILLE : aucun match du jour ni d'après.
 const veille = match.date.slice(0, 10);
-const memoire = calculerMemoireClubs(rencontres.filter((m) => m.date.slice(0, 10) < veille));
+const { lireHierarchieDirect } = await import('./challenger/commun.mjs');
+const hierarchie = await lireHierarchieDirect();
+console.log(hierarchie ? `hiérarchie lue : ${Object.keys(hierarchie.coefficients).length} championnats` : 'hiérarchie ILLISIBLE');
+const memoire = calculerMemoireClubs(rencontres.filter((m) => m.date.slice(0, 10) < veille), {
+  coefficients: hierarchie?.coefficients ?? null,
+});
 
 const s1 = statsAvant(match.dom);
 const s2 = statsAvant(match.ext);

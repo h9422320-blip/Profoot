@@ -29,7 +29,7 @@
  * Usage : `npx tsx scripts/challenger/evaluer.mts <tâche.json>`
  */
 import fs from 'node:fs';
-import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, COUPES_SUIVIES, TIRS_EN_PLUS } from './commun.mjs';
+import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, COUPES_SUIVIES, TIRS_EN_PLUS, lireHierarchieDirect } from './commun.mjs';
 import type { Pronostic } from './porte.js';
 
 type Couche =
@@ -48,7 +48,8 @@ type Couche =
     }
   | { type: 'memoire'; k: number; poids: number }
   | { type: 'demi-vue' }
-  | { type: 'tirs-elargis' };
+  | { type: 'tirs-elargis' }
+  | { type: 'memoire-ancree'; k: number; poids: number; echelle: number };
 
 chargerEnv();
 const tache: {
@@ -81,6 +82,17 @@ const tache: {
 const { calculerScoreProbable } = await import('../../src/lib/score-probable.js');
 const { forcesDepuisRencontres, butsAttendusOccasions } = await import('../../src/lib/forme-occasions.js');
 const { apprendreErreurs, correctionPour } = await import('../../src/lib/couche-erreurs.js');
+const { lireForcesChampionnats, coefficientDe } = await import('../../src/lib/forces-championnats.js');
+// La hierarchie MESUREE des championnats : 57 competitions, 34 101 matchs,
+// recalculee le 12 septembre 2026. C'est elle qui dira ce que vaut un club
+// azerbaidjanais face a un anglais, au lieu de le laisser deviner par les
+// rares matchs entre pays.
+// La lecture normale abandonne au bout d'une seconde et demie et rend `null`
+// sans bruit : une mesure entière a été faussée ainsi le 12 septembre 2026.
+// Ici on lit directement, avec dix secondes.
+const hierarchie = await lireHierarchieDirect();
+if (!hierarchie)
+  console.warn('[EVALUER] hiérarchie des championnats ILLISIBLE : toute couche ancrée serait sans ancrage.');
 
 const rencontres: any[] = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
 rencontres.sort((a, b) => a.date.localeCompare(b.date));
@@ -713,6 +725,114 @@ function avecDemiVue(): { pronostics: Pronostic[]; actifs: number[] } {
   return { pronostics, actifs };
 }
 
+// ── LA MÉMOIRE ANCRÉE SUR LA HIÉRARCHIE DES CHAMPIONNATS ─────────────────
+//
+// ── CE QUI N'ALLAIT PAS ─────────────────────────────────────────────────
+//
+// La mémoire de type Elo gonfle pour le champion d'un championnat faible :
+// Sabah 1796 contre Manchester United 1668 le 10 septembre 2026, parce que
+// Sabah gagne tout chez lui et que les matchs entre pays sont trop rares pour
+// corriger. Branchée, elle annonçait Sabah vainqueur : retirée le jour même.
+//
+// ── CE QU'ON FAIT À LA PLACE ────────────────────────────────────────────
+//
+// On garde la note pour comparer deux clubs du MÊME championnat — là elle est
+// juste —, mais on ne la laisse plus décider du niveau d'un pays. Chaque note
+// est recentrée sur la moyenne de son championnat, puis ANCRÉE au niveau
+// mesuré de ce championnat :
+//
+//   note ancrée = note − moyenne du championnat + echelle × ln(coefficient)
+//
+// Le coefficient vient de `forces-championnats` : 1,600 pour la Premier
+// League, 0,69 pour les plus faibles, 1 pour un championnat inconnu — qui se
+// retrouve donc au milieu, et non au sommet.
+//
+// Le championnat d'un club est celui où on l'a le plus vu, coupes exclues :
+// une coupe d'Europe n'est le championnat de personne.
+const COUPES_POUR_ANCRAGE = new Set([2, 3, 848]);
+const ligueDuClub = new Map<number, number>();
+{
+  const vus = new Map<number, Map<number, number>>();
+  for (const m of rencontres) {
+    const ligue = Number(m.ligue);
+    if (COUPES_POUR_ANCRAGE.has(ligue)) continue;
+    for (const club of [Number(m.dom), Number(m.ext)]) {
+      let c = vus.get(club);
+      if (!c) { c = new Map(); vus.set(club, c); }
+      c.set(ligue, (c.get(ligue) ?? 0) + 1);
+    }
+  }
+  for (const [club, c] of vus) {
+    let meilleure = 0;
+    let combien = -1;
+    for (const [ligue, n] of c) if (n > combien) { meilleure = ligue; combien = n; }
+    ligueDuClub.set(club, meilleure);
+  }
+}
+function avecMemoireAncree(k: number, poids: number, echelle: number): { pronostics: Pronostic[]; actifs: number[] } {
+  const note = new Map<number, number>();
+  const joues = new Map<number, number>();
+  // Somme des notes par championnat, tenue à jour à chaque match : elle donne
+  // la moyenne du championnat à l'instant du match, sans tout reparcourir.
+  const somme = new Map<number, number>();
+  const combien = new Map<number, number>();
+  const lire = (id: number) => note.get(id) ?? 1500;
+  const poser = (id: number, valeur: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const avant = note.has(id) ? note.get(id)! : null;
+    if (avant === null) {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + valeur);
+      combien.set(ligue, (combien.get(ligue) ?? 0) + 1);
+    } else {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + (valeur - avant));
+    }
+    note.set(id, valeur);
+  };
+  const ancre = (ligue: number) => echelle * Math.log(coefficientDe(hierarchie as any, ligue) || 1);
+  const ancree = (id: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const n = combien.get(ligue) ?? 0;
+    const moyenne = n > 0 ? (somme.get(ligue) ?? 0) / n : 1500;
+    return lire(id) - moyenne + 1500 + ancre(ligue);
+  };
+  const attendu = (dom: number, ext: number) =>
+    1 / (1 + Math.pow(10, -(ancree(dom) + AVANTAGE_TERRAIN_ELO - ancree(ext)) / 400));
+  const apprendre = (x: any) => {
+    // L'apprentissage se fait sur les notes BRUTES : l'ancrage ne sert qu'à
+    // comparer deux clubs, pas à réécrire leur histoire.
+    const brutDom = lire(x.dom);
+    const brutExt = lire(x.ext);
+    const prevu = 1 / (1 + Math.pow(10, -(brutDom + AVANTAGE_TERRAIN_ELO - brutExt) / 400));
+    const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
+    const e = Math.abs(x.bd - x.be);
+    const g = e <= 1 ? 1 : e === 2 ? 1.5 : (11 + e) / 8;
+    const delta = k * g * (w - prevu);
+    poser(x.dom, brutDom + delta);
+    poser(x.ext, brutExt - delta);
+    joues.set(x.dom, (joues.get(x.dom) ?? 0) + 1);
+    joues.set(x.ext, (joues.get(x.ext) ?? 0) + 1);
+  };
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    let avis: { dom: number; nul: number; ext: number; poids: number } | null = null;
+    if (!occ && (joues.get(m.dom) ?? 0) >= 5 && (joues.get(m.ext) ?? 0) >= 5) {
+      actifs.push(Number(m.id));
+      const we = attendu(m.dom, m.ext);
+      avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids };
+    }
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── LE RELEVÉ ÉLARGI : QUATRE CHAMPIONNATS DE PLUS ───────────────────────
 //
 // Roumanie, Serbie, Irlande, Finlande. Ce sont les SEULS pays, parmi ceux qui
@@ -800,7 +920,19 @@ const avisProduction = new Map<number, { dom: number; nul: number; ext: number; 
     });
   }
 }
-const avisDeLaProduction = (m: any) => avisProduction.get(Number(m.id)) ?? null;
+// ── ET LE 12 SEPTEMBRE À 14 H, LA PRODUCTION N'EN VEUT PLUS ──────────────
+//
+// La mémoire a été retirée du calcul le jour même de son branchement : elle
+// annonçait Sabah vainqueur de Manchester United (voir
+// `scripts/_preuve-sabah.mts`). Le moteur de référence doit donc redevenir le
+// moteur NU, sinon chaque couche serait comparée à un moteur qui n'existe pas.
+//
+// Le calcul ci-dessus est conservé : le jour où la mémoire reviendra, ancrée
+// sur la hiérarchie mesurée des championnats, il suffira de remettre
+// `MEMOIRE_EN_PRODUCTION` à vrai — et une seule ligne décidera de tout le banc.
+const MEMOIRE_EN_PRODUCTION = false;
+const avisDeLaProduction = (m: any) =>
+  MEMOIRE_EN_PRODUCTION ? avisProduction.get(Number(m.id)) ?? null : null;
 
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
@@ -808,6 +940,12 @@ const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
+    continue;
+  }
+  if (v.couche?.type === 'memoire-ancree') {
+    const { pronostics, actifs: ids } = avecMemoireAncree(v.couche.k, v.couche.poids, v.couche.echelle);
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
     continue;
   }
   if (v.couche?.type === 'tirs-elargis') {

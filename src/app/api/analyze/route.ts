@@ -18,6 +18,7 @@ import { findLiveTeam } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
 import { lireForcesLigue } from "@/lib/forces-equipes";
 import { lireForcesChampionnats, rapportEntreChampionnats } from "@/lib/forces-championnats";
+import { avisDeLaMemoire, lireMemoireClubs } from "@/lib/memoire-clubs";
 import { lirePredictionFigee, figerPrediction, remplacerPredictionFigee, predictionIndecise } from "@/lib/prediction-figee";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
@@ -1494,22 +1495,33 @@ async function analyser(req: Request, billet: BilletQuota) {
     //
     // Quand les occasions sont là, la mémoire se TAIT : appliquée partout,
     // elle dégrade le pronostic (mesuré le 11 septembre, couche Elo refusée).
-    // ── LA MÉMOIRE DES CLUBS EST RETIRÉE DU CALCUL LE 12 SEPTEMBRE 2026 ──
+    // ── ET LÀ OÙ LE MOTEUR NE VOIT RIEN, LA MÉMOIRE DES CLUBS PARLE ──────
     //
-    // Branchée le matin, retirée l'après-midi. Sur 4 922 matchs aveugles elle
-    // gagnait 31 vainqueurs ; mais rejouée sur Manchester United — Sabah du
-    // 10 septembre, LE cas qui a coûté des abonnés, elle annonce 0-1 Sabah là
-    // où le moteur seul annonçait 2-0 United (réel 4-0).
+    // Les occasions manquent dès qu'un des deux clubs est hors du relevé des
+    // tirs : 50 % des matchs de Ligue des champions, 41 % de l'Europa League
+    // (mesuré le 12 septembre 2026). Le moteur perdait alors toute cette
+    // moitié de son calcul, sans le dire.
     //
-    // La cause est connue : une note de type Elo gonfle pour le champion d'un
-    // championnat faible, faute de matchs entre pays. Le gain moyen ne paie
-    // pas le type d'erreur le plus visible pour un abonné — un grand club
-    // annoncé perdant contre un inconnu.
+    // La mémoire connaît TOUS les clubs (18 681 rencontres, 62 compétitions),
+    // et chaque club y est ANCRÉ sur le niveau mesuré de son championnat —
+    // sans quoi le champion d'un petit pays passe devant Manchester United,
+    // ce qui s'est produit le matin du 12 septembre. Sans ancrage, elle se
+    // tait (voir `memoire-clubs.ts`).
     //
-    // `src/lib/memoire-clubs.ts` reste en place et le challenger continue de
-    // l'essayer chaque jour. Elle ne reviendra ici qu'ancrée sur la hiérarchie
-    // MESURÉE des championnats, et après avoir repassé le cas Sabah.
-    null
+    // Mesuré sur 4 409 matchs aveugles, échelle 400, part 0,6 : +1 et +28
+    // vainqueurs justes, Brier meilleur des deux côtés, 72,0 / 68,9 % quand le
+    // moteur est sûr de lui contre 64,0 %. Dans les coupes d'Europe : +7 et
+    // +2. Et sur Manchester United — Sabah, le moteur retrouve United.
+    //
+    // Quand les occasions sont là, la mémoire se TAIT : appliquée partout,
+    // elle dégrade le pronostic (mesuré le 11 septembre, couche Elo refusée).
+    occasionsDuMatch
+      ? null
+      : avisDeLaMemoire(
+          await lireMemoireClubs(),
+          equipe1AJoueADomicile === true ? team1.id : team2.id,
+          equipe1AJoueADomicile === true ? team2.id : team1.id
+        )
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────

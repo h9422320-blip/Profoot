@@ -13,7 +13,13 @@ chargerEnv();
 const { calculerMemoireClubs, rangerMemoireClubs, avisDeLaMemoire } = await import('../src/lib/memoire-clubs.js');
 
 const rencontres = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
-const memoire = calculerMemoireClubs(rencontres);
+const { lireForcesChampionnats } = await import('../src/lib/forces-championnats.js');
+const hierarchie = await lireForcesChampionnats();
+const memoire = calculerMemoireClubs(rencontres, { coefficients: hierarchie?.coefficients ?? null });
+console.log(
+  `ancrage : ${memoire.championnatsAncres ?? 0} championnat(s) ancré(s) à l'échelle ${memoire.echelle}` +
+    (hierarchie ? `, hiérarchie du ${String(hierarchie.calculeLe).slice(0, 10)}` : ', AUCUNE hiérarchie en réserve')
+);
 await rangerMemoireClubs(memoire);
 console.log(`rangée : ${memoire.clubs} clubs, ${memoire.rencontres} rencontres, calculée le ${memoire.calculeLe.slice(0, 19)}`);
 

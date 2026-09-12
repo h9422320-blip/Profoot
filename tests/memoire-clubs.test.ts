@@ -1,62 +1,117 @@
 /**
- * ★ ACQUIS — LA MÉMOIRE DES CLUBS NE PARLE QUE LÀ OÙ LE MOTEUR EST AVEUGLE.
+ * ★ ACQUIS — LA MÉMOIRE DES CLUBS : ANCRÉE, OU MUETTE.
  *
- * ── POURQUOI ELLE EXISTE ─────────────────────────────────────────────────
+ * ── LE TROU QU'ELLE BOUCHE ───────────────────────────────────────────────
  *
- * Le relevé des tirs ne couvre que les sept grands championnats. Dès qu'un
- * club en sort, `butsAttendusOccasions` rend `null` et le moteur perd TOUTE la
- * moitié occasions de son calcul : 50 % des matchs de Ligue des champions,
- * 41 % de l'Europa League (mesuré le 12 septembre 2026). Manchester United a
- * ainsi été annoncé perdant à 66 % contre Sabah, pour finir 4-0.
+ * Le relevé des tirs ne couvre pas tous les championnats. Dès qu'un club en
+ * sort, `butsAttendusOccasions` rend `null` et le moteur perd TOUTE la moitié
+ * occasions de son calcul : 50 % des matchs de Ligue des champions, 41 % de
+ * l'Europa League (mesuré le 12 septembre 2026).
  *
- * ── CE QUI EST GARANTI ───────────────────────────────────────────────────
+ * ── CE QUI S'EST PASSÉ LE 12 SEPTEMBRE 2026 ──────────────────────────────
  *
- * 1. Sans mémoire, ou mémoire périmée, ou club inconnu, ou club à moins de
- *    cinq matchs : `avisDeLaMemoire` rend `null` et le moteur rend EXACTEMENT
- *    ce qu'il rendait.
- * 2. Le moteur ne bouge pas d'un centième quand l'avis est nul.
- * 3. Les deux appels de production ne passent la mémoire que lorsque les
- *    occasions manquent.
+ * Une première version, branchée le matin, gagnait 31 vainqueurs sur 4 922
+ * matchs aveugles — mais annonçait Sabah vainqueur de Manchester United (réel
+ * 4-0). Une note de type Elo gonfle pour le champion d'un championnat faible,
+ * faute de matchs entre pays. Elle a été retirée le même jour.
+ *
+ * La version ancrée recentre chaque note sur la moyenne de son championnat,
+ * puis l'ancre au niveau MESURÉ de ce championnat (`forces-championnats`).
+ * Mesurée : +1 et +28 vainqueurs justes, 72,0 / 68,9 % quand le moteur est sûr
+ * de lui contre 64,0 %, +7 et +2 dans les coupes d'Europe, et le cas
+ * Manchester United — Sabah est retrouvé.
+ *
+ * ── CE QUI EST GARANTI ICI ───────────────────────────────────────────────
+ *
+ * 1. Une mémoire SANS ancrage se tait. C'est le verrou central : la lecture de
+ *    la hiérarchie peut échouer en silence sur son garde-temps de 1,5 s.
+ * 2. Mémoire absente, périmée, club inconnu, club vu moins de cinq fois : elle
+ *    se tait aussi.
+ * 3. L'ancrage fait son travail : à dynamique interne identique, le club du
+ *    championnat le mieux coté est donné favori.
+ * 4. Le moteur ne bouge pas d'un centième quand l'avis est nul.
+ * 5. La production ne la consulte que là où les occasions manquent.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { avisDeLaMemoire, calculerMemoireClubs, PART_MEMOIRE, type MemoireClubs } from '../src/lib/memoire-clubs';
+import {
+  avisDeLaMemoire,
+  calculerMemoireClubs,
+  ECHELLE_HIERARCHIE,
+  PART_MEMOIRE,
+  type MemoireClubs,
+} from '../src/lib/memoire-clubs';
 import { calculerScoreProbable } from '../src/lib/score-probable';
 
 const sansCommentaires = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
-const jouees = (n: number) => {
-  // Deux clubs qui s'affrontent n fois : 1 gagne toujours, 2 perd toujours.
+/** n rencontres d'un championnat où le club `fort` bat toujours le club `faible`. */
+const serie = (ligue: number, fort: number, faible: number, n: number) => {
   const l = [];
   for (let i = 0; i < n; i++)
-    l.push({ date: `2026-0${1 + (i % 9)}-1${i % 9}T12:00:00+00:00`, dom: 1, ext: 2, bd: 2, be: 0 });
+    l.push({ date: `2026-0${1 + (i % 9)}-1${i % 9}T12:00:00+00:00`, ligue, dom: fort, ext: faible, bd: 2, be: 0 });
   return l;
 };
 
-test('★ ACQUIS — sans mémoire, la mémoire se tait', () => {
-  assert.equal(avisDeLaMemoire(null, 1, 2), null);
-  assert.equal(avisDeLaMemoire(undefined, 1, 2), null);
-  assert.equal(avisDeLaMemoire({ notes: {}, joues: {}, calculeLe: new Date().toISOString(), rencontres: 0, clubs: 0 }, 1, 2), null);
+/** Deux championnats, l'un coté 1,60 et l'autre 1,00, même dynamique interne. */
+const deuxChampionnats = () =>
+  calculerMemoireClubs([...serie(39, 1, 2, 10), ...serie(419, 3, 4, 10)], {
+    coefficients: { '39': 1.6, '419': 1.0 },
+  });
+
+test('★ ACQUIS — une mémoire SANS ancrage se tait', () => {
+  // Exactement le cas du 12 septembre au matin : la hiérarchie n'avait pas été
+  // lue (garde-temps de 1,5 s), la mémoire notait Sabah devant Manchester
+  // United, et elle a été branchée.
+  const sansAncrage = calculerMemoireClubs(serie(39, 1, 2, 10), { coefficients: null });
+  assert.equal(sansAncrage.championnatsAncres, 0, 'Sans coefficients, aucun championnat ne peut être ancré.');
+  assert.equal(
+    avisDeLaMemoire(sansAncrage, 1, 2),
+    null,
+    'Une mémoire non ancrée DOIT se taire : sans le niveau des championnats, elle met le champion d’un petit pays devant Manchester United.'
+  );
 });
 
-test('★ ACQUIS — un club inconnu, un club trop peu vu, ou une mémoire périmée : elle se tait', () => {
-  const memoire = calculerMemoireClubs(jouees(10));
-  assert.ok(avisDeLaMemoire(memoire, 1, 2), 'Deux clubs bien connus devraient donner un avis.');
+test('★ ACQUIS — mémoire absente, périmée, club inconnu ou trop peu vu : elle se tait', () => {
+  assert.equal(avisDeLaMemoire(null, 1, 2), null);
+  assert.equal(avisDeLaMemoire(undefined, 1, 2), null);
+
+  const memoire = deuxChampionnats();
+  assert.ok(avisDeLaMemoire(memoire, 1, 2), 'Deux clubs bien connus et ancrés devraient donner un avis.');
   assert.equal(avisDeLaMemoire(memoire, 1, 999), null, 'Un club inconnu doit faire taire la mémoire.');
 
-  const maigre = calculerMemoireClubs(jouees(3));
-  assert.equal(avisDeLaMemoire(maigre, 1, 2), null, 'Moins de cinq matchs : la mémoire ne décrit rien.');
+  const maigre = calculerMemoireClubs([...serie(39, 1, 2, 3), ...serie(419, 3, 4, 10)], {
+    coefficients: { '39': 1.6, '419': 1.0 },
+  });
+  assert.equal(avisDeLaMemoire(maigre, 1, 2), null, 'Moins de cinq rencontres : la note ne décrit rien.');
 
   const vieille: MemoireClubs = { ...memoire, calculeLe: new Date(Date.now() - 60 * 24 * 3600_000).toISOString() };
   assert.equal(avisDeLaMemoire(vieille, 1, 2), null, 'Une mémoire de deux mois ne parle plus des équipes d’aujourd’hui.');
 });
 
-test('★ ACQUIS — la mémoire voit bien qui est le plus fort', () => {
-  const memoire = calculerMemoireClubs(jouees(10));
-  const avis = avisDeLaMemoire(memoire, 1, 2)!;
-  assert.ok(avis.dom > avis.ext, 'Le club qui gagne toujours doit être donné favori.');
+test('★ ACQUIS — l’ancrage place les championnats à leur niveau mesuré', () => {
+  const memoire = deuxChampionnats();
+  assert.equal(memoire.echelle, ECHELLE_HIERARCHIE);
+  assert.equal(memoire.championnatsAncres, 2);
+
+  const fortDansGrandChampionnat = Number(memoire.notes['1']);
+  const fortDansPetitChampionnat = Number(memoire.notes['3']);
+  assert.ok(
+    fortDansGrandChampionnat > fortDansPetitChampionnat,
+    'À dynamique interne identique, le club du championnat le mieux coté doit être mieux noté : c’est tout l’objet de l’ancrage.'
+  );
+
+  // Et l'écart doit valoir l'ancrage : 400 × ln(1,6 / 1,0) ≈ 188 points.
+  const attendu = ECHELLE_HIERARCHIE * Math.log(1.6);
+  assert.ok(
+    Math.abs(fortDansGrandChampionnat - fortDansPetitChampionnat - attendu) < 1,
+    `L’écart entre les deux championnats devrait valoir ${attendu.toFixed(0)} points.`
+  );
+
+  const avis = avisDeLaMemoire(memoire, 1, 3)!;
+  assert.ok(avis.dom > avis.ext, 'Le club du championnat le mieux coté, qui reçoit, doit être favori.');
   assert.ok(Math.abs(avis.dom + avis.nul + avis.ext - 1) < 1e-9, 'Les trois parts doivent faire 100 %.');
   assert.equal(avis.poids, PART_MEMOIRE);
 });
@@ -73,24 +128,14 @@ test('★ ACQUIS — le moteur ne bouge pas d’un centième quand la mémoire e
   assert.equal(apres.probaVictoire2, avant.probaVictoire2);
 });
 
-test('★ ACQUIS — la mémoire NE SERT PAS au calcul tant qu’elle n’est pas ancrée sur la hiérarchie', () => {
-  // ── CE QUI S'EST PASSÉ LE 12 SEPTEMBRE 2026 ─────────────────────────────
-  //
-  // Branchée le matin sur les matchs aveugles, elle gagnait 31 vainqueurs sur
-  // 4 922 matchs. Rejouée le même jour sur Manchester United — Sabah, LE cas
-  // qui a coûté des abonnés, elle annonçait 0-1 Sabah là où le moteur seul
-  // annonçait 2-0 United (réel 4-0) : sa note gonfle pour le champion d'un
-  // championnat faible, faute de matchs entre pays.
-  //
-  // Elle a donc été retirée du calcul le même jour. Elle n'y reviendra
-  // qu'ancrée sur la hiérarchie MESURÉE des championnats, et après avoir
-  // repassé ce cas. Ce verrou protège le pronostic en attendant.
+test('★ ACQUIS — la production ne consulte la mémoire que si les occasions manquent', () => {
   for (const f of ['src/app/api/analyze/route.ts', 'src/lib/precalcul-selection.ts']) {
     const s = sansCommentaires(fs.readFileSync(f, 'utf8'));
-    assert.doesNotMatch(
+    assert.match(s, /avisDeLaMemoire/, `${f} ne consulte plus la mémoire des clubs.`);
+    assert.match(
       s,
-      /avisDeLaMemoire/,
-      `${f} consulte la mémoire des clubs : elle annonce Sabah vainqueur de Manchester United. À ne rebrancher qu'ancrée sur la hiérarchie des championnats, mesures refaites.`
+      /occasionsDuMatch\s*\r?\n?\s*\?\s*null\s*\r?\n?\s*:\s*avisDeLaMemoire|occasionsDuMatch \? null : avisDeLaMemoire/,
+      `${f} doit passer la mémoire UNIQUEMENT quand les occasions manquent : appliquée partout, elle dégrade le pronostic (couche Elo refusée le 11 septembre 2026).`
     );
   }
 });

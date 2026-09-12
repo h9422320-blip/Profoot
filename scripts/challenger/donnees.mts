@@ -76,7 +76,12 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   // grands championnats, donc sans tirs. Voir `src/lib/memoire-clubs.ts`.
   try {
     const { calculerMemoireClubs, rangerMemoireClubs } = await import('../../src/lib/memoire-clubs.js');
-    const memoire = calculerMemoireClubs(rencontres as any);
+    // La hiérarchie MESURÉE des championnats ancre chaque club sur le niveau
+    // réel de son pays : sans elle, le champion d'un petit championnat passe
+    // devant Manchester United (constaté le 12 septembre 2026).
+    const { lireForcesChampionnats } = await import('../../src/lib/forces-championnats.js');
+    const hierarchie = await lireForcesChampionnats();
+    const memoire = calculerMemoireClubs(rencontres as any, { coefficients: hierarchie?.coefficients ?? null });
     await rangerMemoireClubs(memoire);
     journal(`mémoire des clubs rangée : ${memoire.clubs} clubs sur ${memoire.rencontres} rencontres`);
   } catch (e: any) {

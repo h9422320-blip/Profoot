@@ -212,6 +212,26 @@ export const CHAMPIONNATS = [
   { id: 333, nom: 'Premier League ukrainienne' },
   { id: 383, nom: "Ligat Ha'al" },
   { id: 271, nom: 'NB I' },
+
+  // ── LA QUATRIÈME VAGUE, MESURÉE LE 12 SEPTEMBRE 2026 ───────────────────
+  //
+  // Parmi les pays qui privent le plus de matchs de coupe d'Europe de leurs
+  // tirs, SEULS ces quatre ont des statistiques chez le fournisseur —
+  // l'Azerbaïdjan (Sabah, Qarabağ), l'Estonie, l'Arménie ou la Lituanie n'en
+  // ont aucune, et aucun relevé ne pourra jamais les couvrir.
+  //
+  // Leurs clubs reviennent sans cesse dans les tours préliminaires :
+  // Universitatea Craiova, l'Étoile Rouge, Shamrock Rovers, KuPS.
+  //
+  // Rejoué par le vrai moteur sur toutes compétitions : sur les 504 matchs
+  // que ce relevé éclaire et que l'ancien ne voyait pas, +1 et +3 vainqueurs
+  // justes, Brier 0,6075 contre 0,6316 et 0,6309 contre 0,6572 — meilleur des
+  // deux côtés. Aucune compétition n'est retirée : le tour d'anneau s'allonge
+  // de trente-quatre à trente-huit pas.
+  { id: 283, nom: 'Liga I' },
+  { id: 286, nom: 'Super liga serbe' },
+  { id: 357, nom: 'Premier Division irlandaise' },
+  { id: 244, nom: 'Veikkausliiga' },
 ] as const;
 
 /**

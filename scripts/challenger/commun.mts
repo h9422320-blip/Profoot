@@ -76,3 +76,29 @@ export function assurerDossiers(): void {
 export function journal(...morceaux: unknown[]): void {
   console.log(`[${new Date().toISOString().slice(11, 19)}] ${morceaux.map(String).join(' ')}`);
 }
+
+/**
+ * ── LIRE LA HIÉRARCHIE SANS GARDE-TEMPS ───────────────────────────────────
+ *
+ * `lireForcesChampionnats` abandonne au bout d'une seconde et demie et rend
+ * `null` sans bruit. Le 12 septembre 2026, une mesure entière a été faussée
+ * ainsi : l'ancrage des clubs sur le niveau de leur championnat n'avait aucun
+ * coefficient, et ne faisait donc rien.
+ *
+ * Ici, on lit directement, avec dix secondes. Hors production : aucun abonné
+ * ne patiente derrière.
+ */
+export async function lireHierarchieDirect(): Promise<{ coefficients: Record<string, number>; calculeLe: string } | null> {
+  const { createClient } = await import('@supabase/supabase-js');
+  const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const course = new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000));
+  const lecture = sb
+    .from('cache_api')
+    .select('contenu')
+    .eq('cle', 'forces-championnats:v1')
+    .maybeSingle()
+    .then(({ data }: any) => (data?.contenu ?? null));
+  const contenu: any = await Promise.race([lecture, course]);
+  if (!contenu?.coefficients) return null;
+  return { coefficients: contenu.coefficients, calculeLe: String(contenu.calculeLe ?? "") };
+}

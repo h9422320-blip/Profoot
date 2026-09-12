@@ -70,6 +70,36 @@ const AVANTAGE_TERRAIN = 65;
  */
 const PART_DU_NUL = 0.26;
 
+/**
+ * ── L'ANCRAGE SUR LA HIÉRARCHIE, AJOUTÉ LE 12 SEPTEMBRE 2026 ──────────────
+ *
+ * Une note de type Elo gonfle pour le champion d'un championnat faible : il
+ * gagne tout chez lui, et les matchs entre pays sont trop rares pour corriger.
+ * Mesuré le 12 septembre 2026 : Sabah 1796 contre Manchester United 1668. La
+ * première version, branchée le matin, annonçait Sabah vainqueur — retirée le
+ * même jour.
+ *
+ * On ne laisse donc plus la note décider du niveau d'un pays. Chaque note est
+ * recentrée sur la moyenne de son championnat, puis ancrée au niveau MESURÉ de
+ * ce championnat (`forces-championnats`, 57 compétitions, 34 101 matchs) :
+ *
+ *   note ancrée = note − moyenne du championnat + 1500 + ÉCHELLE × ln(coefficient)
+ *
+ * Premier League 1,600 donne +188 points, un championnat inconnu 1 donne 0 —
+ * il se retrouve au milieu, et non au sommet. Dans un même championnat, rien
+ * ne change : l'écart entre deux clubs est conservé.
+ *
+ * Mesuré sur 4 409 matchs aveugles, échelle 400, part 0,6 : +1 et +28
+ * vainqueurs justes, Brier meilleur des deux côtés, 72,0 / 68,9 % quand le
+ * moteur est sûr de lui contre 64,0 %. Sur les 37 matchs de coupe où un club
+ * exotique rencontre un club connu — le type d'erreur le plus visible pour un
+ * abonné — la note brute faisait perdre un match, l'ancrée n'en perd aucun.
+ */
+export const ECHELLE_HIERARCHIE = 400;
+
+/** Une coupe d'Europe n'est le championnat de personne. */
+const COUPES = new Set([2, 3, 848]);
+
 /** Sans assez de matchs, une note ne décrit rien. */
 const MATCHS_MINIMUM = 5;
 
@@ -81,10 +111,15 @@ export interface MemoireClubs {
   calculeLe: string;
   rencontres: number;
   clubs: number;
+  /** L'échelle d'ancrage employée, et le nombre de championnats ancrés. */
+  echelle?: number;
+  championnatsAncres?: number;
 }
 
 export interface RencontreJouee {
   date: string;
+  /** Le numéro de la compétition : il sert à ancrer le club sur son niveau. */
+  ligue?: number | string;
   dom: number | string;
   ext: number | string;
   /** Buts du club qui reçoit, puis de l'autre. */
@@ -98,12 +133,28 @@ export interface RencontreJouee {
  * Fonction PURE : le challenger l'appelle sur son fichier local, sans coûter
  * une seule demande au fournisseur.
  */
-export function calculerMemoireClubs(rencontres: RencontreJouee[], k = K_MEMOIRE): MemoireClubs {
+export function calculerMemoireClubs(
+  rencontres: RencontreJouee[],
+  options: { k?: number; echelle?: number; coefficients?: Record<string, number> | null } = {}
+): MemoireClubs {
+  const k = options.k ?? K_MEMOIRE;
+  const echelle = options.echelle ?? ECHELLE_HIERARCHIE;
+  const coefficients = options.coefficients ?? null;
+
   const notes = new Map<string, number>();
   const joues = new Map<string, number>();
   const lire = (id: string) => notes.get(id) ?? 1500;
   const attendu = (dom: string, ext: string) =>
     1 / (1 + Math.pow(10, -(lire(dom) + AVANTAGE_TERRAIN - lire(ext)) / 400));
+
+  // Le championnat d'un club est celui où on l'a le plus vu, coupes exclues.
+  const vus = new Map<string, Map<string, number>>();
+  const noter = (club: string, ligue: string | null) => {
+    if (!ligue) return;
+    let c = vus.get(club);
+    if (!c) { c = new Map(); vus.set(club, c); }
+    c.set(ligue, (c.get(ligue) ?? 0) + 1);
+  };
 
   let retenues = 0;
   const ordre = [...rencontres].sort((a, b) => String(a.date).localeCompare(String(b.date)));
@@ -113,6 +164,12 @@ export function calculerMemoireClubs(rencontres: RencontreJouee[], k = K_MEMOIRE
     const bd = Number(m.bd);
     const be = Number(m.be);
     if (!dom || !ext || dom === ext || !Number.isFinite(bd) || !Number.isFinite(be)) continue;
+
+    const ligue = m.ligue === null || m.ligue === undefined ? null : String(m.ligue);
+    if (ligue && !COUPES.has(Number(ligue))) {
+      noter(dom, ligue);
+      noter(ext, ligue);
+    }
 
     const prevu = attendu(dom, ext);
     const obtenu = bd > be ? 1 : bd === be ? 0.5 : 0;
@@ -128,12 +185,55 @@ export function calculerMemoireClubs(rencontres: RencontreJouee[], k = K_MEMOIRE
     retenues++;
   }
 
+  // ── RECENTRER, PUIS ANCRER ─────────────────────────────────────────────
+  const ligueDe = new Map<string, string>();
+  for (const [club, c] of vus) {
+    let meilleure = '';
+    let combien = -1;
+    for (const [ligue, n] of c) if (n > combien) { meilleure = ligue; combien = n; }
+    if (meilleure) ligueDe.set(club, meilleure);
+  }
+  const somme = new Map<string, number>();
+  const nombre = new Map<string, number>();
+  for (const [club, note] of notes) {
+    const ligue = ligueDe.get(club);
+    if (!ligue) continue;
+    somme.set(ligue, (somme.get(ligue) ?? 0) + note);
+    nombre.set(ligue, (nombre.get(ligue) ?? 0) + 1);
+  }
+  const ancres = new Map<string, number>();
+  // On compte les championnats dont le niveau vient VRAIMENT de la hiérarchie
+  // mesurée — un coefficient de 1 en fait partie, même si son ancrage vaut
+  // zéro point. C'est ce compteur qui autorise la mémoire à parler.
+  let ancresConnues = 0;
+  for (const ligue of nombre.keys()) {
+    const coef = Number(coefficients?.[ligue]);
+    const connu = Number.isFinite(coef) && coef > 0;
+    if (connu) ancresConnues++;
+    ancres.set(ligue, echelle * Math.log(connu ? coef : 1));
+  }
+  const finales = new Map<string, number>();
+  for (const [club, note] of notes) {
+    const ligue = ligueDe.get(club);
+    const n = ligue ? nombre.get(ligue) ?? 0 : 0;
+    if (!ligue || n < 2) {
+      // Sans championnat identifiable, le club reste où il est : on ne sait
+      // pas le situer, on ne prétend pas le faire.
+      finales.set(club, note);
+      continue;
+    }
+    const moyenne = (somme.get(ligue) ?? 0) / n;
+    finales.set(club, note - moyenne + 1500 + (ancres.get(ligue) ?? 0));
+  }
+
   return {
-    notes: Object.fromEntries([...notes].map(([id, n]) => [id, Math.round(n * 10) / 10])),
+    notes: Object.fromEntries([...finales].map(([id, n]) => [id, Math.round(n * 10) / 10])),
     joues: Object.fromEntries(joues),
     calculeLe: new Date().toISOString(),
     rencontres: retenues,
-    clubs: notes.size,
+    clubs: finales.size,
+    echelle,
+    championnatsAncres: ancresConnues,
   };
 }
 
@@ -151,6 +251,14 @@ export function avisDeLaMemoire(
   part: number = PART_MEMOIRE
 ): { dom: number; nul: number; ext: number; poids: number } | null {
   if (!memoire?.notes) return null;
+  // ── SANS ANCRAGE, ELLE SE TAIT ─────────────────────────────────────────
+  //
+  // Le 12 septembre 2026, une mémoire calculée SANS la hiérarchie des
+  // championnats — la lecture avait silencieusement échoué sur son garde-temps
+  // de 1,5 s — notait Sabah au-dessus de Manchester United et annonçait Sabah
+  // vainqueur. Une mémoire non ancrée est donc inutilisable, et ce verrou
+  // l'empêche de parler.
+  if (!memoire.championnatsAncres || memoire.championnatsAncres < 1) return null;
   const age = Date.parse(String(memoire.calculeLe));
   if (!Number.isFinite(age) || Date.now() - age > PERIME_APRES_MS) return null;
   if (idDomicile === null || idDomicile === undefined || idExterieur === null || idExterieur === undefined) return null;
