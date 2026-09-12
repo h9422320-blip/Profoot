@@ -871,32 +871,57 @@ function avecTirsElargis(): { pronostics: Pronostic[]; actifs: number[] } {
 
 // ── CE QUE LA PRODUCTION FAIT DEPUIS LE 12 SEPTEMBRE 2026 ────────────────
 //
-// La mémoire des clubs est EN LIGNE : là où les occasions manquent, le moteur
-// reprend son avis sur qui domine, à 60 % (voir `src/lib/memoire-clubs.ts`).
-// Le moteur de référence du challenger doit donc l'inclure, sinon on
-// comparerait les couches à un moteur qui n'existe plus. Chaque couche
-// additive l'inclut également : elle est mesurée COMME UN AJOUT à la
-// production, pas comme son remplacement.
+// La mémoire des clubs ANCRÉE est en ligne (commit 5819d10) : là où les
+// occasions manquent, le moteur reprend son avis sur qui domine, à 60 %. Le
+// moteur de référence du challenger doit donc l'inclure, sinon on comparerait
+// les couches à un moteur qui n'existe plus — et une couche qui ne fait que
+// retrouver ce que la production sait déjà paraîtrait gagnante.
 //
-// Les couches qui se servent elles-mêmes de l'avis extérieur — Elo, mémoire à
-// un autre dosage, marché — le remplacent : c'est leur sujet même.
+// Même calcul que `src/lib/memoire-clubs.ts` : note de type Elo recentrée sur
+// la moyenne de son championnat, puis ancrée au niveau MESURÉ de ce
+// championnat. Sans hiérarchie lisible, la production se tait : ici aussi.
+//
+// Chaque couche additive l'inclut également : elle est mesurée COMME UN AJOUT
+// à la production. Les couches qui se servent elles-mêmes de l'avis extérieur
+// — Elo, mémoire à un autre dosage, marché — le remplacent : c'est leur sujet.
 const K_PRODUCTION = 30;
 const PART_PRODUCTION = 0.6;
+const ECHELLE_PRODUCTION = 400;
 const avisProduction = new Map<number, { dom: number; nul: number; ext: number; poids: number }>();
-{
+if (hierarchie) {
   const note = new Map<number, number>();
-  const lire = (id: number) => note.get(id) ?? 1500;
-  const attendu = (dom: number, ext: number) =>
-    1 / (1 + Math.pow(10, -(lire(dom) + AVANTAGE_TERRAIN_ELO - lire(ext)) / 400));
   const joues = new Map<number, number>();
+  const somme = new Map<number, number>();
+  const combien = new Map<number, number>();
+  const lire = (id: number) => note.get(id) ?? 1500;
+  const poser = (id: number, valeur: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const avant = note.has(id) ? note.get(id)! : null;
+    if (avant === null) {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + valeur);
+      combien.set(ligue, (combien.get(ligue) ?? 0) + 1);
+    } else {
+      somme.set(ligue, (somme.get(ligue) ?? 0) + (valeur - avant));
+    }
+    note.set(id, valeur);
+  };
+  const ancre = (ligue: number) => ECHELLE_PRODUCTION * Math.log(coefficientDe(hierarchie as any, ligue) || 1);
+  const ancree = (id: number) => {
+    const ligue = ligueDuClub.get(id) ?? 0;
+    const n = combien.get(ligue) ?? 0;
+    const moyenne = n > 0 ? (somme.get(ligue) ?? 0) / n : 1500;
+    return lire(id) - moyenne + 1500 + ancre(ligue);
+  };
   const apprendre = (x: any) => {
-    const we = attendu(x.dom, x.ext);
+    const brutDom = lire(x.dom);
+    const brutExt = lire(x.ext);
+    const prevu = 1 / (1 + Math.pow(10, -(brutDom + AVANTAGE_TERRAIN_ELO - brutExt) / 400));
     const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
     const e = Math.abs(x.bd - x.be);
     const g = e <= 1 ? 1 : e === 2 ? 1.5 : (11 + e) / 8;
-    const delta = K_PRODUCTION * g * (w - we);
-    note.set(x.dom, lire(x.dom) + delta);
-    note.set(x.ext, lire(x.ext) - delta);
+    const delta = K_PRODUCTION * g * (w - prevu);
+    poser(x.dom, brutDom + delta);
+    poser(x.ext, brutExt - delta);
     joues.set(x.dom, (joues.get(x.dom) ?? 0) + 1);
     joues.set(x.ext, (joues.get(x.ext) ?? 0) + 1);
   };
@@ -911,7 +936,7 @@ const avisProduction = new Map<number, { dom: number; nul: number; ext: number; 
     // rencontres au moins pour chacun des deux clubs.
     if (occ) continue;
     if ((joues.get(m.dom) ?? 0) < 5 || (joues.get(m.ext) ?? 0) < 5) continue;
-    const we = attendu(m.dom, m.ext);
+    const we = 1 / (1 + Math.pow(10, -(ancree(m.dom) + AVANTAGE_TERRAIN_ELO - ancree(m.ext)) / 400));
     avisProduction.set(Number(m.id), {
       dom: (1 - NUL_ELO) * we,
       nul: NUL_ELO,
@@ -920,19 +945,7 @@ const avisProduction = new Map<number, { dom: number; nul: number; ext: number; 
     });
   }
 }
-// ── ET LE 12 SEPTEMBRE À 14 H, LA PRODUCTION N'EN VEUT PLUS ──────────────
-//
-// La mémoire a été retirée du calcul le jour même de son branchement : elle
-// annonçait Sabah vainqueur de Manchester United (voir
-// `scripts/_preuve-sabah.mts`). Le moteur de référence doit donc redevenir le
-// moteur NU, sinon chaque couche serait comparée à un moteur qui n'existe pas.
-//
-// Le calcul ci-dessus est conservé : le jour où la mémoire reviendra, ancrée
-// sur la hiérarchie mesurée des championnats, il suffira de remettre
-// `MEMOIRE_EN_PRODUCTION` à vrai — et une seule ligne décidera de tout le banc.
-const MEMOIRE_EN_PRODUCTION = false;
-const avisDeLaProduction = (m: any) =>
-  MEMOIRE_EN_PRODUCTION ? avisProduction.get(Number(m.id)) ?? null : null;
+const avisDeLaProduction = (m: any) => avisProduction.get(Number(m.id)) ?? null;
 
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
