@@ -35,7 +35,14 @@ import {
   serieDepuis,
   verifierConformite,
 } from '../src/lib/affiche-du-jour';
-import { TITRE_CERNES, textesDeLAffiche, titreDe } from '../src/components/affiche/AfficheVisuel';
+import {
+  QUESTION,
+  SURTITRE_CERNES,
+  TITRE_CERNES,
+  libelleCernes,
+  textesDeLAffiche,
+  titreDe,
+} from '../src/components/affiche/AfficheVisuel';
 
 const sansCommentaires = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
@@ -60,6 +67,9 @@ test('★ ACQUIS — un mot de pari, de gain ou de résultat fait REFUSER l’af
 
 test('★ ACQUIS — les textes réellement composés sont conformes, tous les cas', () => {
   const base = {
+    mieuxCernes: [
+      { domicile: 'PSV Eindhoven', logoDomicile: null, exterieur: 'Sparta Rotterdam', logoExterieur: null, heure: '18:00' },
+    ],
     prenom: 'Ousmane',
     jour: '2026-09-12',
     analysesDuMois: 37,
@@ -73,7 +83,11 @@ test('★ ACQUIS — les textes réellement composés sont conformes, tous les c
   // Zéro, un, plusieurs : les trois tournures du titre doivent passer.
   for (const analysesDuJour of [0, 1, 5]) {
     const d = { ...base, analysesDuJour } as any;
-    const clubs = [...d.matchs.flatMap((m: any) => [m.domicile, m.exterieur]), d.equipePreferee.nom];
+    const clubs = [
+      ...d.matchs.flatMap((m: any) => [m.domicile, m.exterieur]),
+      ...d.mieuxCernes.flatMap((m: any) => [m.domicile, m.exterieur]),
+      d.equipePreferee.nom,
+    ];
     verifierConformite([...textesDeLAffiche(d), ...clubs], clubs);
   }
   assert.match(titreDe(5), /analysé 5 matchs/);
@@ -191,12 +205,11 @@ test('★ ACQUIS — les rencontres les mieux cernées paraissent SANS leur pour
 
 test('★ ACQUIS — l’affiche préfère les mieux cernés, et retombe sur les matchs analysés', () => {
   const source = sansCommentaires(fs.readFileSync('src/components/affiche/AfficheVisuel.tsx', 'utf8'));
-  assert.match(
-    source,
-    /const matchs = cernes\.length \? cernes : d\.matchs/,
+  assert.ok(
+    source.includes('const matchs = surLesCernes ? cernes : d.matchs'),
     'Les rencontres du jour passent devant : un relevé d’activité ne fait rien demander à personne.'
   );
-  assert.match(source, /titreDeLaListe = cernes\.length \? TITRE_CERNES : TITRE_LISTE/);
+  assert.ok(source.includes('const titreDeLaListe = surLesCernes ? TITRE_CERNES : TITRE_LISTE'));
   // Et le titre reste dans le vocabulaire de l'analyse.
   assert.doesNotMatch(TITRE_CERNES, /sûr|sur[e]?s\b|gagn|pronostic/i);
 });
@@ -215,4 +228,49 @@ test('★ ACQUIS — la version carrée a disparu de l’écran, les quatre rés
   // lui envoie un fichier.
   assert.match(bloc, /canShare\?\.\(\{ files: \[fichier\] \}\)/);
   assert.match(bloc, /lienDeSecours\(reseau\)/, 'Sans partage de fichier, le réseau doit quand même s’ouvrir.');
+});
+
+test('★ ACQUIS — un seul sujet, un seul chiffre : le grand nombre compte ce qui est montré', () => {
+  // La version précédente annonçait « 4 » — les analyses de la personne — au-dessus
+  // d'une liste de 3 rencontres. Deux chiffres qui se contredisent à la première
+  // lecture, et le propriétaire l'a vu tout de suite.
+  const source = sansCommentaires(fs.readFileSync('src/components/affiche/AfficheVisuel.tsx', 'utf8'));
+  assert.ok(
+    source.includes('const grandChiffre = surLesCernes ? matchs.length : d.analysesDuJour'),
+    'Le grand chiffre doit compter les rencontres réellement affichées, et rien d’autre.'
+  );
+  assert.equal(libelleCernes(1), 'match décrypté');
+  assert.equal(libelleCernes(3), 'matchs décryptés');
+  // Et l'intitulé de section ne répète pas le titre.
+  assert.ok(
+    source.includes('matchs.length && !surLesCernes ? <Intitule'),
+    'L’intitulé de section ne doit pas répéter le titre géant.'
+  );
+});
+
+test('★ ACQUIS — l’affiche pose une question : c’est elle qui fait poster', () => {
+  // Un statut qui affirme se regarde ; un statut qui demande reçoit des
+  // réponses, et chaque réponse est une conversation qui finit sur le site.
+  assert.ok(QUESTION.trim().endsWith('?'), 'La question doit en être une.');
+  verifierConformite([QUESTION, SURTITRE_CERNES]);
+  // Elle ne peut pas glisser vers le vocabulaire du pari.
+  for (const interdit of [/gagn/i, /pronostic/i, /vainqueur/i, /taux/i, /score/i])
+    assert.doesNotMatch(QUESTION + ' ' + SURTITRE_CERNES, interdit);
+
+  const source = sansCommentaires(fs.readFileSync('src/components/affiche/AfficheVisuel.tsx', 'utf8'));
+  assert.ok(source.includes('{QUESTION}'), 'La question doit être composée sur l’affiche.');
+});
+
+test('★ ACQUIS — l’affiche se voit sans cliquer, et en grand', () => {
+  const bloc = sansCommentaires(fs.readFileSync('src/components/affiche/BlocAfficheDuJour.tsx', 'utf8'));
+  // Fabriquée à l'arrivée, pas au clic : on partage ce qu'on a vu.
+  assert.ok(
+    bloc.includes('if (!etat?.disponible) return;'),
+    'L’affiche doit se fabriquer dès que l’accès est confirmé, sans attendre un clic.'
+  );
+  assert.ok(bloc.includes("fetch('/api/affiche?format=story')"));
+  // Pleine largeur, et le neuf-seizièmes garanti : c'est le format du statut,
+  // validé par le propriétaire, et il ne doit jamais se déformer.
+  assert.ok(bloc.includes("aspectRatio: '9 / 16'"), 'Le format du statut ne doit jamais se déformer.');
+  assert.ok(!bloc.includes('max-w-[220px]'), 'L’affiche ne doit plus tenir dans 220 pixels.');
 });

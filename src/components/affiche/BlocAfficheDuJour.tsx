@@ -48,6 +48,8 @@ export default function BlocAfficheDuJour() {
   const [enCours, setEnCours] = useState<Reseau | null>(null);
   const [reseauxOuverts, setReseauxOuverts] = useState(false);
   const [apercu, setApercu] = useState<string | null>(null);
+  const [fichier, setFichier] = useState<File | null>(null);
+  const [chargement, setChargement] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,6 +67,38 @@ export default function BlocAfficheDuJour() {
     };
   }, []);
 
+  // ── L'AFFICHE S'AFFICHE TOUTE SEULE ─────────────────────────────────────
+  //
+  // Elle attendait un clic sur « Partager mon affiche ». Personne ne clique
+  // sur un bouton pour découvrir ce qu'il partagerait : on partage ce qu'on a
+  // VU, et trouvé beau. L'image est donc fabriquée dès l'arrivée sur le
+  // profil, et c'est la première chose que l'on voit.
+  //
+  // Le coût est celui d'une image par visite du profil. Pendant l'essai privé
+  // il est nul — une seule personne y a accès. Le jour où l'affiche s'ouvrira
+  // à tous les abonnés, c'est ici qu'il faudra poser une réserve.
+  useEffect(() => {
+    if (!etat?.disponible) return;
+    let vivant = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/affiche?format=story');
+        if (!r.ok || !vivant) return;
+        const blob = await r.blob();
+        if (!vivant) return;
+        setApercu(URL.createObjectURL(blob));
+        setFichier(new File([blob], `profoot-affiche-${etat.jour ?? 'du-jour'}.png`, { type: 'image/png' }));
+      } catch {
+        /* Une affiche qui ne se fabrique pas ne doit pas casser le profil. */
+      } finally {
+        if (vivant) setChargement(false);
+      }
+    })();
+    return () => {
+      vivant = false;
+    };
+  }, [etat?.disponible, etat?.jour]);
+
   // Libérer l'aperçu quand il est remplacé ou que le composant disparaît.
   useEffect(
     () => () => {
@@ -78,15 +112,20 @@ export default function BlocAfficheDuJour() {
   const nomFichier = `profoot-affiche-${etat.jour ?? 'du-jour'}.png`;
 
   async function produire(): Promise<File | null> {
+    // Déjà fabriquée à l'arrivée : on ne redemande pas la même image au
+    // serveur pour la partager.
+    if (fichier) return fichier;
+
     const r = await fetch('/api/affiche?format=story');
     if (!r.ok) {
       setMessage("L'affiche n'a pas pu être créée. Réessayez dans un instant.");
       return null;
     }
     const blob = await r.blob();
-    if (apercu) URL.revokeObjectURL(apercu);
     setApercu(URL.createObjectURL(blob));
-    return new File([blob], nomFichier, { type: 'image/png' });
+    const f = new File([blob], nomFichier, { type: 'image/png' });
+    setFichier(f);
+    return f;
   }
 
   async function partagerVers(reseau: Reseau) {
@@ -145,8 +184,6 @@ export default function BlocAfficheDuJour() {
     }
   }
 
-  const n = etat.analysesDuJour ?? 0;
-
   return (
     <div className="bg-[#1d2f3a]/80 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-2xl">
       {/* En-tête : même tuile en dégradé vert que la carte de profil. */}
@@ -173,17 +210,34 @@ export default function BlocAfficheDuJour() {
         </div>
       </div>
 
-      {/* Deux tuiles de chiffres, comme celles du profil. Libellés COURTS :
-          sur 375 pixels de large, « matchs analysés aujourd'hui » partait sur
-          deux lignes et cassait l'alignement des deux tuiles. */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
-          <span className="text-2xl font-black text-white">{n}</span>
-          <p className="text-[11px] text-white/50 font-medium mt-1 uppercase tracking-wider">aujourd’hui</p>
-        </div>
-        <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
-          <span className="text-2xl font-black text-white">{etat.analysesDuMois ?? 0}</span>
-          <p className="text-[11px] text-white/50 font-medium mt-1 uppercase tracking-wider">ce mois-ci</p>
+      {/* ── L'AFFICHE, EN GRAND ET TOUT DE SUITE ──────────────────────────
+          Elle n'attend plus un clic : on partage ce qu'on a vu et trouvé beau,
+          pas ce qu'un bouton promet. Et elle occupe toute la largeur du bloc —
+          elle tenait dans 220 pixels avec de l'espace perdu des deux côtés,
+          illisible sur un téléphone.
+
+          Le rapport neuf-seizièmes est imposé en style direct : c'est le
+          format du statut, et il ne doit jamais se déformer. */}
+      <div className="mb-6">
+        <div
+          className="relative w-full overflow-hidden rounded-[24px] border border-white/10 bg-black/40 shadow-2xl"
+          style={{ aspectRatio: '9 / 16' }}
+        >
+          {apercu ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={apercu}
+              alt="Mon affiche du jour"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+              <div className="w-8 h-8 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+              <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">
+                {chargement ? 'Création de votre affiche…' : 'Affiche indisponible'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -242,16 +296,6 @@ export default function BlocAfficheDuJour() {
 
       {message ? <p className="mt-4 text-xs text-white/50 text-center">{message}</p> : null}
 
-      {apercu ? (
-        <div className="mt-6 flex justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={apercu}
-            alt="Aperçu de mon affiche du jour"
-            className="w-full max-w-[220px] rounded-[20px] border border-white/10 shadow-2xl"
-          />
-        </div>
-      ) : null}
     </div>
   );
 }
