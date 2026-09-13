@@ -31,12 +31,18 @@ import {
   afficheAutorisee,
   motsInterditsTrouves,
   prenomDe,
+  LECTURE_RECAP,
   rencontresMieuxCernees,
   serieDepuis,
   verifierConformite,
 } from '../src/lib/affiche-du-jour';
 import {
+  ANNONCE,
   DEVISE,
+  NATURE,
+  REEL,
+  TITRE_RECAP,
+  introRecap,
   MERCI,
   QUESTION,
   SURTITRE_CERNES,
@@ -71,6 +77,17 @@ test('★ ACQUIS — un mot de pari, de gain ou de résultat fait REFUSER l’af
 
 test('★ ACQUIS — les textes réellement composés sont conformes, tous les cas', () => {
   const base = {
+    recap: [
+      {
+        domicile: 'Real Madrid',
+        logoDomicile: null,
+        exterieur: 'Rayo Vallecano',
+        logoExterieur: null,
+        annonce: '3 - 1',
+        reel: '4 - 1',
+        juste: true,
+      },
+    ],
     mieuxCernes: [
       { domicile: 'PSV Eindhoven', logoDomicile: null, exterieur: 'Sparta Rotterdam', logoExterieur: null, heure: '18:00' },
     ],
@@ -90,6 +107,7 @@ test('★ ACQUIS — les textes réellement composés sont conformes, tous les c
     const clubs = [
       ...d.matchs.flatMap((m: any) => [m.domicile, m.exterieur]),
       ...d.mieuxCernes.flatMap((m: any) => [m.domicile, m.exterieur]),
+      ...d.recap.flatMap((m: any) => [m.domicile, m.exterieur]),
       d.equipePreferee.nom,
     ];
     verifierConformite([...textesDeLAffiche(d), ...clubs], clubs);
@@ -105,6 +123,52 @@ test('★ ACQUIS — le nom d’un club ne fait pas échouer l’affiche', () =>
   verifierConformite(['Paris Saint-Germain'], ['Paris Saint-Germain']);
 });
 
+test('★ ACQUIS — le récapitulatif lit le strict nécessaire, et rien du contenu payant', () => {
+  // Décision du propriétaire, le 13 septembre 2026, en connaissance de cause :
+  // l'affiche montre ce qui a été annoncé FACE à ce qui s'est passé. « Comme
+  // des preuves au fait. » Le mur public de l'application publie déjà
+  // exactement cela, indexé par les moteurs — l'affiche ne crée donc pas une
+  // catégorie de contenu nouvelle, elle met en image ce que le site montre.
+  //
+  // Mais la lecture reste BORNÉE : le contenu payant ne sort pas de la base.
+  for (const interdite of ['confidence', 'win_prob', 'draw_prob', 'lose_prob', 'summary', 'analysis_data'])
+    assert.ok(
+      !LECTURE_RECAP.includes(interdite),
+      `Le récapitulatif ne doit jamais lire « ${interdite} » : c'est le contenu que l'abonné paie.`
+    );
+  for (const requise of ['score', 'real_score', 'winner_correct'])
+    assert.ok(LECTURE_RECAP.includes(requise), `Le récapitulatif a besoin de « ${requise} ».`);
+
+  // Et la règle qui n'a pas bougé d'un pouce : AUCUN TAUX. Des faits, un par
+  // rencontre, jamais rien qui les agrège.
+  // Aucun pourcentage dans les TEXTES composés — les '45%' du code sont des
+  // largeurs de colonne, pas des taux.
+  const d = { recap: [], mieuxCernes: [], matchs: [], prenom: 'A', jour: '2026-09-13', analysesDuJour: 2, analysesDuMois: 40, serie: 3, equipePreferee: null } as any;
+  for (const t of textesDeLAffiche(d)) assert.ok(!t.includes('%'), );
+
+  verifierConformite([TITRE_RECAP, ANNONCE, REEL, introRecap(3), introRecap(1), introRecap(0), '3 - 1', '4 - 1']);
+});
+
+test('★ ACQUIS — l’affiche DIT qu’elle n’est pas un jeu d’argent', () => {
+  // Éviter le vocabulaire du pari ne suffit pas : une image qui montre des
+  // rencontres et des chiffres sera lue comme une publicité de jeu par un
+  // modérateur pressé. L'affiche affirme donc sa nature, noir sur blanc.
+  assert.match(NATURE, /intelligence artificielle/i);
+  assert.match(NATURE, /analyse de données/i);
+  assert.match(NATURE, /aucun jeu d’argent/i);
+  // Elle doit passer le contrôle : « pari » et « mise » sont bannis Y COMPRIS
+  // pour dire qu'on n'en fait pas — d'où cette formule-là et pas une autre.
+  verifierConformite([NATURE]);
+
+  const visuel = sansCommentaires(fs.readFileSync('src/components/affiche/AfficheVisuel.tsx', 'utf8'));
+  assert.match(visuel, /\{CAPITALES\(NATURE\)\}/, 'La nature doit être composée sur l’image.');
+  assert.match(
+    visuel,
+    /analyse de matchs par intelligence artificielle/,
+    'Le sous-titre doit dire ce que FAIT l’application.'
+  );
+});
+
 test('★ ACQUIS — la lecture en base ne demande aucune colonne de résultat', () => {
   for (const colonne of [
     'score',
@@ -118,7 +182,7 @@ test('★ ACQUIS — la lecture en base ne demande aucune colonne de résultat',
   ])
     assert.ok(
       !LECTURE_AUTORISEE.includes(colonne),
-      `L'affiche ne doit jamais demander « ${colonne} » : ce qui ne sort pas de la base ne peut pas se retrouver sur un réseau social.`
+      `La liste des matchs ne doit jamais demander « ${colonne} » : ce qui ne sort pas de la base ne peut pas se retrouver sur un réseau social. Le récapitulatif a sa propre liste, bornée, voir LECTURE_RECAP.`
     );
   for (const colonne of ['created_at', 'team1_name', 'team1_logo', 'team2_name', 'team2_logo'])
     assert.ok(LECTURE_AUTORISEE.includes(colonne), `L'affiche a besoin de « ${colonne} ».`);
@@ -213,7 +277,7 @@ test('★ ACQUIS — l’affiche préfère les mieux cernés, et retombe sur les
     source.includes('const matchs = surLesCernes ? cernes : d.matchs'),
     'Les rencontres du jour passent devant : un relevé d’activité ne fait rien demander à personne.'
   );
-  assert.ok(source.includes('const titreDeLaListe = surLesCernes ? TITRE_CERNES : TITRE_LISTE'));
+  assert.ok(source.includes('surLeRecap ? TITRE_RECAP : surLesCernes ? TITRE_CERNES : TITRE_LISTE'));
   // Et le titre reste dans le vocabulaire de l'analyse.
   assert.doesNotMatch(TITRE_CERNES, /sûr|sur[e]?s\b|gagn|pronostic/i);
 });

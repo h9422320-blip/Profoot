@@ -58,6 +58,7 @@ console.log(
 const nomsDeClubs = [
   ...d.matchs.flatMap((m: any) => [m.domicile, m.exterieur]),
   ...d.mieuxCernes.flatMap((m: any) => [m.domicile, m.exterieur]),
+  ...d.recap.flatMap((m: any) => [m.domicile, m.exterieur]),
   ...(d.equipePreferee ? [d.equipePreferee.nom] : []),
 ];
 const textes = textesDeLAffiche(d);

@@ -179,6 +179,96 @@ export function afficheAutorisee(courriel: string | null | undefined, estPayant:
   return ESSAI_PRIVE.includes(adresse);
 }
 
+/**
+ * ── LE RÉCAPITULATIF : L'ANALYSE FACE AU TERRAIN ─────────────────────────
+ *
+ * Ce que le propriétaire a demandé le 13 septembre 2026, en connaissance de
+ * cause : montrer, à côté de chaque rencontre analysée, CE QUI S'EST
+ * RÉELLEMENT PASSÉ. « Comme des preuves au fait. »
+ *
+ * ── POURQUOI CETTE LECTURE EST SÉPARÉE, ET PAS UN ÉLARGISSEMENT ─────────
+ *
+ * `LECTURE_AUTORISEE` garde son rôle intact : la liste des matchs du jour ne
+ * voit toujours que des noms et des écussons. Une seconde liste, explicite et
+ * bornée, sert le récapitulatif — et elle ne contient toujours PAS la
+ * confiance, les probabilités, le résumé ni l'analyse complète, qui sont le
+ * contenu payant.
+ *
+ * ── CE QUE CE CHOIX COÛTE, ET POURQUOI IL A ÉTÉ FAIT QUAND MÊME ─────────
+ *
+ * Un « annoncé 4-1 / réel 4-1 » sur une image qui circule est ce qui ressemble
+ * le plus à une publicité de pari, et ce projet a perdu une boutique en août
+ * 2026 sur ce motif. Le risque a été posé au propriétaire, qui a tranché :
+ * le mur public de l'application publie DÉJÀ exactement cela, à la vue de
+ * tous et indexé par les moteurs. L'affiche ne crée donc pas une catégorie de
+ * contenu nouvelle ; elle met en image ce que le site montre déjà.
+ *
+ * Reste la règle qui n'a pas bougé d'un pouce : AUCUN TAUX. Ni pourcentage de
+ * réussite, ni « analyses réussies », ni classement. Des faits, un par
+ * rencontre, et rien qui les agrège.
+ */
+export const LECTURE_RECAP =
+  'created_at, team1_name, team1_logo, team2_name, team2_logo, score, real_score, winner_correct' as const;
+
+/** Une rencontre analysée, confrontée à ce qui s'est passé. */
+export interface MatchCompare {
+  domicile: string;
+  logoDomicile: string | null;
+  exterieur: string;
+  logoExterieur: string | null;
+  /** Le score annoncé avant le match, « 4 - 1 ». */
+  annonce: string;
+  /** Le score réel, « 4 - 1 ». */
+  reel: string;
+  /** L'issue annoncée était-elle la bonne ? */
+  juste: boolean;
+}
+
+/**
+ * Les dernières analyses de cette personne qui ont été confrontées au résultat.
+ *
+ * Les plus récentes d'abord, et une rencontre n'y paraît qu'une fois : rouvrir
+ * une analyse crée une ligne de plus, et l'affiche montrerait deux fois le même
+ * match.
+ */
+export async function recapitulatif(
+  sb: { from: (t: string) => any },
+  userId: string,
+  max = 3
+): Promise<MatchCompare[]> {
+  const { data, error } = await sb
+    .from('analysis_history')
+    .select(LECTURE_RECAP)
+    .eq('user_id', userId)
+    .not('verified_at', 'is', null)
+    .not('real_score', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(60);
+  if (error) return [];
+
+  const vus = new Set<string>();
+  const sortie: MatchCompare[] = [];
+  for (const l of (data ?? []) as any[]) {
+    const annonce = String(l.score ?? '').trim();
+    const reel = String(l.real_score ?? '').trim();
+    if (!annonce || !reel) continue;
+    const cle = [String(l.team1_name ?? ''), String(l.team2_name ?? '')].sort().join(' · ').toLowerCase();
+    if (vus.has(cle)) continue;
+    vus.add(cle);
+    sortie.push({
+      domicile: String(l.team1_name ?? ''),
+      logoDomicile: l.team1_logo ?? null,
+      exterieur: String(l.team2_name ?? ''),
+      logoExterieur: l.team2_logo ?? null,
+      annonce,
+      reel,
+      juste: Boolean(l.winner_correct),
+    });
+    if (sortie.length >= max) break;
+  }
+  return sortie;
+}
+
 /** Un match analysé, tel qu'il paraîtra : deux équipes, deux écussons. */
 export interface MatchAnalyse {
   domicile: string;
@@ -254,6 +344,13 @@ export interface DonneesAffiche {
    * alors sur les matchs que l'abonné a lui-même analysés.
    */
   mieuxCernes: MatchAnalyse[];
+  /**
+   * Les dernières analyses confrontées à ce qui s'est réellement passé.
+   *
+   * C'est ce qui donne de la VALEUR à l'affiche : un rang flatte, une preuve
+   * convainc. Vide tant qu'aucune analyse n'a encore été confrontée.
+   */
+  recap: MatchCompare[];
 }
 
 /** Le prénom à afficher : le premier mot du nom, sinon le début de l'adresse. */
@@ -365,5 +462,6 @@ export async function donneesAffiche(
       logoExterieur: l.team2_logo ?? null,
     })),
     mieuxCernes: rencontresMieuxCernees(selectionDuJour),
+    recap: await recapitulatif(sb, utilisateur.id),
   };
 }

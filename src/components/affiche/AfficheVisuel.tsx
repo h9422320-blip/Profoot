@@ -156,7 +156,32 @@ export function preuveDe(d: DonneesAffiche): string {
   return 'première analyse';
 }
 
-export const SOUS_TITRE = 'analyse & statistiques football';
+/**
+ * ── L'AFFICHE DIT CE QU'ELLE EST ─────────────────────────────────────────
+ *
+ * Éviter le vocabulaire du pari ne suffit pas : une image qui montre des
+ * rencontres et des chiffres sera lue comme une publicité de jeu par un
+ * modérateur pressé, quels que soient les mots absents. Il faut donc AFFIRMER
+ * la nature du produit, noir sur blanc, sur l'image elle-même.
+ *
+ * Le sous-titre ne dit plus « analyse & statistiques football » — descriptif,
+ * neutre, interprétable. Il dit ce que FAIT l'application : elle analyse des
+ * matchs avec une intelligence artificielle.
+ *
+ * Et une ligne, juste au-dessus de l'adresse, ferme la question :
+ * intelligence artificielle, analyse de données, aucun jeu d'argent. Elle est
+ * écrite pour deux lecteurs à la fois — le modérateur de TikTok ou
+ * d'Instagram, qui décide en trois secondes si l'image fait la promotion
+ * d'un jeu, et l'ami qui découvre ProFoot AI par ce partage.
+ *
+ * Aucun mot interdit ne peut y figurer : « pari » et « mise » sont bannis par
+ * le contrôle de conformité, Y COMPRIS pour dire qu'on n'en fait pas. D'où la
+ * formule « aucun jeu d'argent », qui dit la même chose et passe le contrôle.
+ */
+export const SOUS_TITRE = 'analyse de matchs par intelligence artificielle';
+
+/** Ce que l'affiche affirme d'elle-même, en pied. */
+export const NATURE = 'intelligence artificielle · analyse de données · aucun jeu d’argent';
 export const APPEL = 'Mon analyse complète est sur profootai.com';
 export const TITRE_LISTE = 'mes matchs analysés';
 
@@ -168,6 +193,36 @@ export const TITRE_LISTE = 'mes matchs analysés';
  * la différence entre une publicité et une confidence.
  */
 export const TITRE_CERNES = 'ce soir, je regarde';
+
+/**
+ * ── LE RÉCAPITULATIF, ET SON INTITULÉ ────────────────────────────────────
+ *
+ * « Mes analyses face au terrain ». Le terrain est l'arbitre : c'est lui qui
+ * tranche, pas nous. La formule dit la confrontation sans emprunter un seul
+ * mot au vocabulaire du pari — ni pronostic, ni vainqueur, ni taux.
+ *
+ * C'est cette section qui donne sa VALEUR à l'affiche. Un rang flatte ; une
+ * preuve convainc. « Comme des preuves au fait », dit le propriétaire, et il a
+ * raison : personne ne partage un compteur, tout le monde partage une preuve.
+ */
+export const TITRE_RECAP = 'mes analyses face au terrain';
+
+/** L'en-tête des deux colonnes de la carte comparative. */
+export const ANNONCE = 'annoncé';
+export const REEL = 'réel';
+
+/**
+ * La ligne sous la devise, à la place des compteurs.
+ *
+ * « 2 jours de suite · 102 analyses ce mois-ci » disait l'assiduité ; le
+ * propriétaire l'a retirée le 13 septembre 2026 au profit de ce qui annonce le
+ * récapitulatif. Une affiche ne doit préparer qu'une seule chose à la fois.
+ */
+export function introRecap(n: number): string {
+  if (n <= 0) return 'mes analyses, confrontées au terrain';
+  if (n === 1) return 'ma dernière analyse, confrontée au terrain';
+  return `mes ${n} dernières analyses, confrontées au terrain`;
+}
 
 /**
  * LA QUESTION. C'est elle qui transforme un statut en conversation.
@@ -280,6 +335,127 @@ function Rencontre({
   );
 }
 
+/**
+ * UNE RENCONTRE ANALYSÉE, FACE À CE QUI S'EST PASSÉ.
+ *
+ * Deux étages : les équipes en haut, la confrontation en bas. Sur une carte
+ * d'une seule ligne, quatre informations — deux noms et deux scores — se
+ * marchaient dessus dès qu'un club portait un nom long.
+ *
+ * Le cadre du réel passe au vert quand l'issue annoncée était la bonne. C'est
+ * le seul signal de justesse de l'affiche, et il porte sur UNE rencontre : on
+ * ne totalise rien, on n'affiche aucun taux.
+ */
+function Comparaison({
+  m,
+  hauteur,
+  ecusson,
+  police,
+  maxNom,
+  chiffre,
+  etiquette,
+}: {
+  m: NonNullable<DonneesAffiche['recap']>[number];
+  hauteur: number;
+  ecusson: number;
+  police: number;
+  maxNom: number;
+  chiffre: number;
+  etiquette: number;
+}) {
+  const Case = ({ titre, valeur, juste }: { titre: string; valeur: string; juste?: boolean }) => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '50%',
+        height: '100%',
+        borderRadius: 18,
+        background: juste ? 'rgba(18,209,138,0.13)' : 'rgba(255,255,255,0.05)',
+        border: `2px solid ${juste ? 'rgba(18,209,138,0.45)' : BORDURE}`,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          color: juste ? VERT : DOUX,
+          fontFamily: 'Inter',
+          fontWeight: 600,
+          fontSize: etiquette,
+          letterSpacing: etiquette * 0.18,
+        }}
+      >
+        {CAPITALES(titre)}
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          color: juste ? VERT : BLANC,
+          fontFamily: 'Outfit',
+          fontWeight: 900,
+          fontSize: chiffre,
+          marginTop: 2,
+        }}
+      >
+        {valeur}
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: hauteur,
+        padding: `${Math.round(hauteur * 0.11)}px 26px`,
+        borderRadius: 24,
+        background: CARTE,
+        border: `2px solid ${BORDURE}`,
+      }}
+    >
+      {/* Les deux équipes, sur une ligne. */}
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <Ecusson url={m.logoDomicile} taille={ecusson} />
+        <div
+          style={{
+            display: 'flex',
+            color: BLANC,
+            fontFamily: 'Inter',
+            fontWeight: 600,
+            fontSize: police,
+            marginLeft: 14,
+          }}
+        >
+          {court(m.domicile, maxNom)}
+        </div>
+        <div style={{ display: 'flex', flex: 1 }} />
+        <div
+          style={{
+            display: 'flex',
+            color: BLANC,
+            fontFamily: 'Inter',
+            fontWeight: 600,
+            fontSize: police,
+            marginRight: 14,
+          }}
+        >
+          {court(m.exterieur, maxNom)}
+        </div>
+        <Ecusson url={m.logoExterieur} taille={ecusson} />
+      </div>
+
+      {/* L'annoncé et le réel, côte à côte. */}
+      <div style={{ display: 'flex', flex: 1, gap: 12, marginTop: Math.round(hauteur * 0.08) }}>
+        <Case titre={ANNONCE} valeur={m.annonce} />
+        <Case titre={REEL} valeur={m.reel} juste={m.juste} />
+      </div>
+    </div>
+  );
+}
+
 /** Tous les textes que l'affiche composera : ce que le contrôle doit relire. */
 export function textesDeLAffiche(d: DonneesAffiche): string[] {
   const cernes = d.mieuxCernes ?? [];
@@ -299,6 +475,12 @@ export function textesDeLAffiche(d: DonneesAffiche): string[] {
     // Les heures composées sur les cartes : elles passent le contrôle comme le
     // reste, même si un « 21:00 » ne peut rien enfreindre.
     ...cernes.map((m) => m.heure ?? '').filter(Boolean),
+    NATURE,
+    TITRE_RECAP,
+    ANNONCE,
+    REEL,
+    introRecap((d.recap ?? []).length),
+    ...(d.recap ?? []).flatMap((m) => [m.annonce, m.reel]),
     QUESTION,
     MARQUE,
     ADRESSE,
@@ -325,14 +507,26 @@ export default function AfficheVisuel({
   // Les rencontres du jour passent devant les matchs personnels : ce sont
   // elles qui font écrire « et alors ? » aux amis. Les matchs analysés restent
   // le repli quand la sélection du jour n'est pas disponible.
+  // ── L'ORDRE DES PRIORITÉS, ET IL EST VOULU ──────────────────────────────
+  //
+  // 1. LE RÉCAPITULATIF, quand il existe : l'analyse face à ce qui s'est
+  //    passé. C'est la seule chose de cette affiche qui PROUVE quelque chose,
+  //    et une preuve se partage bien mieux qu un compteur.
+  // 2. Les rencontres du jour, à défaut : elles font demander « et alors ? ».
+  // 3. Les matchs analysés, en dernier recours, pour qu une affiche ne sorte
+  //    jamais amputée de sa moitié basse.
+  const recap = (d.recap ?? []).slice(0, story ? 3 : 2);
+  const surLeRecap = recap.length > 0;
   const cernes = (d.mieuxCernes ?? []).slice(0, story ? 3 : 2);
-  const surLesCernes = cernes.length > 0;
+  const surLesCernes = !surLeRecap && cernes.length > 0;
   const matchs = surLesCernes ? cernes : d.matchs.slice(0, story ? 3 : 2);
-  const titreDeLaListe = surLesCernes ? TITRE_CERNES : TITRE_LISTE;
+  const titreDeLaListe = surLeRecap ? TITRE_RECAP : surLesCernes ? TITRE_CERNES : TITRE_LISTE;
 
   const prenom = court(d.prenom, 14);
   const rang = rangDe(d.analysesDuMois);
-  const preuve = preuveDe(d);
+  // Les compteurs ont été retirés le 13 septembre 2026 : l'affiche ne doit
+  // préparer qu'une seule chose à la fois, et c'est le récapitulatif.
+  const preuve = surLeRecap ? introRecap(recap.length) : preuveDe(d);
 
   // ── LE PRÉNOM OCCUPE TOUTE LA LARGEUR, QUELLE QUE SOIT SA LONGUEUR ──────
   //
@@ -515,17 +709,35 @@ export default function AfficheVisuel({
           padding: `${story ? 42 : 24}px ${MARGE}px 0`,
         }}
       >
-        {matchs.length ? <Intitule texte={titreDeLaListe} taille={e.intitule} /> : null}
-        {matchs.map((m, i) => (
-          <Rencontre
-            key={i}
-            m={m}
-            hauteur={matchs.length >= 3 ? e.carte : Math.round(e.carte * 1.24)}
-            ecusson={e.ecusson}
-            police={e.nom}
-            maxNom={e.maxNom}
-          />
-        ))}
+        {/* L intitule de section disparait sur le recapitulatif : la ligne
+            posee sous la devise annonce deja  mes N dernieres analyses,
+            confrontees au terrain , et le repeter cent pixels plus bas ne dit
+            rien de plus. */}
+        {!surLeRecap && matchs.length ? <Intitule texte={titreDeLaListe} taille={e.intitule} /> : null}
+
+        {surLeRecap
+          ? recap.map((m, i) => (
+              <Comparaison
+                key={i}
+                m={m}
+                hauteur={recap.length >= 3 ? Math.round(e.carte * 1.42) : Math.round(e.carte * 1.7)}
+                ecusson={Math.round(e.ecusson * 0.62)}
+                police={e.nom - 2}
+                maxNom={e.maxNom - 3}
+                chiffre={story ? 46 : 32}
+                etiquette={story ? 19 : 14}
+              />
+            ))
+          : matchs.map((m, i) => (
+              <Rencontre
+                key={i}
+                m={m}
+                hauteur={matchs.length >= 3 ? e.carte : Math.round(e.carte * 1.24)}
+                ecusson={e.ecusson}
+                police={e.nom}
+                maxNom={e.maxNom}
+              />
+            ))}
       </div>
 
       {/* L'espace qui reste tombe entre les rencontres et la question. */}
@@ -553,6 +765,31 @@ export default function AfficheVisuel({
           }}
         >
           {QUESTION}
+        </div>
+      </div>
+
+      {/* ── CE QUE CETTE APPLICATION EST ──────────────────────────────────
+          Écrite pour deux lecteurs : le modérateur d'un réseau social qui
+          décide en trois secondes si l'image fait la promotion d'un jeu, et
+          l'ami qui découvre ProFoot AI par ce partage. */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          padding: `0 ${MARGE}px ${story ? 20 : 12}px`,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            color: 'rgba(255,255,255,0.34)',
+            fontFamily: 'Inter',
+            fontWeight: 600,
+            fontSize: story ? 21 : 15,
+            letterSpacing: story ? 1.1 : 0.7,
+          }}
+        >
+          {CAPITALES(NATURE)}
         </div>
       </div>
 

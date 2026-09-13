@@ -70,6 +70,7 @@ export async function GET(requete: Request) {
   const nomsDeClubs = [
     ...d.matchs.flatMap((m) => [m.domicile, m.exterieur]),
     ...d.mieuxCernes.flatMap((m) => [m.domicile, m.exterieur]),
+    ...d.recap.flatMap((m) => [m.domicile, m.exterieur]),
     ...(d.equipePreferee ? [d.equipePreferee.nom] : []),
   ];
   verifierConformite([...textesDeLAffiche(d), ...nomsDeClubs], nomsDeClubs);
