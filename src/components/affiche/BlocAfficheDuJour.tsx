@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Share2, Download, Link2, Image as ImageIcon } from 'lucide-react';
+import { Share2, Image as ImageIcon, Link2, ChevronRight } from 'lucide-react';
 
 /**
- * « MON AFFICHE DU JOUR » — LE BLOC DE LA SECTION PROFIL.
+ * « MON AFFICHE DU JOUR » — LE BLOC DE LA PAGE MON PROFIL.
  *
  * ── CE QU'IL FAIT ────────────────────────────────────────────────────────
  *
@@ -16,17 +16,16 @@ import { Share2, Download, Link2, Image as ImageIcon } from 'lucide-react';
  * natif du téléphone (statut WhatsApp, story Instagram) et, à défaut, au
  * téléchargement.
  *
- * ── POURQUOI ICI, ET PLUS SUR LA PAGE D'ANALYSE ─────────────────────────
+ * ── L'HABILLAGE EST CELUI DE CETTE PAGE, PAS UN AUTRE ───────────────────
  *
- * Il y était placé au bas de la page, sous plusieurs écrans de défilement :
- * personne ne le voyait. Sa place est dans le profil, avec ce qui appartient à
- * la personne — son avatar, son nom, son club de cœur.
+ * Première version refusée : elle empruntait les classes de la page Réglages
+ * (`bg-card`, `rounded-[28px]`, `text-foreground`). Posée dans « Mon Profil »,
+ * qui a son propre habillage — fond `#1d2f3a`, coins de 32, tuiles blanches à
+ * 5 %, texte blanc —, elle faisait corps étranger.
  *
- * ── L'HABILLAGE SUIT CELUI DES RÉGLAGES ─────────────────────────────────
- *
- * Mêmes classes que les autres cartes de cette page (`bg-card`,
- * `border-border-card`, `rounded-[28px]`, couleur `primary`) : une carte qui
- * aurait ses propres couleurs et ses propres coins jurerait avec le reste.
+ * Ici, tout est repris de la carte de profil juste en dessous : même fond,
+ * mêmes coins, même tuile d'icône en dégradé vert, mêmes rangées d'action avec
+ * chevron. Le bloc doit avoir l'air d'avoir toujours été là.
  */
 
 interface Etat {
@@ -40,7 +39,7 @@ interface Etat {
 
 type Format = 'story' | 'carre';
 
-export default function AfficheDuJour() {
+export default function BlocAfficheDuJour() {
   const [etat, setEtat] = useState<Etat | null>(null);
   const [enCours, setEnCours] = useState<Format | null>(null);
   const [apercu, setApercu] = useState<string | null>(null);
@@ -132,81 +131,103 @@ export default function AfficheDuJour() {
   }
 
   const n = etat.analysesDuJour ?? 0;
-  const resume =
-    n === 0
-      ? "Aucune analyse aujourd'hui pour l'instant"
-      : n === 1
-        ? '1 match analysé aujourd’hui'
-        : `${n} matchs analysés aujourd’hui`;
 
   return (
-    <div className="bg-card/80 backdrop-blur-md border border-border-card rounded-[28px] p-8 shadow-2xl animate-fade-in">
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-[16px] bg-primary/10 border border-primary/25 flex items-center justify-center">
-            <ImageIcon className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h2
-              className="text-xl font-black text-foreground"
-              style={{ fontFamily: 'var(--police-titre), sans-serif' }}
-            >
-              Mon affiche du jour
-            </h2>
-            <p className="text-xs text-foreground/50 font-medium mt-0.5">
-              {resume}
-              {etat.serie && etat.serie > 1 ? ` · ${etat.serie} jours d’affilée` : ''}
-              {etat.analysesDuMois ? ` · ${etat.analysesDuMois} ce mois-ci` : ''}
-            </p>
+    <div className="bg-[#1d2f3a]/80 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-2xl">
+      {/* En-tête : même tuile en dégradé vert que la carte de profil. */}
+      <div className="flex items-center gap-4 border-b border-white/5 pb-6 mb-6">
+        {/* La lueur est posée en style direct : une classe d'ombre arbitraire
+            contenant des virgules — `shadow-[0_0_20px_rgba(...)]` — ne génère
+            rien chez Tailwind, un piège déjà rencontré sur ce projet. */}
+        <div
+          className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-[#10B981] to-[#059669] text-white flex items-center justify-center shrink-0"
+          style={{ boxShadow: '0 0 20px rgba(16,185,129,0.3)' }}
+        >
+          <Share2 className="w-7 h-7" />
+        </div>
+        {/* Le titre a sa ligne entière : à côté du badge, il sortait tronqué
+            en « Mon affi… » sur un écran de téléphone. */}
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-white leading-tight">Mon affiche du jour</h2>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="bg-[#10B981]/20 text-[#10B981] text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider shrink-0 border border-[#10B981]/20">
+              Essai privé
+            </span>
+            <span className="text-[11px] text-white/50 whitespace-nowrap">pour votre statut</span>
           </div>
         </div>
-        <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/40 rounded-full px-3 py-1">
-          essai privé
-        </span>
       </div>
 
-      <p className="text-sm text-foreground/60 leading-relaxed mb-6">
-        Une image de votre activité d’analyse, prête pour votre statut WhatsApp.
-      </p>
+      {/* Deux tuiles de chiffres, comme celles du profil. Libellés COURTS :
+          sur 375 pixels de large, « matchs analysés aujourd'hui » partait sur
+          deux lignes et cassait l'alignement des deux tuiles. */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
+          <span className="text-2xl font-black text-white">{n}</span>
+          <p className="text-[11px] text-white/50 font-medium mt-1 uppercase tracking-wider">aujourd’hui</p>
+        </div>
+        <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
+          <span className="text-2xl font-black text-white">{etat.analysesDuMois ?? 0}</span>
+          <p className="text-[11px] text-white/50 font-medium mt-1 uppercase tracking-wider">ce mois-ci</p>
+        </div>
+      </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Les actions, en rangées — l'idiome de cette page. */}
+      <div className="space-y-3">
         <button
           type="button"
           onClick={() => partager('story')}
           disabled={enCours !== null}
-          className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 rounded-[16px] bg-primary hover:bg-primary-hover disabled:opacity-60 text-white text-sm font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+          className="w-full flex items-center justify-between p-4 bg-[#10B981]/10 hover:bg-[#10B981]/20 disabled:opacity-60 rounded-[20px] transition-colors border border-[#10B981]/20 group"
         >
-          <Share2 className="w-4 h-4" />
-          {enCours === 'story' ? 'Création…' : 'Partager mon affiche'}
+          <div className="flex items-center gap-3">
+            <Share2 className="w-5 h-5 text-[#10B981] group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-bold text-[#10B981] whitespace-nowrap">
+              {enCours === 'story' ? 'Création…' : 'Partager mon affiche'}
+            </span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-[#10B981]/50" />
         </button>
+
         <button
           type="button"
           onClick={() => partager('carre')}
           disabled={enCours !== null}
-          className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-[16px] border border-border-card text-foreground/80 hover:text-foreground hover:bg-foreground/5 disabled:opacity-60 text-sm font-bold transition-all"
+          className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 disabled:opacity-60 rounded-[20px] transition-colors border border-white/5 group"
         >
-          <Download className="w-4 h-4" />
-          {enCours === 'carre' ? 'Création…' : 'Format carré'}
+          <div className="flex items-center gap-3">
+            <ImageIcon className="w-5 h-5 text-white/60 group-hover:text-white transition-colors" />
+            <span className="text-sm font-bold text-white whitespace-nowrap">
+              {enCours === 'carre' ? 'Création…' : 'Version carrée'}
+            </span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-white/30" />
         </button>
+
         <button
           type="button"
           onClick={copierLeLien}
-          className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-[16px] border border-border-card text-foreground/60 hover:text-foreground hover:bg-foreground/5 text-sm font-bold transition-all"
+          className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-[20px] transition-colors border border-white/5 group"
         >
-          <Link2 className="w-4 h-4" />
-          Copier le lien
+          <div className="flex items-center gap-3">
+            <Link2 className="w-5 h-5 text-white/60 group-hover:text-white transition-colors" />
+            <span className="text-sm font-bold text-white whitespace-nowrap">Copier le lien</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-white/30" />
         </button>
       </div>
 
-      {message ? <p className="mt-4 text-xs text-foreground/60">{message}</p> : null}
+      {message ? <p className="mt-4 text-xs text-white/50 text-center">{message}</p> : null}
 
       {apercu ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={apercu}
-          alt="Aperçu de mon affiche du jour"
-          className="mt-6 w-full max-w-[260px] rounded-[20px] border border-border-card block"
-        />
+        <div className="mt-6 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={apercu}
+            alt="Aperçu de mon affiche du jour"
+            className="w-full max-w-[220px] rounded-[20px] border border-white/10 shadow-2xl"
+          />
+        </div>
       ) : null}
     </div>
   );
