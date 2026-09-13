@@ -25,6 +25,20 @@ export default function PaymentSuccessPage() {
   const [state, setState] = useState<'checking' | 'active' | 'pending'>('checking');
   const [achatMatch, setAchatMatch] = useState(false);
   const [lienAnalyse, setLienAnalyse] = useState('/analyze');
+  /**
+   * Au bout d'une minute sans accès, on cesse de tourner en silence.
+   *
+   * Cette page attend jusqu'à quinze minutes. Quand le fil entre le paiement
+   * et le compte est cassé — une adresse différente à la boutique —, elle ne
+   * se débloquera JAMAIS : l'accès existe peut-être déjà, sur un autre compte.
+   * Un client de septembre 2026 a attendu, conclu que c'était raté, et s'est
+   * reconnecté avec une seconde adresse. Son abonnement était bien ouvert,
+   * ailleurs.
+   *
+   * Une minute : assez pour ne pas déranger celui dont le paiement va aboutir
+   * tout seul, assez court pour ne pas laisser l'autre devant un écran mort.
+   */
+  const [secoursVisible, setSecoursVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,6 +106,15 @@ export default function PaymentSuccessPage() {
     };
     document.addEventListener('visibilitychange', auRetour);
     nettoyages.push(() => document.removeEventListener('visibilitychange', auRetour));
+
+    // Le secours n'a de sens que pour un abonnement : un match acheté à
+    // l'unité ne passe pas par le rattachement de vente.
+    if (!cleMatch) {
+      const minuterie = setTimeout(() => {
+        if (!abouti && !cancelled) setSecoursVisible(true);
+      }, 60_000);
+      nettoyages.push(() => clearTimeout(minuterie));
+    }
 
     (async () => {
       try {
@@ -209,6 +232,8 @@ export default function PaymentSuccessPage() {
           )}
         </div>
 
+        {secoursVisible && state !== 'active' ? <SecoursAutreAdresse /> : null}
+
         <Link
           href={lienAnalyse}
           className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-white rounded-[16px] font-bold hover:bg-primary-hover transition-colors min-h-[52px]"
@@ -216,6 +241,97 @@ export default function PaymentSuccessPage() {
           {achatMatch ? 'Voir mon analyse' : "Commencer l'analyse"} <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
+    </div>
+  );
+}
+
+/**
+ * ── LE SECOURS : « J'AI PAYÉ AVEC UNE AUTRE ADRESSE » ─────────────────────
+ *
+ * Il ne s'affiche qu'après une minute d'attente vaine, et il ne promet rien
+ * qu'il ne tienne : le message de retour est le même que l'adresse porte un
+ * paiement ou non. C'est voulu — dire « aucun paiement sous cette adresse »
+ * transformerait cette page en moyen de découvrir qui est client de ProFoot,
+ * une adresse après l'autre.
+ *
+ * La preuve de possession est le lien lui-même : il part DANS la boîte du
+ * payeur. Celui qui relève cette boîte autorise ; celui qui clique ici ne
+ * décide de rien.
+ */
+function SecoursAutreAdresse() {
+  const [adresse, setAdresse] = useState('');
+  const [envoi, setEnvoi] = useState(false);
+  const [reponse, setReponse] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(false);
+
+  const envoyer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adresse.trim() || envoi) return;
+    setEnvoi(true);
+    setReponse(null);
+    try {
+      const r = await fetch('/api/paiement/reclamer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: adresse.trim() }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setReponse(d.message ?? 'Demande envoyée.');
+      } else if (d?.motif === 'trop_de_demandes') {
+        setReponse('Trop de demandes pour aujourd’hui. Réessayez dans une heure, ou écrivez-nous.');
+      } else if (d?.motif === 'adresse_invalide') {
+        setReponse('Cette adresse ne semble pas valable. Vérifiez-la et réessayez.');
+      } else {
+        setReponse("La demande n'a pas pu partir. Réessayez dans un instant.");
+      }
+    } catch {
+      setReponse("La demande n'a pas pu partir. Réessayez dans un instant.");
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  if (!ouvert)
+    return (
+      <button
+        type="button"
+        onClick={() => setOuvert(true)}
+        className="w-full text-sm font-bold text-primary hover:underline py-2"
+      >
+        J’ai payé avec une autre adresse e-mail
+      </button>
+    );
+
+  return (
+    <div className="bg-foreground/5 border border-foreground/10 rounded-[20px] p-5 text-left space-y-3">
+      <p className="text-sm font-bold text-foreground">Quelle adresse avez-vous utilisée pour payer ?</p>
+      <p className="text-xs text-foreground/50 leading-relaxed">
+        Nous enverrons un lien de confirmation à cette adresse. Un clic depuis cette boîte, et votre
+        accès s’ouvre ici — personne d’autre ne peut le faire à votre place.
+      </p>
+
+      {reponse ? (
+        <p className="text-sm text-success leading-relaxed">{reponse}</p>
+      ) : (
+        <form onSubmit={envoyer} className="space-y-3">
+          <input
+            type="email"
+            required
+            value={adresse}
+            onChange={(e) => setAdresse(e.target.value)}
+            placeholder="adresse utilisée à la boutique"
+            className="w-full bg-foreground/5 border border-foreground/10 rounded-[14px] px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/50"
+          />
+          <button
+            type="submit"
+            disabled={envoi}
+            className="w-full py-3 bg-primary text-white rounded-[14px] text-sm font-bold disabled:opacity-60 min-h-[44px]"
+          >
+            {envoi ? 'Envoi…' : 'Recevoir le lien de confirmation'}
+          </button>
+        </form>
+      )}
     </div>
   );
 }
