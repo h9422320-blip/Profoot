@@ -1,0 +1,12 @@
+import { chargerEnv } from './challenger/commun.mjs';
+chargerEnv();
+const { createAdminClient } = await import('../src/lib/supabase-admin.js');
+const sb = createAdminClient();
+const UID = '7edc0852-f259-42a4-a2f9-04a500468b89';
+const { data: u } = await sb.auth.admin.getUserById(UID);
+console.log(`── ${u?.user?.email}`);
+console.log(`   compte créé        ${String(u?.user?.created_at).slice(0, 16).replace('T', ' ')}`);
+console.log(`   dernière connexion ${u?.user?.last_sign_in_at ? String(u.user.last_sign_in_at).slice(0, 16).replace('T', ' ') : 'JAMAIS'}`);
+const { data: a } = await sb.from('analysis_history').select('created_at, team1_name, team2_name').eq('user_id', UID).order('created_at', { ascending: false }).limit(20);
+console.log(`\n   ${a?.length ?? 0} analyse(s) — les plus récentes :`);
+for (const x of (a ?? []) as any[]) console.log(`      ${String(x.created_at).slice(0, 16).replace('T', ' ')}  ${x.team1_name} — ${x.team2_name}`);

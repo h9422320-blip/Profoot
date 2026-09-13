@@ -348,8 +348,40 @@ export const maxDuration = 300;
  * Cent secondes en une seule tentative valent mieux que deux tentatives de
  * cinquante : c'est la même attente pour la personne, mais le modèle a le
  * temps de finir sa rédaction au lieu d'être coupé en plein milieu.
+ *
+ * ── RAMENÉE DE 100 À 85 SECONDES LE 13 SEPTEMBRE 2026 ───────────────────
+ *
+ * CE N'EST PAS VERCEL QUI COUPE LE PREMIER. C'EST CLOUDFLARE.
+ *
+ * Le domaine passe par Cloudflare depuis le 19 août 2026. Cloudflare abandonne
+ * toute réponse dont l'origine met plus de CENT SECONDES à répondre, et sert
+ * une erreur 524 à sa place. Le plafond de 300 secondes de Vercel n'y change
+ * rien : il n'est jamais atteint, parce qu'un intermédiaire a déjà raccroché.
+ *
+ * Le budget valait exactement 100 000 ms. Le serveur visait donc la seconde
+ * précise où Cloudflare renonce — à chaque analyse lente, c'était pile ou face.
+ *
+ * CE QUE ÇA DONNAIT, ET POURQUOI PERSONNE NE LE VOYAIT
+ *
+ * Mesuré ce jour-là sur les 161 analyses chronométrées depuis le 25 août :
+ * médiane 90,1 s, quatre-vingt-dixième centile 94,0 s, maximum 95,5 s. Elles
+ * s'écrasaient toutes contre le plafond.
+ *
+ * Et le journal disait « servi » pour chacune : vu du serveur, la réponse
+ * était bien partie. Elle n'arrivait simplement jamais. L'abonné voyait
+ * « ANALYSE INTERROMPUE » à 95 % et un bouton « Réessayer », et la table des
+ * échecs ne contenait AUCUNE panne — zéro ligne `servi_quand_meme = false`.
+ * Un bug parfaitement invisible depuis l'administration, et parfaitement
+ * visible depuis le téléphone du client.
+ *
+ * QUINZE SECONDES DE MARGE, ET POURQUOI PAS MOINS
+ *
+ * Il faut couvrir le trajet Cloudflare → Vercel, la poignée de main TLS et
+ * l'envoi de la réponse, qui ne sont pas comptés par `debutRequete`. Le
+ * modèle perd quinze secondes de rédaction ; en échange, sa réponse arrive.
+ * Une analyse plus sobre vaut infiniment mieux qu'un écran d'erreur.
  */
-const LIMITE_PLATEFORME_MS = 100000;
+const LIMITE_PLATEFORME_MS = 85000;
 // Ramenée de six à quatre secondes : la mise en forme mesurée prend moins
 // d'une seconde, et chaque seconde rendue au modèle est une seconde de plus
 // pour qu'il termine sa rédaction plutôt que d'être coupé.
