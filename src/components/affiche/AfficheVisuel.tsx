@@ -3,45 +3,58 @@ import type { DonneesAffiche } from '@/lib/affiche-du-jour';
 /**
  * LE DESSIN DE L'AFFICHE DU JOUR.
  *
- * ── DEUX VERSIONS REFUSÉES, ET CE QU'ELLES RATAIENT ──────────────────────
+ * ── QUATRE VERSIONS REFUSÉES, ET CE QU'ELLES RATAIENT ────────────────────
  *
- * La première empilait des lignes de texte à gauche : pas de hiérarchie, des
- * pastilles de largeurs différentes, un tiers de l'affiche vide. La seconde
- * était propre et alignée, mais restait terne — « c'est toujours moche ».
+ * 1. Des lignes de texte empilées à gauche : aucune hiérarchie, un tiers vide.
+ * 2. Propre et alignée, mais terne — le moteur d'image n'embarquait que Geist
+ *    Regular : rien ne pouvait ressortir. Corrigé par `polices-affiche.ts`.
+ * 3. Un grand chiffre « 4 » (les analyses de la personne) au-dessus d'une
+ *    liste de 3 rencontres : deux sujets, deux chiffres qui se contredisent.
+ * 4. Un seul sujet enfin — les rencontres du jour — et une question au
+ *    lecteur. Correcte, lisible… et le propriétaire a tranché : « ça ne me
+ *    fait absolument rien ressentir ».
  *
- * La cause, trouvée au troisième essai : le moteur d'image n'embarque QUE
- * Geist Regular. Tout sortait en graisse normale, titres compris. Aucune
- * mise en page ne sauve une affiche où rien ne peut ressortir.
+ * ── CE QUI A CHANGÉ, ET POURQUOI C'EST LE CŒUR DU SUJET ──────────────────
  *
- * ── CE QUI FAIT L'AFFICHE MAINTENANT ─────────────────────────────────────
+ * Les quatre versions informaient. Aucune n'émouvait. Or on ne partage pas une
+ * information sur soi, on partage CE QUI NOUS FLATTE : être nommé, être
+ * reconnu, avoir mérité quelque chose. C'est le ressort de Spotify Wrapped,
+ * des séries Duolingo et des badges « top fan ».
  *
- *   • LES POLICES DE LA MARQUE, chargées pour de bon (`polices-affiche.ts`) :
- *     Outfit 900 pour la marque, le chiffre et les capitales ; Inter pour le
- *     texte. Exactement celles du site.
- *   • UN CHIFFRE GÉANT, qui occupe le tiers de la hauteur. Sur un statut qui
- *     défile, c'est lui qu'on voit — pas une phrase.
- *   • DES CAPITALES ESPACÉES en vert pour les intitulés : c'est ce qui donne
- *     l'allure « affiche » plutôt que « tableau de bord ».
- *   • DES ÉCUSSONS GRANDS. Ce sont les seuls éléments graphiques dont on
- *     dispose : autant s'en servir.
- *   • UNE BANDE VERTE PLEINE LARGEUR en pied, avec l'adresse : ce qui doit
- *     rester quand on a fait défiler.
+ * L'affiche est donc devenue UNE CARTE DE RECONNAISSANCE :
+ *
+ *   • LE PRÉNOM EN GÉANT. Le sujet de l'affiche, c'est la personne — pas un
+ *     décompte. C'est ce qui fait dire « ça parle de moi ».
+ *   • UN RANG MÉRITÉ, calculé sur l'activité réelle du mois. Un titre qu'on
+ *     n'a pas acheté se montre ; un compteur ne se montre pas.
+ *   • UNE PHRASE QUI DIT QUI ON EST : « Tu ne devines pas. Tu analyses. »
+ *     Elle définit la marque autant que la personne, et elle dit exactement le
+ *     contraire du jeu de hasard — ce qui, pour ce projet, n'est pas un détail.
+ *   • L'ÉCUSSON DU CLUB DE CŒUR, en grand. L'identité avant les chiffres.
+ *   • LES RENCONTRES DU SOIR, en bas : c'est le contenu qui fait écrire aux
+ *     amis « et alors ? », et cette question-là ramène sur le site.
+ *
+ * Le remerciement vient du propriétaire, et il avait raison : une marque qui
+ * dit merci à quelqu'un par son nom crée une dette agréable. Mais « merci
+ * d'avoir utilisé notre application » est du service client. « MERCI OUSMANE —
+ * ANALYSTE D'ÉLITE » est une distinction. C'est la seconde qu'on partage.
  *
  * ── CE QUI EST INTERDIT ICI ──────────────────────────────────────────────
  *
  * Aucun score, aucun pronostic, aucun résultat, aucun gain, aucun taux. Ce
  * fichier ne reçoit que `DonneesAffiche`, qui n'en contient pas, et
- * `verifierConformite` relit tous les textes avant production.
+ * `verifierConformite` relit tous les textes avant production. Le mot
+ * « hasard » lui-même est évité : « jeux de hasard » est la formule exacte du
+ * contrôle qui a fermé la boutique en août 2026.
  *
  * ── SATORI, PAS UN NAVIGATEUR ────────────────────────────────────────────
  *
  * `display: flex` partout, pas de grille CSS, pas d'emoji (aucune police n'en
- * porte ici : elles sortiraient en carrés vides), et les noms sont raccourcis
- * à la main faute de `text-overflow` fiable.
+ * porte ici : elles sortiraient en carrés vides), et les textes sont
+ * raccourcis à la main faute de `text-overflow` fiable.
  */
 
 const VERT = '#12d18a';
-const VERT_SOMBRE = '#0b7d55';
 const FOND = '#03080e';
 const CARTE = 'rgba(255,255,255,0.045)';
 const BORDURE = 'rgba(255,255,255,0.09)';
@@ -77,75 +90,97 @@ export function titreDe(n: number): string {
   return `J'ai analysé ${n} matchs aujourd'hui`;
 }
 
-/** Ce qui accompagne le grand chiffre, en capitales sur l'affiche. */
+/** Ce qui accompagne un décompte d'analyses. */
 export function libelleDuChiffre(n: number): string {
   if (n <= 0) return 'analyse en préparation';
   return n === 1 ? 'match analysé' : 'matchs analysés';
 }
 
 export const SURTITRE = 'mon activité du jour';
-
-/**
- * ── CE QUI DONNE ENVIE DE PARTAGER, ET CE QUI N'EN DONNAIT AUCUNE ────────
- *
- * La version précédente annonçait « 4 » en géant — le nombre d'analyses de la
- * personne — au-dessus d'une liste de 3 rencontres. Deux sujets à la fois,
- * deux chiffres qui se contredisent, et surtout aucune raison de montrer ça à
- * quelqu'un : personne ne se vante d'avoir ouvert quatre pages.
- *
- * Ce qui se partage, dans le football, c'est SAVOIR QUELQUE CHOSE. « Voilà les
- * rencontres sur lesquelles l'IA voit clair ce soir » est une information que
- * l'on montre ; « j'ai analysé quatre matchs » n'en est pas une.
- *
- * Et ce qui se partage ENCORE mieux, c'est ce qui appelle une réponse. Une
- * affiche qui pose une question au lecteur transforme un statut muet en
- * conversation — et c'est la conversation qui amène les amis sur le site.
- *
- * Le grand chiffre compte donc désormais LES RENCONTRES MONTRÉES. Il ne peut
- * plus dire 4 pendant que la liste en affiche 3.
- */
 export const SURTITRE_CERNES = 'aujourd’hui, l’IA voit clair sur';
 
-/** Le libellé du grand chiffre quand l'affiche porte les rencontres du jour. */
+/** Le libellé d'un décompte de rencontres décryptées. */
 export function libelleCernes(n: number): string {
   return n === 1 ? 'match décrypté' : 'matchs décryptés';
 }
 
 /**
- * LA QUESTION. C'est elle qui fait poster.
+ * ── LE RANG ──────────────────────────────────────────────────────────────
  *
- * Un statut qui affirme se regarde ; un statut qui demande reçoit des
- * réponses. « Et toi, tu en penses quoi ? » est une invitation à répondre —
- * et chaque réponse est une conversation qui finit sur profootai.com.
+ * Un titre qu'on n'a pas acheté, et qui se montre. C'est toute la différence
+ * avec un compteur : « 102 analyses » est une donnée, « ANALYSTE D'ÉLITE » est
+ * une distinction — et on ne partage que ce qui nous distingue.
  *
- * Aucun mot interdit : ni pronostic, ni vainqueur, ni taux. On demande un
- * avis, on n'annonce rien.
+ * Il se calcule sur l'activité du MOIS, donnée que l'affiche possède déjà.
+ * Jamais sur la justesse des analyses : ce serait un taux, et c'est interdit
+ * ici comme partout sur cette image.
+ *
+ * Les seuils sont volontairement atteignables. Un rang que personne n'obtient
+ * ne flatte personne, et le premier palier doit tomber dès la première
+ * semaine — c'est là qu'un nouvel abonné décide s'il revient.
  */
-export const QUESTION = 'Et toi, tu en penses quoi ?';
-export const SOUS_TITRE = 'analyse & statistiques football';
+export function rangDe(analysesDuMois: number): string {
+  const n = Number(analysesDuMois);
+  if (!Number.isFinite(n) || n <= 0) return 'nouvelle recrue';
+  if (n >= 100) return 'analyste d’élite';
+  if (n >= 50) return 'analyste chevronné';
+  if (n >= 20) return 'analyste confirmé';
+  if (n >= 5) return 'analyste régulier';
+  return 'nouvelle recrue';
+}
+
 /**
- * L'appel, sous la question.
+ * LA PHRASE QUI DÉFINIT LA MARQUE AUTANT QUE LA PERSONNE.
  *
- * « Analyse tes matchs sur profootai.com » était une consigne d'emploi. Celui
- * qui regarde un statut ne veut pas d'une consigne : il veut savoir ce que
- * l'autre a vu. On lui dit donc où le voir.
+ * Elle dit exactement le contraire du jeu de hasard — c'est la raison d'être
+ * de ProFoot AI en cinq mots, et c'est ce qu'un abonné a envie qu'on lise de
+ * lui. Aucun mot interdit : on ne promet rien, on décrit une façon de faire.
  */
+export const DEVISE = 'Tu ne devines pas. Tu analyses.';
+
+/** Le mot de reconnaissance, au-dessus du prénom. */
+export const MERCI = 'merci';
+
+/**
+ * LA LIGNE DE PREUVE, celle qui rend le rang crédible.
+ *
+ * Un titre sans chiffre derrière sonne creux. On prend le fait le plus fort
+ * dont on dispose : la série de jours quand elle existe — l'assiduité est la
+ * chose la plus difficile à tenir —, sinon le volume du mois.
+ */
+export function preuveDe(d: DonneesAffiche): string {
+  const serie = Number(d.serie) || 0;
+  const mois = Number(d.analysesDuMois) || 0;
+  if (serie >= 2) return `${serie} jours de suite · ${mois} analyses ce mois-ci`;
+  if (mois > 0) return `${mois} analyses ce mois-ci`;
+  return 'première analyse';
+}
+
+export const SOUS_TITRE = 'analyse & statistiques football';
 export const APPEL = 'Mon analyse complète est sur profootai.com';
 export const TITRE_LISTE = 'mes matchs analysés';
 
 /**
- * L'intitulé de la section qui rend l'affiche partageable.
+ * L'intitulé de la section des rencontres.
  *
- * « Les mieux cernés » et non « les plus sûrs » : la seconde formule se lit
- * comme celle d'une maison de jeu, et ce projet a déjà perdu une boutique sur
- * un contrôle « produits interdits : paris sportifs ». Formule choisie par le
- * propriétaire le 4 septembre 2026, reprise ici mot pour mot.
+ * « Ce soir, je regarde » plutôt qu'un intitulé descriptif : c'est la personne
+ * qui parle, pas l'application. Sur un statut, la première personne fait toute
+ * la différence entre une publicité et une confidence.
  */
-export const TITRE_CERNES = 'les mieux cernés aujourd’hui';
+export const TITRE_CERNES = 'ce soir, je regarde';
+
+/**
+ * LA QUESTION. C'est elle qui transforme un statut en conversation.
+ *
+ * Un statut qui affirme se regarde ; un statut qui demande reçoit des
+ * réponses, et chaque réponse est une conversation qui finit sur le site.
+ */
+export const QUESTION = 'Et toi, tu en penses quoi ?';
+
 export const MARQUE = 'ProFoot AI';
 export const ADRESSE = 'profootai.com';
 
-/** Un nom d'équipe raccourci : il doit tenir sur UNE ligne, toujours. */
+/** Un texte raccourci : il doit tenir sur UNE ligne, toujours. */
 export const court = (nom: string, max: number) => {
   const propre = String(nom).trim();
   return propre.length > max ? `${propre.slice(0, max - 1)}…` : propre;
@@ -167,30 +202,6 @@ function Intitule({ texte, taille }: { texte: string; taille: number }) {
       }}
     >
       {CAPITALES(texte)}
-    </div>
-  );
-}
-
-/** Une pastille d'engagement : chiffre en vert, mot en gris. */
-function Pastille({ valeur, libelle, taille }: { valeur: string; libelle: string; taille: number }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: `${taille * 0.42}px ${taille * 0.7}px`,
-        borderRadius: 999,
-        background: CARTE,
-        border: `2px solid ${BORDURE}`,
-      }}
-    >
-      <div style={{ display: 'flex', color: VERT, fontFamily: 'Outfit', fontWeight: 900, fontSize: taille }}>
-        {valeur}
-      </div>
-      <div style={{ display: 'flex', color: DOUX, fontFamily: 'Inter', fontWeight: 400, fontSize: taille * 0.82 }}>
-        {libelle}
-      </div>
     </div>
   );
 }
@@ -231,17 +242,14 @@ function Rencontre({
       style={{
         display: 'flex',
         alignItems: 'center',
-        // Hauteur FIXE, calculée selon le nombre de rencontres : une carte qui
-        // s'étire pour combler l'affiche sonne creux, le contenu flotte au
-        // milieu d'un grand rectangle vide.
         height: hauteur,
-        padding: '0 34px',
-        borderRadius: 26,
+        padding: '0 30px',
+        borderRadius: 24,
         background: CARTE,
         border: `2px solid ${BORDURE}`,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 22, width: '45%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, width: '45%' }}>
         <Ecusson url={m.logoDomicile} taille={ecusson} />
         <div style={{ display: 'flex', color: BLANC, fontFamily: 'Inter', fontWeight: 600, fontSize: police }}>
           {court(m.domicile, maxNom)}
@@ -249,8 +257,7 @@ function Rencontre({
       </div>
       <div style={{ display: 'flex', width: '10%', justifyContent: 'center' }}>
         {/* L'heure remplace le « vs » quand on la connaît : sur une affiche du
-            soir, c'est le renseignement que le lecteur cherche — à quelle heure
-            ça commence — et il ne coûte pas une ligne de plus. */}
+            soir, c'est le renseignement que le lecteur cherche. */}
         <div
           style={{
             display: 'flex',
@@ -263,7 +270,7 @@ function Rencontre({
           {m.heure || 'vs'}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 22, width: '45%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 20, width: '45%' }}>
         <div style={{ display: 'flex', color: BLANC, fontFamily: 'Inter', fontWeight: 600, fontSize: police }}>
           {court(m.exterieur, maxNom)}
         </div>
@@ -276,14 +283,19 @@ function Rencontre({
 /** Tous les textes que l'affiche composera : ce que le contrôle doit relire. */
 export function textesDeLAffiche(d: DonneesAffiche): string[] {
   const cernes = d.mieuxCernes ?? [];
-  const surLesCernes = cernes.length > 0;
   return [
     titreDe(d.analysesDuJour),
-    surLesCernes ? libelleCernes(cernes.length) : libelleDuChiffre(d.analysesDuJour),
-    surLesCernes ? SURTITRE_CERNES : SURTITRE,
+    libelleDuChiffre(d.analysesDuJour),
+    libelleCernes(cernes.length),
+    SURTITRE,
+    SURTITRE_CERNES,
     SOUS_TITRE,
-    d.matchs.length ? TITRE_LISTE : '',
-    surLesCernes ? TITRE_CERNES : '',
+    MERCI,
+    d.prenom,
+    rangDe(d.analysesDuMois),
+    DEVISE,
+    preuveDe(d),
+    cernes.length ? TITRE_CERNES : d.matchs.length ? TITRE_LISTE : '',
     // Les heures composées sur les cartes : elles passent le contrôle comme le
     // reste, même si un « 21:00 » ne peut rien enfreindre.
     ...cernes.map((m) => m.heure ?? '').filter(Boolean),
@@ -292,10 +304,6 @@ export function textesDeLAffiche(d: DonneesAffiche): string[] {
     ADRESSE,
     APPEL,
     dateEnFrancais(d.jour),
-    // La signature, telle qu'elle est composée.
-    d.prenom,
-    `${d.analysesDuMois} analyses ce mois-ci`,
-    d.serie > 1 ? `${d.serie} jours d'affilée` : '',
     d.equipePreferee ? d.equipePreferee.nom : '',
   ].filter(Boolean);
 }
@@ -312,43 +320,34 @@ export default function AfficheVisuel({
   hauteur: number;
 }) {
   const story = hauteur > largeur;
-  const MARGE = story ? 84 : 64;
+  const MARGE = story ? 78 : 58;
 
-  // ── CE QUE L'AFFICHE MONTRE, ET POURQUOI CE CHOIX ────────────────────────
-  //
-  // Les rencontres du jour les mieux cernées passent AVANT les matchs que
-  // l'abonné a analysés. Un bulletin d'activité — « j'ai analysé cinq matchs,
-  // les voici » — ne fait rien demander à personne. Les affiches du soir, si :
-  // elles font écrire « et alors, qui gagne ? », et c'est cette question qui
-  // envoie les amis sur profootai.com. L'affiche devient du contenu qu'on
-  // montre, et plus seulement un relevé personnel.
-  //
-  // Les matchs personnels restent le repli : sans sélection du jour, l'affiche
-  // ne doit pas se retrouver amputée de sa moitié basse.
+  // Les rencontres du jour passent devant les matchs personnels : ce sont
+  // elles qui font écrire « et alors ? » aux amis. Les matchs analysés restent
+  // le repli quand la sélection du jour n'est pas disponible.
   const cernes = (d.mieuxCernes ?? []).slice(0, story ? 3 : 2);
-
-  // UN SEUL SUJET, UN SEUL CHIFFRE. Le grand nombre compte exactement les
-  // rencontres montrées en dessous : il annonçait 4 analyses au-dessus d'une
-  // liste de 3 matchs, et l'affiche se contredisait à la première lecture.
   const surLesCernes = cernes.length > 0;
   const matchs = surLesCernes ? cernes : d.matchs.slice(0, story ? 3 : 2);
   const titreDeLaListe = surLesCernes ? TITRE_CERNES : TITRE_LISTE;
-  const grandChiffre = surLesCernes ? matchs.length : d.analysesDuJour;
-  const grandLibelle = surLesCernes ? libelleCernes(matchs.length) : libelleDuChiffre(d.analysesDuJour);
-  const grandSurtitre = surLesCernes ? SURTITRE_CERNES : SURTITRE;
 
-  // La signature : qui a produit cette affiche, en UNE ligne discrète. Elle
-  // remplace trois pastilles qui prenaient le quart de la hauteur pour dire ce
-  // qui n'intéresse que son auteur.
-  const signature = [
-    d.prenom,
-    `${d.analysesDuMois} analyses ce mois-ci`,
-    d.serie > 1 ? `${d.serie} jours d'affilée` : '',
-  ].filter(Boolean).join('  ·  ');
+  const prenom = court(d.prenom, 14);
+  const rang = rangDe(d.analysesDuMois);
+  const preuve = preuveDe(d);
+
+  // ── LE PRÉNOM OCCUPE TOUTE LA LARGEUR, QUELLE QUE SOIT SA LONGUEUR ──────
+  //
+  // Satori n'ajuste rien tout seul : un prénom de douze lettres à la taille
+  // d'un prénom de cinq déborderait de l'affiche sans un mot d'avertissement.
+  // La taille se calcule donc sur la largeur disponible.
+  const largeurUtile = largeur - 2 * MARGE;
+  const taillePrenom = Math.min(
+    story ? 186 : 118,
+    Math.floor(largeurUtile / Math.max(4, prenom.length * 0.62))
+  );
 
   const e = story
-    ? { chiffre: 400, libelle: 72, surtitre: 26, marque: 50, date: 30, pastille: 34, carte: 132, ecusson: 72, nom: 30, maxNom: 18, intitule: 24, pied: 52 }
-    : { chiffre: 230, libelle: 44, surtitre: 20, marque: 40, date: 24, pastille: 26, carte: 104, ecusson: 56, nom: 26, maxNom: 17, intitule: 19, pied: 40 };
+    ? { marque: 46, date: 28, merci: 30, rang: 42, devise: 46, preuve: 26, carte: 150, ecusson: 80, nom: 28, maxNom: 18, intitule: 23, question: 38, pied: 50, club: 128 }
+    : { marque: 36, date: 22, merci: 22, rang: 30, devise: 32, preuve: 19, carte: 100, ecusson: 56, nom: 25, maxNom: 15, intitule: 18, question: 27, pied: 38, club: 92 };
 
   return (
     <div
@@ -369,14 +368,14 @@ export default function AfficheVisuel({
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: `${story ? 64 : 46}px ${MARGE}px 0`,
+          padding: `${story ? 54 : 38}px ${MARGE}px 0`,
         }}
       >
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} width={story ? 76 : 60} height={story ? 76 : 60} alt="" />
+          <img src={logo} width={story ? 66 : 52} height={story ? 66 : 52} alt="" />
         ) : null}
-        <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 18 }}>
           <div
             style={{
               display: 'flex',
@@ -389,7 +388,7 @@ export default function AfficheVisuel({
           >
             {CAPITALES(MARQUE)}
           </div>
-          <div style={{ display: 'flex', color: DOUX, fontFamily: 'Inter', fontWeight: 400, fontSize: e.date * 0.8 }}>
+          <div style={{ display: 'flex', color: DOUX, fontFamily: 'Inter', fontWeight: 400, fontSize: e.date * 0.82 }}>
             {SOUS_TITRE}
           </div>
         </div>
@@ -399,86 +398,64 @@ export default function AfficheVisuel({
         </div>
       </div>
 
-      {/* ── LE CHIFFRE : le sujet de l'affiche ───────────────────────────── */}
+      {/* ── LA RECONNAISSANCE : le sujet de l'affiche, c'est la personne ───
+          Tout est centré ici, et nulle part ailleurs : une distinction se
+          présente au milieu, comme sur un diplôme. Le bas de l'affiche garde
+          l'alignement à gauche, qui convient aux listes. */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          padding: `${story ? 72 : 40}px ${MARGE}px 0`,
+          alignItems: 'center',
+          padding: `${story ? 48 : 26}px ${MARGE}px 0`,
         }}
       >
-        <Intitule texte={grandSurtitre} taille={e.surtitre} />
+        {/* L'écusson du club de cœur : l'identité avant les chiffres. C'est lui
+            qui fait dire « ça parle de moi » avant même la lecture. */}
+        {d.equipePreferee?.logo ? (
+          <div style={{ display: 'flex', marginBottom: story ? 24 : 14 }}>
+            <Ecusson url={d.equipePreferee.logo} taille={e.club} />
+          </div>
+        ) : null}
+
+        <div
+          style={{
+            display: 'flex',
+            color: VERT,
+            fontFamily: 'Inter',
+            fontWeight: 600,
+            fontSize: e.merci,
+            letterSpacing: e.merci * 0.3,
+          }}
+        >
+          {CAPITALES(MERCI)}
+        </div>
+
         <div
           style={{
             display: 'flex',
             color: BLANC,
             fontFamily: 'Outfit',
             fontWeight: 900,
-            fontSize: e.chiffre,
-            lineHeight: 0.86,
-            marginTop: story ? 18 : 10,
+            fontSize: taillePrenom,
+            lineHeight: 1,
+            letterSpacing: -2,
+            marginTop: story ? 4 : 2,
           }}
         >
-          {grandChiffre}
+          {CAPITALES(prenom)}
         </div>
-        <div
-          style={{
-            display: 'flex',
-            color: VERT,
-            fontFamily: 'Outfit',
-            fontWeight: 900,
-            fontSize: e.libelle,
-            letterSpacing: -0.5,
-            marginTop: story ? 6 : 2,
-          }}
-        >
-          {CAPITALES(grandLibelle)}
-        </div>
-      </div>
 
-      {/* ── LES RENCONTRES ──────────────────────────────────────────────── */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 18,
-          padding: `${story ? 52 : 30}px ${MARGE}px 0`,
-        }}
-      >
-        {matchs.length && !surLesCernes ? <Intitule texte={titreDeLaListe} taille={e.intitule} /> : null}
-        {matchs.map((m, i) => (
-          <Rencontre
-            key={i}
-            m={m}
-            // Deux rencontres : des cartes généreuses. Trois ou quatre : elles
-            // se resserrent pour que tout tienne au-dessus de la bande verte.
-            hauteur={matchs.length >= 3 ? Math.round(e.carte * 1.5) : Math.round(e.carte * 1.7)}
-            ecusson={Math.round(e.ecusson * 1.25)}
-            police={e.nom}
-            maxNom={e.maxNom}
-          />
-        ))}
-      </div>
-
-      {/* L'espace qui reste tombe entre les rencontres et l'appel. */}
-      <div style={{ display: 'flex', flex: 1, minHeight: story ? 40 : 22 }} />
-
-      {/* ── LA QUESTION : c'est elle qui fait poster ─────────────────────
-          Un statut qui affirme se regarde ; un statut qui demande reçoit des
-          réponses, et chaque réponse est une conversation qui finit sur le
-          site. C'est le seul élément de l'affiche qui s'adresse à celui qui
-          la REGARDE, et non à celui qui la publie. */}
-      <div style={{ display: 'flex', flexDirection: 'column', padding: `0 ${MARGE}px ${story ? 30 : 18}px` }}>
+        {/* LE RANG : un titre qu'on n'a pas acheté, et qui se montre. */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            height: story ? 136 : 96,
-            borderRadius: 28,
-            border: `2px solid rgba(18,209,138,0.42)`,
-            background: 'rgba(18,209,138,0.10)',
+            marginTop: story ? 20 : 12,
+            padding: `${story ? 13 : 8}px ${story ? 30 : 18}px`,
+            borderRadius: 999,
+            background: 'rgba(18,209,138,0.12)',
+            border: `2px solid rgba(18,209,138,0.40)`,
           }}
         >
           <div
@@ -487,53 +464,95 @@ export default function AfficheVisuel({
               color: VERT,
               fontFamily: 'Outfit',
               fontWeight: 900,
-              fontSize: story ? 48 : 34,
-              letterSpacing: -0.5,
+              fontSize: e.rang,
+              letterSpacing: 1,
             }}
           >
-            {QUESTION}
+            {CAPITALES(rang)}
           </div>
         </div>
 
-        {/* L'appel, en dessous et plus discret : la question passe devant. */}
+        {/* LA DEVISE : ce qu'on a envie qu'on lise de soi. */}
         <div
           style={{
             display: 'flex',
-            justifyContent: 'center',
-            width: '100%',
-            marginTop: story ? 22 : 14,
+            color: BLANC,
+            fontFamily: 'Outfit',
+            fontWeight: 700,
+            fontSize: e.devise,
+            marginTop: story ? 30 : 18,
           }}
         >
-          <div style={{ display: 'flex', color: DOUX, fontFamily: 'Inter', fontWeight: 400, fontSize: story ? 30 : 22 }}>
-            {APPEL}
-          </div>
+          {DEVISE}
         </div>
 
-        {/* ── LA SIGNATURE : qui publie, en une ligne ────────────────────
-            Elle remplace trois pastilles qui mangeaient le quart de la hauteur
-            pour dire ce qui n'intéresse que son auteur. Ici elle joue son vrai
-            rôle : prouver que celui qui partage est un habitué, pas un
-            curieux de passage. */}
+        {/* LA PREUVE : sans chiffre derrière, un titre sonne creux. */}
         <div
           style={{
             display: 'flex',
-            justifyContent: 'center',
-            width: '100%',
-            marginTop: story ? 26 : 16,
+            color: DOUX,
+            fontFamily: 'Inter',
+            fontWeight: 600,
+            fontSize: e.preuve,
+            letterSpacing: e.preuve * 0.08,
+            marginTop: story ? 14 : 9,
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              color: 'rgba(255,255,255,0.42)',
-              fontFamily: 'Inter',
-              fontWeight: 600,
-              fontSize: story ? 26 : 19,
-              letterSpacing: story ? 1.6 : 1.1,
-            }}
-          >
-            {CAPITALES(signature)}
-          </div>
+          {CAPITALES(preuve)}
+        </div>
+      </div>
+
+      {/* Le vide se répartit de part et d'autre des cartes : d'un seul côté,
+          il creusait un trou de trois cents pixels sous la liste. */}
+      <div style={{ display: 'flex', flex: 1, minHeight: story ? 20 : 10 }} />
+
+      {/* ── LES RENCONTRES ──────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+          padding: `${story ? 42 : 24}px ${MARGE}px 0`,
+        }}
+      >
+        {matchs.length ? <Intitule texte={titreDeLaListe} taille={e.intitule} /> : null}
+        {matchs.map((m, i) => (
+          <Rencontre
+            key={i}
+            m={m}
+            hauteur={matchs.length >= 3 ? e.carte : Math.round(e.carte * 1.24)}
+            ecusson={e.ecusson}
+            police={e.nom}
+            maxNom={e.maxNom}
+          />
+        ))}
+      </div>
+
+      {/* L'espace qui reste tombe entre les rencontres et la question. */}
+      <div style={{ display: 'flex', flex: 1, minHeight: story ? 26 : 12 }} />
+
+      {/* ── LA QUESTION ───────────────────────────────────────────────────
+          Le seul élément qui s'adresse à celui qui REGARDE l'affiche, et non
+          à celui qui la publie. C'est lui qui transforme un statut muet en
+          conversation. */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          padding: `0 ${MARGE}px ${story ? 32 : 18}px`,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            color: VERT,
+            fontFamily: 'Outfit',
+            fontWeight: 900,
+            fontSize: e.question,
+            letterSpacing: -0.3,
+          }}
+        >
+          {QUESTION}
         </div>
       </div>
 
@@ -543,7 +562,7 @@ export default function AfficheVisuel({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          height: story ? 150 : 118,
+          height: story ? 138 : 106,
           background: VERT,
         }}
       >

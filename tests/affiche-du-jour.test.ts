@@ -36,10 +36,14 @@ import {
   verifierConformite,
 } from '../src/lib/affiche-du-jour';
 import {
+  DEVISE,
+  MERCI,
   QUESTION,
   SURTITRE_CERNES,
   TITRE_CERNES,
   libelleCernes,
+  preuveDe,
+  rangDe,
   textesDeLAffiche,
   titreDe,
 } from '../src/components/affiche/AfficheVisuel';
@@ -230,22 +234,51 @@ test('★ ACQUIS — la version carrée a disparu de l’écran, les quatre rés
   assert.match(bloc, /lienDeSecours\(reseau\)/, 'Sans partage de fichier, le réseau doit quand même s’ouvrir.');
 });
 
-test('★ ACQUIS — un seul sujet, un seul chiffre : le grand nombre compte ce qui est montré', () => {
-  // La version précédente annonçait « 4 » — les analyses de la personne — au-dessus
-  // d'une liste de 3 rencontres. Deux chiffres qui se contredisent à la première
-  // lecture, et le propriétaire l'a vu tout de suite.
+test('★ ACQUIS — le sujet de l’affiche, c’est la PERSONNE', () => {
+  // Quatre versions informaient sans émouvoir. « Ça ne me fait absolument rien
+  // ressentir », le 13 septembre 2026. On ne partage pas une information sur
+  // soi : on partage ce qui nous flatte — être nommé, être reconnu, avoir
+  // mérité quelque chose.
   const source = sansCommentaires(fs.readFileSync('src/components/affiche/AfficheVisuel.tsx', 'utf8'));
-  assert.ok(
-    source.includes('const grandChiffre = surLesCernes ? matchs.length : d.analysesDuJour'),
-    'Le grand chiffre doit compter les rencontres réellement affichées, et rien d’autre.'
+
+  // Le prénom en géant, et une taille qui s'adapte à sa longueur : Satori
+  // n'ajuste rien tout seul, un prénom de douze lettres déborderait sans un mot.
+  assert.ok(source.includes('const taillePrenom = Math.min('), 'Le prénom doit s’adapter à la largeur.');
+  assert.ok(source.includes('{CAPITALES(prenom)}'), 'Le prénom doit être composé en géant.');
+  assert.ok(source.includes('{CAPITALES(MERCI)}'), 'La reconnaissance doit être nommée.');
+  assert.ok(source.includes('{CAPITALES(rang)}'), 'Le rang doit paraître.');
+  assert.ok(source.includes('{DEVISE}'), 'La devise doit paraître.');
+});
+
+test('★ ACQUIS — le rang se mérite sur l’activité, JAMAIS sur la justesse', () => {
+  // Un taux de réussite sur une image partagée, c'est une publicité de pari aux
+  // yeux d'un contrôle — et ce projet a déjà perdu une boutique là-dessus. Le
+  // rang se calcule donc sur le VOLUME, la seule donnée que l'affiche possède.
+  assert.equal(rangDe(0), 'nouvelle recrue');
+  assert.equal(rangDe(3), 'nouvelle recrue');
+  assert.equal(rangDe(5), 'analyste régulier');
+  assert.equal(rangDe(20), 'analyste confirmé');
+  assert.equal(rangDe(50), 'analyste chevronné');
+  assert.equal(rangDe(102), 'analyste d’élite');
+  // Un rang que personne n'obtient ne flatte personne : le premier palier doit
+  // tomber dès la première semaine.
+  assert.notEqual(rangDe(5), rangDe(4));
+
+  for (const n of [0, 1, 5, 20, 50, 100, 9999]) verifierConformite([rangDe(n)]);
+  verifierConformite([DEVISE, MERCI]);
+  // La devise dit le contraire du jeu : c'est sa raison d'être.
+  assert.match(DEVISE, /analyses/i);
+  assert.doesNotMatch(DEVISE, /hasard|pari|gagn|chance/i);
+});
+
+test('la ligne de preuve prend le fait le plus fort disponible', () => {
+  assert.equal(
+    preuveDe({ serie: 7, analysesDuMois: 102 } as any),
+    '7 jours de suite · 102 analyses ce mois-ci',
+    'L’assiduité est la chose la plus difficile à tenir : elle passe devant.'
   );
-  assert.equal(libelleCernes(1), 'match décrypté');
-  assert.equal(libelleCernes(3), 'matchs décryptés');
-  // Et l'intitulé de section ne répète pas le titre.
-  assert.ok(
-    source.includes('matchs.length && !surLesCernes ? <Intitule'),
-    'L’intitulé de section ne doit pas répéter le titre géant.'
-  );
+  assert.equal(preuveDe({ serie: 1, analysesDuMois: 12 } as any), '12 analyses ce mois-ci');
+  assert.equal(preuveDe({ serie: 0, analysesDuMois: 0 } as any), 'première analyse');
 });
 
 test('★ ACQUIS — l’affiche pose une question : c’est elle qui fait poster', () => {
