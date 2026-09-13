@@ -43,7 +43,13 @@ console.log(`interrupteur AFFICHE_PUBLIQUE : ${AFFICHE_PUBLIQUE}`);
 console.log(`accès accordé : ${afficheAutorisee(utilisateur.email, false) ? 'OUI' : 'NON'}`);
 console.log(`accès pour un autre abonné payant : ${afficheAutorisee('quelquun@exemple.com', true) ? 'OUI' : 'NON'}`);
 
-const d = await donneesAffiche(sb as any, utilisateur, jour);
+// La sélection du jour : les rencontres les mieux cernées, telles que la
+// route les passe. Sans elle, l'aperçu ne montrerait pas ce que l'abonné voit.
+const { lireSelectionDuJour } = await import('../src/lib/selection-du-jour.js');
+const selection = await lireSelectionDuJour().catch(() => null);
+console.log(`Sélection du jour : ${selection?.matchs?.length ?? 0} rencontre(s).`);
+
+const d = await donneesAffiche(sb as any, utilisateur, jour, 5, selection?.matchs ?? null);
 console.log(
   `\ndonnées du ${d.jour} : ${d.analysesDuJour} analyse(s) du jour, ${d.analysesDuMois} ce mois-ci, ` +
     `série ${d.serie}, club de cœur ${d.equipePreferee?.nom ?? '—'}, ${d.matchs.length} match(s) à afficher`
@@ -51,6 +57,7 @@ console.log(
 
 const nomsDeClubs = [
   ...d.matchs.flatMap((m: any) => [m.domicile, m.exterieur]),
+  ...d.mieuxCernes.flatMap((m: any) => [m.domicile, m.exterieur]),
   ...(d.equipePreferee ? [d.equipePreferee.nom] : []),
 ];
 const textes = textesDeLAffiche(d);

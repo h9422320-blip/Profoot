@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/subscription';
 import { afficheAutorisee, donneesAffiche, verifierConformite } from '@/lib/affiche-du-jour';
 import AfficheVisuel, { textesDeLAffiche } from '@/components/affiche/AfficheVisuel';
 import { polices } from '@/lib/polices-affiche';
+import { lireSelectionDuJour } from '@/lib/selection-du-jour';
 
 /**
  * L'AFFICHE DU JOUR, EN IMAGE.
@@ -47,7 +48,19 @@ export async function GET(requete: Request) {
   const jour = (url.searchParams.get('jour') ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
 
   const sb = await createClient();
-  const d = await donneesAffiche(sb as any, guard.user as any, jour);
+
+  // ── LA SÉLECTION DU JOUR, LUE ICI ET DÉPOUILLÉE PLUS LOIN ───────────────
+  //
+  // Ce sont les rencontres que le moteur cerne le mieux. Elles rendent
+  // l'affiche partageable : un relevé d'activité ne fait rien demander à
+  // personne, des affiches du soir font écrire « et alors ? ».
+  //
+  // Son indisponibilité ne doit jamais empêcher une affiche de sortir :
+  // `rencontresMieuxCernees` rend une liste vide, et le dessin retombe sur les
+  // matchs que l'abonné a lui-même analysés.
+  const selection = await lireSelectionDuJour().catch(() => null);
+
+  const d = await donneesAffiche(sb as any, guard.user as any, jour, 5, selection?.matchs ?? null);
 
   // ── LE SECOND VERROU ────────────────────────────────────────────────────
   //
@@ -56,6 +69,7 @@ export async function GET(requete: Request) {
   // équipe que l'abonné a choisi d'analyser.
   const nomsDeClubs = [
     ...d.matchs.flatMap((m) => [m.domicile, m.exterieur]),
+    ...d.mieuxCernes.flatMap((m) => [m.domicile, m.exterieur]),
     ...(d.equipePreferee ? [d.equipePreferee.nom] : []),
   ];
   verifierConformite([...textesDeLAffiche(d), ...nomsDeClubs], nomsDeClubs);

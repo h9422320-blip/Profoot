@@ -31,10 +31,11 @@ import {
   afficheAutorisee,
   motsInterditsTrouves,
   prenomDe,
+  rencontresMieuxCernees,
   serieDepuis,
   verifierConformite,
 } from '../src/lib/affiche-du-jour';
-import { textesDeLAffiche, titreDe } from '../src/components/affiche/AfficheVisuel';
+import { TITRE_CERNES, textesDeLAffiche, titreDe } from '../src/components/affiche/AfficheVisuel';
 
 const sansCommentaires = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
@@ -151,4 +152,67 @@ test('le prénom vient du nom, sinon de l’adresse', () => {
   assert.equal(prenomDe('Ousmane Traoré', 'x@y.com'), 'Ousmane');
   assert.equal(prenomDe(null, 'ousmane.traore@gmail.com'), 'ousmane');
   assert.equal(prenomDe('', ''), 'Analyste');
+});
+
+test('★ ACQUIS — les rencontres les mieux cernées paraissent SANS leur pourcentage', () => {
+  // La section de la page d'analyse porte la part de pronostics justes — 90 %,
+  // 81 %. Sur une image qui part sur WhatsApp et TikTok, un pourcentage à côté
+  // d'un match se lit comme une publicité de pari, et ce projet a déjà perdu
+  // une boutique sur un contrôle « produits interdits : paris sportifs ».
+  const selection = [
+    {
+      dom: { name: 'PSV Eindhoven', logo: 'https://x/psv.png' },
+      ext: { name: 'Sparta Rotterdam', logo: 'https://x/spa.png' },
+      kickoffISO: '2026-09-13T18:00:00.000Z',
+      fiabilite: 90,
+      mesureeSur: 48,
+      famille: 'Favori écrasant',
+      championnat: 'Eredivisie',
+    },
+  ];
+  const [r] = rencontresMieuxCernees(selection);
+  assert.deepEqual(r, {
+    domicile: 'PSV Eindhoven',
+    logoDomicile: 'https://x/psv.png',
+    exterieur: 'Sparta Rotterdam',
+    logoExterieur: 'https://x/spa.png',
+    heure: '18:00',
+  });
+  // Rien d'autre ne passe : ce qui n'est pas recopié ne peut pas se retrouver
+  // sur un réseau social. Même principe que LECTURE_AUTORISEE.
+  for (const interdit of ['fiabilite', 'mesureeSur', 'famille', 'championnat'])
+    assert.ok(!(interdit in (r as any)), `« ${interdit} » ne doit pas sortir sur l'affiche.`);
+
+  // Une sélection absente ne casse rien : l'affiche retombe sur les matchs
+  // analysés par l'abonné.
+  assert.deepEqual(rencontresMieuxCernees(null), []);
+  assert.deepEqual(rencontresMieuxCernees([]), []);
+});
+
+test('★ ACQUIS — l’affiche préfère les mieux cernés, et retombe sur les matchs analysés', () => {
+  const source = sansCommentaires(fs.readFileSync('src/components/affiche/AfficheVisuel.tsx', 'utf8'));
+  assert.match(
+    source,
+    /const matchs = cernes\.length \? cernes : d\.matchs/,
+    'Les rencontres du jour passent devant : un relevé d’activité ne fait rien demander à personne.'
+  );
+  assert.match(source, /titreDeLaListe = cernes\.length \? TITRE_CERNES : TITRE_LISTE/);
+  // Et le titre reste dans le vocabulaire de l'analyse.
+  assert.doesNotMatch(TITRE_CERNES, /sûr|sur[e]?s\b|gagn|pronostic/i);
+});
+
+test('★ ACQUIS — la version carrée a disparu de l’écran, les quatre réseaux l’ont remplacée', () => {
+  const bloc = sansCommentaires(fs.readFileSync('src/components/affiche/BlocAfficheDuJour.tsx', 'utf8'));
+  assert.doesNotMatch(bloc, /Version carrée/, 'Le choix du format carré a été retiré par le propriétaire.');
+  assert.match(bloc, /Partager mon affiche/);
+  for (const reseau of ['whatsapp', 'tiktok', 'instagram', 'facebook'])
+    assert.ok(
+      fs.readFileSync('src/components/affiche/ReseauxAffiche.tsx', 'utf8').includes(`'${reseau}'`),
+      `Le réseau ${reseau} doit être proposé.`
+    );
+  // Le partage passe par la feuille du système : c'est le SEUL chemin qui
+  // attache réellement l'image. Aucun de ces réseaux n'accepte qu'une page web
+  // lui envoie un fichier.
+  assert.match(bloc, /canShare\?\.\(\{ files: \[fichier\] \}\)/);
+  assert.match(bloc, /lienDeSecours\(reseau\)/, 'Sans partage de fichier, le réseau doit quand même s’ouvrir.');
 });

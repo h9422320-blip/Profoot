@@ -185,6 +185,51 @@ export interface MatchAnalyse {
   logoDomicile: string | null;
   exterieur: string;
   logoExterieur: string | null;
+  /** L'heure du coup d'envoi, « 21:00 ». Vide quand elle n'est pas connue. */
+  heure?: string;
+}
+
+/**
+ * ── LES RENCONTRES DU JOUR LES MIEUX CERNÉES, SANS LEUR POURCENTAGE ──────
+ *
+ * La section de la page d'analyse porte, à côté de chaque rencontre, la part
+ * de pronostics justes observée — 90 %, 81 %, 74 %. Sur un écran privé, entre
+ * un abonné et son application, c'est une information honnête.
+ *
+ * Sur une image qui part sur WhatsApp et TikTok, c'est autre chose : un
+ * pourcentage à côté d'un match de football se lit comme une publicité de
+ * pari. Ce projet a déjà perdu une boutique en août 2026 sur un contrôle
+ * « produits interdits : paris sportifs, jeux de hasard ». Et la règle de
+ * l'affiche, posée par le propriétaire, interdit tout taux.
+ *
+ * Cette fonction est donc le filtre : elle ne LAISSE PASSER que les deux
+ * équipes, leurs écussons et l'heure. La fiabilité, la famille de match, le
+ * nombre de rencontres mesurées n'en ressortent pas — on ne peut pas divulguer
+ * ce qu'on n'a pas recopié. Même principe que `LECTURE_AUTORISEE`.
+ */
+export function rencontresMieuxCernees(
+  selection: readonly any[] | null | undefined,
+  max = 3
+): MatchAnalyse[] {
+  const heureDe = (iso: unknown): string => {
+    const t = Date.parse(String(iso ?? ''));
+    if (!Number.isFinite(t)) return '';
+    // L'heure d'Abidjan, de Dakar et de Lomé : UTC. C'est celle de la très
+    // grande majorité des abonnés, et une affiche ne connaît pas le fuseau de
+    // celui qui la regardera.
+    return new Date(t).toISOString().slice(11, 16);
+  };
+
+  return (selection ?? [])
+    .filter((m: any) => m?.dom?.name && m?.ext?.name)
+    .slice(0, Math.max(0, max))
+    .map((m: any) => ({
+      domicile: String(m.dom.name),
+      logoDomicile: m.dom.logo ?? null,
+      exterieur: String(m.ext.name),
+      logoExterieur: m.ext.logo ?? null,
+      heure: heureDe(m.kickoffISO),
+    }));
 }
 
 /** Tout ce que l'affiche a besoin de savoir — et rien de plus. */
@@ -197,6 +242,18 @@ export interface DonneesAffiche {
   serie: number;
   equipePreferee: { nom: string; logo: string | null } | null;
   matchs: MatchAnalyse[];
+  /**
+   * Les rencontres du jour que le moteur cerne le mieux, sans aucun chiffre.
+   *
+   * C'est ce qui rend l'affiche PARTAGEABLE. Un bulletin d'activité — « j'ai
+   * analysé cinq matchs » — ne fait rien demander à personne. Les affiches du
+   * soir, elles, font écrire « et alors ? » — et c'est cette question-là qui
+   * envoie les amis sur profootai.com.
+   *
+   * Vide quand la sélection du jour n'est pas disponible : l'affiche retombe
+   * alors sur les matchs que l'abonné a lui-même analysés.
+   */
+  mieuxCernes: MatchAnalyse[];
 }
 
 /** Le prénom à afficher : le premier mot du nom, sinon le début de l'adresse. */
@@ -246,7 +303,15 @@ export async function donneesAffiche(
   sb: { from: (t: string) => any },
   utilisateur: { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null },
   jour: string,
-  maxMatchs = 5
+  maxMatchs = 5,
+  /**
+   * La sélection du jour, FOURNIE et jamais relue ici.
+   *
+   * Elle vit dans la réserve partagée, hors de portée d'un test et du script
+   * de contrôle. L'appelant la passe ; ce module se contente de la dépouiller
+   * de ses chiffres avec `rencontresMieuxCernees`.
+   */
+  selectionDuJour: readonly any[] | null = null
 ): Promise<DonneesAffiche> {
   // Soixante jours suffisent pour le mois en cours ET pour une série crédible.
   const debut = new Date(`${jour}T00:00:00Z`);
@@ -299,5 +364,6 @@ export async function donneesAffiche(
       exterieur: String(l.team2_name ?? ''),
       logoExterieur: l.team2_logo ?? null,
     })),
+    mieuxCernes: rencontresMieuxCernees(selectionDuJour),
   };
 }

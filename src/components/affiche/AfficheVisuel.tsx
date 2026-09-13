@@ -87,6 +87,16 @@ export const SURTITRE = 'mon activité du jour';
 export const SOUS_TITRE = 'analyse & statistiques football';
 export const APPEL = 'Analyse tes matchs sur profootai.com';
 export const TITRE_LISTE = 'mes matchs analysés';
+
+/**
+ * L'intitulé de la section qui rend l'affiche partageable.
+ *
+ * « Les mieux cernés » et non « les plus sûrs » : la seconde formule se lit
+ * comme celle d'une maison de jeu, et ce projet a déjà perdu une boutique sur
+ * un contrôle « produits interdits : paris sportifs ». Formule choisie par le
+ * propriétaire le 4 septembre 2026, reprise ici mot pour mot.
+ */
+export const TITRE_CERNES = 'les mieux cernés aujourd’hui';
 export const MARQUE = 'ProFoot AI';
 export const ADRESSE = 'profootai.com';
 
@@ -193,8 +203,19 @@ function Rencontre({
         </div>
       </div>
       <div style={{ display: 'flex', width: '10%', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', color: DOUX, fontFamily: 'Inter', fontWeight: 400, fontSize: police - 10 }}>
-          vs
+        {/* L'heure remplace le « vs » quand on la connaît : sur une affiche du
+            soir, c'est le renseignement que le lecteur cherche — à quelle heure
+            ça commence — et il ne coûte pas une ligne de plus. */}
+        <div
+          style={{
+            display: 'flex',
+            color: m.heure ? VERT : DOUX,
+            fontFamily: 'Inter',
+            fontWeight: m.heure ? 600 : 400,
+            fontSize: police - (m.heure ? 6 : 10),
+          }}
+        >
+          {m.heure || 'vs'}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 22, width: '45%' }}>
@@ -215,6 +236,10 @@ export function textesDeLAffiche(d: DonneesAffiche): string[] {
     SURTITRE,
     SOUS_TITRE,
     d.matchs.length ? TITRE_LISTE : '',
+    (d.mieuxCernes ?? []).length ? TITRE_CERNES : '',
+    // Les heures composées sur les cartes : elles doivent passer le contrôle
+    // comme le reste, même si un « 21:00 » ne peut rien enfreindre.
+    ...(d.mieuxCernes ?? []).map((m) => m.heure ?? '').filter(Boolean),
     MARQUE,
     ADRESSE,
     APPEL,
@@ -241,11 +266,25 @@ export default function AfficheVisuel({
 }) {
   const story = hauteur > largeur;
   const MARGE = story ? 84 : 64;
-  const matchs = d.matchs.slice(0, story ? 3 : 2);
+
+  // ── CE QUE L'AFFICHE MONTRE, ET POURQUOI CE CHOIX ────────────────────────
+  //
+  // Les rencontres du jour les mieux cernées passent AVANT les matchs que
+  // l'abonné a analysés. Un bulletin d'activité — « j'ai analysé cinq matchs,
+  // les voici » — ne fait rien demander à personne. Les affiches du soir, si :
+  // elles font écrire « et alors, qui gagne ? », et c'est cette question qui
+  // envoie les amis sur profootai.com. L'affiche devient du contenu qu'on
+  // montre, et plus seulement un relevé personnel.
+  //
+  // Les matchs personnels restent le repli : sans sélection du jour, l'affiche
+  // ne doit pas se retrouver amputée de sa moitié basse.
+  const cernes = (d.mieuxCernes ?? []).slice(0, story ? 4 : 2);
+  const matchs = cernes.length ? cernes : d.matchs.slice(0, story ? 3 : 2);
+  const titreDeLaListe = cernes.length ? TITRE_CERNES : TITRE_LISTE;
 
   const e = story
-    ? { chiffre: 400, libelle: 72, surtitre: 26, marque: 50, date: 30, pastille: 34, carte: 132, ecusson: 72, nom: 34, maxNom: 14, intitule: 24, pied: 52 }
-    : { chiffre: 230, libelle: 44, surtitre: 20, marque: 40, date: 24, pastille: 26, carte: 104, ecusson: 56, nom: 29, maxNom: 15, intitule: 19, pied: 40 };
+    ? { chiffre: 400, libelle: 72, surtitre: 26, marque: 50, date: 30, pastille: 34, carte: 132, ecusson: 72, nom: 30, maxNom: 18, intitule: 24, pied: 52 }
+    : { chiffre: 230, libelle: 44, surtitre: 20, marque: 40, date: 24, pastille: 26, carte: 104, ecusson: 56, nom: 26, maxNom: 17, intitule: 19, pied: 40 };
 
   return (
     <div
@@ -368,14 +407,14 @@ export default function AfficheVisuel({
           padding: `${story ? 52 : 30}px ${MARGE}px 0`,
         }}
       >
-        {matchs.length ? <Intitule texte={TITRE_LISTE} taille={e.intitule} /> : null}
+        {matchs.length ? <Intitule texte={titreDeLaListe} taille={e.intitule} /> : null}
         {matchs.map((m, i) => (
           <Rencontre
             key={i}
             m={m}
             // Deux rencontres : des cartes généreuses. Trois ou quatre : elles
             // se resserrent pour que tout tienne au-dessus de la bande verte.
-            hauteur={matchs.length >= 3 ? e.carte : Math.round(e.carte * 1.32)}
+            hauteur={matchs.length >= 4 ? Math.round(e.carte * 0.86) : matchs.length >= 3 ? e.carte : Math.round(e.carte * 1.32)}
             ecusson={e.ecusson}
             police={e.nom}
             maxNom={e.maxNom}
