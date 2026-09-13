@@ -101,6 +101,28 @@ export default async function PagePreuves() {
     } catch (e: any) {
       console.error('[PREUVES] Entretien impossible :', e?.message);
     }
+
+    // ── ET LE RATTRAPAGE DU SOIR, QUI N'EST PAS LE MÊME TRAVAIL ───────────
+    //
+    // Vingt heures de fraîcheur suffisent pour un entretien complet, pas pour
+    // un match du soir. Le 12 septembre 2026, l'entretien est passé à 18 h 40 ;
+    // Real Madrid — Rayo Vallecano a débuté à 19 h 00, et son score exact est
+    // resté hors du mur presque vingt heures.
+    //
+    // Cette seconde couche ne fait que confronter les pronostics et
+    // reconstruire le mur, au plus une fois toutes les deux heures, entre 16 h
+    // et 2 h UTC. Elle a sa propre clé et son propre verrou : l'entretien
+    // quotidien ne la voit pas et garde exactement le comportement validé.
+    try {
+      const { rattraperLeSoir } = await import('@/lib/rattrapage-du-soir');
+      const s = await rattraperLeSoir();
+      if (s.lance)
+        console.log(
+          `[PREUVES] Rattrapage du soir : ${s.verifiees} analyse(s) confrontée(s), mur à ${s.matchs} match(s).`
+        );
+    } catch (e: any) {
+      console.error('[PREUVES] Rattrapage du soir impossible :', e?.message);
+    }
   });
 
   // ── ICI, TOUT LE PALMARÈS ────────────────────────────────────────────────
