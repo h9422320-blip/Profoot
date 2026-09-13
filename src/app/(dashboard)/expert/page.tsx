@@ -374,6 +374,13 @@ export default function ExpertAgentPage() {
             libelleOffre={`Agent VIP — ${(offreVip?.prixXof ?? 15000).toLocaleString('fr-FR')} FCFA${
               (offreVip?.dureeJours ?? 365) >= 365 ? ' / an' : ' / mois'
             }`}
+            // L OFFRE MANQUAIT, ET L ENTONNOIR MENTAIT.
+            //
+            // Sans cette cle, les 496 notices de l Agent VIP du 5 au 13 septembre
+            // 2026 sont tombees dans un seau anonyme  —  , impossible a
+            // distinguer du reste. On y a lu 51 % de fermetures sans pouvoir
+            // dire de quelle offre il s agissait.
+            cleOffre="vip_yearly"
             onContinuer={(paysRetenu) => lancerPaiement(paysRetenu)}
             onFermer={() => setNoticeOuverte(false)}
           />
