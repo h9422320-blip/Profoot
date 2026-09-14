@@ -56,7 +56,9 @@ type Couche =
   | { type: 'memoire-nul-variable'; echelle: number; nulEgal: number; nulEcarte: number; ecartPlein: number }
   | { type: 'memoire-terrain-ligue'; echelle: number; parPoint: number }
   | { type: 'memoire-releve-mince'; echelle: number; seuil: number; partMax: number }
-  | { type: 'nul-serre'; ecartMax: number; rangMinimumDuNul?: number };
+  | { type: 'nul-serre'; ecartMax: number; rangMinimumDuNul?: number }
+  | { type: 'repos'; poids: number; plafondJours: number; avecElanEtTerrain?: boolean }
+  | { type: 'elan-large'; partElan: number; partTerrain: number; surLesButs: boolean };
 
 chargerEnv();
 const tache: {
@@ -1622,10 +1624,246 @@ function avecNulSerre(ecartMax: number, rangMinimumDuNul: number): { pronostics:
   return { pronostics, actifs };
 }
 
+// ── LE REPOS ENTRE DEUX MATCHS ──────────────────────────────────────────
+//
+// CE QUE LE MOTEUR NE VOIT PAS DU TOUT
+//
+// Il juge deux clubs sur leurs moyennes, sans savoir que l'un a joué trois
+// jours plus tôt et l'autre neuf. Une équipe qui enchaîne coupe d'Europe et
+// championnat ne produit pas ce que sa moyenne annonce — et cela ne se voit
+// ni dans ses occasions, ni dans son classement.
+//
+// Le banc connaît la date de TOUTES les rencontres des 62 compétitions
+// rangées, coupes comprises : le repos réel de chaque club se calcule donc
+// exactement, sans appel au fournisseur.
+//
+// La correction porte sur l'ÉCART de repos, jamais sur le repos absolu :
+// deux équipes également fatiguées ne doivent rien changer au pronostic.
+// Elle est plafonnée à `plafondJours` — au-delà d'une semaine, un jour de
+// plus ne dit plus rien, et une coupure de trêve fausserait tout.
+function avecRepos(
+  poids: number,
+  plafondJours: number,
+  avecElanEtTerrain: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  // Dernière date de match connue, club par club.
+  const dernier = new Map<number, number>();
+
+  // Élan et terrain, repris tels quels quand on empile sur le moteur actuel.
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+
+  const apprendre = (x: any) => {
+    const t = Date.parse(x.date);
+    dernier.set(Number(x.dom), t);
+    dernier.set(Number(x.ext), t);
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+
+  // Élan par club, sur les occasions, comme le mélange en production.
+  const dates = new Map<string, number[]>();
+  for (const t of [...tirs].sort((a, b) => a.date - b.date))
+    for (const club of [String(t.dom), String(t.ext)]) {
+      const l = dates.get(club);
+      if (l) l.push(t.date);
+      else dates.set(club, [t.date]);
+    }
+  const vues = new Map<string, number>();
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const ecartDelan = (club: string, veille: number) => {
+    const passe = elanParClub.get(club);
+    const quand = dates.get(club);
+    if (!passe || !quand) return null;
+    let n = vues.get(club) ?? 0;
+    while (n < quand.length && quand[n] < veille) n++;
+    vues.set(club, n);
+    if (n < 10) return null;
+    const recents = passe.slice(n - 5, n);
+    const longs = passe.slice(n - 10, n);
+    return {
+      attaque: moy(recents.map((x) => x.produit)) - moy(longs.map((x) => x.produit)),
+      defense: moy(recents.map((x) => x.concede)) - moy(longs.map((x) => x.concede)),
+    };
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    const quand = Date.parse(m.date);
+    const veille = Date.parse(jour + "T00:00:00Z");
+
+    // Le repos, en jours, plafonné. Un club jamais vu est réputé reposé.
+    const reposDe = (id: number) => {
+      const d = dernier.get(Number(id));
+      if (!d || !Number.isFinite(quand)) return plafondJours;
+      return Math.min(plafondJours, Math.max(0, (quand - d) / 86400000));
+    };
+    const ecartRepos = (reposDe(m.dom) - reposDe(m.ext)) / plafondJours;
+
+    let dom = poids * ecartRepos;
+    let ext = -poids * ecartRepos;
+
+    if (avecElanEtTerrain) {
+      const a = ecartDelan(String(m.nomDom), veille);
+      const b = ecartDelan(String(m.nomExt), veille);
+      const ligue = ecartDeLigue(Number(m.ligue));
+      dom += (0.2 * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+      ext += (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+    }
+
+    const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    if (ecartRepos !== 0) actifs.push(Number(m.id));
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
+// ── L'ÉLAN ÉLARGI : EXACTEMENT CE QUI TOURNE EN PRODUCTION ──────────────
+//
+// Le mélange jugé gagnant tirait l'élan du relevé des TIRS, qui ne couvre
+// que les sept grands championnats. La version portée en production, elle,
+// retombe sur les BUTS quand les tirs manquent — elle s'applique donc à des
+// clubs que le banc n'avait jamais jugés.
+//
+// Déployer plus large que ce qui est prouvé est précisément ce qu'on
+// s'interdit ici. Cette variante rejoue donc la production à l'identique :
+// occasions quand elles existent, buts sinon, sur les 62 compétitions.
+//
+// `surLesButs` à faux redonne le comportement du banc d'origine, pour que la
+// comparaison isole exactement ce que le repli sur les buts ajoute.
+function avecElanLarge(
+  partElan: number,
+  partTerrain: number,
+  surLesButs: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  // Historique par NOM de club, comme en production.
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const ajouter = (club: string, produit: number, concede: number) => {
+    const l = passe.get(club);
+    if (l) l.push({ produit, concede });
+    else passe.set(club, [{ produit, concede }]);
+  };
+
+  // Les occasions relevées, retrouvées par équipes + date.
+  const occasionsDe = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    occasionsDe.set(
+      String(t.dom) + " · " + String(t.ext) + " · " + String(t.date),
+      { d: t.cadresD + t.surfaceD, e: t.cadresE + t.surfaceE }
+    );
+
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = occasionsDe.get(cle);
+    if (o) {
+      ajouter(String(x.nomDom), o.d, o.e);
+      ajouter(String(x.nomExt), o.e, o.d);
+    } else if (surLesButs) {
+      ajouter(String(x.nomDom), Number(x.bd), Number(x.be));
+      ajouter(String(x.nomExt), Number(x.be), Number(x.bd));
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    const recents = l.slice(-5);
+    const longs = l.slice(-10);
+    return {
+      attaque: moy(recents.map((x) => x.produit)) - moy(longs.map((x) => x.produit)),
+      defense: moy(recents.map((x) => x.concede)) - moy(longs.map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return partTerrain * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    const a = elanDe(String(m.nomDom));
+    const b = elanDe(String(m.nomExt));
+    const ligue = ecartDeLigue(Number(m.ligue));
+    const dom = (partElan * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+    const ext = (partElan * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+    const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    if (corr) actifs.push(Number(m.id));
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
+  if (v.couche?.type === 'elan-large') {
+    const { pronostics, actifs: ids } = avecElanLarge(
+      v.couche.partElan,
+      v.couche.partTerrain,
+      v.couche.surLesButs
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
+  if (v.couche?.type === 'repos') {
+    const { pronostics, actifs: ids } = avecRepos(
+      v.couche.poids,
+      v.couche.plafondJours,
+      v.couche.avecElanEtTerrain !== false
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
   if (v.couche?.type === 'nul-serre') {
     const { pronostics, actifs: ids } = avecNulSerre(v.couche.ecartMax, v.couche.rangMinimumDuNul ?? 2);
     sortie[v.nom] = pronostics;

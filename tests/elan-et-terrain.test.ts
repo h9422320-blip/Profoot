@@ -128,10 +128,22 @@ test('★ ACQUIS — la lecture ne se fie pas à la seule réserve, qui renonce 
   assert.match(source, /LIMITE_RELECTURE_MS/);
 });
 
-test('★ ACQUIS — le moteur reçoit bien la correction, et le challenger la range', () => {
+test('★ ACQUIS — rien ne passe au moteur tant que le banc ne le confirme pas', () => {
+  // Retirée le 14 septembre 2026, quelques heures après sa mise en ligne.
+  //
+  // Le mélange élan + terrain avait bien passé la porte sur 17 985 rencontres.
+  // Mais c'est la VARIANTE DU BANC qui avait gagné, pas cette implémentation.
+  // Rejouée à l'identique, celle-ci PERD contre elle : −11 vainqueurs justes
+  // sur la première moitié, −63 sur la seconde, sur 15 625 rencontres. Et ce
+  // n'est pas le repli sur les buts — la version sans repli perd tout autant.
+  //
+  // Une couche qu'on ne sait pas reproduire sur le banc n'est pas prouvée.
   const route = sansCommentaires(fs.readFileSync('src/app/api/analyze/route.ts', 'utf8'));
-  assert.match(route, /correctionElanTerrain\(/, 'La route doit passer la correction au moteur.');
-  assert.match(route, /await lireElanEtTerrain\(\)/);
+  assert.doesNotMatch(
+    route,
+    /correctionElanTerrain\(/,
+    "Tant que l'écart avec le banc n'est pas compris, la correction ne doit pas atteindre le moteur."
+  );
 
   const donnees = sansCommentaires(fs.readFileSync('scripts/challenger/donnees.mts', 'utf8'));
   assert.match(donnees, /rangerElanEtTerrain/, 'Le challenger doit ranger le relevé chaque nuit.');
