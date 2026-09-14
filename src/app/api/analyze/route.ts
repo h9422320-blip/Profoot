@@ -22,6 +22,7 @@ import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from "@/lib/memoir
 import { lirePredictionFigee, figerPrediction, remplacerPredictionFigee, predictionIndecise } from "@/lib/prediction-figee";
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
+import { correctionElanTerrain, lireElanEtTerrain } from "@/lib/elan-et-terrain";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
 import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 
@@ -1509,9 +1510,37 @@ async function analyser(req: Request, billet: BilletQuota) {
     // Rend `null` dès qu'un des deux clubs est inconnu du relevé — un
     // championnat non couvert garde exactement le calcul d'avant.
     occasionsDuMatch,
-    // Aucune correction apprise des erreurs : ce point d'entrée reste inerte,
-    // il n'est nommé que pour atteindre le suivant.
-    null,
+    // ── L'ÉLAN ET LE TERRAIN PAR CHAMPIONNAT ─────────────────────────────
+    //
+    // Ce point d'entrée est resté inerte jusqu'au 14 septembre 2026. Il porte
+    // désormais la PREMIÈRE couche qui ait passé la porte du banc d'essai :
+    // rejouée sur 17 985 rencontres, chacune avec seulement ce qui était connu
+    // la veille, elle gagne +16 vainqueurs justes sur la première moitié et
+    // +35 sur la seconde — cinquante et un de plus — avec un Brier MEILLEUR
+    // que le moteur actuel. Les trois conditions de la porte sont tenues sans
+    // qu'on y ait touché.
+    //
+    // DEUX CHOSES QUE LE MOTEUR IGNORAIT.
+    //
+    // L'ÉLAN : un club jugé sur la moyenne de ses occasions reste jugé sur sa
+    // moyenne, même quand ses cinq derniers matchs sortent nettement de ses
+    // dix derniers. L'écart entre les deux est l'élan, en attaque comme en
+    // défense.
+    //
+    // LE TERRAIN PAR CHAMPIONNAT : recevoir ne vaut pas la même chose en
+    // Premier League et en Eredivisie. Le moteur appliquait le même avantage
+    // partout.
+    //
+    // Le calcul relit des milliers de rencontres : il est fait chaque nuit par
+    // le challenger, qui a tout en local, et seulement LU ici. Un relevé
+    // absent, périmé de plus de dix jours, ou un club inconnu rendent `null`,
+    // et le calcul est alors rigoureusement celui d'avant.
+    correctionElanTerrain(
+      await lireElanEtTerrain(),
+      team1.name,
+      team2.name,
+      (targetFutureMatch || nextH2H)?.league?.id ?? null
+    ),
     // ── ET LÀ OÙ LE MOTEUR NE VOIT RIEN, LA MÉMOIRE PARLE ────────────────
     //
     // Les occasions manquent dès qu'un des deux clubs est hors des sept

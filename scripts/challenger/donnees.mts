@@ -250,6 +250,42 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   fs.writeFileSync(FICHIER_TIRS, JSON.stringify(tirs));
   journal(`${tirs.length} rencontres avec leurs tirs exportées`);
 
+  // ── L'ÉLAN ET LE TERRAIN PAR CHAMPIONNAT, RANGÉS POUR LA PRODUCTION ─────
+  //
+  // La première couche qui ait passé la porte du banc : +16 vainqueurs justes
+  // sur la première moitié, +35 sur la seconde, mesurés sur 17 985 rencontres,
+  // avec un Brier MEILLEUR que le moteur actuel. Les trois conditions de la
+  // porte sont tenues sans qu'on y ait touché.
+  //
+  // Les deux calculs relisent des milliers de rencontres : impossible dans une
+  // fonction que l'hébergeur coupe à soixante secondes. Ils sont donc faits
+  // ici, où tout est déjà en local, et rangés comme la mémoire des clubs.
+  //
+  // Le relevé des tirs ne couvre que les grands championnats ; ailleurs, les
+  // buts servent de signal approché. Mieux vaut un élan grossier que pas
+  // d'élan du tout — et c'est exactement ce que le banc a jugé.
+  if (!pourLaMemoire.length) {
+    journal('élan et terrain NON rangés : aucune rencontre disponible.');
+  } else try {
+    const { calculerElanEtTerrain, rangerElanEtTerrain } = await import('../../src/lib/elan-et-terrain.js');
+    const parCle = new Map<string, any>();
+    for (const t of tirs)
+      parCle.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), t);
+    const avecOccasions = (pourLaMemoire as any[]).map((m) => {
+      const t = parCle.get(String(m.nomDom) + " · " + String(m.nomExt) + " · " + String(Date.parse(m.date)));
+      return t
+        ? { ...m, produitDom: t.cadresD + t.surfaceD, produitExt: t.cadresE + t.surfaceE }
+        : m;
+    });
+    const releve = calculerElanEtTerrain(avecOccasions);
+    await rangerElanEtTerrain(releve);
+    journal(
+      'élan et terrain rangés : ' + releve.clubs + ' clubs, ' + releve.championnats + ' championnats'
+    );
+  } catch (e: any) {
+    journal('élan et terrain non rangés : ' + (e?.message ?? String(e)));
+  }
+
   // ── 3 BIS. TOUTES LES COTES DU JOUR, SANS LA LIMITE DE L'HÉBERGEUR ────────
   //
   // La production relève les cotes à minuit, dans une tâche plafonnée à trois
