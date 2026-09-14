@@ -44,7 +44,23 @@ test('★ ACQUIS — le moteur de référence du banc inclut la mémoire des clu
 
 test('★ ACQUIS — le banc applique les mêmes conditions que la production', () => {
   const s = source();
-  assert.match(s, /if \(occ\) continue;/, 'L’avis de la production doit être réservé aux matchs SANS occasions.');
+  // Le 14 septembre 2026, l’avis de la mémoire a commencé à être CALCULÉ pour
+  // tous les matchs, afin qu’une couche à l’essai puisse le consulter ailleurs.
+  // La garantie ci-dessous n’a pas bougé d’un pouce, elle est seulement dite
+  // plus directement : ce que le MOTEUR DE RÉFÉRENCE consulte, lui, reste
+  // réservé aux matchs sans occasions, comme la production.
+  assert.match(
+    s,
+    /if \(!occ\) avisProduction\.set\(/,
+    'L’avis de la production doit être réservé aux matchs SANS occasions.'
+  );
+  // Et rien d’autre ne doit alimenter cette table : une seule porte d’entrée,
+  // sinon la garantie ci-dessus se contourne sans que personne ne le voie.
+  assert.equal(
+    (s.match(/avisProduction\.set\(/g) ?? []).length,
+    1,
+    'L’avis de la production ne doit être posé qu’à un seul endroit, sous la condition des matchs aveugles.'
+  );
   assert.match(s, /< 5 \|\| \(joues\.get\(m\.ext\) \?\? 0\) < 5/, 'Le seuil de cinq rencontres par club doit être le même qu’en production.');
   assert.match(s, /const PART_PRODUCTION = 0\.6;/, 'La part de la mémoire doit être celle de la production (0,6).');
 });
