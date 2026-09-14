@@ -58,7 +58,9 @@ type Couche =
   | { type: 'memoire-releve-mince'; echelle: number; seuil: number; partMax: number }
   | { type: 'nul-serre'; ecartMax: number; rangMinimumDuNul?: number }
   | { type: 'repos'; poids: number; plafondJours: number; avecElanEtTerrain?: boolean }
-  | { type: 'elan-large'; partElan: number; partTerrain: number; surLesButs: boolean };
+  | { type: 'elan-large'; partElan: number; partTerrain: number; surLesButs: boolean }
+  | { type: 'force-adversaire'; poids: number; retrecissement: number; avecMelange?: boolean }
+  | { type: 'qualite-occasions'; poids: number; minimum: number; avecMelange?: boolean };
 
 chargerEnv();
 const tache: {
@@ -1840,10 +1842,354 @@ function avecElanLarge(
   return { pronostics, actifs };
 }
 
+// ── LA FORCE DE L'ADVERSAIRE, DANS LES OCCASIONS ────────────────────────
+//
+// LE MANQUE QUE CETTE COUCHE COMBLE
+//
+// Le moteur juge un club sur la MOYENNE de ses occasions, sans savoir contre
+// qui il les a produites. Un club à 1,8 but attendu par match contre des
+// adversaires faibles et un club à 1,8 contre des grands sont rangés au même
+// niveau. Ils ne valent pourtant pas la même chose, et la différence se voit
+// dès que les deux se rencontrent.
+//
+// CE QU'ELLE CALCULE
+//
+// Une force d'attaque et une force de défense par club, sur les OCCASIONS et
+// non sur les buts — dix fois plus nombreuses, donc dix fois moins bruitées.
+// Chaque rencontre passée corrige les deux clubs : celui qui produit
+// beaucoup contre une bonne défense monte plus que contre une passoire.
+//
+// Les forces sont multiplicatives et ramenées vers 1 par `retrecissement` :
+// un club vu cinq fois ne bouge presque pas, un club vu cinquante fois
+// compte pleinement. Sans cela, un club à deux matchs dicterait le pronostic.
+//
+// CE QU'ELLE REND
+//
+// L'écart entre les occasions attendues ainsi corrigées et celles que le
+// moteur attend déjà. Cet écart passe par le onzième point d'entrée, en
+// buts, exactement comme le mélange. Un club sans relevé de tirs ne bouge
+// pas.
+function avecForceAdversaire(
+  poids: number,
+  retrecissement: number,
+  avecMelange: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  // Occasions produites et concédées, par rencontre, dans l ordre.
+  const parMatch = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    parMatch.set(
+      String(t.dom) + " · " + String(t.ext) + " · " + String(t.date),
+      {
+        d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+        e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+      }
+    );
+
+  // Forces multiplicatives par club. 1 = exactement la moyenne.
+  const att = new Map<string, { n: number; somme: number }>();
+  const def = new Map<string, { n: number; somme: number }>();
+  let nTotal = 0;
+  let sommeTotale = 0;
+
+  const cumuler = (m: Map<string, { n: number; somme: number }>, club: string, v: number) => {
+    const c = m.get(club);
+    if (c) { c.n++; c.somme += v; }
+    else m.set(club, { n: 1, somme: v });
+  };
+
+  const moyenneGenerale = () => (nTotal ? sommeTotale / nTotal : 0);
+  // Force ramenée vers 1 : n / (n + retrecissement) du chemin parcouru.
+  const force = (m: Map<string, { n: number; somme: number }>, club: string) => {
+    const c = m.get(club);
+    const g = moyenneGenerale();
+    if (!c || !c.n || g <= 0) return 1;
+    const brute = c.somme / c.n / g;
+    const part = c.n / (c.n + retrecissement);
+    return 1 + part * (brute - 1);
+  };
+
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = parMatch.get(cle);
+    if (!o || !Number.isFinite(o.d) || !Number.isFinite(o.e)) return;
+    cumuler(att, String(x.nomDom), o.d);
+    cumuler(def, String(x.nomDom), o.e);
+    cumuler(att, String(x.nomExt), o.e);
+    cumuler(def, String(x.nomExt), o.d);
+    nTotal += 2;
+    sommeTotale += o.d + o.e;
+  };
+
+  // Le mélange déjà en ligne, repris tel quel pour empiler proprement.
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const apprendreMelange = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = parMatch.get(cle);
+    if (o) {
+      const aj = (club: string, produit: number, concede: number) => {
+        const l = passe.get(club);
+        if (l) l.push({ produit, concede });
+        else passe.set(club, [{ produit, concede }]);
+      };
+      aj(String(x.nomDom), o.d, o.e);
+      aj(String(x.nomExt), o.e, o.d);
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    return {
+      attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+      defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) {
+        apprendre(toutesLesRencontres[j]);
+        apprendreMelange(toutesLesRencontres[j]);
+        j++;
+      }
+      jourCourant = jour;
+    }
+
+    let dom = 0;
+    let ext = 0;
+
+    // La correction par la force de l adversaire ne vaut que si les deux
+    // clubs sont connus du relevé des tirs.
+    const vuDom = att.get(String(m.nomDom));
+    const vuExt = att.get(String(m.nomExt));
+    if (vuDom && vuExt && vuDom.n >= 5 && vuExt.n >= 5) {
+      const g = moyenneGenerale();
+      // Occasions attendues, corrigées de la force de l adversaire.
+      const attenduDom = g * force(att, String(m.nomDom)) * force(def, String(m.nomExt));
+      const attenduExt = g * force(att, String(m.nomExt)) * force(def, String(m.nomDom));
+      // Ce que le club produit en moyenne, SANS tenir compte de l adversaire.
+      const brutDom = vuDom.somme / vuDom.n;
+      const brutExt = vuExt.somme / vuExt.n;
+      dom += poids * (attenduDom - brutDom);
+      ext += poids * (attenduExt - brutExt);
+      actifs.push(Number(m.id));
+    }
+
+    if (avecMelange) {
+      const a = elanDe(String(m.nomDom));
+      const b = elanDe(String(m.nomExt));
+      const ligue = ecartDeLigue(Number(m.ligue));
+      dom += (0.2 * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+      ext += (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+    }
+
+    const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
+// ── LA QUALITÉ DES OCCASIONS ────────────────────────────────────────────
+//
+// CE QUE LE MOTEUR NE PEUT PAS VOIR
+//
+// Il estime les buts attendus avec une recette maison : 0,325 par tir cadré,
+// 0,17 par tir dans la surface. Deux clubs qui tirent autant sont donc
+// crédités du même danger. Or ils ne créent pas les mêmes occasions : une
+// frappe à six mètres et une frappe à vingt-cinq comptent pareil ici.
+//
+// LE FOURNISSEUR, LUI, DONNE LE VRAI xG
+//
+// Découvert le 14 septembre 2026 : les fiches de match portent un champ
+// expected_goals, calculé sur la position et la nature de chaque tir. 72 %
+// des rencontres relevées en ont un, et ces fiches sont DÉJÀ en réserve —
+// zéro appel de plus.
+//
+// Exemple du jour : Aris Thessalonikis, 2,45 de vrai xG contre 2,00 par la
+// recette. L'approximation sous-estimait l'écart avec son adversaire.
+//
+// CE QUE CETTE COUCHE MESURE
+//
+// Pour chaque club, l'écart moyen entre son vrai xG et celui que la recette
+// lui attribue — en attaque comme en défense. Un club qui dépasse
+// systématiquement la recette crée de meilleures occasions que ses tirs ne
+// le disent ; le moteur le sous-estime depuis toujours.
+//
+// Seuls les clubs vus au moins `minimum` fois avec un vrai xG comptent.
+function avecQualiteOccasions(
+  poids: number,
+  minimum: number,
+  avecMelange: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  // Écart vrai xG − recette, par rencontre.
+  const parMatch = new Map<string, { d: number; e: number }>();
+  for (const t of tirs) {
+    const vraiD = Number(t.xgD);
+    const vraiE = Number(t.xgE);
+    if (!(vraiD > 0) && !(vraiE > 0)) continue;
+    const recetteD = BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD);
+    const recetteE = BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE);
+    parMatch.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+      d: vraiD - recetteD,
+      e: vraiE - recetteE,
+    });
+  }
+
+  // Écart moyen par club, en attaque (ce qu'il produit) et en défense (ce
+  // qu'il concède).
+  const att = new Map<string, { n: number; somme: number }>();
+  const def = new Map<string, { n: number; somme: number }>();
+  const cumuler = (m: Map<string, { n: number; somme: number }>, club: string, v: number) => {
+    const c = m.get(club);
+    if (c) { c.n++; c.somme += v; }
+    else m.set(club, { n: 1, somme: v });
+  };
+
+  // Le mélange en ligne, repris pour empiler proprement.
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const occasionsDe = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    occasionsDe.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+      d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+      e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+    });
+
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const q = parMatch.get(cle);
+    if (q && Number.isFinite(q.d) && Number.isFinite(q.e)) {
+      cumuler(att, String(x.nomDom), q.d);
+      cumuler(def, String(x.nomDom), q.e);
+      cumuler(att, String(x.nomExt), q.e);
+      cumuler(def, String(x.nomExt), q.d);
+    }
+    const o = occasionsDe.get(cle);
+    if (o) {
+      const aj = (club: string, produit: number, concede: number) => {
+        const l = passe.get(club);
+        if (l) l.push({ produit, concede });
+        else passe.set(club, [{ produit, concede }]);
+      };
+      aj(String(x.nomDom), o.d, o.e);
+      aj(String(x.nomExt), o.e, o.d);
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    return {
+      attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+      defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+  const ecartQualite = (m: Map<string, { n: number; somme: number }>, club: string) => {
+    const c = m.get(club);
+    if (!c || c.n < minimum) return 0;
+    return c.somme / c.n;
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+
+    // La qualité du club qui reçoit en attaque, et de son adversaire en
+    // défense : les deux disent combien la recette se trompe sur CE match.
+    const qa = ecartQualite(att, String(m.nomDom));
+    const qb = ecartQualite(att, String(m.nomExt));
+    const da = ecartQualite(def, String(m.nomDom));
+    const db = ecartQualite(def, String(m.nomExt));
+
+    let dom = (poids * (qa + db)) / 2;
+    let ext = (poids * (qb + da)) / 2;
+    if (dom !== 0 || ext !== 0) actifs.push(Number(m.id));
+
+    if (avecMelange) {
+      const a = elanDe(String(m.nomDom));
+      const b = elanDe(String(m.nomExt));
+      const ligue = ecartDeLigue(Number(m.ligue));
+      dom += (0.2 * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+      ext += (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+    }
+
+    const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
+  if (v.couche?.type === 'qualite-occasions') {
+    const { pronostics, actifs: ids } = avecQualiteOccasions(
+      v.couche.poids,
+      v.couche.minimum,
+      v.couche.avecMelange !== false
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
+  if (v.couche?.type === 'force-adversaire') {
+    const { pronostics, actifs: ids } = avecForceAdversaire(
+      v.couche.poids,
+      v.couche.retrecissement,
+      v.couche.avecMelange !== false
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
   if (v.couche?.type === 'elan-large') {
     const { pronostics, actifs: ids } = avecElanLarge(
       v.couche.partElan,

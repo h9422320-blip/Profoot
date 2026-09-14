@@ -241,6 +241,18 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
         surfaceD: nombre(dd.statistics, 'Shots insidebox'),
         cadresE: nombre(ee.statistics, 'Shots on Goal'),
         surfaceE: nombre(ee.statistics, 'Shots insidebox'),
+        // ── LE VRAI xG DU FOURNISSEUR, DECOUVERT LE 14 SEPTEMBRE 2026 ──
+        //
+        // Les fiches portent un champ expected_goals calcule par le
+        // fournisseur lui-meme. Le moteur, lui, APPROXIME les buts attendus
+        // avec 0,325 par tir cadre et 0,17 par tir dans la surface — une
+        // recette maison, reglee a la main.
+        //
+        // Neuf mille six cents fiches en reserve le portent deja : zero appel
+        // de plus pour le recolter. Reste a mesurer s il vaut mieux que
+        // l approximation, et le banc seul peut le dire.
+        xgD: nombre(dd.statistics, 'expected_goals'),
+        xgE: nombre(ee.statistics, 'expected_goals'),
         butsD: m.bd,
         butsE: m.be,
       });
