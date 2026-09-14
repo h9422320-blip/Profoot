@@ -65,6 +65,43 @@ test('★ ACQUIS — le banc applique les mêmes conditions que la production', 
   assert.match(s, /const PART_PRODUCTION = 0\.6;/, 'La part de la mémoire doit être celle de la production (0,6).');
 });
 
+test('★ ACQUIS — le banc ancre les statistiques comme la production', () => {
+  // ── CE QUE CE GARDE-FOU A COÛTÉ AVANT D’EXISTER ─────────────────
+  //
+  // Le 14 septembre 2026, une couche qui donnait aux clubs peu vus un passé
+  // de huit mois gagnait +12 et +12 vainqueurs justes. Elle allait être mise
+  // en ligne.
+  //
+  // Elle ne gagnait rien. Le banc jugeait les clubs sur la SEULE saison en
+  // cours, quand la production mélange depuis toujours les douze derniers
+  // matchs toutes compétitions confondues, avec un poids de cinq. La couche
+  // ne faisait que rattraper une ancre que le vrai moteur avait déjà. Une
+  // fois l’ancre posée au banc, le même essai tombe à −2 et +2.
+  //
+  // Sans ancre, le banc décrit un moteur plus faible que le vrai sur toutes
+  // les rencontres de début de saison. Toute couche qui apporte du passé y
+  // paraît gagnante. C’est la mesure elle-même qui ment, et aucune porte ne
+  // peut rattraper cela.
+  const s = source();
+  assert.match(
+    s,
+    /melangerStatistiques\(brut1, referenceAvant\(m\.dom, m\)\)/,
+    'Le banc doit mélanger les statistiques de saison à l’ancre, comme la production.'
+  );
+  assert.match(
+    s,
+    /const REFERENCE_DERNIERS = 12;/,
+    'L’ancre doit porter sur les douze derniers matchs, comme `?team=&last=12` en production.'
+  );
+  // Et la fenêtre doit rester toutes compétitions confondues : `parEquipe`
+  // porte toutes les rencontres, là où `statsAvant` filtre ligue et saison.
+  assert.match(
+    s,
+    /function referenceAvant\(equipe: number, m: any\) \{\s*\n\s*const liste = parEquipe\.get\(equipe\)/,
+    'L’ancre doit lire toutes les compétitions, pas le seul championnat de la rencontre.'
+  );
+});
+
 test('★ ACQUIS — le relevé de référence inclut ce que la production connaît', () => {
   // Les quatre championnats ajoutés le 12 septembre 2026 (Roumanie, Serbie,
   // Irlande, Finlande) sont en production depuis le commit 5819d10. Un moteur de

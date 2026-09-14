@@ -62,7 +62,8 @@ type Couche =
   | { type: 'force-adversaire'; poids: number; retrecissement: number; avecMelange?: boolean }
   | { type: 'qualite-occasions'; poids: number; minimum: number; avecMelange?: boolean }
   | { type: 'vrai-xg'; avecMelange?: boolean }
-  | { type: 'memoire-sur-les-surs'; seuil: number; poids: number; avecMelange?: boolean };
+  | { type: 'memoire-sur-les-surs'; seuil: number; poids: number; avecMelange?: boolean }
+  | { type: 'occasions-par-les-buts'; jours: number; saisonMaigre?: number; minimumClub?: number; avecMelange?: boolean };
 
 chargerEnv();
 const tache: {
@@ -92,8 +93,8 @@ const tache: {
 } = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 
 // Chargés APRÈS l'environnement : les réglages du relevé sont lus à l'import.
-const { calculerScoreProbable } = await import('../../src/lib/score-probable.js');
-const { forcesDepuisRencontres, butsAttendusOccasions } = await import('../../src/lib/forme-occasions.js');
+const { calculerScoreProbable, melangerStatistiques } = await import('../../src/lib/score-probable.js');
+const { forcesDepuisRencontres, butsAttendusOccasions, CHAMPIONNATS } = await import('../../src/lib/forme-occasions.js');
 const { apprendreErreurs, correctionPour } = await import('../../src/lib/couche-erreurs.js');
 const { butsAttendusDuMarche } = await import('../../src/lib/couche-marche.js');
 const { lireForcesChampionnats, coefficientDe } = await import('../../src/lib/forces-championnats.js');
@@ -221,6 +222,42 @@ function statsAvant(equipe: number, m: any) {
   return { butsMarques: bm, butsEncaisses: be, matchsJoues: n };
 }
 
+// ── L'ANCRE DE LA PRODUCTION, QUI MANQUAIT AU BANC ─────────────────
+//
+// Découvert le 14 septembre 2026, et c’est une faille de mesure, pas une
+// couche : `statsAvant` ne compte que la SAISON EN COURS et le SEUL
+// championnat de la rencontre. La production, elle, n'a jamais fait cela.
+//
+// Elle demande au fournisseur les DOUZE DERNIERS MATCHS du club, toutes
+// compétitions confondues, et les mélange aux statistiques de championnat par
+// `melangerStatistiques`, avec un poids de cinq. En septembre, où un club a
+// joué deux journées, c'est cette ancre qui porte presque tout le jugement.
+//
+// Un banc sans elle décrit donc un moteur PLUS FAIBLE que le vrai, sur
+// exactement la population où les débuts de saison se jouent. Toute couche
+// qui apporte du passé à un club peu vu y paraîtrait gagnante alors qu'elle
+// ne ferait que rattraper ce que la production fait déjà. C'est le même piege
+// que le vrai xG du 14 septembre, pris à temps cette fois.
+//
+// Les amicaux ne sont pas à écarter ici : la collecte du banc n'en contient
+// pas. Pour le reste, même fenêtre, même poids, même fonction.
+const REFERENCE_DERNIERS = 12;
+function referenceAvant(equipe: number, m: any) {
+  const liste = parEquipe.get(equipe) ?? [];
+  const t = quand(m);
+  const derniers: any[] = [];
+  for (const x of liste) {
+    if (quand(x) >= t) break;
+    derniers.push(x);
+  }
+  let bm = 0, be = 0, n = 0;
+  for (const x of derniers.slice(-REFERENCE_DERNIERS)) {
+    n++;
+    if (x.dom === equipe) { bm += x.bd; be += x.be; } else { bm += x.be; be += x.bd; }
+  }
+  return n ? { butsMarques: bm, butsEncaisses: be, matchsJoues: n } : null;
+}
+
 // ── LA LISTE DES MATCHS, LA MÊME POUR TOUS LES ESSAIS ──────────────────────
 const suivies = new Set([...Object.keys(GRANDS), ...Object.keys(COUPES_SUIVIES)].map(Number));
 const entrees: { m: any; s1: any; s2: any; occ: any; jour: string }[] = [];
@@ -229,9 +266,13 @@ const toutesCompetitions = tache.univers === 'tout';
 for (const m of rencontres) {
   const retenue = surCotes ? cotes[String(m.id)] !== undefined : toutesCompetitions ? true : suivies.has(Number(m.ligue));
   if (!retenue || m.date < tache.debut || m.date >= tache.fin) continue;
-  const s1 = statsAvant(m.dom, m);
-  const s2 = statsAvant(m.ext, m);
-  if (s1.matchsJoues < 1 || s2.matchsJoues < 1) continue;
+  const brut1 = statsAvant(m.dom, m);
+  const brut2 = statsAvant(m.ext, m);
+  // Le filtre reste sur la saison BRUTE : l'univers ne bouge pas d'un match,
+  // seul le moteur de référence devient celui de la production.
+  if (brut1.matchsJoues < 1 || brut2.matchsJoues < 1) continue;
+  const s1 = melangerStatistiques(brut1, referenceAvant(m.dom, m));
+  const s2 = melangerStatistiques(brut2, referenceAvant(m.ext, m));
   const jour = m.date.slice(0, 10);
   entrees.push({ m, s1, s2, occ: butsAttendusOccasions(releveLaVeille(jour), m.nomDom, m.nomExt), jour });
 }
@@ -2430,10 +2471,235 @@ function avecMemoireSurLesSurs(
   return { pronostics, actifs };
 }
 
+// ── LES OCCASIONS LÀ OÙ IL N'Y A PAS DE TIRS ─────────────────────
+//
+// LE PLUS GROS TROU DU MOTEUR, MESURÉ LE 14 SEPTEMBRE 2026
+//
+// Le relèvement des tirs ne couvre que les compétitions où on le collecte :
+// 6 969 rencontres sur 19 271. Partout ailleurs — et sur toute rencontre dont
+// l'un des deux clubs n'a pas été vu dans les 240 derniers jours — le moteur
+// se retrouve SANS occasions.
+//
+// Ce qui lui reste alors, c'est `statsAvant` : les buts marqués et encaissés
+// dans la SAISON EN COURS et le SEUL championnat de la rencontre. En
+// septembre, cela fait un à cinq matchs. Le moteur juge donc les deux tiers
+// de son univers sur une poignée de rencontres, quand il en juge un tiers sur
+// huit mois de tirs.
+//
+// CE QUE CETTE COUCHE AJOUTE
+//
+// Un SECOND relèvement de forces, bâti exactement par la même mécanique que
+// celui des tirs — même fonction, même fenêtre, même étalon par compétition,
+// même avantage du terrain mesuré — mais nourri des BUTS plutôt que des tirs.
+//
+// L'astuce tient en une ligne : `forcesDepuisRencontres` recalcule à chaque
+// relèvement ce que vaut un tir, par total des buts sur total des tirs. En lui
+// passant les buts à la place des tirs, les deux taux valent 1 et la valeur
+// d'une rencontre redevient exactement son nombre de buts. Aucune constante
+// inventée, aucun réglage nouveau : c'est le même calcul sur une autre matière.
+//
+// VERDICT DU 14 SEPTEMBRE 2026 : RIEN, ET LA LECON VAUT PLUS QUE LA COUCHE.
+//
+// Premiere mesure, sur le banc d alors : +12 et +12 vainqueurs justes, Brier
+// meilleur dans les deux moities, 76,4 % de justesse quand le moteur est sur.
+// Sept reglages voisins gagnaient aussi — un plateau large, la marque d un
+// effet reel. Elle allait etre mise en ligne.
+//
+// Elle ne gagnait rien. Le banc ne posait PAS l ancre de la production : les
+// douze derniers matchs toutes competitions confondues, melanges aux
+// statistiques de championnat. Cette couche ne faisait que la rattraper.
+// Ancre posee, le meme essai tombe a -2 et +2, et les variantes les plus
+// etroites ne trouvent plus qu UN SEUL match a corriger.
+//
+// Elle est gardee ici telle quelle, avec ses bornes. Non pour resservir, mais
+// parce qu une couche qui gagne 24 vainqueurs un matin et zero le soir est le
+// meilleur rappel qu il y ait : ce que mesure un banc mal aligne n existe pas.
+//
+// LE PRINCIPE EST STRICTEMENT ADDITIF
+//
+// Là où les tirs existent, RIEN NE CHANGE : le relèvement des buts n'est même
+// pas consulté. Il ne parle que sur les rencontres aveugles, et l'avis de la
+// mémoire continue d'y être transmis comme aujourd'hui. On ne retire rien, on
+// remplit un vide.
+//
+// Les buts sont dix fois moins nombreux que les tirs, donc plus bruités —
+// c'est bien pour cela que les tirs gardent la priorité. Mais huit mois de
+// buts contre trois matchs de saison, la comparaison est vite faite : reste à
+// la mesurer, et c'est la porte qui tranche.
+const NOM_DE_LIGUE = new Map<number, string>(
+  (CHAMPIONNATS as readonly { id: number; nom: string }[]).map((c) => [Number(c.id), String(c.nom)] as [number, string])
+);
+const relevesButs = new Map<string, any>();
+function releveButsLaVeille(jour: string, jours: number) {
+  const cle = jour + "/" + String(jours);
+  if (relevesButs.has(cle)) return relevesButs.get(cle);
+  const fin = Date.parse(jour + "T00:00:00Z");
+  const debut = fin - jours * 86_400_000;
+  const liste: any[] = [];
+  for (const x of toutesLesRencontres) {
+    const d = Date.parse(x.date);
+    if (d >= fin) break;
+    if (d < debut) continue;
+    const bd = Number(x.bd);
+    const be = Number(x.be);
+    if (!Number.isFinite(bd) || !Number.isFinite(be)) continue;
+    liste.push({
+      ligue: NOM_DE_LIGUE.get(Number(x.ligue)) ?? "ligue-" + String(x.ligue),
+      date: d,
+      dom: String(x.nomDom),
+      ext: String(x.nomExt),
+      // Les buts à la place des tirs : les deux taux valent alors 1, et la
+      // valeur en buts d une rencontre redevient son nombre de buts.
+      cadresD: bd,
+      surfaceD: bd,
+      cadresE: be,
+      surfaceE: be,
+      butsD: bd,
+      butsE: be,
+    });
+  }
+  const r =
+    liste.length >= 100
+      ? forcesDepuisRencontres(liste as any, undefined, new Date(fin).toISOString())
+      : null;
+  relevesButs.set(cle, r);
+  return r;
+}
+
+function avecOccasionsParLesButs(
+  jours: number,
+  saisonMaigre: number,
+  minimumClub: number,
+  avecMelange: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  // Le mélange déjà en ligne, repris tel quel pour empiler proprement.
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const occasionsDe2 = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    occasionsDe2.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+      d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+      e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+    });
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = occasionsDe2.get(cle);
+    if (o) {
+      const aj = (club: string, produit: number, concede: number) => {
+        const l = passe.get(club);
+        if (l) l.push({ produit, concede });
+        else passe.set(club, [{ produit, concede }]);
+      };
+      aj(String(x.nomDom), o.d, o.e);
+      aj(String(x.nomExt), o.e, o.d);
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    return {
+      attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+      defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+
+    // LE seul changement : quand les tirs ne disent rien, les buts parlent.
+    //
+    // ── ET SEULEMENT QUAND LA SAISON N'A RIEN À DIRE ────────────────
+    //
+    // Mesuré le 14 septembre 2026 : appliquée à TOUTES les rencontres
+    // aveugles, la couche gagne 31 vainqueurs sur la première moitié et en
+    // perd 7 sur la seconde. Elle parle donc trop large.
+    //
+    // L'explication tient au calcul qu'elle remplace. Sans occasions, le
+    // moteur juge sur les buts de la SAISON EN COURS. Au bout de vingt
+    // journées, cette saison-là décrit très bien le club, et huit mois de
+    // buts toutes compétitions confondues n'y ajoutent que du brouillard.
+    // Au bout de deux journées, c'est l'inverse.
+    //
+    // `saisonMaigre` est cette frontière : sous ce nombre de rencontres
+    // connues pour le moins vu des deux clubs, les buts parlent ; au-dessus,
+    // la saison garde la parole. Zéro désactive la borne.
+    let occUtilise = occ;
+    if (!occ) {
+      const vues = Math.min(Number(s1?.matchsJoues ?? 0), Number(s2?.matchsJoues ?? 0));
+      if (!saisonMaigre || vues < saisonMaigre) {
+        const releve = releveButsLaVeille(jour, jours);
+        // Et seulement si les deux clubs ont assez de passé dans ce relèvement :
+        // un club vu trois fois en huit mois n'a pas de force, il a un hasard.
+        const vuD = releve?.clubs?.[String(m.nomDom)];
+        const vuE = releve?.clubs?.[String(m.nomExt)];
+        const assez =
+          !minimumClub ||
+          (Number(vuD?.rencontres ?? vuD?.n ?? 0) >= minimumClub &&
+            Number(vuE?.rencontres ?? vuE?.n ?? 0) >= minimumClub);
+        const o = assez ? butsAttendusOccasions(releve, m.nomDom, m.nomExt) : null;
+        if (o) {
+          occUtilise = o;
+          actifs.push(Number(m.id));
+        }
+      }
+    }
+
+    let corr: { domicile: number; exterieur: number } | null = null;
+    if (avecMelange) {
+      const a = elanDe(String(m.nomDom));
+      const b = elanDe(String(m.nomExt));
+      const ligue = ecartDeLigue(Number(m.ligue));
+      const dom = (0.2 * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+      const ext = (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+      corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    }
+
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, undefined, null, undefined, false, 1, occUtilise, corr, avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
+  if (v.couche?.type === 'occasions-par-les-buts') {
+    const { pronostics, actifs: ids } = avecOccasionsParLesButs(
+      v.couche.jours,
+      v.couche.saisonMaigre ?? 0,
+      v.couche.minimumClub ?? 0,
+      v.couche.avecMelange !== false
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
   if (v.couche?.type === 'memoire-sur-les-surs') {
     const { pronostics, actifs: ids } = avecMemoireSurLesSurs(
       v.couche.seuil,
