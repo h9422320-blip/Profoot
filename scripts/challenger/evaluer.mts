@@ -61,7 +61,8 @@ type Couche =
   | { type: 'elan-large'; partElan: number; partTerrain: number; surLesButs: boolean }
   | { type: 'force-adversaire'; poids: number; retrecissement: number; avecMelange?: boolean }
   | { type: 'qualite-occasions'; poids: number; minimum: number; avecMelange?: boolean }
-  | { type: 'vrai-xg'; avecMelange?: boolean };
+  | { type: 'vrai-xg'; avecMelange?: boolean }
+  | { type: 'memoire-sur-les-surs'; seuil: number; poids: number; avecMelange?: boolean };
 
 chargerEnv();
 const tache: {
@@ -974,6 +975,11 @@ const PART_PRODUCTION = 0.6;
 const ECHELLE_PRODUCTION = 400;
 const SEUIL_PRODUCTION = 5;
 const avisProduction = new Map<number, { dom: number; nul: number; ext: number; poids: number }>();
+
+// Le MEME avis, mais calcule pour TOUTES les rencontres — y compris celles ou
+// le moteur voit clair. La production, elle, ne le consulte que sur les matchs
+// aveugles ; une couche a l essai peut vouloir le lui faire relire ailleurs.
+const avisPartout = new Map<number, { dom: number; nul: number; ext: number; poids: number }>();
 if (hierarchie) {
   const note = new Map<number, number>();
   const joues = new Map<number, number>();
@@ -1020,22 +1026,26 @@ if (hierarchie) {
     }
     // Mêmes conditions que `avisDeLaMemoire` : occasions absentes, et cinq
     // rencontres au moins pour chacun des deux clubs.
-    if (occ) continue;
     if ((joues.get(m.dom) ?? 0) < 5 || (joues.get(m.ext) ?? 0) < 5) continue;
     const we = 1 / (1 + Math.pow(10, -(ancree(m.dom) + AVANTAGE_TERRAIN_ELO - ancree(m.ext)) / 400));
     // La part suit ce que le moteur sait du match, comme en production depuis
     // le 12 septembre 2026 : pleine sous cinq matchs connus.
     const su = Math.min(Number(s1?.matchsJoues ?? 0), Number(s2?.matchsJoues ?? 0));
     const part = su >= SEUIL_PRODUCTION ? PART_PRODUCTION : 1 - ((1 - PART_PRODUCTION) * su) / SEUIL_PRODUCTION;
-    avisProduction.set(Number(m.id), {
+    const avis = {
       dom: (1 - NUL_ELO) * we,
       nul: NUL_ELO,
       ext: (1 - NUL_ELO) * (1 - we),
       poids: part,
-    });
+    };
+    avisPartout.set(Number(m.id), avis);
+    // La production ne le consulte QUE sur les matchs aveugles : ailleurs le
+    // moteur voit mieux, c est mesure (couche Elo refusee le 11 septembre).
+    if (!occ) avisProduction.set(Number(m.id), avis);
   }
 }
 const avisDeLaProduction = (m: any) => avisProduction.get(Number(m.id)) ?? null;
+const avisPartoutDe = (m: any) => avisPartout.get(Number(m.id)) ?? null;
 
 // ── LA DEMI-VUE ANCRÉE : LE CLUB INCONNU N'EST PLUS SUPPOSÉ MOYEN ─────────
 //
@@ -2296,10 +2306,144 @@ function avecVraiXg(avecMelange: boolean): { pronostics: Pronostic[]; actifs: nu
   return { pronostics, actifs };
 }
 
+// ── LA MÉMOIRE APPELÉE EN RENFORT QUAND LE MOTEUR EST SÛR DE LUI ────────
+//
+// CE QU'ON CHERCHE À RÉPARER, ET POURQUOI C'EST LE PLUS RENTABLE
+//
+// L'abonné n'analyse pas au hasard : il ouvre les matchs que l'application
+// met en avant, ceux où elle se dit sûre. Sur ces rencontres-là, le moteur
+// trouve le bon vainqueur 66 fois sur 100. Les 34 autres sont les erreurs
+// les plus coûteuses du produit : le moteur était SÛR, et il s'est trompé.
+//
+// Un point gagné là vaut plus qu'un point gagné sur la moyenne, parce que
+// c'est exactement ce que les gens regardent.
+//
+// CE QUE CETTE COUCHE FAIT
+//
+// La mémoire des clubs — une note de niveau bâtie sur les 19 271 rencontres
+// des 62 compétitions — n'intervient aujourd'hui QUE là où le moteur est
+// aveugle, faute de relevé de tirs. Partout ailleurs elle se tait, et cela a
+// été mesuré : appliquée à tout, elle dégrade.
+//
+// Ici elle est appelée sur un troisième terrain : les matchs où le moteur
+// dépasse `seuil` de certitude. Si elle confirme, rien ne bouge ou presque.
+// Si elle contredit, la certitude se tempère — et un favori annoncé à 75 %
+// que la mémoire juge moins fort redescend.
+//
+// Le poids est volontairement faible : il ne s'agit pas de remplacer le
+// moteur là où il voit clair, mais de lui faire relire sa copie.
+function avecMemoireSurLesSurs(
+  seuil: number,
+  poids: number,
+  avecMelange: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const occ2 = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    occ2.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+      d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+      e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+    });
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = occ2.get(cle);
+    if (o) {
+      const aj = (club: string, produit: number, concede: number) => {
+        const l = passe.get(club);
+        if (l) l.push({ produit, concede });
+        else passe.set(club, [{ produit, concede }]);
+      };
+      aj(String(x.nomDom), o.d, o.e);
+      aj(String(x.nomExt), o.e, o.d);
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    return {
+      attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+      defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+
+    let corr: { domicile: number; exterieur: number } | null = null;
+    if (avecMelange) {
+      const a = elanDe(String(m.nomDom));
+      const b = elanDe(String(m.nomExt));
+      const ligue = ecartDeLigue(Number(m.ligue));
+      const dom = (0.2 * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+      const ext = (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+      corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    }
+
+    // D'abord le moteur tel qu'il est aujourd'hui.
+    const base: any = calculerScoreProbable(
+      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+    );
+
+    const p = [Number(base.probaVictoire1), Number(base.probaNul), Number(base.probaVictoire2)];
+    const somme = p[0] + p[1] + p[2] || 1;
+    const plusForte = Math.max(p[0], p[1], p[2]) / somme;
+
+    // La mémoire n'entre QUE si le moteur dépasse le seuil de certitude ET
+    // qu'il voyait déjà clair — sur un match aveugle elle agit déjà.
+    const avisMemoire = avisPartoutDe(m);
+    if (plusForte < seuil || !avisMemoire) {
+      pronostics.push(versPronostic(m, base));
+      continue;
+    }
+
+    actifs.push(Number(m.id));
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr,
+      { dom: avisMemoire.dom, nul: avisMemoire.nul, ext: avisMemoire.ext, poids }
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
+  if (v.couche?.type === 'memoire-sur-les-surs') {
+    const { pronostics, actifs: ids } = avecMemoireSurLesSurs(
+      v.couche.seuil,
+      v.couche.poids,
+      v.couche.avecMelange !== false
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
   if (v.couche?.type === 'vrai-xg') {
     const { pronostics, actifs: ids } = avecVraiXg(v.couche.avecMelange !== false);
     sortie[v.nom] = pronostics;
