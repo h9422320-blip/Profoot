@@ -274,7 +274,20 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
     const avecOccasions = (pourLaMemoire as any[]).map((m) => {
       const t = parCle.get(String(m.nomDom) + " · " + String(m.nomExt) + " · " + String(Date.parse(m.date)));
       return t
-        ? { ...m, produitDom: t.cadresD + t.surfaceD, produitExt: t.cadresE + t.surfaceE }
+        ? {
+            ...m,
+            // ── EN BUTS ATTENDUS, PAS EN TIRS BRUTS ───────────────────────
+            //
+            // Erreur du 14 septembre 2026, et elle a coûté une mise en ligne :
+            // ici on additionnait les tirs tels quels. Le banc, lui, les
+            // convertit en buts attendus — une grandeur environ sept fois plus
+            // petite. La correction partait donc sept fois trop forte, et la
+            // couche perdait 63 vainqueurs justes là où elle devait en gagner 35.
+            //
+            // Mêmes coefficients que le banc, à la virgule près.
+            produitDom: 0.325 * t.cadresD + 0.17 * t.surfaceD,
+            produitExt: 0.325 * t.cadresE + 0.17 * t.surfaceE,
+          }
         : m;
     });
     const releve = calculerElanEtTerrain(avecOccasions);

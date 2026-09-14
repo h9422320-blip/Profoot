@@ -1772,7 +1772,7 @@ function avecElanLarge(
   for (const t of tirs)
     occasionsDe.set(
       String(t.dom) + " · " + String(t.ext) + " · " + String(t.date),
-      { d: t.cadresD + t.surfaceD, e: t.cadresE + t.surfaceE }
+      { d: BUT_PAR_CADRE * t.cadresD + BUT_PAR_SURFACE * t.surfaceD, e: BUT_PAR_CADRE * t.cadresE + BUT_PAR_SURFACE * t.surfaceE }
     );
 
   const parLigue = new Map<number, { n: number; somme: number }>();

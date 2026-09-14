@@ -128,22 +128,27 @@ test('★ ACQUIS — la lecture ne se fie pas à la seule réserve, qui renonce 
   assert.match(source, /LIMITE_RELECTURE_MS/);
 });
 
-test('★ ACQUIS — rien ne passe au moteur tant que le banc ne le confirme pas', () => {
-  // Retirée le 14 septembre 2026, quelques heures après sa mise en ligne.
+test('★ ACQUIS — le moteur reçoit la correction, et seulement parce que le banc l a confirmee', () => {
+  // Retiree le 14 septembre au matin, remise le meme jour. Entre les deux :
+  // la version portee en production additionnait les TIRS BRUTS quand le banc
+  // les convertit en buts attendus. Sept fois trop fort, -63 vainqueurs justes.
   //
-  // Le mélange élan + terrain avait bien passé la porte sur 17 985 rencontres.
-  // Mais c'est la VARIANTE DU BANC qui avait gagné, pas cette implémentation.
-  // Rejouée à l'identique, celle-ci PERD contre elle : −11 vainqueurs justes
-  // sur la première moitié, −63 sur la seconde, sur 15 625 rencontres. Et ce
-  // n'est pas le repli sur les buts — la version sans repli perd tout autant.
-  //
-  // Une couche qu'on ne sait pas reproduire sur le banc n'est pas prouvée.
+  // Corrigee, elle reproduit le melange gagnant a l identique : +0 / +0 sur
+  // 15 337 rencontres. C est cette egalite qui autorise la remise en ligne.
   const route = sansCommentaires(fs.readFileSync('src/app/api/analyze/route.ts', 'utf8'));
-  assert.doesNotMatch(
-    route,
-    /correctionElanTerrain\(/,
-    "Tant que l'écart avec le banc n'est pas compris, la correction ne doit pas atteindre le moteur."
-  );
+  assert.match(route, /correctionElanTerrain\(/, 'La route doit passer la correction au moteur.');
+  assert.match(route, /await lireElanEtTerrain\(\)/);
+
+  // Et la conversion en buts attendus doit rester celle du banc, à la virgule
+  // près : la changer sans rejouer le banc casse la preuve.
+  const donneesSrc = sansCommentaires(fs.readFileSync('scripts/challenger/donnees.mts', 'utf8'));
+  assert.match(donneesSrc, /0\.325 \* t\.cadres/, 'Les tirs doivent être convertis en buts attendus.');
+  assert.match(donneesSrc, /0\.17 \* t\.surface/);
+
+  // Et le repli sur les buts ne doit pas revenir : il coûte −3 et −11
+  // vainqueurs justes, les buts étant dix fois plus bruités que les occasions.
+  const lib = sansCommentaires(fs.readFileSync('src/lib/elan-et-terrain.ts', 'utf8'));
+  assert.match(lib, /if \(!Number\.isFinite\(pd\) \|\| !Number\.isFinite\(pe\)\) continue;/);
 
   const donnees = sansCommentaires(fs.readFileSync('scripts/challenger/donnees.mts', 'utf8'));
   assert.match(donnees, /rangerElanEtTerrain/, 'Le challenger doit ranger le relevé chaque nuit.');

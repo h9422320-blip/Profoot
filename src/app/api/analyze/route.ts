@@ -1535,25 +1535,45 @@ async function analyser(req: Request, billet: BilletQuota) {
     // le challenger, qui a tout en local, et seulement LU ici. Un relevé
     // absent, périmé de plus de dix jours, ou un club inconnu rendent `null`,
     // et le calcul est alors rigoureusement celui d'avant.
-    // ── RETIRÉE LE 14 SEPTEMBRE 2026, QUELQUES HEURES APRÈS SA MISE EN LIGNE
+    // ── L'ÉLAN ET LE TERRAIN PAR CHAMPIONNAT ─────────────────────────────
     //
-    // Le mélange élan + terrain avait bien passé la porte sur 17 985
-    // rencontres : +16 et +35 vainqueurs justes, Brier meilleur. Mais c'est la
-    // VARIANTE DU BANC qui avait gagné, pas cette implémentation-ci.
+    // Ce point d'entrée est resté inerte jusqu'au 14 septembre 2026. Il porte
+    // la première couche qui ait passé la porte du banc d'essai : rejouée sur
+    // 17 985 rencontres, chacune avec seulement ce qui était connu la veille,
+    // +16 vainqueurs justes sur la première moitié, +35 sur la seconde, et un
+    // Brier MEILLEUR que le moteur d'avant.
     //
-    // Rejouée à l'identique sur le banc, la version portée ici PERD contre
-    // elle : −11 vainqueurs justes sur la première moitié, −63 sur la seconde,
-    // sur les 15 625 rencontres où elle agit. Et ce n'est pas le repli sur les
-    // buts : la variante sans repli perd tout autant. L'écart vient d'ailleurs,
-    // et il n'est pas encore compris.
+    // DEUX CHOSES QUE LE MOTEUR IGNORAIT.
     //
-    // Tant qu'il ne l'est pas, rien ne passe. Une couche qu'on ne sait pas
-    // reproduire sur le banc n'est pas une couche prouvée — et une amélioration
-    // qu'on ne peut pas mesurer deux fois n'en est pas une.
+    // L'ÉLAN : un club jugé sur la moyenne de ses occasions reste jugé sur sa
+    // moyenne, même quand ses cinq derniers matchs sortent nettement de ses dix
+    // derniers. L'écart entre les deux est l'élan, en attaque comme en défense.
     //
-    // Le relevé continue d'être calculé chaque nuit par le challenger : il ne
-    // coûte rien, et il sera là le jour où l'écart sera compris.
-    null,
+    // LE TERRAIN PAR CHAMPIONNAT : recevoir ne vaut pas la même chose en
+    // Premier League et en Eredivisie. Le moteur appliquait le même avantage
+    // partout.
+    //
+    // ── ET ELLE A DÉJÀ ÉTÉ RETIRÉE UNE FOIS, LE MÊME JOUR ────────────────
+    //
+    // Première mise en ligne le matin, retrait l'après-midi : la version portée
+    // ici additionnait les TIRS BRUTS quand le banc, lui, les convertit en buts
+    // attendus (0,325 par tir cadré, 0,17 par tir dans la surface). Grandeur
+    // sept fois trop grande, correction sept fois trop forte, et la couche
+    // perdait 63 vainqueurs justes là où elle devait en gagner 35.
+    //
+    // Corrigée, rejouée, elle reproduit le mélange gagnant À L'IDENTIQUE :
+    // +0 / +0 sur 15 337 rencontres, c'est-à-dire exactement lui. C'est cette
+    // égalité-là qui autorise la remise en ligne, pas l'intention.
+    //
+    // Un relevé absent, périmé de plus de dix jours, ou un club sans dix
+    // rencontres relevées rendent `null`, et le calcul redevient rigoureusement
+    // celui d'avant.
+    correctionElanTerrain(
+      await lireElanEtTerrain(),
+      team1.name,
+      team2.name,
+      (targetFutureMatch || nextH2H)?.league?.id ?? null
+    ),
     // ── ET LÀ OÙ LE MOTEUR NE VOIT RIEN, LA MÉMOIRE PARLE ────────────────
     //
     // Les occasions manquent dès qu'un des deux clubs est hors des sept

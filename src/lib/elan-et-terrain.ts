@@ -125,11 +125,20 @@ export function calculerElanEtTerrain(rencontres: RencontreAvecTirs[]): ElanEtTe
   };
 
   for (const r of rencontres) {
-    // À défaut d'occasions relevées, les buts font un signal honnête : c'est la
-    // même grandeur, en plus grossier. Mieux vaut un élan approché que pas
-    // d'élan du tout sur les championnats sans fiches de tirs.
-    const pd = Number.isFinite(Number(r.produitDom)) ? Number(r.produitDom) : Number(r.bd);
-    const pe = Number.isFinite(Number(r.produitExt)) ? Number(r.produitExt) : Number(r.be);
+    // ── LES OCCASIONS SEULEMENT, JAMAIS LES BUTS ───────────────────────────
+    //
+    // Une première version retombait sur les buts quand les tirs manquaient,
+    // pour couvrir les championnats sans fiches. Rejouée sur le banc, elle
+    // PERD : −3 vainqueurs justes sur la première moitié, −11 sur la seconde.
+    // La version sans repli, elle, reproduit le mélange gagnant à l'identique
+    // — +0 / +0 sur 15 337 rencontres, c'est-à-dire exactement lui.
+    //
+    // Les buts sont dix fois moins nombreux que les occasions et donc dix fois
+    // plus bruités : un élan bâti dessus ajoute du bruit, pas du signal. Un
+    // club sans relevé de tirs n'a donc pas d'élan, et c'est très bien ainsi.
+    const pd = Number(r.produitDom);
+    const pe = Number(r.produitExt);
+    if (!Number.isFinite(pd) || !Number.isFinite(pe)) continue;
     ajouter(String(r.nomDom), pd, pe);
     ajouter(String(r.nomExt), pe, pd);
   }
