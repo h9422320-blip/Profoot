@@ -63,7 +63,8 @@ type Couche =
   | { type: 'qualite-occasions'; poids: number; minimum: number; avecMelange?: boolean }
   | { type: 'vrai-xg'; avecMelange?: boolean }
   | { type: 'memoire-sur-les-surs'; seuil: number; poids: number; avecMelange?: boolean }
-  | { type: 'occasions-par-les-buts'; jours: number; saisonMaigre?: number; minimumClub?: number; avecMelange?: boolean };
+  | { type: 'occasions-par-les-buts'; jours: number; saisonMaigre?: number; minimumClub?: number; avecMelange?: boolean }
+  | { type: 'avantage-terrain-plat'; buts: number; siSurExterieur?: number; avecMelange?: boolean };
 
 chargerEnv();
 const tache: {
@@ -259,6 +260,111 @@ function referenceAvant(equipe: number, m: any) {
 }
 
 // ── LA LISTE DES MATCHS, LA MÊME POUR TOUS LES ESSAIS ──────────────────────
+// ── LE CLASSEMENT, QUI MANQUAIT AUSSI AU BANC ───────────────────
+//
+// Deuxième écart trouvé le 14 septembre 2026, dans la même famille que
+// l'ancre. La production passe à `calculerScoreProbable` le CLASSEMENT des
+// deux clubs — leurs points, et la moyenne du championnat. Le banc passait
+// `undefined`.
+//
+// Ce que cela vaut : `forceDepuisClassement` en tire un multiplicateur borné
+// à ±15 % sur la force de chaque équipe. Un premier de championnat contre un
+// dernier, cela fait jusqu’à trente points d’écart entre les deux forces —
+// que le banc ignorait totalement.
+//
+// RECONSTRUCTION EXACTE, ET SANS FUITE
+//
+// Trois points la victoire, un le nul, cumulés dans le SEUL championnat et la
+// SEULE saison de la rencontre, et arrêtés la veille au soir. La moyenne du
+// championnat est le total des points divisé par le nombre d’équipes qui y
+// jouent — ce nombre-là vient de la saison entière, comme la vraie table, et
+// ne dit rien des résultats à venir.
+//
+// Comme en production, un championnat où personne n’a encore de point ne dit
+// rien (`totalPoints === 0` → `null`), et l’on retombe alors sur la table
+// FINALE de la saison précédente du même championnat, exactement comme
+// `t1StandingsPrecedent`.
+// LE CHAMPIONNAT LU EST CELUI DU CLUB, PAS CELUI DE LA RENCONTRE.
+//
+// Point vérifié dans la route d'analyse : `t1League` vient de
+// `resoudreChampionnat`, qui ne retient que les compétitions de type
+// « League ». Pour un Barça – Bayern de Ligue des champions, la production
+// lit donc la Liga pour l’un et la Bundesliga pour l’autre — jamais la table
+// du groupe européen. Les deux clubs peuvent avoir des moyennes de points
+// différentes, et c’est voulu.
+//
+// Le championnat d’un club, ici, est la compétition où il a le plus joué dans
+// la saison — le même raisonnement que la « compétition majoritaire » du
+// relevé des occasions : une coupe ne pèse jamais assez pour l'emporter.
+type Classement = { points: number; pointsMoyens: number } | null;
+
+/** Combien de fois chaque club a joué dans chaque compétition, par saison. */
+const vuDansLaLigue = new Map<string, number>();
+const equipesDuChampionnat = new Map<string, Set<number>>();
+for (const m of rencontres) {
+  const k = String(m.ligue) + "|" + String(m.saison);
+  let e = equipesDuChampionnat.get(k);
+  if (!e) { e = new Set<number>(); equipesDuChampionnat.set(k, e); }
+  e.add(Number(m.dom));
+  e.add(Number(m.ext));
+  for (const club of [Number(m.dom), Number(m.ext)]) {
+    const c = String(club) + "|" + String(m.saison) + "|" + String(m.ligue);
+    vuDansLaLigue.set(c, (vuDansLaLigue.get(c) ?? 0) + 1);
+  }
+}
+const championnatDuClub = new Map<string, number>();
+for (const [cle, n] of vuDansLaLigue) {
+  const [club, saison, ligue] = cle.split("|");
+  const k = club + "|" + saison;
+  const meilleur = championnatDuClub.get(k);
+  const nMeilleur = meilleur === undefined ? -1 : (vuDansLaLigue.get(k + "|" + String(meilleur)) ?? 0);
+  if (n > nMeilleur) championnatDuClub.set(k, Number(ligue));
+}
+
+const pointsDuClub = new Map<string, number>();
+const pointsDuChampionnat = new Map<string, number>();
+/** La table FINALE de chaque saison, pour le repli de début de saison. */
+const tableFinale = new Map<string, { points: Map<number, number>; moyens: number }>();
+const classementDe = new Map<number, { dom: Classement; ext: Classement }>();
+for (const m of rencontres) {
+  const lire = (equipe: number): Classement => {
+    const ligue = championnatDuClub.get(String(equipe) + "|" + String(m.saison));
+    if (ligue === undefined) return null;
+    const k = String(ligue) + "|" + String(m.saison);
+    const total = pointsDuChampionnat.get(k) ?? 0;
+    const nEquipes = equipesDuChampionnat.get(k)?.size ?? 0;
+    if (total > 0 && nEquipes > 0)
+      return { points: pointsDuClub.get(k + "|" + String(equipe)) ?? 0, pointsMoyens: total / nEquipes };
+    // Championnat pas encore commencé : la saison précédente, comme la production.
+    const avant = tableFinale.get(String(ligue) + "|" + String(Number(m.saison) - 1));
+    if (avant && avant.moyens > 0 && avant.points.has(equipe))
+      return { points: avant.points.get(equipe) ?? 0, pointsMoyens: avant.moyens };
+    return null;
+  };
+  classementDe.set(Number(m.id), { dom: lire(Number(m.dom)), ext: lire(Number(m.ext)) });
+
+  // Puis, et seulement ensuite, cette rencontre entre dans la table.
+  const k = String(m.ligue) + "|" + String(m.saison);
+  const gagneDom = m.bd > m.be ? 3 : m.bd === m.be ? 1 : 0;
+  const gagneExt = m.be > m.bd ? 3 : m.bd === m.be ? 1 : 0;
+  const cd = k + "|" + String(m.dom);
+  const ce = k + "|" + String(m.ext);
+  pointsDuClub.set(cd, (pointsDuClub.get(cd) ?? 0) + gagneDom);
+  pointsDuClub.set(ce, (pointsDuClub.get(ce) ?? 0) + gagneExt);
+  pointsDuChampionnat.set(k, (pointsDuChampionnat.get(k) ?? 0) + gagneDom + gagneExt);
+  const nEquipes = equipesDuChampionnat.get(k)?.size ?? 0;
+  const t = tableFinale.get(k) ?? { points: new Map<number, number>(), moyens: 0 };
+  t.points.set(Number(m.dom), pointsDuClub.get(cd) ?? 0);
+  t.points.set(Number(m.ext), pointsDuClub.get(ce) ?? 0);
+  t.moyens = nEquipes > 0 ? (pointsDuChampionnat.get(k) ?? 0) / nEquipes : 0;
+  tableFinale.set(k, t);
+}
+const classementsDe = (m: any) => {
+  const c = classementDe.get(Number(m.id));
+  if (!c || (!c.dom && !c.ext)) return undefined;
+  return { equipe1: c.dom, equipe2: c.ext };
+};
+
 const suivies = new Set([...Object.keys(GRANDS), ...Object.keys(COUPES_SUIVIES)].map(Number));
 const entrees: { m: any; s1: any; s2: any; occ: any; jour: string }[] = [];
 const surCotes = tache.univers === 'cotes';
@@ -300,7 +406,7 @@ function championDeBase(): Pronostic[] {
   if (champBase) return champBase;
   const out: Pronostic[] = [];
   for (const { m, s1, s2, occ } of entrees) {
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ);
     out.push(versPronostic(m, r));
   }
   champBase = out;
@@ -313,7 +419,7 @@ function baseAttendus() {
   if (attendus) return attendus;
   attendus = new Map();
   for (const { m, s1, s2, occ } of entrees) {
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ);
     attendus.set(Number(m.id), { a1: Number(r.butsAttendus1), a2: Number(r.butsAttendus2) });
   }
   return attendus;
@@ -333,7 +439,7 @@ function avecErreurs(retrecissement: number, poids: number): Pronostic[] {
       jourCourant = jour;
     }
     const corr = correctionPour(clubs, String(m.dom), String(m.ext), { retrecissement, poids });
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
     const a = base.get(Number(m.id))!;
     passes.push({ dom: String(m.dom), ext: String(m.ext), attenduDom: a.a1, attenduExt: a.a2, reelDom: m.bd, reelExt: m.be });
@@ -349,7 +455,7 @@ function avecMarche(poids: number): { pronostics: Pronostic[]; actifs: number[] 
     const c = cotes[String(m.id)];
     const marche = c ? { ...c, poids } : null;
     if (marche) actifs.push(Number(m.id));
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, marche);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, null, marche);
     pronostics.push(versPronostic(m, r));
   }
   return { pronostics, actifs };
@@ -393,7 +499,7 @@ function avecElo(k: number, poids: number): Pronostic[] {
     }
     const we = attendu(m.dom, m.ext);
     const avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids };
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, null, avis);
     out.push(versPronostic(m, r));
   }
   return out;
@@ -446,7 +552,7 @@ function avecTerrain(retrecissement: number, poids: number): Pronostic[] {
     }
     const d = (poids * (specialite(m.dom) + specialite(m.ext))) / 2;
     const corr = d === 0 ? null : { domicile: d / 2, exterieur: -d / 2 };
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -500,7 +606,7 @@ function avecDuel(retrecissement: number, poids: number): Pronostic[] {
       d = poids * (v.n / (v.n + retrecissement)) * vu;
     }
     const corr = d === 0 ? null : { domicile: d / 2, exterieur: -d / 2 };
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -576,7 +682,7 @@ function avecElan(court: number, long: number, poids: number): Pronostic[] {
       const ext = (poids * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2;
       if (dom !== 0 || ext !== 0) corr = { domicile: dom, exterieur: ext };
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -630,7 +736,7 @@ function avecTerrainLigue(retrecissement: number, poids: number): Pronostic[] {
     }
     const d = poids * ecartDeLigue(Number(m.ligue));
     const corr = d === 0 ? null : { domicile: d / 2, exterieur: -d / 2 };
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -739,7 +845,7 @@ function avecMelange(couche: {
       const we = attendu(m.dom, m.ext);
       avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids: couche.elo.poids };
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avis ?? avisDeLaProduction(m));
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avis ?? avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -792,7 +898,7 @@ function avecMemoire(k: number, poids: number): { pronostics: Pronostic[]; actif
       const we = attendu(m.dom, m.ext);
       avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids };
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, null, avis);
     pronostics.push(versPronostic(m, r));
   }
   return { pronostics, actifs };
@@ -846,7 +952,7 @@ function avecDemiVue(): { pronostics: Pronostic[]; actifs: number[] } {
         }
       }
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, vue, null, vue ? null : avisDeLaProduction(m));
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, vue, null, vue ? null : avisDeLaProduction(m));
     pronostics.push(versPronostic(m, r));
   }
   return { pronostics, actifs };
@@ -954,7 +1060,7 @@ function avecMemoireAncree(k: number, poids: number, echelle: number): { pronost
       const we = attendu(m.dom, m.ext);
       avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids };
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, null, avis);
     pronostics.push(versPronostic(m, r));
   }
   return { pronostics, actifs };
@@ -1410,7 +1516,7 @@ function avecMemoirePoidsVariable(
       avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids: Math.min(1, Math.max(0, part)) };
       actifs.push(Number(m.id));
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, null, avis);
     pronostics.push(versPronostic(m, r));
   }
   return { pronostics, actifs };
@@ -1493,7 +1599,7 @@ function avecMemoireNulVariable(
       avis = { dom: (1 - nul) * we, nul, ext: (1 - nul) * (1 - we), poids: part };
       actifs.push(Number(m.id));
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, null, avis);
     pronostics.push(versPronostic(m, r));
   }
   return { pronostics, actifs };
@@ -1584,7 +1690,7 @@ function avecMemoireTerrainLigue(echelle: number, parPoint: number): { pronostic
       avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids: part };
       actifs.push(Number(m.id));
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, null, avis);
     pronostics.push(versPronostic(m, r));
   }
   return { pronostics, actifs };
@@ -1671,7 +1777,7 @@ function avecMemoireReleveMince(
         }
       }
     }
-    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avis);
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, null, avis);
     pronostics.push(versPronostic(m, r));
   }
   return { pronostics, actifs };
@@ -1833,7 +1939,7 @@ function avecRepos(
     const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
     if (ecartRepos !== 0) actifs.push(Number(m.id));
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+      s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
     );
     pronostics.push(versPronostic(m, r));
   }
@@ -1932,7 +2038,7 @@ function avecElanLarge(
     const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
     if (corr) actifs.push(Number(m.id));
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+      s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
     );
     pronostics.push(versPronostic(m, r));
   }
@@ -2101,7 +2207,7 @@ function avecForceAdversaire(
 
     const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+      s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
     );
     pronostics.push(versPronostic(m, r));
   }
@@ -2256,7 +2362,7 @@ function avecQualiteOccasions(
 
     const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+      s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
     );
     pronostics.push(versPronostic(m, r));
   }
@@ -2340,7 +2446,7 @@ function avecVraiXg(avecMelange: boolean): { pronostics: Pronostic[]; actifs: nu
     }
 
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, undefined, null, undefined, false, 1, occXg, corr, avisDeLaProduction(m)
+      s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occXg, corr, avisDeLaProduction(m)
     );
     pronostics.push(versPronostic(m, r));
   }
@@ -2446,7 +2552,7 @@ function avecMemoireSurLesSurs(
 
     // D'abord le moteur tel qu'il est aujourd'hui.
     const base: any = calculerScoreProbable(
-      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
+      s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
     );
 
     const p = [Number(base.probaVictoire1), Number(base.probaNul), Number(base.probaVictoire2)];
@@ -2463,7 +2569,7 @@ function avecMemoireSurLesSurs(
 
     actifs.push(Number(m.id));
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, undefined, null, undefined, false, 1, occ, corr,
+      s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr,
       { dom: avisMemoire.dom, nul: avisMemoire.nul, ext: avisMemoire.ext, poids }
     );
     pronostics.push(versPronostic(m, r));
@@ -2678,7 +2784,154 @@ function avecOccasionsParLesButs(
     }
 
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, undefined, null, undefined, false, 1, occUtilise, corr, avisDeLaProduction(m)
+      s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occUtilise, corr, avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
+// ── L'AVANTAGE DU TERRAIN, TOUT SIMPLEMENT ─────────────────────
+//
+// LE DÉFAUT QUE CETTE COUCHE VISE, MESURÉ LE 14 SEPTEMBRE 2026
+//
+// Sur le banc corrigé, la justesse du moteur dépend énormément DU CÔTÉ qu'il
+// annonce, à certitude égale :
+//
+//     certitude 75 – 80 %   annonce le club qui reçoit   74,9 % juste
+//     certitude 75 – 80 %   annonce celui qui se déplace  63,2 % juste
+//
+// Onze points d'écart. Et au-dessus de 80 % de certitude, l'annonce à
+// l'extérieur tombe à 59,7 %. C'est la signature exacte d'un avantage du
+// terrain SOUS-ÉVALUÉ : quand le moteur se persuade que le visiteur va
+// gagner, il a bien plus souvent tort que l'inverse.
+//
+// CE QU'ELLE FAIT
+//
+// Rien d'intelligent : elle ajoute `buts` buts attendus au club qui reçoit et
+// les retire au visiteur, sur TOUTES les rencontres. C'est la correction la
+// plus grossière qui soit, et précisément pour cela la plus honnête à mesurer :
+// si l'avantage du terrain était déjà au bon niveau, elle ne peut que perdre.
+//
+// VERDICT DU 14 SEPTEMBRE 2026 : L AVANTAGE DU TERRAIN EST DEJA AU BON NIVEAU.
+//
+//     +0,05 but au club qui recoit    -10 / +46
+//     +0,10                            -9 / +27
+//     +0,15                           -15 / -13
+//     +0,25                           -52 / -51
+//     -0,10                           -28 / -41
+//
+// Le pousser dans un sens comme dans l autre perd des la premiere moitie. La
+// dissymetrie domicile / exterieur mesuree ne vient donc PAS d un avantage du
+// terrain sous-evalue : elle vient de la variance, un club qui recoit etant
+// plus previsible qu un club qui se deplace. Rien a corriger a cet endroit.
+//
+// UN RESULTAT A PART, ET IL MERITE UNE DECISION DU PROPRIETAIRE. Restreinte
+// aux seules rencontres ou le moteur annonce le visiteur avec certitude, la
+// correction ne retourne AUCUN verdict (+0 / +0) mais ameliore fortement le
+// Brier : 0,6841 contre 0,7595 sur la premiere moitie de 390 rencontres. Le
+// moteur est donc bel et bien trop sur de lui la-bas, et la couche le corrige.
+// La porte exige STRICTEMENT plus de vainqueurs justes : elle la refuse par
+// construction, alors que la confiance affichee et le classement des matchs
+// les mieux cernes y gagneraient. A soumettre.
+//
+// `siSurExterieur` la restreint aux rencontres où le moteur annonce le
+// visiteur AVEC certitude — là où le défaut a été mesuré. Zéro la désactive.
+function avecAvantageTerrainPlat(
+  buts: number,
+  siSurExterieur: number,
+  avecMelange: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  // Le mélange déjà en ligne, repris tel quel pour empiler proprement.
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const occasionsDe3 = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    occasionsDe3.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+      d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+      e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+    });
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = occasionsDe3.get(cle);
+    if (o) {
+      const aj = (club: string, produit: number, concede: number) => {
+        const l = passe.get(club);
+        if (l) l.push({ produit, concede });
+        else passe.set(club, [{ produit, concede }]);
+      };
+      aj(String(x.nomDom), o.d, o.e);
+      aj(String(x.nomExt), o.e, o.d);
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    return {
+      attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+      defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+
+    let dom = 0;
+    let ext = 0;
+    if (avecMelange) {
+      const a = elanDe(String(m.nomDom));
+      const b = elanDe(String(m.nomExt));
+      const ligue = ecartDeLigue(Number(m.ligue));
+      dom += (0.2 * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+      ext += (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+    }
+
+    // Restreinte ? Il faut d'abord savoir ce que le moteur dirait sans elle.
+    let concernee = true;
+    if (siSurExterieur > 0) {
+      const avant: any = calculerScoreProbable(
+        s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ,
+        dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext },
+        avisDeLaProduction(m)
+      );
+      const p = [Number(avant.probaVictoire1), Number(avant.probaNul), Number(avant.probaVictoire2)];
+      const somme = p[0] + p[1] + p[2] || 1;
+      const ditExterieur = avant.buts1 < avant.buts2;
+      concernee = ditExterieur && p[2] / somme >= siSurExterieur;
+    }
+
+    if (concernee) {
+      dom += buts;
+      ext -= buts;
+      actifs.push(Number(m.id));
+    }
+
+    const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, corr, avisDeLaProduction(m)
     );
     pronostics.push(versPronostic(m, r));
   }
@@ -2689,6 +2942,16 @@ function avecOccasionsParLesButs(
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
+  if (v.couche?.type === 'avantage-terrain-plat') {
+    const { pronostics, actifs: ids } = avecAvantageTerrainPlat(
+      v.couche.buts,
+      v.couche.siSurExterieur ?? 0,
+      v.couche.avecMelange !== false
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
   if (v.couche?.type === 'occasions-par-les-buts') {
     const { pronostics, actifs: ids } = avecOccasionsParLesButs(
       v.couche.jours,
@@ -2875,7 +3138,7 @@ for (const v of tache.variantes) {
     sortie[v.nom] = entrees.map(({ m, s1, s2, occ }) =>
       versPronostic(
         m,
-        calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avisDeLaProduction(m))
+        calculerScoreProbable(s1, s2, true, false, classementsDe(m), null, undefined, false, 1, occ, null, avisDeLaProduction(m))
       )
     );
   } finally {

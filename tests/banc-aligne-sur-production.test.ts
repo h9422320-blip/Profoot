@@ -37,7 +37,7 @@ test('★ ACQUIS — le moteur de référence du banc inclut la mémoire des clu
   assert.match(s, /const avisDeLaProduction = /, 'Le banc ne connaît plus l’avis de la production.');
   assert.match(
     s,
-    /calculerScoreProbable\(s1, s2, true, false, undefined, null, undefined, false, 1, occ, null, avisDeLaProduction\(m\)\)/,
+    /calculerScoreProbable\(s1, s2, true, false, classementsDe\(m\), null, undefined, false, 1, occ, null, avisDeLaProduction\(m\)\)/,
     'Le moteur de référence doit recevoir l’avis de la mémoire, comme la production depuis le 12 septembre 2026.'
   );
 });
@@ -100,6 +100,39 @@ test('★ ACQUIS — le banc ancre les statistiques comme la production', () => 
     /function referenceAvant\(equipe: number, m: any\) \{\s*\n\s*const liste = parEquipe\.get\(equipe\)/,
     'L’ancre doit lire toutes les compétitions, pas le seul championnat de la rencontre.'
   );
+});
+
+test('★ ACQUIS — le banc passe le classement, comme la production', () => {
+  // Deuxième écart de la même famille que l’ancre, trouvé le 14 septembre 2026.
+  // La production passe à `calculerScoreProbable` le classement des deux clubs
+  // (`{ points, pointsMoyens }`), dont `forceDepuisClassement` tire un
+  // multiplicateur borné à ±15 % sur la force de chaque équipe. Le banc passait
+  // `undefined` : il ignorait jusqu’à trente points d’écart entre un premier et
+  // un dernier de championnat.
+  //
+  // ET LE CHAMPIONNAT LU EST CELUI DU CLUB, JAMAIS CELUI DE LA RENCONTRE.
+  // `t1League` vient de `resoudreChampionnat`, qui ne retient que les
+  // compétitions de type « League ». Pour une Ligue des champions, la
+  // production lit la Liga pour l’un et la Bundesliga pour l’autre, jamais la
+  // table du groupe européen.
+  //
+  // Ce détail décide d’une mise en ligne : classement pris sur la compétition
+  // du MATCH, la couche élan + terrain tombe à +10/−2 et serait retirée à tort ;
+  // pris sur le championnat du CLUB, elle rend +10/+1 et passe la porte.
+  const s = source();
+  assert.ok(
+    !/true, false, undefined/.test(s),
+    'Aucun appel du banc ne doit laisser le classement vide.'
+  );
+  assert.match(
+    s,
+    /const ligue = championnatDuClub\.get\(String\(equipe\)/,
+    'Le classement doit être lu dans le championnat du CLUB, pas dans la compétition de la rencontre.'
+  );
+  // Et sans fuite : la rencontre n’entre dans la table qu’APRÈS avoir été jugée.
+  const i = s.indexOf('classementDe.set(Number(m.id)');
+  const j = s.indexOf('pointsDuClub.set(cd,');
+  assert.ok(i > 0 && j > i, 'Les points de la rencontre doivent être encaissés APRÈS la lecture du classement, sinon le banc connaît le résultat.');
 });
 
 test('★ ACQUIS — le relevé de référence inclut ce que la production connaît', () => {
