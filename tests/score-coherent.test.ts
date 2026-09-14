@@ -113,7 +113,34 @@ test('★ ACQUIS — aucun vainqueur annoncé sans être départagé, sur 4 096 
           //     nul si en tête OU deux victoires à moins de 2 pts   50,27 %
           //
           // Un point de justesse pour deux points d'écart abandonnés.
-          if (r.buts1 !== r.buts2 && Math.abs(r.probaVictoire1 - r.probaVictoire2) < 2) {
+          //
+          // ── ET LE SEUIL PASSE DE DEUX À UN, LE 14 SEPTEMBRE 2026 ─────
+          //
+          // Les chiffres du 5 septembre venaient de 3 467 rencontres et d’un
+          // banc d’essai qui ne reproduisait pas le vrai moteur — il lui
+          // manquait l’ancre des douze derniers matchs, le classement, les
+          // forces ajustées à l’adversaire et le croisement entre
+          // championnats. Les cinq écarts corrigés, la question a été reposée
+          // sur 17 985 rencontres, chacune rejouée avec les seules données de
+          // la veille :
+          //
+          //     seuil à 4 points ... −15 / −46 vainqueurs justes
+          //     seuil à 3 points .... −8 / −22
+          //     seuil à 2 points .... référence
+          //     seuil à 1 point ..... +7 / +22   ← retenu
+          //
+          // Une pente, pas un réglage chanceux. Sur les 462 rencontres
+          // concernées, le nul annoncé était juste 27,5 % du temps, le favori
+          // l’est 37,2 %. Décision du propriétaire, chiffres en main.
+          //
+          // L’EXIGENCE, ELLE, N’A PAS BOUGÉ D’UN POUCE. Les probabilités sont
+          // arrondìes à l’entier : un seuil d’un point interdit toujours
+          // d’annoncer un vainqueur que le calcul n’a PAS départagé — il
+          // exige seulement que « non départagé » veuille dire « strictement
+          // égaux ». Le défaut fondateur, « Real Betis 2-1 Real Madrid » sur
+          // 36/28/36, reste impossible, et le test au-dessus le vérifie sur
+          // deux équipes rigoureusement identiques.
+          if (r.buts1 !== r.buts2 && Math.abs(r.probaVictoire1 - r.probaVictoire2) < 1) {
             incoherents++;
             if (!pireCas) {
               pireCas = `${r.buts1}-${r.buts2} avec ${r.probaVictoire1}/${r.probaNul}/${r.probaVictoire2}`;

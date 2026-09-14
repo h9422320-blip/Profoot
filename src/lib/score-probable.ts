@@ -1764,8 +1764,51 @@ export function calculerScoreProbable(
    *
    * Le dernier gagne neuf centièmes de plus, et abandonne le principe. On
    * garde le principe.
+   *
+   * ── LE SEUIL PASSE DE DEUX POINTS À UN, LE 14 SEPTEMBRE 2026 ───────
+   *
+   * POURQUOI LA QUESTION EST REPOSÉE. Les chiffres ci-dessus datent du
+   * 5 septembre et viennent de 3 467 rencontres. Depuis, le banc d’essai a
+   * été aligné sur la production en cinq points — l’ancre des douze derniers
+   * matchs, le classement, les forces ajustées à l’adversaire, le croisement
+   * entre championnats, et la lecture des réglages. Il reproduit enfin le
+   * vrai moteur, sur 17 985 rencontres au lieu de 3 467.
+   *
+   * CE QUE LA MESURE DONNE, sur le moteur RÉELLEMENT en ligne, chaque
+   * rencontre rejouée avec les seules données de la veille :
+   *
+   *     seuil à 4 points ....... −15 / −46 vainqueurs justes
+   *     seuil à 3 points ........ −8 / −22
+   *     seuil à 2 points ........ référence
+   *     seuil à 1 point ......... +7 / +22   ← retenu
+   *     nul seulement s’il est en tête ... +7 / +22 (identique)
+   *
+   * Cinq réglages, une progression parfaitement monotone : chaque point
+   * d’écart abandonné au nul coûte des vainqueurs justes. Ce n’est pas un
+   * réglage chanceux, c’est une pente.
+   *
+   * SUR LES 462 RENCONTRES CONCERNÉES : le nul annoncé y était juste 27,5 %
+   * du temps, le favori l’est 37,2 %.
+   *
+   * CE QUI NE BOUGE PAS. Les probabilités sont INCHANGÉES — seul le score
+   * annoncé change. Le Brier et la justesse des matchs mis en avant sont donc
+   * identiques au centième près (63,3 % et 71,3 %). On ne troque rien.
+   *
+   * ET LE PRINCIPE DU 3 SEPTEMBRE EST GARDÉ, dans sa forme littérale. Les
+   * probabilités étant arrondies à l’entier, un seuil d’un point veut dire :
+   * le nul reste annoncé quand les deux victoires sont STRICTEMENT ÉGALES.
+   * « Real Betis 2-1 Real Madrid » sur 36/28/36 reste donc impossible. Ce qui
+   * disparaît, c’est la bande de deux points où un signal existait et où on le
+   * jetait.
+   *
+   * UNE RÉSERVE, DITE HONNÊTEMENT. Découpé en trois tranches de temps plutôt
+   * qu’en deux, le changement rend −5 / +19 / +15 : la première tranche perd
+   * cinq vainqueurs. La porte, elle, exige les deux moitiés et les obtient
+   * (+7 / +22). La monotonie des cinq réglages tranche en faveur du signal.
+   *
+   * Décision du propriétaire, le 14 septembre 2026, chiffres en main.
    */
-  const ECART_NON_DEPARTAGE = Number(process.env.BANC_ECART_NUL) || 2;
+  const ECART_NON_DEPARTAGE = Number(process.env.BANC_ECART_NUL) || 1;
   const vraimentAegalite = Math.abs(pv1 - pv2) < ECART_NON_DEPARTAGE;
 
   const issueVisee: 'victoire1' | 'nul' | 'victoire2' =

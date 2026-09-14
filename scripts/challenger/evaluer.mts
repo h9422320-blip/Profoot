@@ -3085,7 +3085,35 @@ function avecAvantageTerrainPlat(
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
-for (const v of tache.variantes) {
+// ── L'ENVIRONNEMENT VAUT POUR TOUTES LES VARIANTES, COUCHE OU PAS ─────
+//
+// Défaut trouvé le 14 septembre 2026 : `v.env` n'était posé qu'à la toute fin
+// de la boucle, APRÈS tous les `continue` du dispatch. Une variante portant à
+// la fois une couche et un réglage voyait donc son réglage ignoré, EN SILENCE.
+//
+// Impossible, dans ces conditions, de mesurer un réglage du moteur sur le
+// moteur RÉELLEMENT EN LIGNE — il aurait fallu le mesurer sur le moteur nu, ce
+// qui n'est pas la même chose. Il est désormais posé avant, et rendu après,
+// quoi que fasse la variante.
+function avecEnvironnement<T>(env: Record<string, string>, faire: () => T): T {
+  const avant: Record<string, string | undefined> = {};
+  for (const [k, val] of Object.entries(env ?? {})) {
+    avant[k] = process.env[k];
+    process.env[k] = val;
+  }
+  try {
+    return faire();
+  } finally {
+    for (const [k, val] of Object.entries(avant)) {
+      if (val === undefined) delete process.env[k];
+      else process.env[k] = val;
+    }
+  }
+}
+
+for (const vBrute of tache.variantes) {
+  const v = vBrute;
+  avecEnvironnement(v.env, () => {
   if (v.couche?.type === 'avantage-terrain-plat') {
     const { pronostics, actifs: ids } = avecAvantageTerrainPlat(
       v.couche.buts,
@@ -3096,7 +3124,7 @@ for (const v of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'occasions-par-les-buts') {
     const { pronostics, actifs: ids } = avecOccasionsParLesButs(
@@ -3107,7 +3135,7 @@ for (const v of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'memoire-sur-les-surs') {
     const { pronostics, actifs: ids } = avecMemoireSurLesSurs(
@@ -3117,13 +3145,13 @@ for (const v of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'vrai-xg') {
     const { pronostics, actifs: ids } = avecVraiXg(v.couche.avecMelange !== false);
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'qualite-occasions') {
     const { pronostics, actifs: ids } = avecQualiteOccasions(
@@ -3133,7 +3161,7 @@ for (const v of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'force-adversaire') {
     const { pronostics, actifs: ids } = avecForceAdversaire(
@@ -3143,7 +3171,7 @@ for (const v of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'elan-large') {
     const { pronostics, actifs: ids } = avecElanLarge(
@@ -3153,7 +3181,7 @@ for (const v of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'repos') {
     const { pronostics, actifs: ids } = avecRepos(
@@ -3163,29 +3191,29 @@ for (const v of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'nul-serre') {
     const { pronostics, actifs: ids } = avecNulSerre(v.couche.ecartMax, v.couche.rangMinimumDuNul ?? 2);
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
-    continue;
+    return;
   }
   if (v.couche?.type === 'memoire-releve-mince') {
     const { pronostics, actifs: ids } = avecMemoireReleveMince(v.couche.echelle, v.couche.seuil, v.couche.partMax);
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'memoire-terrain-ligue') {
     const { pronostics, actifs: ids } = avecMemoireTerrainLigue(v.couche.echelle, v.couche.parPoint);
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'memoire-nul-variable') {
     const { pronostics, actifs: ids } = avecMemoireNulVariable(
@@ -3196,7 +3224,7 @@ for (const v of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'memoire-poids-variable') {
     const { pronostics, actifs: ids } = avecMemoirePoidsVariable(
@@ -3207,92 +3235,81 @@ for (const v of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'forces-globales') {
     const { pronostics, actifs: ids } = avecForcesGlobales(v.couche.pas, v.couche.rappel, v.couche.minimum, v.couche.repartitionMemoire);
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'demi-vue-memoire') {
     const { pronostics, actifs: ids } = avecDemiVueMemoire(v.couche.echelle, v.couche.force);
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'memoire-ancree') {
     const { pronostics, actifs: ids } = avecMemoireAncree(v.couche.k, v.couche.poids, v.couche.echelle);
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'tirs-elargis') {
     const { pronostics, actifs: ids } = avecTirsElargis();
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'demi-vue') {
     const { pronostics, actifs: ids } = avecDemiVue();
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'memoire') {
     const { pronostics, actifs: ids } = avecMemoire(v.couche.k, v.couche.poids);
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
-    continue;
+    return;
   }
   if (v.couche?.type === 'melange') {
     sortie[v.nom] = avecMelange(v.couche);
-    continue;
+    return;
   }
   if (v.couche?.type === 'terrain-ligue') {
     sortie[v.nom] = avecTerrainLigue(v.couche.retrecissement, v.couche.poids);
-    continue;
+    return;
   }
   if (v.couche?.type === 'elan') {
     sortie[v.nom] = avecElan(v.couche.court, v.couche.long, v.couche.poids);
-    continue;
+    return;
   }
   if (v.couche?.type === 'duel') {
     sortie[v.nom] = avecDuel(v.couche.retrecissement, v.couche.poids);
-    continue;
+    return;
   }
   if (v.couche?.type === 'terrain') {
     sortie[v.nom] = avecTerrain(v.couche.retrecissement, v.couche.poids);
-    continue;
+    return;
   }
   if (v.couche?.type === 'elo') {
     sortie[v.nom] = avecElo(v.couche.k, v.couche.poids);
-    continue;
+    return;
   }
   if (v.couche?.type === 'marche') {
     const r = avecMarche(v.couche.poids);
     sortie[v.nom] = r.pronostics;
     actifs[v.nom] = r.actifs;
-    continue;
+    return;
   }
-  const avant: Record<string, string | undefined> = {};
-  for (const [k, val] of Object.entries(v.env)) {
-    avant[k] = process.env[k];
-    process.env[k] = val;
-  }
-  try {
     sortie[v.nom] = entrees.map(({ m, s1, s2, occ }) =>
       versPronostic(
         m,
         calculerScoreProbable(s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, null, avisDeLaProduction(m))
       )
     );
-  } finally {
-    for (const [k, val] of Object.entries(avant)) {
-      if (val === undefined) delete process.env[k];
-      else process.env[k] = val;
-    }
-  }
+  });
 }
 
 // ── CE QUE LE MOTEUR AVAIT SOUS LA MAIN, RENCONTRE PAR RENCONTRE ─────
