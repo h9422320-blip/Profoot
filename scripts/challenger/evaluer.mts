@@ -60,7 +60,8 @@ type Couche =
   | { type: 'repos'; poids: number; plafondJours: number; avecElanEtTerrain?: boolean }
   | { type: 'elan-large'; partElan: number; partTerrain: number; surLesButs: boolean }
   | { type: 'force-adversaire'; poids: number; retrecissement: number; avecMelange?: boolean }
-  | { type: 'qualite-occasions'; poids: number; minimum: number; avecMelange?: boolean };
+  | { type: 'qualite-occasions'; poids: number; minimum: number; avecMelange?: boolean }
+  | { type: 'vrai-xg'; avecMelange?: boolean };
 
 chargerEnv();
 const tache: {
@@ -135,10 +136,55 @@ function construireReleve(jour: string, avecLesQuatre: boolean) {
   const liste = tirs
     .filter((t) => t.date >= fin - 240 * 86_400_000 && t.date < fin)
     .filter((t) => avecLesQuatre || !NOMS_EN_PLUS.has(String(t.ligue)))
-    .map((t) => ({ ...t }));
+    // Le vrai xG est RETIRE du releve de reference : sinon le champion en
+    // profiterait lui aussi, et la comparaison ne comparerait plus rien.
+    // Constate le 14 septembre 2026 — les deux cotes rendaient +0 / +0.
+    .map((t) => { const c = { ...t }; delete (c as any).xgD; delete (c as any).xgE; return c; });
   // Comme en production : rien sous cent rencontres.
   return liste.length >= 100 ? forcesDepuisRencontres(liste as any, undefined, new Date(fin).toISOString()) : null;
 }
+// ── LE RELEVÉ BÂTI SUR LE VRAI xG ───────────────────────────────────────
+//
+// Le relevé de référence estime les occasions avec la recette maison : tant
+// de buts par tir cadré, tant par tir dans la surface, les deux taux
+// recalculés à chaque relevé sur la matière du moment.
+//
+// Celui-ci passe le VRAI xG du fournisseur quand les deux camps en ont un —
+// 72 % des rencontres relevées. `forcesDepuisRencontres` s'en sert alors à la
+// place de la recette, et retombe dessus partout ailleurs. Tout le reste du
+// calcul est rigoureusement identique : seule la mesure du danger change.
+const relevesXg = new Map<string, any>();
+// VERDICT DU 14 SEPTEMBRE 2026 : LE VRAI xG NE VAUT PAS MIEUX.
+//
+// Mesure sur 3 807 rencontres, contre le moteur en ligne : +0 vainqueur juste
+// sur la premiere moitie et -13 sur la seconde avec le melange, -7 / -5 sans.
+// La recette maison — tant de buts par tir cadre, tant par tir dans la
+// surface, les deux taux RECALCULES a chaque releve sur la matiere du moment —
+// fait aussi bien ou mieux que la mesure du fournisseur.
+//
+// Deux explications tiennent : la recette est calibree sur NOS donnees et nos
+// taux de buts, la ou le xG du fournisseur vient d ailleurs ; et il ne couvre
+// que 72 % des rencontres, si bien que le releve melange deux echelles — ce
+// qui nuit a la comparaison entre deux clubs au sein du meme releve.
+//
+// Le chemin xG a donc ete RETIRE de forme-occasions.ts : la production ne
+// porte pas de code mort. Il reste ici, mesure et date, pour qui y repensera.
+// Le champ est collecte par donnees.mts et coute zero appel : si un jour la
+// couverture atteint 100 %, l essai se refait en une commande.
+function releveXgLaVeille(jour: string) {
+  if (relevesXg.has(jour)) return relevesXg.get(jour);
+  const fin = Date.parse(jour + "T00:00:00Z");
+  const liste = tirs
+    .filter((t) => t.date >= fin - 240 * 86_400_000 && t.date < fin)
+    .filter((t) => !NOMS_EN_PLUS.has(String(t.ligue)))
+    .map((t) => ({ ...t }));
+  const r = liste.length >= 100
+    ? forcesDepuisRencontres(liste as any, undefined, new Date(fin).toISOString())
+    : null;
+  relevesXg.set(jour, r);
+  return r;
+}
+
 function releveLaVeille(jour: string) {
   if (releves.has(jour)) return releves.get(jour);
   // `false` : le relevé de référence ne connaît QUE ce que la production
@@ -2166,10 +2212,100 @@ function avecQualiteOccasions(
   return { pronostics, actifs };
 }
 
+// ── LE MOTEUR, MAIS SUR LE VRAI xG ─────────────────────────────────────
+//
+// Rien d'ajouté, rien de corrigé : on remplace la mesure du danger à la
+// racine et on rejoue le moteur tel quel. C'est la seule façon de savoir si
+// la recette maison valait mieux ou moins bien que la mesure du
+// fournisseur.
+function avecVraiXg(avecMelange: boolean): { pronostics: Pronostic[]; actifs: number[] } {
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const occasionsDe2 = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    occasionsDe2.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+      d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+      e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+    });
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = occasionsDe2.get(cle);
+    if (o) {
+      const aj = (club: string, produit: number, concede: number) => {
+        const l = passe.get(club);
+        if (l) l.push({ produit, concede });
+        else passe.set(club, [{ produit, concede }]);
+      };
+      aj(String(x.nomDom), o.d, o.e);
+      aj(String(x.nomExt), o.e, o.d);
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    return {
+      attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+      defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    // LE seul changement : le relevé des occasions vient du vrai xG.
+    const occXg = butsAttendusOccasions(releveXgLaVeille(jour), m.nomDom, m.nomExt);
+    if (occXg) actifs.push(Number(m.id));
+
+    let corr: { domicile: number; exterieur: number } | null = null;
+    if (avecMelange) {
+      const a = elanDe(String(m.nomDom));
+      const b = elanDe(String(m.nomExt));
+      const ligue = ecartDeLigue(Number(m.ligue));
+      const dom = (0.2 * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+      const ext = (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+      corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    }
+
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, undefined, null, undefined, false, 1, occXg, corr, avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
+  if (v.couche?.type === 'vrai-xg') {
+    const { pronostics, actifs: ids } = avecVraiXg(v.couche.avecMelange !== false);
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
   if (v.couche?.type === 'qualite-occasions') {
     const { pronostics, actifs: ids } = avecQualiteOccasions(
       v.couche.poids,
