@@ -37,7 +37,7 @@ test('★ ACQUIS — le moteur de référence du banc inclut la mémoire des clu
   assert.match(s, /const avisDeLaProduction = /, 'Le banc ne connaît plus l’avis de la production.');
   assert.match(
     s,
-    /calculerScoreProbable\(s1, s2, true, false, classementsDe\(m\), forcesDe\(m\), undefined, false, 1, occ, null, avisDeLaProduction\(m\)\)/,
+    /calculerScoreProbable\(s1, s2, true, false, classementsDe\(m\), forcesDe\(m\), undefined, croisePour\(m\), rapportPour\(m\), occ, null, avisDeLaProduction\(m\)\)/,
     'Le moteur de référence doit recevoir l’avis de la mémoire, comme la production depuis le 12 septembre 2026.'
   );
 });
@@ -163,6 +163,27 @@ test('★ ACQUIS — le banc ajuste les forces à l’adversaire, comme la produ
     s,
     /\.filter\(\(x\) => Date\.parse\(x\.date\) < limite\)/,
     'Les forces ne doivent être bâties que sur ce qui précède la limite, sinon le banc connaît l’avenir.'
+  );
+});
+
+test('★ ACQUIS — le banc connaît les rencontres entre championnats', () => {
+  // Quatrième et cinquième écarts, trouvés le 14 septembre 2026 en comparant
+  // les douze arguments de `calculerScoreProbable` un à un.
+  //
+  // La production passe `comparaisonCroisee` (les deux clubs jouent-ils dans
+  // le même championnat ?) et `rapportEntreChampionnats` (ce que vaut celui de
+  // l'un face à celui de l'autre, mesuré sur 34 101 rencontres). Le banc
+  // passait `false` et `1` : pour lui, une finale de Ligue des champions était
+  // un match de championnat entre deux pays équivalents.
+  const s = source();
+  assert.ok(
+    !/undefined, false, 1,/.test(s),
+    'Aucun appel du banc ne doit supposer deux championnats équivalents.'
+  );
+  assert.match(
+    s,
+    /rapportEntreChampionnats\(hierarchie as any, ligueDuClubPour\(m, Number\(m\.dom\)\), ligueDuClubPour\(m, Number\(m\.ext\)\)\)/,
+    'Le rapport doit se lire entre les championnats des deux CLUBS, comme `t1League` et `t2League` en production.'
   );
 });
 
