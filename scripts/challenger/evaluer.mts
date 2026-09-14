@@ -64,7 +64,7 @@ type Couche =
   | { type: 'vrai-xg'; avecMelange?: boolean }
   | { type: 'memoire-sur-les-surs'; seuil: number; poids: number; avecMelange?: boolean }
   | { type: 'occasions-par-les-buts'; jours: number; saisonMaigre?: number; minimumClub?: number; avecMelange?: boolean }
-  | { type: 'avantage-terrain-plat'; buts: number; siSurExterieur?: number; avecMelange?: boolean };
+  | { type: 'avantage-terrain-plat'; buts: number; siSurExterieur?: number; siSaisonMaigre?: number; siRienDeVu?: boolean; avecMelange?: boolean };
 
 chargerEnv();
 const tache: {
@@ -2944,6 +2944,8 @@ function avecOccasionsParLesButs(
 function avecAvantageTerrainPlat(
   buts: number,
   siSurExterieur: number,
+  siSaisonMaigre: number,
+  siRienDeVu: boolean,
   avecMelange: boolean
 ): { pronostics: Pronostic[]; actifs: number[] } {
   // Le mélange déjà en ligne, repris tel quel pour empiler proprement.
@@ -3013,8 +3015,46 @@ function avecAvantageTerrainPlat(
       ext += (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
     }
 
+    // ── QUAND LA MATIÈRE EST MINCE, LE TERRAIN EST TOUT CE QUI RESTE ───
+    //
+    // Mesuré le 14 septembre 2026 sur le banc aligné, par épaisseur de saison
+    // du club le moins vu des deux :
+    //
+    //     plus de 20 rencontres   18,0 % mises en avant   72,3 % justes
+    //     3 à 5 rencontres        32,3 % mises en avant   60,6 % justes
+    //     moins de 3 rencontres   30,8 % mises en avant   59,2 % justes
+    //
+    // Le moteur est donc LE PLUS SÛR DE LUI là où il est LE MOINS fiable. Et
+    // sur tout le banc, il a raison 53,4 % du temps quand il annonce le club
+    // qui reçoit, contre 48,9 % quand il annonce le visiteur.
+    //
+    // D'où l'hypothèse : sur matière mince, s'appuyer plus fort sur la seule
+    // chose qui reste vraie — le terrain.
+    //
+    // `siRienDeVu` vise la tranche la pire de toutes : ni relèvement de tirs,
+    // ni forces ajustées à l’adversaire. 796 rencontres, 46,6 % de justesse, et
+    // 33,4 % d'entre elles mises en avant pour 49,6 % de justesse — le pile ou
+    // face, présenté comme une certitude.
+    // VERDICT DU 14 SEPTEMBRE 2026 : L HYPOTHESE EST FAUSSE.
+    //
+    //     saison < 6, terrain +0,10   +18 / -22
+    //     saison < 6, terrain +0,20   +14 / -21
+    //     saison < 11, terrain +0,20  +23 / -35
+    //     saison < 11, terrain +0,35  +25 / -55
+    //     ni tirs ni forces, +0,20     +1 /  -7
+    //
+    // Toutes gagnent sur la premiere moitie et perdent sur la seconde, sans
+    // exception. L avantage du terrain a donc change de valeur entre les deux
+    // periodes : ce n est pas une regularite, c est une epoque. Rien a prendre.
+    //
     // Restreinte ? Il faut d'abord savoir ce que le moteur dirait sans elle.
     let concernee = true;
+    if (siSaisonMaigre > 0) {
+      const brut1 = statsAvant(Number(m.dom), m);
+      const brut2 = statsAvant(Number(m.ext), m);
+      concernee = Math.min(Number(brut1.matchsJoues), Number(brut2.matchsJoues)) < siSaisonMaigre;
+    }
+    if (concernee && siRienDeVu) concernee = !occ && !forcesDe(m);
     if (siSurExterieur > 0) {
       const avant: any = calculerScoreProbable(
         s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ,
@@ -3050,6 +3090,8 @@ for (const v of tache.variantes) {
     const { pronostics, actifs: ids } = avecAvantageTerrainPlat(
       v.couche.buts,
       v.couche.siSurExterieur ?? 0,
+      v.couche.siSaisonMaigre ?? 0,
+      v.couche.siRienDeVu === true,
       v.couche.avecMelange !== false
     );
     sortie[v.nom] = pronostics;
@@ -3253,7 +3295,30 @@ for (const v of tache.variantes) {
   }
 }
 
-fs.writeFileSync(tache.sortie, JSON.stringify({ matchs: entrees.length, variantes: sortie, actifs }));
+// ── CE QUE LE MOTEUR AVAIT SOUS LA MAIN, RENCONTRE PAR RENCONTRE ─────
+//
+// Sans cela, on mesure la justesse SANS jamais savoir pourquoi elle varie. Un
+// relevé par tranche — avec ou sans occasions, avec ou sans forces ajustées,
+// tôt ou tard dans la saison — dit où le moteur est aveugle, et c'est là que
+// les couches ont une chance de servir.
+//
+// Quatre faits par rencontre, tous connus AVANT le coup d’envoi :
+//   occ     le relèvement des tirs voyait-il les deux clubs ?
+//   forces  la production aurait-elle basculé sur les forces ajustées ?
+//   avis    la mémoire des clubs avait-elle son mot à dire ?
+//   joues   combien de rencontres le moins vu des deux clubs avait joué.
+const contexte: Record<string, [number, number, number, number]> = {};
+for (const { m, occ } of entrees) {
+  const brut1 = statsAvant(Number(m.dom), m);
+  const brut2 = statsAvant(Number(m.ext), m);
+  contexte[String(m.id)] = [
+    occ ? 1 : 0,
+    forcesDe(m) ? 1 : 0,
+    avisDeLaProduction(m) ? 1 : 0,
+    Math.min(Number(brut1.matchsJoues), Number(brut2.matchsJoues)),
+  ];
+}
+fs.writeFileSync(tache.sortie, JSON.stringify({ matchs: entrees.length, variantes: sortie, actifs, contexte }));
 console.log(
   `  évaluation terminée : ${entrees.length} matchs, ${tache.variantes.length} essai(s), ${releves.size} relevés reconstruits, ` +
     `${Object.keys(cotes).length} rencontres cotées disponibles`
