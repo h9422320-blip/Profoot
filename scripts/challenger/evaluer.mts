@@ -55,7 +55,8 @@ type Couche =
   | { type: 'memoire-poids-variable'; echelle: number; base: number; haut: number; seuil: number }
   | { type: 'memoire-nul-variable'; echelle: number; nulEgal: number; nulEcarte: number; ecartPlein: number }
   | { type: 'memoire-terrain-ligue'; echelle: number; parPoint: number }
-  | { type: 'memoire-releve-mince'; echelle: number; seuil: number; partMax: number };
+  | { type: 'memoire-releve-mince'; echelle: number; seuil: number; partMax: number }
+  | { type: 'nul-serre'; ecartMax: number; rangMinimumDuNul?: number };
 
 chargerEnv();
 const tache: {
@@ -196,6 +197,23 @@ const versPronostic = (m: any, r: any): Pronostic => {
     probas: [p[0] / somme, p[1] / somme, p[2] / somme],
   };
 };
+
+// ── LE MOTEUR ACTUEL, REJOUÉ UNE SEULE FOIS ─────────────────────────────
+//
+// Les couches de DÉCISION ne refont pas le calcul : elles relisent la sortie
+// du champion et ne changent que ce qui doit changer. Une seule passe suffit
+// donc, et le résultat est rigoureusement comparable.
+let champBase: Pronostic[] | null = null;
+function championDeBase(): Pronostic[] {
+  if (champBase) return champBase;
+  const out: Pronostic[] = [];
+  for (const { m, s1, s2, occ } of entrees) {
+    const r: any = calculerScoreProbable(s1, s2, true, false, undefined, null, undefined, false, 1, occ);
+    out.push(versPronostic(m, r));
+  }
+  champBase = out;
+  return out;
+}
 
 // ── LES BUTS ATTENDUS DU MOTEUR ACTUEL, DONT LA COUCHE DES ERREURS APPREND ──
 let attendus: Map<number, { a1: number; a2: number }> | null = null;
@@ -1558,10 +1576,62 @@ function avecMemoireReleveMince(
   return { pronostics, actifs };
 }
 
+// ── LA COUCHE DU NUL SERRÉ ───────────────────────────────────────────────
+//
+// CE QU'ELLE RÉPARE, MESURÉ SUR UNE JOURNÉE ENTIÈRE
+//
+// Le 13 septembre 2026 : 70 rencontres analysées, 50 % de vainqueurs justes.
+// Mais la moyenne mélange deux produits. Découpée par écart entre la
+// première et la deuxième issue, la journée donne 27 % sur les matchs
+// serrés (écart < 10 points) et 71 % sur les matchs tranchés (écart ≥ 40).
+//
+// Et surtout : QUINZE rencontres ont fini sur un nul, le moteur en a eu
+// ZÉRO. C'est 42 % de tous les ratés de la journée, pour une seule cause.
+//
+// CE QU'ELLE FAIT, ET CE QU'ELLE NE FAIT PAS
+//
+// Elle ne touche NI aux buts attendus, NI aux probabilités, NI au modèle.
+// Le calcul reste identique au champion, à la virgule près. Elle ne change
+// que L'ISSUE ANNONCÉE, et seulement quand le moteur lui-même dit qu'il ne
+// départage pas : quand la première et la deuxième issue sont séparées de
+// moins de `ecartMax` points, le score annoncé devient un nul.
+//
+// C'est volontairement une couche de DÉCISION, pas de calcul. Forcer plus de
+// nuls dans les probabilités a déjà été essayé et a fait baisser la justesse
+// de plus d'un point (voir CORRECTION_PETITS_SCORES dans score-probable.ts).
+// Ce qui est testé ici est autre chose : quand deux issues sont à égalité,
+// jouer celle qui arrive le plus souvent dans le football plutôt que de
+// tirer à pile ou face entre les deux autres.
+//
+// `rangMinimumDuNul` restreint encore : à 2, la couche ne bascule que si le
+// nul est déjà dans les deux premières issues. À 3, elle bascule dès que le
+// match est serré, même si le nul arrive dernier — l'essai le dira.
+function avecNulSerre(ecartMax: number, rangMinimumDuNul: number): { pronostics: Pronostic[]; actifs: number[] } {
+  const base = championDeBase();
+  const actifs: number[] = [];
+  const pronostics = base.map((p) => {
+    const tri = [...p.probas].sort((a, b) => b - a);
+    const ecart = (tri[0] - tri[1]) * 100;
+    const rangDuNul = [...p.probas].sort((a, b) => b - a).indexOf(p.probas[1]) + 1;
+    if (ecart >= ecartMax || rangDuNul > rangMinimumDuNul) return p;
+    actifs.push(p.id);
+    // Seule l'issue annoncée change. Les probabilités restent celles du
+    // moteur : le Brier de la porte juge donc exactement le même calcul.
+    return { ...p, parScore: 1 as const };
+  });
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
 for (const v of tache.variantes) {
+  if (v.couche?.type === 'nul-serre') {
+    const { pronostics, actifs: ids } = avecNulSerre(v.couche.ecartMax, v.couche.rangMinimumDuNul ?? 2);
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    continue;
+  }
   if (v.couche?.type === 'erreurs-clubs') {
     sortie[v.nom] = avecErreurs(v.couche.retrecissement, v.couche.poids);
     continue;

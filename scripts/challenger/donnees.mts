@@ -61,8 +61,46 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
     }
   }
   const rencontres = [...parId.values()].sort((a, b) => a.date.localeCompare(b.date));
-  fs.writeFileSync(FICHIER_RENCONTRES, JSON.stringify(rencontres));
-  journal(`${rencontres.length} rencontres terminées rangées`);
+
+  // ── UNE COLLECTE RATÉE NE DOIT JAMAIS DÉTRUIRE LA PRÉCÉDENTE ────────────
+  //
+  // Le 14 septembre 2026 à 11 h 03, le réseau a lâché pendant la collecte. Les
+  // soixante-deux compétitions ont toutes répondu « fetch failed », la boucle
+  // a fini proprement avec une liste VIDE — et cette ligne a écrit « [] »
+  // par-dessus le fichier de travail. Deux octets à la place de plusieurs
+  // mégaoctets.
+  //
+  // Le rapport du matin annonçait pourtant : « le rejeu porte sur les fichiers
+  // de la dernière fois ». C'était faux. Il n'y avait plus de fichier, et la
+  // nuit s'est arrêtée sur « aucun match évaluable ». Le banc d'essai — la
+  // seule machine capable de prouver qu'une amélioration du moteur en est une
+  // — était aveugle, et rien ne le disait clairement.
+  //
+  // Règle : on n'écrase QUE si la nouvelle collecte est au moins aussi
+  // fournie que l'ancienne, à un dixième près. Un jour sans réseau laisse
+  // donc les données intactes ; le rejeu tourne sur des données d'hier, ce qui
+  // est exactement ce que le rapport promettait.
+  const ancien = (() => {
+    try {
+      const v = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
+      return Array.isArray(v) ? v.length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  const collecteSuspecte = rencontres.length < ancien * 0.9;
+
+  if (collecteSuspecte) {
+    journal(
+      `COLLECTE REFUSÉE : ${rencontres.length} rencontres contre ${ancien} déjà rangées. ` +
+        `Les données précédentes sont CONSERVÉES — le rejeu portera sur elles. ` +
+        `Cause probable : coupure réseau pendant la collecte.`
+    );
+  } else {
+    fs.writeFileSync(FICHIER_RENCONTRES, JSON.stringify(rencontres));
+    journal(`${rencontres.length} rencontres terminées rangées`);
+  }
 
   // ── LA MÉMOIRE DE TOUS LES CLUBS, RANGÉE POUR LA PRODUCTION ──────────────
   //
@@ -74,14 +112,37 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   //
   // Le moteur ne s'en sert que là où il est aveugle : un club hors des sept
   // grands championnats, donc sans tirs. Voir `src/lib/memoire-clubs.ts`.
-  try {
+  // ── ET SURTOUT : NE JAMAIS RANGER UNE MÉMOIRE BÂTIE SUR DU VIDE ────────
+  //
+  // Cette mémoire-là part en PRODUCTION : c'est elle que le moteur consulte
+  // pour les clubs hors des sept grands championnats. Le 14 septembre 2026, la
+  // collecte a rendu zéro rencontre après une coupure réseau — et sans ce
+  // garde-fou, une mémoire vide serait partie écraser celle qui sert aux
+  // abonnés. Le banc d'essai aveugle, c'est ennuyeux ; le moteur en ligne
+  // amnésique, c'est une panne visible par tout le monde.
+  //
+  // On repart donc du FICHIER quand la collecte du jour est refusée.
+  const pourLaMemoire = collecteSuspecte
+    ? (() => {
+        try {
+          const v = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
+          return Array.isArray(v) ? v : [];
+        } catch {
+          return [];
+        }
+      })()
+    : rencontres;
+
+  if (!pourLaMemoire.length) {
+    journal('mémoire des clubs NON rangée : aucune rencontre disponible, celle en ligne est conservée.');
+  } else try {
     const { calculerMemoireClubs, rangerMemoireClubs } = await import('../../src/lib/memoire-clubs.js');
     // La hiérarchie MESURÉE des championnats ancre chaque club sur le niveau
     // réel de son pays : sans elle, le champion d'un petit championnat passe
     // devant Manchester United (constaté le 12 septembre 2026).
     const { lireForcesChampionnats } = await import('../../src/lib/forces-championnats.js');
     const hierarchie = await lireForcesChampionnats();
-    const memoire = calculerMemoireClubs(rencontres as any, { coefficients: hierarchie?.coefficients ?? null });
+    const memoire = calculerMemoireClubs(pourLaMemoire as any, { coefficients: hierarchie?.coefficients ?? null });
     await rangerMemoireClubs(memoire);
     journal(`mémoire des clubs rangée : ${memoire.clubs} clubs sur ${memoire.rencontres} rencontres`);
   } catch (e: any) {
