@@ -37,7 +37,7 @@ test('★ ACQUIS — le moteur de référence du banc inclut la mémoire des clu
   assert.match(s, /const avisDeLaProduction = /, 'Le banc ne connaît plus l’avis de la production.');
   assert.match(
     s,
-    /calculerScoreProbable\(s1, s2, true, false, classementsDe\(m\), null, undefined, false, 1, occ, null, avisDeLaProduction\(m\)\)/,
+    /calculerScoreProbable\(s1, s2, true, false, classementsDe\(m\), forcesDe\(m\), undefined, false, 1, occ, null, avisDeLaProduction\(m\)\)/,
     'Le moteur de référence doit recevoir l’avis de la mémoire, comme la production depuis le 12 septembre 2026.'
   );
 });
@@ -133,6 +133,37 @@ test('★ ACQUIS — le banc passe le classement, comme la production', () => {
   const i = s.indexOf('classementDe.set(Number(m.id)');
   const j = s.indexOf('pointsDuClub.set(cd,');
   assert.ok(i > 0 && j > i, 'Les points de la rencontre doivent être encaissés APRÈS la lecture du classement, sinon le banc connaît le résultat.');
+});
+
+test('★ ACQUIS — le banc ajuste les forces à l’adversaire, comme la production', () => {
+  // Troisième écart de la même famille, trouvé le 14 septembre 2026.
+  //
+  // La production appelle `lireForcesLigue(ligue, saison)` et, quand le
+  // résultat est fiable pour les DEUX clubs, passe ces forces à
+  // `calculerScoreProbable`, où elles REMPLACENT les moyennes brutes. Une
+  // force d’attaque et de défense par club, corrigée de la force des
+  // adversaires réellement rencontrés, avec la saison précédente pour socle.
+  // Le banc passait `null` : il ignorait tout un moteur.
+  //
+  // Ce que cet oubli a coûté : la couche `force-adversaire` du 14 septembre
+  // essayait exactement cela, et perdait — elle perdait parce que la
+  // production le faisait déjà, en mieux.
+  const s = source();
+  assert.ok(
+    !/classementsDe\(m\), null,/.test(s),
+    'Aucun appel du banc ne doit laisser les forces ajustées à `null`.'
+  );
+  assert.match(
+    s,
+    /if \(!f\?\.fiable \|\| !f1 \|\| !f2\) return null;/,
+    'Sans socle fiable pour les DEUX clubs, le banc ne doit pas basculer — même condition qu’en production.'
+  );
+  // Et la limite de temps doit rester antérieure à la rencontre jugée.
+  assert.match(
+    s,
+    /\.filter\(\(x\) => Date\.parse\(x\.date\) < limite\)/,
+    'Les forces ne doivent être bâties que sur ce qui précède la limite, sinon le banc connaît l’avenir.'
+  );
 });
 
 test('★ ACQUIS — le relevé de référence inclut ce que la production connaît', () => {
