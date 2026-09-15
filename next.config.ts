@@ -1,6 +1,47 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  /**
+   * ── « CETTE PAGE N'A PAS PU S'AFFICHER » : LA VRAIE CAUSE ────────────────
+   *
+   * CE QUI SE PASSAIT
+   *
+   * Constaté en production le 15 septembre 2026, l'erreur en main :
+   * `An unexpected response was received from the server.` (Next E394), sur une
+   * session ouverte AVANT une mise en ligne.
+   *
+   * Le navigateur garde la version qu'il a chargée en arrivant. Chaque mise en
+   * ligne change celle du serveur. Quand l'abonné déclenche alors une action —
+   * lancer une analyse, se connecter, changer de page — le serveur répond dans
+   * une version que son navigateur ne sait plus lire. Next abandonne, et la
+   * barrière d'erreur affiche « Cette page n'a pas pu s'afficher ».
+   *
+   * POURQUOI ÇA TOMBAIT SUR L'ANALYSE, ET PAS AILLEURS
+   *
+   * Une analyse dure une minute et demie. C'est la fenêtre la plus large de
+   * toute l'application pour qu'une mise en ligne tombe au milieu — et c'est
+   * exactement là que le propriétaire l'a rencontrée, deux jours de suite, sur
+   * le match mis en avant de la page d'accueil. Quelqu'un qui découvre
+   * l'application et clique sur ce match reçoit une page d'erreur : il ne va
+   * pas plus loin, et il n'achète pas.
+   *
+   * CE QUE CETTE LIGNE CHANGE
+   *
+   * Avec un identifiant de version, le serveur renvoie le sien dans un en-tête.
+   * Le navigateur compare, voit le décalage, et RECHARGE LA PAGE au lieu
+   * d'échouer. L'abonné voit un rafraîchissement, pas une erreur.
+   *
+   * L'identifiant est celui du commit déployé : il ne change qu'à une mise en
+   * ligne, il est le même sur toutes les instances, et il est disponible à la
+   * construction — ce qui est indispensable, la valeur étant figée dans le
+   * paquet. Hors Vercel, il vaut `undefined` et rien ne change.
+   */
+  deploymentId:
+    process.env.NEXT_DEPLOYMENT_ID ||
+    process.env.VERCEL_DEPLOYMENT_ID ||
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    undefined,
+
   images: {
     remotePatterns: [
       {
