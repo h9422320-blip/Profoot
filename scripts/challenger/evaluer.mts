@@ -554,6 +554,30 @@ function avecErreurs(retrecissement: number, poids: number): Pronostic[] {
 }
 
 // ── LA COUCHE DU MARCHÉ, SUR LES MATCHS COTÉS ─────────────────────────────
+//
+// VERDICT DU 15 SEPTEMBRE 2026, ET IL DIT QUELQUE CHOSE DU MOTEUR.
+//
+// Sur 307 rencontres cotées AVANT le coup d'envoi — les cotes de clôture sont
+// écartées, elles contiennent déjà les compositions et l'argent engagé :
+//
+//     part 0,30    −4 / −3        part 0,75    −2 / −6
+//     part 0,50    −4 / −4        part 1,00    +2 / −5
+//
+// Et en trois tranches de temps, aucune ne tient : −7, −8, −8, −3.
+//
+// À part 1, le pronostic est CELUI DU MARCHÉ, sans rien du moteur. Il désigne
+// donc MOINS de vainqueurs justes que le nôtre. Ce n'est pas « le moteur fait
+// jeu égal avec les bookmakers » : sur ces 307 rencontres, il fait mieux.
+//
+// UNE NUANCE QUI COMPTE, ET QUI EST À L'AVANTAGE DU MARCHÉ. Son Brier est
+// nettement meilleur — 0,6058 contre 0,6404. Le marché sait donc mieux QUEL
+// CRÉDIT accorder à son propre avis, même quand il désigne moins souvent le bon
+// vainqueur. C'est exactement la faiblesse mesurée du moteur : il est le plus
+// sûr de lui là où il est le moins fiable.
+//
+// Mesuré auparavant sur un banc qui ne reproduisait pas la production, le
+// marché gagnait +5/+0. C'était un mirage de plus, du même genre que les
+// autres — et il attendait seulement le volume pour être mis en ligne.
 function avecMarche(poids: number): { pronostics: Pronostic[]; actifs: number[] } {
   const pronostics: Pronostic[] = [];
   const actifs: number[] = [];
