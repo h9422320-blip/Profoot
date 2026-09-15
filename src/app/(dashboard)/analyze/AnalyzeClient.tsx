@@ -6,6 +6,7 @@ import { Brain, Target, Shield, Zap, BarChart3, ChevronRight, ChevronDown, Chevr
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { clubs, getClub, matches, competitions } from "@/lib/data";
+import BarriereDeRendu from "@/components/BarriereDeRendu";
 import chargerADemande from "next/dynamic";
 import { signalerEtape } from "@/components/etapes-vente";
 import { usePaysAcheteur } from "@/components/usePaysAcheteur";
@@ -1773,7 +1774,21 @@ export default function AnalyzePage({
       {/* =========================================================================
           📊 RESULTS SECTION (Differentiated: Real Results vs IA Predictions)
           ========================================================================= */}
+      {/* ── L'ANALYSE NE PEUT PLUS EMPORTER LA PAGE ─────────────────────────
+          Le 15 septembre 2026, le propriétaire a vu quatre ou cinq fois
+          « Cette page n'a pas pu s'afficher » au bout d'une analyse. La cause
+          principale — un déploiement qui change la version sous les pieds d'une
+          session ouverte — est traitée deux fois ailleurs.
+
+          Mais aucune relecture ne peut promettre qu'aucun autre défaut
+          n'existera jamais dans les deux mille lignes qui suivent. L'audit du
+          même jour en a d'ailleurs trouvé un, invisible depuis des mois.
+
+          Sans cette barrière, la moindre erreur ici remonte au segment entier
+          et l'abonné perd tout. Avec elle, l'erreur s'arrête au bloc : la page
+          reste, le formulaire reste, et il peut relancer. */}
       {result && (
+        <BarriereDeRendu ou="analyse" message="L’analyse n’a pas pu s’afficher en entier.">
         <div className="space-y-8 animate-fade-in">
           
           {/* 🔴 MATCH EN COURS.
@@ -1945,16 +1960,49 @@ export default function AnalyzePage({
                     </span>
                   </div>
 
-                  {/* Real Score Container */}
-                  <div className="flex items-center justify-center bg-black/40 px-5 py-2.5 rounded-full border border-white/5 shadow-inner shrink-0">
-                    <span className="text-3xl md:text-5xl font-black text-[#10B981] font-[Space Grotesk] tracking-tight">
-                      {result.score.split("-")[0].trim()}
-                    </span>
-                    <span className="text-lg font-bold text-white/20 mx-2.5">-</span>
-                    <span className="text-3xl md:text-5xl font-black text-[#EF4444] font-[Space Grotesk] tracking-tight">
-                      {result.score.split("-")[1].trim()}
-                    </span>
-                  </div>
+                  {/* ── LE SCORE RÉEL, LU SANS JAMAIS FAIRE TOMBER LA PAGE ──
+                      Défaut trouvé à l'audit du 15 septembre 2026, et resté
+                      invisible des mois. Ici on lisait `result.score.split("-")`
+                      puis `[1].trim()`, sans aucun filet. Or le score d'un match
+                      terminé peut parfaitement valoir `null` : c'est écrit noir
+                      sur blanc à l'enregistrement — « Aucune valeur de repli :
+                      un score absent doit rester absent », choix délibéré pour
+                      cesser d'inscrire de faux 2-1. Le rendu, lui, n'avait
+                      jamais suivi.
+
+                      Score absent : `.split` lève. Score sans tiret : `[1]` vaut
+                      `undefined` et `.trim()` lève. Dans les deux cas toute
+                      l'analyse disparaissait derrière « Cette page n'a pas pu
+                      s'afficher ».
+
+                      La lecture accepte désormais les quatre traits qu'un
+                      fournisseur peut employer — tiret, demi-cadratin,
+                      cadratin, deux-points — et, quand elle ne comprend pas,
+                      montre le score tel quel plutôt que de tout emporter. */}
+                  {(() => {
+                    const lu = String(result.score ?? '').match(/(\d+)\s*[-–—:]\s*(\d+)/);
+                    if (!lu) {
+                      const brut = String(result.score ?? '').trim();
+                      return brut ? (
+                        <div className="flex items-center justify-center bg-black/40 px-5 py-2.5 rounded-full border border-white/5 shadow-inner shrink-0">
+                          <span className="text-2xl md:text-4xl font-black text-white font-[Space Grotesk] tracking-tight">
+                            {brut}
+                          </span>
+                        </div>
+                      ) : null;
+                    }
+                    return (
+                      <div className="flex items-center justify-center bg-black/40 px-5 py-2.5 rounded-full border border-white/5 shadow-inner shrink-0">
+                        <span className="text-3xl md:text-5xl font-black text-[#10B981] font-[Space Grotesk] tracking-tight">
+                          {lu[1]}
+                        </span>
+                        <span className="text-lg font-bold text-white/20 mx-2.5">-</span>
+                        <span className="text-3xl md:text-5xl font-black text-[#EF4444] font-[Space Grotesk] tracking-tight">
+                          {lu[2]}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   {/* Away */}
                   <div className="flex flex-col items-center gap-2 w-[35%]">
@@ -2962,6 +3010,7 @@ export default function AnalyzePage({
 
 
         </div>
+        </BarriereDeRendu>
       )}
 
       {/* NOS PRONOSTICS VÉRIFIÉS.
