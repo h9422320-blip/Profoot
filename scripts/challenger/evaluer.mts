@@ -64,7 +64,9 @@ type Couche =
   | { type: 'vrai-xg'; avecMelange?: boolean }
   | { type: 'memoire-sur-les-surs'; seuil: number; poids: number; avecMelange?: boolean }
   | { type: 'occasions-par-les-buts'; jours: number; saisonMaigre?: number; minimumClub?: number; avecMelange?: boolean }
-  | { type: 'avantage-terrain-plat'; buts: number; siSurExterieur?: number; siSaisonMaigre?: number; siRienDeVu?: boolean; avecMelange?: boolean };
+  | { type: 'avantage-terrain-plat'; buts: number; siSurExterieur?: number; siSaisonMaigre?: number; siRienDeVu?: boolean; avecMelange?: boolean }
+  | { type: 'memoire-quand-tout-manque'; part: number; avecMelange?: boolean }
+  | { type: 'occasions-recentes'; jours: number; part: number; avecMelange?: boolean };
 
 chargerEnv();
 const tache: {
@@ -3082,6 +3084,288 @@ function avecAvantageTerrainPlat(
   return { pronostics, actifs };
 }
 
+// ── LA MÉMOIRE PLUS FORT LÀ OÙ LE MOTEUR N'A RIEN D'AUTRE ─────────
+//
+// LE PIRE CREUX DU MOTEUR, MESURÉ LE 15 SEPTEMBRE 2026 SUR LE BANC ALIGNÉ
+//
+//     tirs + forces ajustées      3 833 rencontres   50,6 % justes
+//     forces seules              13 400 rencontres   50,3 %
+//     NI TIRS NI FORCES             796 rencontres   46,6 %
+//
+// Et le pire n’est pas là. Sur ces 796 rencontres, le moteur en met 266 EN
+// AVANT — un tiers, contre un cinquième ailleurs — pour 49,6 % de justesse,
+// quand il tient 68 % partout ailleurs. Il est donc au MAXIMUM de sa
+// confiance au MINIMUM de sa fiabilité.
+//
+// QUI SONT CES 796 RENCONTRES
+//
+// Celles où `calculerForces` refuse de se prononcer faute de saison
+// précédente dans le championnat pour l'UN des deux clubs — un promu, un club
+// nouvellement collecté — ET où le relèvement des tirs ne voit personne. Il ne
+// reste alors que les buts de la saison en cours, son ancre de douze matchs,
+// et le classement. C'est peu, et le moteur n'en sait rien.
+//
+// CE QUE CETTE COUCHE FAIT
+//
+// Rien de nouveau : elle donne à la mémoire des clubs — déjà en ligne, déjà
+// ancrée sur la hiérarchie des championnats — une part de voix plus grande, ET
+// SEULEMENT sur ces rencontres-là. Partout ailleurs, pas une virgule ne bouge.
+//
+// VERDICT DU 15 SEPTEMBRE 2026 : NON JUGEABLE, ET LE CREUX EST UN MIRAGE.
+//
+// La couche n’a touché que QUATORZE rencontres sur les 796 visées : sur ce
+// creux, la mémoire est muette elle aussi — les deux clubs y ont moins de
+// cinq rencontres connues. Ces matchs n’ont donc rien du tout.
+//
+// Et le relevé `scripts/_le-creux-du-moteur.mts` a dit pourquoi : ce sont des
+// OUVERTURES DE SAISON — 432 rien qu'en août 2025, le reste en février et mars
+// pour les championnats à saison civile. `calculerForces` y refuse de se
+// prononcer parce qu’il exige cinquante rencontres dans la SAISON PRÉCÉDENTE
+// du championnat. La production les demande au fournisseur et les obtient ;
+// le banc ne collecte que depuis le 14 février 2025 et n’a AUCUNE saison 2024.
+//
+// Ce creux est donc un SIXIÈME écart du banc, pas un défaut du moteur. La
+// couche est gardée pour mémoire, et surtout pour que personne ne recommence.
+//
+// La mémoire est bâtie sur 19 271 rencontres de 62 compétitions : quand le
+// moteur ne sait rien du match, elle sait au moins quelque chose des clubs.
+function avecMemoireQuandToutManque(
+  part: number,
+  avecMelange: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  // Le mélange déjà en ligne, repris tel quel pour empiler proprement.
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const occasionsDe4 = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    occasionsDe4.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+      d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+      e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+    });
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = occasionsDe4.get(cle);
+    if (o) {
+      const aj = (club: string, produit: number, concede: number) => {
+        const l = passe.get(club);
+        if (l) l.push({ produit, concede });
+        else passe.set(club, [{ produit, concede }]);
+      };
+      aj(String(x.nomDom), o.d, o.e);
+      aj(String(x.nomExt), o.e, o.d);
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    return {
+      attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+      defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+
+    let corr: { domicile: number; exterieur: number } | null = null;
+    if (avecMelange) {
+      const a = elanDe(String(m.nomDom));
+      const b = elanDe(String(m.nomExt));
+      const ligue = ecartDeLigue(Number(m.ligue));
+      const dom = (0.2 * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+      const ext = (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+      corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    }
+
+    // LE seul changement : la part de la mémoire, et SEULEMENT quand le moteur
+    // n'a ni tirs ni forces ajustées.
+    let avis = avisDeLaProduction(m);
+    const forces = forcesDe(m);
+    if (avis && !occ && !forces) {
+      avis = { ...avis, poids: part };
+      actifs.push(Number(m.id));
+    }
+
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, classementsDe(m), forces, undefined, croisePour(m), rapportPour(m), occ, corr, avis
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
+// ── LA FORME RÉCENTE DES OCCASIONS, SUR UNE FENÊTRE COURTE ─────────
+//
+// CE QUE LE MOTEUR REGARDE AUJOURD'HUI
+//
+// Le relèvement des occasions couvre DEUX CENT QUARANTE JOURS — huit mois,
+// soit une saison entière et souvent la fin de la précédente. Les poids y
+// décroissent déjà avec l'âge, mais la fenêtre reste longue : un club qui a
+// changé d’entraîneur en janvier traîne encore son mois de septembre.
+//
+// CE QUE CETTE COUCHE AJOUTE
+//
+// Un SECOND relèvement, bâti par la même fonction et la même mécanique, mais
+// sur `jours` seulement. On ne le substitue pas : on transmet l’ÉCART entre
+// ce qu'il attend et ce qu'attend le relèvement de production, multiplié par
+// `part`. Un club en forme depuis trois mois pousse sa prévision vers le
+// haut, un club qui s’éteint vers le bas, et un club stable ne bouge pas.
+//
+// VERDICT DU 15 SEPTEMBRE 2026 : RIEN. Huit réglages, tous refusés.
+//
+//     60 jours, part 0,35    −3 / +2
+//     90 jours, part 0,20    −2 / −2
+//     90 jours, part 0,35    −1 / +0
+//     90 jours, part 0,50    +3 / −3
+//    120 jours, part 0,35    −1 / +2
+//    120 jours, part 0,50    +0 / +1
+//    150 jours, part 0,50    −5 / −12
+//
+// Aucune fenêtre ne bat celle de la production. L'explication tient en une
+// ligne du relèvement lui-même : ses poids DÉCROISSENT DÉJÀ avec l’âge des
+// rencontres. La récence est donc déjà prise en compte, et la raccourcir ne
+// fait que jeter de la matière.
+//
+// LE PRINCIPE EST STRICTEMENT ADDITIF
+//
+// L’écart passe par le onzième point d’entrée, en buts, comme le mélange — et
+// il s’y AJOUTE. Sans les deux relèvements, la correction vaut zéro et le
+// moteur calcule exactement comme avant.
+const relevesCourts = new Map<string, any>();
+function releveCourtLaVeille(jour: string, jours: number) {
+  const cle = jour + "/" + String(jours);
+  if (relevesCourts.has(cle)) return relevesCourts.get(cle);
+  const fin = Date.parse(jour + "T00:00:00Z");
+  const liste = tirs
+    .filter((t) => t.date >= fin - jours * 86_400_000 && t.date < fin)
+    .filter((t) => !NOMS_EN_PLUS.has(String(t.ligue)))
+    // Même amputation que le relèvement de référence : le vrai xG du
+    // fournisseur a été mesuré et refusé le 14 septembre 2026.
+    .map((t) => { const c = { ...t }; delete (c as any).xgD; delete (c as any).xgE; return c; });
+  const r =
+    liste.length >= 100
+      ? forcesDepuisRencontres(liste as any, undefined, new Date(fin).toISOString())
+      : null;
+  relevesCourts.set(cle, r);
+  return r;
+}
+
+function avecOccasionsRecentes(
+  jours: number,
+  part: number,
+  avecMelange: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  // Le mélange déjà en ligne, repris tel quel pour empiler proprement.
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const occasionsDe5 = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    occasionsDe5.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+      d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+      e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+    });
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = occasionsDe5.get(cle);
+    if (o) {
+      const aj = (club: string, produit: number, concede: number) => {
+        const l = passe.get(club);
+        if (l) l.push({ produit, concede });
+        else passe.set(club, [{ produit, concede }]);
+      };
+      aj(String(x.nomDom), o.d, o.e);
+      aj(String(x.nomExt), o.e, o.d);
+    }
+    const ligue = Number(x.ligue);
+    let c = parLigue.get(ligue);
+    if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+    c.n++;
+    c.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    return {
+      attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+      defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const c = parLigue.get(Number(ligue));
+    if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+
+    let dom = 0;
+    let ext = 0;
+
+    // L'écart entre la fenêtre courte et celle de la production.
+    if (occ) {
+      const court = butsAttendusOccasions(releveCourtLaVeille(jour, jours), m.nomDom, m.nomExt);
+      if (court) {
+        dom += part * (Number(court.domicile) - Number(occ.domicile));
+        ext += part * (Number(court.exterieur) - Number(occ.exterieur));
+        if (Number.isFinite(dom) && Number.isFinite(ext)) actifs.push(Number(m.id));
+        else { dom = 0; ext = 0; }
+      }
+    }
+
+    if (avecMelange) {
+      const a = elanDe(String(m.nomDom));
+      const b = elanDe(String(m.nomExt));
+      const ligue = ecartDeLigue(Number(m.ligue));
+      dom += (0.2 * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + ligue / 2;
+      ext += (0.2 * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - ligue / 2;
+    }
+
+    const corr = dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext };
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corr, avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
@@ -3114,6 +3398,25 @@ function avecEnvironnement<T>(env: Record<string, string>, faire: () => T): T {
 for (const vBrute of tache.variantes) {
   const v = vBrute;
   avecEnvironnement(v.env, () => {
+  if (v.couche?.type === 'occasions-recentes') {
+    const { pronostics, actifs: ids } = avecOccasionsRecentes(
+      v.couche.jours,
+      v.couche.part,
+      v.couche.avecMelange !== false
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    return;
+  }
+  if (v.couche?.type === 'memoire-quand-tout-manque') {
+    const { pronostics, actifs: ids } = avecMemoireQuandToutManque(
+      v.couche.part,
+      v.couche.avecMelange !== false
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    return;
+  }
   if (v.couche?.type === 'avantage-terrain-plat') {
     const { pronostics, actifs: ids } = avecAvantageTerrainPlat(
       v.couche.buts,
