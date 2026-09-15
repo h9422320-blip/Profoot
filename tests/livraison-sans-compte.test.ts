@@ -74,7 +74,13 @@ test('★ ACQUIS — l’accès payé s’ouvre à la seconde de l’inscription
   // quelqu'un qui s'inscrivait à 14 h voyait un mur de paiement jusqu'au
   // lendemain matin, pour un accès déjà payé. C'est ce que Diarra a vécu.
   const a = sansCommentaires(lire('src/app/login/actions.ts'));
-  assert.match(a, /ouvrirAccesAlInscription\(cree\.user\.id, email\)/, 'L’inscription ne rattache plus l’accès payé.');
+    // Le 15 septembre 2026, ce rattachement est passé APRÈS la réponse : il
+  // interroge la base et peut y écrire, soit un aller-retour de plus entre le
+  // clic et l’entrée dans l’application. `after` s’exécute même quand
+  // `redirect` a été appelé : rien n’est perdu, et l’abonné voit son
+  // application tout de suite.
+  assert.match(a, /ouvrirAccesAlInscription\(idCree, email\)/, 'L’inscription ne rattache plus l’accès payé.');
+  assert.match(a, /after\(async \(\) => \{[\s\S]{0,200}ouvrirAccesAlInscription/, 'Le rattachement est redevenu bloquant : l’inscription attend de nouveau la base.');
 
   const r = sansCommentaires(lire('src/lib/acces-a-l-inscription.ts'));
   assert.match(r, /from\('payment_intents'\)/, 'Le rattachement ne lit plus les intentions de paiement.');

@@ -100,6 +100,77 @@ export async function compterTentative(
 }
 
 /**
+ * ── LE MÊME COMPTAGE, MAIS EN DEUX TEMPS ──────────────────────────────────
+ *
+ * POURQUOI CETTE VARIANTE EXISTE
+ *
+ * `compterTentative` lit PUIS écrit, et les deux attentes tombent entre le
+ * clic de quelqu'un et son entrée dans l'application. Mesuré le 15 septembre
+ * 2026 depuis l'Europe, trois passages : la lecture coûte 165 à 640 ms,
+ * l'écriture 164 à 999 ms. Depuis l'Afrique de l'Ouest, où vivent presque
+ * tous les abonnés, chaque aller-retour coûte davantage.
+ *
+ * Or l'écriture ne protège personne au moment où elle a lieu : ce qui protège,
+ * c'est la LECTURE, qui décide. La note peut donc être posée après coup.
+ *
+ * CE QUI NE CHANGE PAS
+ *
+ * La fenêtre, le maximum, la règle du glissement, la tolérance à une base
+ * injoignable : tout est repris à l'identique. `compterTentative` reste en
+ * place et n'est pas touchée — les autres domaines qui l'emploient gardent
+ * exactement leur comportement.
+ */
+
+/** Lit le compteur et décide, SANS rien écrire. */
+export async function lireTentatives(
+  domaine: string,
+  identifiant: string,
+  maximum: number,
+  fenetreMs: number
+): Promise<Verdict> {
+  try {
+    const enBase = await lireReserve<Compteur>(cle(domaine, identifiant));
+    const limite = Date.now() - fenetreMs;
+    const coups = (enBase?.contenu?.coups ?? []).filter((t) => t > limite);
+
+    if (coups.length >= maximum) {
+      const attendre = Math.ceil((coups[0] + fenetreMs - Date.now()) / 1000);
+      return { bloque: true, restantes: 0, attendreSecondes: Math.max(1, attendre) };
+    }
+    return { bloque: false, restantes: Math.max(0, maximum - coups.length), attendreSecondes: 0 };
+  } catch (e: any) {
+    // Même choix que `compterTentative` : une base injoignable ne doit pas
+    // empêcher les gens d'entrer.
+    console.warn(`[LIMITE] Lecture impossible (${domaine}) : ${e?.message}`);
+    return { bloque: false, restantes: maximum, attendreSecondes: 0 };
+  }
+}
+
+/**
+ * Note une tentative ratée.
+ *
+ * À appeler UNIQUEMENT sur un échec, et de préférence pendant que la personne
+ * lit déjà son message d'erreur. Une réussite, elle, n'a rien à noter : elle
+ * efface le compteur juste après, et noter puis effacer coûtait deux attentes
+ * pour un résultat nul.
+ */
+export async function noterTentative(
+  domaine: string,
+  identifiant: string,
+  fenetreMs: number
+): Promise<void> {
+  const k = cle(domaine, identifiant);
+  try {
+    const enBase = await lireReserve<Compteur>(k);
+    const limite = Date.now() - fenetreMs;
+    const coups = (enBase?.contenu?.coups ?? []).filter((t) => t > limite);
+    await ecrireReserve(k, { coups: [...coups, Date.now()] }, fenetreMs + 60_000);
+  } catch (e: any) {
+    console.warn(`[LIMITE] Note impossible (${domaine}) : ${e?.message}`);
+  }
+}
+
+/**
  * Efface le compteur.
  *
  * Appelé après une réussite : quelqu'un qui finit par entrer avec le bon mot

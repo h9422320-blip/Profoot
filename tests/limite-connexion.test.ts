@@ -21,18 +21,41 @@ test('★ ACQUIS — la connexion compte les tentatives', () => {
   const src = lire('src/app/login/actions.ts');
   const connexion = src.slice(src.indexOf('export async function login'), src.indexOf('function destinationApres'));
 
+  // ── LE COMPTAGE S’EST SÉPARÉ EN DEUX, LE 15 SEPTEMBRE 2026 ──────
+  //
+  // `compterTentative` lisait PUIS écrivait avant même d’essayer le mot de
+  // passe : deux attentes réseau devant quelqu’un qui a déjà tapé son mot de
+  // passe. Mesuré : 165 à 640 ms pour la lecture, 164 à 999 ms pour
+  // l'écriture, et davantage depuis l’Afrique de l’Ouest.
+  //
+  // La défense n’a pas bougé d’un pouce, elle est seulement dite en deux
+  // temps : la LECTURE décide, devant ; la NOTE n’est posée que sur un
+  // échec. Une réussite n’a jamais eu besoin d’être notée, puisqu’elle
+  // effaçait le compteur juste après.
   assert.ok(
-    /compterTentative\('connexion'/.test(connexion),
-    "La connexion ne compte plus les tentatives. Rien n'empêche alors d'essayer " +
-      'mille mots de passe sur une adresse connue.'
+    /lireTentatives\('connexion'/.test(connexion),
+    "La connexion ne lit plus le compteur de tentatives. Rien n'empêche alors " +
+      'd\'essayer mille mots de passe sur une adresse connue.'
+  );
+
+  assert.ok(
+    /noterTentative\('connexion'/.test(connexion),
+    'Un échec de connexion n’est plus compté : le compteur ne monterait jamais, et la limite ne bloquerait personne.'
   );
 
   // Le comptage doit précéder l'appel à Supabase : placé après, il laisserait
   // passer chaque tentative avant de la compter.
   assert.ok(
-    connexion.indexOf('compterTentative') < connexion.indexOf('signInWithPassword'),
-    'Le comptage arrive APRÈS la vérification du mot de passe : chaque tentative ' +
-      'serait donc essayée avant d\'être comptée.'
+    connexion.indexOf('lireTentatives') < connexion.indexOf('signInWithPassword'),
+    'La lecture du compteur arrive APRÈS la vérification du mot de passe : chaque ' +
+      'tentative serait donc essayée avant d\'être refusée.'
+  );
+
+  // Et la note doit tomber AVANT la réponse d’échec : différée, elle
+  // laisserait un automate tirer plusieurs fois sur un compteur encore vide.
+  assert.ok(
+    connexion.indexOf('noterTentative') < connexion.indexOf('return { error: m.texte'),
+    'L’échec est compté après la réponse : un automate pourrait tirer plusieurs fois sur un compteur encore vide.'
   );
 
   assert.ok(
@@ -47,7 +70,8 @@ test('★ ACQUIS — la limite porte sur l adresse visée, pas sur l adresse IP'
   const connexion = src.slice(src.indexOf('export async function login'), src.indexOf('function destinationApres'));
 
   assert.ok(
-    /compterTentative\('connexion', email/.test(connexion),
+    /lireTentatives\('connexion', email/.test(connexion) &&
+      /noterTentative\('connexion', email/.test(connexion),
     "La limite ne porte plus sur l'adresse e-mail. Une IP se change en une " +
       "seconde — réseau mobile, relais — alors que l'adresse visée, elle, ne " +
       "change pas : c'est justement ce que l'attaquant veut forcer."

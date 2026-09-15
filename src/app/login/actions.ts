@@ -4,8 +4,14 @@ import { verifierAdresse } from '@/lib/adresse-email'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { messageAuth } from '@/lib/messages-auth'
-import { compterTentative, effacerTentatives, messageAttente } from '@/lib/limite-partagee'
+import {
+  effacerTentatives,
+  lireTentatives,
+  messageAttente,
+  noterTentative,
+} from '@/lib/limite-partagee'
 import { headers } from 'next/headers'
+import { after } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { lireOrigine, metadonneesOrigine } from '@/lib/origine-visiteur'
 
@@ -63,7 +69,25 @@ export async function login(formData: FormData) {
   const ESSAIS_MAX = 8
   const FENETRE_MS = 15 * 60 * 1000
 
-  const verdict = await compterTentative('connexion', email, ESSAIS_MAX, FENETRE_MS)
+  //
+  // ── ET RIEN N'ATTEND QUI NE DÉCIDE PAS ────────────────────────────────
+  //
+  // Le comptage lisait PUIS écrivait avant même d'essayer le mot de passe.
+  // Mesuré le 15 septembre 2026, trois passages depuis l'Europe : lecture 165
+  // à 640 ms, écriture 164 à 999 ms, mot de passe 240 à 400 ms, effacement du
+  // compteur 146 à 919 ms, relevé du pays 158 à 188 ms — 1,3 à 2,3 seconde
+  // avant la redirection, dont une seule étape décidait vraiment de quelque
+  // chose. Depuis l'Afrique de l'Ouest, où vivent presque tous les abonnés,
+  // chaque aller-retour coûte davantage.
+  //
+  // Le propriétaire l'a vécu le 15 septembre : « je clique, ça met beaucoup de
+  // temps avant que ça n'affiche l'application ».
+  //
+  // Ce qui protège, c'est la LECTURE, qui décide. Elle reste ici, devant. La
+  // note, elle, n'est posée que sur un ÉCHEC — et une réussite n'a jamais eu
+  // besoin d'être notée, puisqu'elle effaçait le compteur juste après : noter
+  // puis effacer, c'était deux attentes pour un résultat nul.
+  const verdict = await lireTentatives('connexion', email, ESSAIS_MAX, FENETRE_MS)
   if (verdict.bloque) {
     console.warn(`[CONNEXION] Trop de tentatives sur ${email.slice(0, 3)}…`)
     return {
@@ -81,6 +105,11 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
+    // L'ÉCHEC, LUI, EST COMPTÉ AVANT DE RÉPONDRE. C'est lui que la défense
+    // vise, et personne n'attend d'entrer : le retard tombe sur celui qui se
+    // trompe, jamais sur celui qui a raison.
+    await noterTentative('connexion', email, FENETRE_MS)
+
     // ── JAMAIS LE MESSAGE BRUT DE SUPABASE ────────────────────────────────
     //
     // Il est en anglais — « Invalid login credentials » — sur une application
@@ -93,11 +122,18 @@ export async function login(formData: FormData) {
     return { error: m.texte, liens: m.liens }
   }
 
-  // La connexion a réussi : le compteur de tentatives repart à zéro. Quelqu'un
-  // qui finit par entrer ne doit pas rester puni pour ses fautes de frappe.
-  await effacerTentatives('connexion', email)
-
-  await releverOrigine(supabase)
+  // ── LE RESTE SE FAIT PENDANT QU'IL REGARDE DÉJÀ SON ÉCRAN ──────────────
+  //
+  // Deux tâches, aucune ne décide de rien : effacer le compteur — quelqu'un qui
+  // finit par entrer ne doit pas rester puni pour ses fautes de frappe — et
+  // relever le pays et l'appareil. `after` les exécute APRÈS la réponse, et la
+  // documentation de Next est explicite : elles tournent même quand `redirect`
+  // a été appelé. Si l'une échoue, le compteur expire de lui-même et ce compte
+  // reste sans origine — exactement ce que le code disait déjà accepter.
+  after(async () => {
+    await effacerTentatives('connexion', email)
+    await releverOrigine(supabase)
+  })
 
   revalidatePath('/', 'layout')
   redirect(destinationApres(formData))
@@ -238,12 +274,26 @@ export async function signup(formData: FormData) {
   //
   // Ne lève jamais : l'inscription a réussi, elle ne doit pas échouer à cause
   // d'un rattachement. Ce qui serait manqué ici, l'entretien le reprendra.
+  //
+  // ── ET IL N'ATTEND PAS DEVANT UN ÉCRAN PENDANT CE TEMPS ───────────────
+  //
+  // Ce rattachement interroge la base et peut y écrire : un aller-retour de
+  // plus entre le clic et l'entrée dans l'application, sur un parcours où
+  // chaque seconde se paie. Il passe donc APRÈS la réponse.
+  //
+  // Rien n'est perdu à le différer : `after` s'exécute même quand `redirect` a
+  // été appelé, et le commentaire ci-dessus le disait déjà — ce qui serait
+  // manqué ici, l'entretien le reprend. La seule différence est que l'abonné
+  // voit son application tout de suite.
   if (cree?.user?.id) {
-    const { ouvrirAccesAlInscription } = await import('@/lib/acces-a-l-inscription')
-    const r = await ouvrirAccesAlInscription(cree.user.id, email)
-    if (r.ouverts) {
-      console.log(`[INSCRIPTION] ${email} : ${r.ouverts} accès rattaché(s) — ${r.details.join(' ; ')}`)
-    }
+    const idCree = cree.user.id
+    after(async () => {
+      const { ouvrirAccesAlInscription } = await import('@/lib/acces-a-l-inscription')
+      const r = await ouvrirAccesAlInscription(idCree, email)
+      if (r.ouverts) {
+        console.log(`[INSCRIPTION] ${email} : ${r.ouverts} accès rattaché(s) — ${r.details.join(' ; ')}`)
+      }
+    })
   }
 
   revalidatePath('/', 'layout')
