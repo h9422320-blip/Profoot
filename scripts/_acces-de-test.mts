@@ -25,9 +25,18 @@ if (action !== 'poser' && action !== 'retirer') {
 }
 
 // Retrouver le compte de test, et LUI SEUL.
-const { data: liste, error: e1 } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
-if (e1) throw new Error(e1.message);
-const compte = (liste?.users ?? []).find((u: any) => String(u.email).toLowerCase() === EMAIL);
+// `listUsers` est PAGINÉ : sans la boucle, le compte de test passe pour
+// inexistant dès que la base dépasse mille comptes. Erreur commise le
+// 15 septembre 2026, avec 11 789 comptes en base.
+const tous: any[] = [];
+for (let page = 1; page <= 100; page++) {
+  const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 1000 });
+  if (error) throw new Error(error.message);
+  const lot = data?.users ?? [];
+  tous.push(...lot);
+  if (lot.length < 1000) break;
+}
+const compte = tous.find((u: any) => String(u.email).toLowerCase() === EMAIL);
 if (!compte) throw new Error(`compte de test ${EMAIL} introuvable`);
 
 if (action === 'poser') {
@@ -35,7 +44,9 @@ if (action === 'poser') {
   const { error } = await sb.from('subscriptions').upsert(
     {
       user_id: compte.id,
-      plan: 'pro',
+      // L offre la plus complete : c est elle qui affiche l analyse ENTIERE,
+      // et c est justement le rendu complet qu il faut pouvoir observer.
+      plan: 'vip_yearly',
       status: 'active',
       provider: 'banc-essai',
       chariow_sale_id: MARQUE,

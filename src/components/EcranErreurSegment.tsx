@@ -28,6 +28,80 @@
  * Le texte, le bouton et l'identifiant vivent donc ici, à un seul endroit.
  */
 
+import { useEffect, useState } from 'react';
+
+/**
+ * ── LA PANNE QUI N'EN EST PAS UNE : LE DÉCALAGE DE VERSION ────────────────
+ *
+ * CE QUI SE PASSE
+ *
+ * Le navigateur garde la version qu'il a chargée en arrivant. Chaque mise en
+ * ligne change celle du serveur. Quand l'abonné déclenche alors une action —
+ * lancer une analyse, changer de page — le serveur répond dans une version que
+ * son navigateur ne sait plus lire. Next abandonne avec, mot pour mot :
+ *
+ *     An unexpected response was received from the server.   (code E394)
+ *
+ * Relevé en production le 15 septembre 2026, l'erreur en main, sur une session
+ * ouverte avant une mise en ligne.
+ *
+ * POURQUOI ÇA TOMBE SUR L'ANALYSE
+ *
+ * Une analyse dure une minute et demie : c'est la fenêtre la plus large de
+ * toute l'application pour qu'une mise en ligne tombe au milieu. Le
+ * propriétaire l'a rencontrée quatre ou cinq fois en deux jours, dont deux fois
+ * sur le match mis en avant de la page d'accueil — celui qu'ouvre justement
+ * quelqu'un qui découvre l'application. Il voit une page d'erreur, il s'en va,
+ * et il n'achète jamais.
+ *
+ * CE QU'IL FAUT COMPRENDRE : IL N'Y A RIEN DE CASSÉ.
+ *
+ * Le contenu est intact, le compte est intact. Il suffit de recharger pour
+ * prendre la nouvelle version. C'est exactement ce qu'on fait ici, tout seul,
+ * sans rien demander à personne.
+ *
+ * `deploymentId` (voir `next.config.ts`) fait normalement ce rechargement plus
+ * tôt, avant même l'erreur. Mais il ne protège QUE les navigateurs qui ont déjà
+ * chargé une version qui le porte : le jour où on l'installe, tous ceux qui
+ * sont déjà sur le site passent à côté. Ce filet-ci, lui, rattrape aussi
+ * ceux-là — et toute panne de la même famille qu'on n'aurait pas prévue.
+ */
+const ERREUR_DE_VERSION = (error: unknown): boolean => {
+  const e = error as { message?: unknown; __NEXT_ERROR_CODE?: unknown } | null;
+  if (!e) return false;
+  if (String(e.__NEXT_ERROR_CODE ?? '') === 'E394') return true;
+  return /unexpected response was received from the server/i.test(String(e.message ?? ''));
+};
+
+/**
+ * Un rechargement, pas deux.
+ *
+ * Si le serveur est RÉELLEMENT en panne et répond mal à chaque fois, recharger
+ * en boucle ferait clignoter la page à l'infini — bien pire que l'écran
+ * d'erreur. On note donc l'heure du rechargement : au-delà d'un par demi-minute,
+ * on s'arrête et on montre l'écran normal, qui laisse la main.
+ */
+const CLE_RECHARGEMENT = 'profoot_rechargement_version';
+const ENTRE_DEUX_MS = 30_000;
+
+function rechargerUneFois(): boolean {
+  try {
+    const dernier = Number(sessionStorage.getItem(CLE_RECHARGEMENT) ?? 0);
+    if (Number.isFinite(dernier) && Date.now() - dernier < ENTRE_DEUX_MS) return false;
+    sessionStorage.setItem(CLE_RECHARGEMENT, String(Date.now()));
+  } catch {
+    // Navigation privée, stockage refusé : on recharge quand même une fois.
+    // Le pire cas est un second rechargement, pas une boucle — l'erreur de
+    // version disparaît dès que la nouvelle version est chargée.
+  }
+  try {
+    window.location.reload();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface ProprietesErreurSegment {
   error: Error & { digest?: string };
   /** Redemande le contenu au serveur. Le nom retenu par cette version. */
@@ -44,6 +118,15 @@ export default function EcranErreurSegment({
   reset,
   titre = 'Cette page n’a pas pu s’afficher',
 }: ProprietesErreurSegment) {
+  // Vrai le temps que le rechargement parte : on ne montre pas « ça a raté »
+  // à quelqu'un dont la page est déjà en train de se réparer.
+  const [enTrainDeReparer, setEnTrainDeReparer] = useState(false);
+
+  useEffect(() => {
+    if (!ERREUR_DE_VERSION(error)) return;
+    if (rechargerUneFois()) setEnTrainDeReparer(true);
+  }, [error]);
+
   const reessayer = () => {
     // `retry` d'abord : lui seul va rechercher le contenu. À défaut, un
     // rechargement complet, qui répare ce qu'un re-rendu ne peut pas réparer.
@@ -68,20 +151,27 @@ export default function EcranErreurSegment({
           ↻
         </div>
 
-        <h2 className="mb-3 text-xl font-bold text-white">{titre}</h2>
+        <h2 className="mb-3 text-xl font-bold text-white">
+          {enTrainDeReparer ? 'Un instant, on actualise…' : titre}
+        </h2>
 
         <p className="mb-6 text-sm leading-relaxed text-white/60">
-          Votre accès et vos analyses sont intacts, rien n’est perdu. Réessayez —
-          ou passez par le menu pour continuer ailleurs.
+          {enTrainDeReparer
+            ? 'Une nouvelle version vient d’être mise en ligne. La page se recharge toute seule — vos analyses et votre accès sont intacts.'
+            : 'Votre accès et vos analyses sont intacts, rien n’est perdu. Réessayez — ou passez par le menu pour continuer ailleurs.'}
         </p>
 
-        <button
-          onClick={reessayer}
-          className="min-h-[48px] rounded-full px-7 text-sm font-extrabold"
-          style={{ background: 'linear-gradient(135deg,#2DD4BF,#10B981)', color: '#101c24' }}
-        >
-          Réessayer
-        </button>
+        {/* Pendant le rechargement, le bouton n'a plus rien à faire : le
+            proposer inviterait à cliquer sur une page qui s'en va déjà. */}
+        {enTrainDeReparer ? null : (
+          <button
+            onClick={reessayer}
+            className="min-h-[48px] rounded-full px-7 text-sm font-extrabold"
+            style={{ background: 'linear-gradient(135deg,#2DD4BF,#10B981)', color: '#101c24' }}
+          >
+            Réessayer
+          </button>
+        )}
 
         {/* ── L'IDENTIFIANT REND LA CAPTURE D'ÉCRAN EXPLOITABLE ──────────────
             En production, le message d'une erreur venue du serveur est
