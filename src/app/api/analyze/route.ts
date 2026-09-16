@@ -23,6 +23,7 @@ import { lirePredictionFigee, figerPrediction, remplacerPredictionFigee, predict
 import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type MatchDirect } from "@/lib/match-direct";
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { correctionElanTerrain, lireElanEtTerrain } from "@/lib/elan-et-terrain";
+import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from "@/lib/repos-des-clubs";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
 import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 
@@ -1568,11 +1569,49 @@ async function analyser(req: Request, billet: BilletQuota) {
     // Un relevé absent, périmé de plus de dix jours, ou un club sans dix
     // rencontres relevées rendent `null`, et le calcul redevient rigoureusement
     // celui d'avant.
-    correctionElanTerrain(
-      await lireElanEtTerrain(),
-      team1.name,
-      team2.name,
-      (targetFutureMatch || nextH2H)?.league?.id ?? null
+    // ── LE SENS, CORRIGÉ LE 16 SEPTEMBRE 2026 ───────────────────────────
+    //
+    // Ce point d'entrée est exprimé du point de vue de CELUI QUI REÇOIT et de
+    // CELUI QUI SE DÉPLACE — `calculerScoreProbable` les remet lui-même dans
+    // l'ordre des deux équipes selon `equipe1Recoit`. Or on lui passait
+    // `team1` et `team2` sans regarder qui recevait.
+    //
+    // L'abonné saisit les équipes dans l'ordre qui lui chante. Une fois sur
+    // deux il commence par le visiteur — et la correction de l'élan et du
+    // terrain était alors appliquée À L'ENVERS : le club en forme se voyait
+    // retirer ce qu'il fallait lui ajouter.
+    //
+    // Le relevé des occasions, lui, faisait déjà le bon aiguillage depuis
+    // toujours (voir `occasionsDuMatch` plus haut). C'est ce voisinage qui a
+    // permis de repérer l'écart.
+    sommeDesCorrections(
+      correctionElanTerrain(
+        await lireElanEtTerrain(),
+        equipe1AJoueADomicile === true ? team1.name : team2.name,
+        equipe1AJoueADomicile === true ? team2.name : team1.name,
+        (targetFutureMatch || nextH2H)?.league?.id ?? null
+      ),
+      // ── ET LE REPOS ENTRE DEUX MATCHS, NOUVEAU ────────────────────────
+      //
+      // Le moteur ne savait pas qu'un club avait joué trois jours plus tôt et
+      // l'autre neuf. Mesuré sur 16 588 rencontres : +8 et +5 vainqueurs
+      // justes, Brier égal ou meilleur, et la justesse des matchs mis en avant
+      // qui monte de 70,5 % à 71,8 % et 71,3 %. Seize réglages essayés, pas un
+      // seul perdant — voir `repos-des-clubs.ts`.
+      //
+      // Aucun appel de plus : les douze derniers matchs de chaque club sont
+      // déjà demandés pour l'ancre des statistiques.
+      correctionRepos(
+        Date.parse(String((targetFutureMatch || nextH2H)?.fixture?.date ?? '')) || Date.now(),
+        derniereRencontreAvant(
+          equipe1AJoueADomicile === true ? t1Recent : t2Recent,
+          Date.parse(String((targetFutureMatch || nextH2H)?.fixture?.date ?? '')) || Date.now()
+        ),
+        derniereRencontreAvant(
+          equipe1AJoueADomicile === true ? t2Recent : t1Recent,
+          Date.parse(String((targetFutureMatch || nextH2H)?.fixture?.date ?? '')) || Date.now()
+        )
+      )
     ),
     // ── ET LÀ OÙ LE MOTEUR NE VOIT RIEN, LA MÉMOIRE PARLE ────────────────
     //
