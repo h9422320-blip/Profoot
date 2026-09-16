@@ -29,6 +29,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { resumeDeLErreur } from '@/lib/erreurs-affichage';
 
 /**
  * ── LA PANNE QUI N'EN EST PAS UNE : LE DÉCALAGE DE VERSION ────────────────
@@ -122,6 +123,45 @@ export default function EcranErreurSegment({
   // à quelqu'un dont la page est déjà en train de se réparer.
   const [enTrainDeReparer, setEnTrainDeReparer] = useState(false);
 
+  // ── LA CAUSE EXACTE PART AU SERVEUR, POUR NE PLUS JAMAIS DEVINER ────────
+  //
+  // Le 16 septembre 2026, le plantage est revenu sur Atlético–Osasuna et je
+  // n'ai PAS pu le reproduire — ni en gratuit, ni en abonné, ni en mobile. Une
+  // erreur survenue dans le navigateur n'apparaît dans aucun journal du
+  // serveur, et l'écran n'en disait rien. Désormais elle part ici, avant même
+  // que la page ne tente de se réparer.
+  //
+  // `sendBeacon` d'abord : il survit à un rechargement immédiat, ce qu'un
+  // simple `fetch` ne garantit pas.
+  useEffect(() => {
+    try {
+      const e = error as Error & { digest?: string; __NEXT_ERROR_CODE?: string };
+      const corps = JSON.stringify({
+        code: e?.__NEXT_ERROR_CODE ?? '',
+        nom: e?.name ?? '',
+        message: e?.message ?? '',
+        pile: String(e?.stack ?? '').slice(0, 1200),
+        chemin: typeof window !== 'undefined' ? window.location.pathname : '',
+        digest: e?.digest ?? '',
+        version: typeof document !== 'undefined' ? document.documentElement.getAttribute('data-dpl-id') ?? '' : '',
+      });
+      const envoye =
+        typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function'
+          ? navigator.sendBeacon('/api/erreur-affichage', new Blob([corps], { type: 'application/json' }))
+          : false;
+      if (!envoye) {
+        void fetch('/api/erreur-affichage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: corps,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // Le signalement ne doit jamais aggraver la panne.
+    }
+  }, [error]);
+
   useEffect(() => {
     if (!ERREUR_DE_VERSION(error)) return;
     if (rechargerUneFois()) setEnTrainDeReparer(true);
@@ -185,6 +225,16 @@ export default function EcranErreurSegment({
         {error?.digest ? (
           <p className="mt-5 font-mono text-[11px] tracking-wide text-white/30">
             réf. {error.digest}
+          </p>
+        ) : null}
+
+        {/* ── ET LA NATURE DE LA PANNE, MÊME SANS IDENTIFIANT ───────────────
+            Une erreur née dans le navigateur n'a pas de `digest` : l'écran ne
+            disait alors RIEN, et chaque capture d'écran obligeait à deviner.
+            Ce résumé part avec la capture sans que personne ait à y penser. */}
+        {resumeDeLErreur(error) ? (
+          <p className="mt-2 break-words font-mono text-[10px] leading-snug text-white/25">
+            {resumeDeLErreur(error)}
           </p>
         ) : null}
       </div>
