@@ -67,6 +67,7 @@ type Couche =
   | { type: 'avantage-terrain-plat'; buts: number; siSurExterieur?: number; siSaisonMaigre?: number; siRienDeVu?: boolean; avecMelange?: boolean }
   | { type: 'memoire-quand-tout-manque'; part: number; avecMelange?: boolean }
   | { type: 'occasions-recentes'; jours: number; part: number; avecMelange?: boolean }
+  | { type: 'profil-de-ligue'; poids: number; minimum: number; siLaMemoireSeTait?: boolean }
   | {
       type: 'calendrier';
       poidsRepos?: number;
@@ -1335,6 +1336,116 @@ if (hierarchie) {
   }
 }
 const avisDeLaProduction = (m: any) => avisProduction.get(Number(m.id)) ?? null;
+
+// ── LA CORRECTION EN BUTS DE LA PRODUCTION, CALCULÉE UNE SEULE FOIS ───
+//
+// POURQUOI ELLE EXISTE
+//
+// Chaque couche qui veut s’empiler sur le moteur en ligne recopiait les
+// quarante lignes du mélange élan + terrain. Douze copies, et autant
+// d'occasions de diverger : c'est exactement la famille d'erreurs qui a
+// produit tous les mirages des 14 et 15 septembre 2026.
+//
+// Elle est calculée ICI, une fois, avec les réglages EXACTS de la production :
+//   • l'élan sur les occasions, cinq matchs contre dix, part 0,2 ;
+//   • l'avantage du terrain par championnat, rétrécissement 20, part 0,2 ;
+//   • le repos entre deux matchs, poids 0,05, plafond 14 jours
+//     (`src/lib/repos-des-clubs.ts`, en ligne depuis le 16 septembre 2026).
+//
+// Une couche nouvelle n’a plus qu’à AJOUTER la sienne à celle-ci.
+const POIDS_ELAN_EN_LIGNE = 0.2;
+const POIDS_TERRAIN_EN_LIGNE = 0.2;
+const POIDS_REPOS_EN_LIGNE = 0.05;
+const PLAFOND_REPOS_EN_LIGNE = 14;
+
+let corrections: Map<number, { domicile: number; exterieur: number } | null> | null = null;
+function corrEnLigne(m: any): { domicile: number; exterieur: number } | null {
+  if (!corrections) {
+    corrections = new Map();
+    const JOUR = 86_400_000;
+    const parLigue = new Map<number, { n: number; somme: number }>();
+    let nLigues = 0;
+    let sommeLigues = 0;
+    const passe = new Map<string, { produit: number; concede: number }[]>();
+    const dernier = new Map<number, number>();
+    const occDe = new Map<string, { d: number; e: number }>();
+    for (const t of tirs)
+      occDe.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+        d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+        e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+      });
+    const apprendre = (x: any) => {
+      const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+      const o = occDe.get(cle);
+      if (o) {
+        const aj = (club: string, produit: number, concede: number) => {
+          const l = passe.get(club);
+          if (l) l.push({ produit, concede });
+          else passe.set(club, [{ produit, concede }]);
+        };
+        aj(String(x.nomDom), o.d, o.e);
+        aj(String(x.nomExt), o.e, o.d);
+      }
+      const t = Date.parse(x.date);
+      if (Number.isFinite(t)) {
+        dernier.set(Number(x.dom), t);
+        dernier.set(Number(x.ext), t);
+      }
+      const ligue = Number(x.ligue);
+      let c = parLigue.get(ligue);
+      if (!c) { c = { n: 0, somme: 0 }; parLigue.set(ligue, c); }
+      c.n++;
+      c.somme += x.bd - x.be;
+      nLigues++;
+      sommeLigues += x.bd - x.be;
+    };
+    const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+    const elanDe = (club: string) => {
+      const l = passe.get(club);
+      if (!l || l.length < 10) return null;
+      return {
+        attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+        defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+      };
+    };
+    const ecartDeLigue = (ligue: number) => {
+      const c = parLigue.get(Number(ligue));
+      if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+      return POIDS_TERRAIN_EN_LIGNE * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+    };
+    const reposDe = (club: number, quand: number) => {
+      const d = dernier.get(Number(club));
+      if (!d || !Number.isFinite(quand)) return PLAFOND_REPOS_EN_LIGNE;
+      return Math.min(PLAFOND_REPOS_EN_LIGNE, Math.max(0, (quand - d) / JOUR));
+    };
+
+    let j = 0;
+    let jourCourant = '';
+    for (const { m: x, jour } of entrees) {
+      if (jour !== jourCourant) {
+        while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+          apprendre(toutesLesRencontres[j++]);
+        jourCourant = jour;
+      }
+      const a = elanDe(String(x.nomDom));
+      const b = elanDe(String(x.nomExt));
+      const ligue = ecartDeLigue(Number(x.ligue));
+      const quand = Date.parse(x.date);
+      const ecartRepos =
+        (reposDe(Number(x.dom), quand) - reposDe(Number(x.ext), quand)) / PLAFOND_REPOS_EN_LIGNE;
+      const dom =
+        (POIDS_ELAN_EN_LIGNE * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 +
+        ligue / 2 +
+        POIDS_REPOS_EN_LIGNE * ecartRepos;
+      const ext =
+        (POIDS_ELAN_EN_LIGNE * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 -
+        ligue / 2 -
+        POIDS_REPOS_EN_LIGNE * ecartRepos;
+      corrections.set(Number(x.id), dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext });
+    }
+  }
+  return corrections.get(Number(m.id)) ?? null;
+}
 const avisPartoutDe = (m: any) => avisPartout.get(Number(m.id)) ?? null;
 
 // ── LA DEMI-VUE ANCRÉE : LE CLUB INCONNU N'EST PLUS SUPPOSÉ MOYEN ─────────
@@ -3627,6 +3738,96 @@ function avecCalendrier(c: {
   return { pronostics, actifs };
 }
 
+// ── LE PROFIL RÉEL DE CHAQUE CHAMPIONNAT ──────────────────────
+//
+// LA PLACE VIDE QU'ON REMPLIT
+//
+// Le douzième point d’entrée du moteur sert à la mémoire des clubs. Mais la
+// mémoire NE PARLE QUE SUR LES RENCONTRES AVEUGLES — partout ailleurs, et
+// c'est la majorité, cet emplacement ne porte rien du tout.
+//
+// CE QU’ON Y MET
+//
+// Ce que ce championnat produit RÉELLEMENT : la part de victoires à
+// domicile, de nuls et de victoires à l’extérieur, apprise jour après jour sur
+// les rencontres déjà jouées. Les championnats ne se ressemblent pas — on ne
+// gagne pas à domicile en Eredivisie comme en Serie A, et le nul n’y arrive
+// pas à la même fréquence.
+//
+// Le mélange elan + terrain déjà en ligne corrige l'avantage du terrain PAR
+// CHAMPIONNAT, en buts. Ce profil-ci agit sur l'ISSUE, pas sur les buts :
+// c’est un autre chemin, et notamment le seul qui puisse parler du NUL.
+//
+// VERDICT DU 16 SEPTEMBRE 2026 : RIEN, ET LA PERTE EST MONOTONE.
+//
+//     poids 0,05   -4 / +6        poids 0,20 min 100   -11 / -11
+//     poids 0,10   -9 / +3        poids 0,20 min 400    -5 / -18
+//     poids 0,20  -10 / -11       poids 0,40 min 300   -32 / -12
+//     poids 0,30  -25 / -1
+//
+// Plus le profil pese, plus il perd : -6, -21, -26, -22, -23, -44 en trois
+// tranches. Le moteur connait deja ses championnats — par l avantage du
+// terrain par ligue, en ligne, et par l etalon par competition du releve des
+// occasions. Lui repeter la moyenne de la ligue ne fait qu effacer ce qu il
+// sait du match.
+//
+// UNE OBSERVATION A GARDER : a poids 0,40, la justesse des matchs mis en avant
+// monte a 81,0 % sur la seconde moitie (contre 70,4 %). Tirer vers la moyenne
+// rend le moteur sur de lui UNIQUEMENT la ou il l est vraiment. Il perd
+// quarante-quatre vainqueurs pour cela — inutilisable tel quel, mais c est la
+// meme piste que la calibration soumise au proprietaire le 14 septembre.
+//
+// `minimum` écarte les championnats trop peu vus : une part apprise sur trente
+// rencontres décrit un hasard, pas un championnat.
+function avecProfilDeLigue(
+  poids: number,
+  minimum: number,
+  siLaMemoireSeTait: boolean
+): { pronostics: Pronostic[]; actifs: number[] } {
+  const profil = new Map<number, { n: number; dom: number; nul: number; ext: number }>();
+  const apprendre = (x: any) => {
+    const ligue = Number(x.ligue);
+    let c = profil.get(ligue);
+    if (!c) { c = { n: 0, dom: 0, nul: 0, ext: 0 }; profil.set(ligue, c); }
+    c.n++;
+    if (x.bd > x.be) c.dom++;
+    else if (x.bd === x.be) c.nul++;
+    else c.ext++;
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+
+    const memoire = avisDeLaProduction(m);
+    let avis: any = memoire;
+
+    // La mémoire garde la priorité : elle en sait plus sur un match aveugle
+    // qu'une moyenne de championnat.
+    if (!(siLaMemoireSeTait && memoire)) {
+      const c = profil.get(Number(m.ligue));
+      if (c && c.n >= minimum) {
+        avis = { dom: c.dom / c.n, nul: c.nul / c.n, ext: c.ext / c.n, poids };
+        actifs.push(Number(m.id));
+      }
+    }
+
+    // Le mélange et le repos déjà en ligne, repris tels quels.
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), avis
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
@@ -3672,6 +3873,16 @@ for (const vBrute of tache.variantes) {
       poidsElan: v.couche.poidsElan ?? 0.2,
       poidsTerrain: v.couche.poidsTerrain ?? 0.2,
     });
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    return;
+  }
+  if (v.couche?.type === 'profil-de-ligue') {
+    const { pronostics, actifs: ids } = avecProfilDeLigue(
+      v.couche.poids,
+      v.couche.minimum,
+      v.couche.siLaMemoireSeTait !== false
+    );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
     return;
