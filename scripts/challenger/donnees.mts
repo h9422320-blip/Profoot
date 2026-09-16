@@ -35,9 +35,30 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   const ligues = [...new Set<number>([...Object.values(LEAGUE_IDS as Record<string, number>).map(Number), 2, 3, 848])];
   const parId = new Map<number, any>();
   for (const ligue of ligues) {
-    for (const s of [saison - 1, saison]) {
-      // La saison en cours se relit chaque nuit ; la précédente ne bouge plus.
-      const duree = s === saison ? 12 * 3_600_000 : 30 * 86_400_000;
+    // ── TROIS SAISONS, ET NON DEUX ────────────────────────────────────────
+    //
+    // POURQUOI LA TROISIÈME EST INDISPENSABLE
+    //
+    // `calculerForces` — que la production consulte à chaque analyse — bâtit
+    // ses forces sur la SAISON PRÉCÉDENTE du championnat, et refuse de se
+    // prononcer en dessous de cinquante rencontres. La production les demande
+    // au fournisseur et les obtient toujours.
+    //
+    // Le banc, lui, n'en collectait que deux. Pour la plus ancienne des deux,
+    // il n'avait donc AUCUNE saison antérieure : sur les premières journées de
+    // cette saison-là, les forces étaient déclarées non fiables et le banc
+    // décrivait un moteur plus faible que le vrai.
+    //
+    // Mesuré le 15 septembre 2026 : 796 rencontres à 46,6 % de justesse, dont
+    // un tiers mises en avant pour 49,6 % — le pire creux du banc, et il
+    // n'existait pas en production. J'ai failli bâtir une couche pour le
+    // combler. C'était le sixième écart de cette famille en deux jours.
+    //
+    // CE QUE ÇA COÛTE : une requête par championnat, mise en réserve trois
+    // mois. Une saison close ne bouge plus jamais.
+    for (const s of [saison - 2, saison - 1, saison]) {
+      // La saison en cours se relit chaque nuit ; les closes ne bougent plus.
+      const duree = s === saison ? 12 * 3_600_000 : s === saison - 1 ? 30 * 86_400_000 : 90 * 86_400_000;
       try {
         const r: any = await apiFootball(`/fixtures?league=${ligue}&season=${s}&status=FT`, duree);
         for (const f of r?.response ?? []) {
