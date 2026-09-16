@@ -2858,6 +2858,53 @@ function avecMemoireSurLesSurs(
 // d'une rencontre redevient exactement son nombre de buts. Aucune constante
 // inventée, aucun réglage nouveau : c'est le même calcul sur une autre matière.
 //
+// ── VERDICT DU 16 SEPTEMBRE 2026, SUR 31 118 RENCONTRES ───────────
+//
+// Le banc a change deux fois depuis : il porte l ancre, le classement, les
+// forces ajustees, le croisement entre championnats, le repos, et surtout
+// QUATRE saisons collectees au lieu de deux. La question meritait d etre
+// reposee, et la reponse est tout autre.
+//
+//     buts 180 j              +10 / +37      buts 240 j, club 10   +0 / +50
+//     buts 240 j               -4 / +50      buts 240 j, club 20  +22 / +35
+//     buts 300 j              +24 / +43      buts 300 j, club 10  +26 / +45
+//     buts 400 j              +22 / +42
+//
+// SEPT reglages, et LES SEPT tiennent dans les trois tranches de temps :
+// +46, +47, +50, +57, +64, +67, +71. C est de loin le signal le plus fort et
+// le plus reproductible trouve jusqu ici.
+//
+// ET POURTANT ELLE N EST PAS MISE EN LIGNE. Voici pourquoi, en chiffres.
+//
+// Sur les 24 901 rencontres qu elle touche (reglage 300 j, club vu 10 fois) :
+//
+//     vainqueurs justes        12 800 contre 12 729   soit +71
+//     Brier                    0,59311 contre 0,59244  (pire)
+//     rencontres mises en avant 6 607 contre 5 881     (+726)
+//     justesse sur celles-la    69,0 % contre 70,9 %   (-1,9 point)
+//
+// Elle rend le moteur plus sur de lui sur SEPT CENTS rencontres de plus, et
+// ces rencontres-la sont moins bien cernees. La porte refuse d ailleurs sur ce
+// point precis : la justesse des matchs surs ne doit pas perdre plus d un
+// point, elle en perd deux.
+//
+// ET SUR CE QUE L ABONNE VOIT VRAIMENT — le haut de chaque journee,
+//  :
+//
+//     les 3 premieres du jour   73,2 % -> 73,1 %   275 -> 270 journees parfaites
+//     les 5 premieres du jour   71,2 % -> 70,5 %   140 -> 134
+//     les 10 premieres du jour  67,5 % -> 66,9 %    25 ->  24
+//
+// Elle gagne soixante et onze vainqueurs sur la moyenne, et abime le haut du
+// classement — c est-a-dire exactement ce que le proprietaire demande depuis le
+// debut : « cinq matchs analyses, cinq matchs justes ». La mettre en ligne
+// serait choisir le chiffre qui flatte plutot que celui qu il a demande.
+//
+// A ROUVRIR SI la selection du jour cesse un jour de se faire sur la certitude
+// brute : c est la seule condition qui changerait l arbitrage.
+//
+// ── ANCIEN VERDICT, CONSERVE POUR MEMOIRE ────────────────────
+//
 // VERDICT DU 14 SEPTEMBRE 2026 : RIEN, ET LA LECON VAUT PLUS QUE LA COUCHE.
 //
 // Premiere mesure, sur le banc d alors : +12 et +12 vainqueurs justes, Brier
@@ -3038,7 +3085,7 @@ function avecOccasionsParLesButs(
     }
 
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occUtilise, corr, avisDeLaProduction(m)
+      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occUtilise, corrEnLigne(m), avisDeLaProduction(m)
     );
     pronostics.push(versPronostic(m, r));
   }
