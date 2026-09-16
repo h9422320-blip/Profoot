@@ -129,7 +129,15 @@ export async function updateSession(request: NextRequest) {
    * décide d'un droit ou sert du contenu payant n'y entre jamais : le portier
    * est la seule barrière qui s'exécute avant tout le reste.
    */
-  const SANS_IDENTITE = ['/api/mesure'];
+  //
+  // `/api/erreur-affichage`, AJOUTÉE LE 16 SEPTEMBRE 2026. Chaque écran
+  // « Cette page n'a pas pu s'afficher » y envoie la cause de la panne. Elle
+  // n'ouvre aucun droit, ne lit aucune identité, ne sert aucun contenu et ne
+  // renvoie RIEN — pas même un code d'erreur. Et elle part précisément quand
+  // quelque chose va mal : lui faire traverser un appel d'authentification,
+  // c'est ajouter une charge sur la base au pire moment, exactement le
+  // mécanisme des pannes du 25 août et du 5 septembre.
+  const SANS_IDENTITE = ['/api/mesure', '/api/erreur-affichage'];
 
   const besoinDIdentite =
     isProtectedPath || (chemin.startsWith('/api/') && !SANS_IDENTITE.includes(chemin));

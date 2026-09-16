@@ -66,9 +66,13 @@ test('★ ACQUIS — le portier n\'authentifie pas le compteur de visites', () =
   // seule barrière qui s'exécute avant tout le reste.
   const liste = src.match(/SANS_IDENTITE\s*=\s*\[([^\]]*)\]/);
   const chemins = (liste?.[1] ?? '').match(/'[^']+'/g) ?? [];
+  // `/api/erreur-affichage` y est entrée le 16 septembre 2026, justifiée dans
+  // le portier : elle n'ouvre aucun droit, ne lit aucune identité, ne sert
+  // aucun contenu et ne renvoie rien. La liste reste EXACTE : tout autre ajout
+  // fera échouer ce test et devra se justifier à son tour.
   assert.deepEqual(
     chemins,
-    ["'/api/mesure'"],
+    ["'/api/mesure'", "'/api/erreur-affichage'"],
     'Une route a été ajoutée à SANS_IDENTITE. Chaque ajout retire le contrôle ' +
       "d'identité AVANT l'entrée dans la route : cela se justifie une par une, " +
       'et jamais pour une route qui ouvre un droit ou sert du contenu payant.'
