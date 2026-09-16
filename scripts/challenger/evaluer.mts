@@ -29,7 +29,7 @@
  * Usage : `npx tsx scripts/challenger/evaluer.mts <tâche.json>`
  */
 import fs from 'node:fs';
-import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, COUPES_SUIVIES, TIRS_EN_PLUS, lireHierarchieDirect } from './commun.mjs';
+import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, COUPES_SUIVIES, TIRS_EN_PLUS, COUPES, lireHierarchieDirect } from './commun.mjs';
 import type { Pronostic } from './porte.js';
 
 type Couche =
@@ -66,7 +66,20 @@ type Couche =
   | { type: 'occasions-par-les-buts'; jours: number; saisonMaigre?: number; minimumClub?: number; avecMelange?: boolean }
   | { type: 'avantage-terrain-plat'; buts: number; siSurExterieur?: number; siSaisonMaigre?: number; siRienDeVu?: boolean; avecMelange?: boolean }
   | { type: 'memoire-quand-tout-manque'; part: number; avecMelange?: boolean }
-  | { type: 'occasions-recentes'; jours: number; part: number; avecMelange?: boolean };
+  | { type: 'occasions-recentes'; jours: number; part: number; avecMelange?: boolean }
+  | {
+      type: 'calendrier';
+      poidsRepos?: number;
+      plafondRepos?: number;
+      poidsCharge?: number;
+      fenetreCharge?: number;
+      poidsProchain?: number;
+      poidsEurope?: number;
+      joursEurope?: number;
+      poidsElan?: number;
+      poidsTerrain?: number;
+      plafondProchain?: number;
+    };
 
 chargerEnv();
 const tache: {
@@ -3390,6 +3403,230 @@ function avecOccasionsRecentes(
   return { pronostics, actifs };
 }
 
+// ── LE CALENDRIER : CE QUE LE MOTEUR NE VOIT TOUJOURS PAS ──────────
+//
+// D'OÙ VIENT CETTE COUCHE
+//
+// Le repos entre deux matchs est entré dans le moteur le 16 septembre 2026 :
+// +8 et +5 vainqueurs justes, seize réglages essayés et pas un perdant. Il a
+// gagné parce qu'il apportait un signal que le moteur n'avait PAS DU TOUT —
+// ni dans les occasions, ni dans le classement, ni dans la forme.
+//
+// La même veine en contient deux autres, et le banc a de quoi les calculer.
+//
+// LA CHARGE. Le repos ne dit que la veille. Un club peut avoir six jours
+// devant lui ET sortir de huit matchs en trois semaines. Ce sont deux
+// fatigues différentes, et la seconde ne se voit nulle part.
+//
+// LA ROTATION. Un club qui joue un huitième de finale dans trois jours ne
+// s'emploie pas comme celui qui n'a rien avant dix jours. Le calendrier est
+// connu à l’avance — ce n’est pas de la divination, et ce n’est pas une fuite :
+// on ne lit QUE LA DATE du prochain match, jamais son résultat.
+//
+// VERDICT DU 16 SEPTEMBRE 2026 : LE REPOS AVAIT DEJA TOUT PRIS.
+//
+// Mesure faite AVEC le repos deja en ligne, ce qui est la seule question qui
+// vaille : ces signaux ajoutent-ils quelque chose PAR-DESSUS lui ?
+//
+//     charge 14 j, poids 0,06     -5 / +1          charge 21 j, 0,03   -1 / +3
+//     charge 21 j, poids 0,06     -2 / +3          charge 28 j, 0,06   +2 / -2
+//     prochain 7 j, poids 0,06    +2 / +6          prochain 10 j, 0,03 +2 / -5
+//     prochain 10 j, poids 0,06   +1 / +4          les deux ensemble   -1 / -4
+//
+// Signes melanges, aucun plateau, aucune ne tient en trois tranches. La
+// fatigue etait deja entierement decrite par les jours de repos ; le nombre de
+// matchs et la rotation n en disent pas davantage.
+//
+// LE CONTRECOUP EUROPEEN, MESURE ET FERME LUI AUSSI. Penaliser un club qui
+// sort d une coupe d Europe dans les quatre a sept jours : sept reglages, rien
+// ou pire. Et c est le SENS INVERSE qui passe la porte (+6 / +2) sans tenir en
+// trois tranches — un seul reglage gagnant sur sept, avec le signe contraire a
+// la theorie, c est la signature du hasard, pas d un effet.
+//
+// LES POIDS DE L ELAN ET DU TERRAIN, REREGLES AVEC LE REPOS EN PLACE. Ajouter
+// un signal peut deplacer l optimum des autres : la question meritait d etre
+// reposee. Huit combinaisons de 0,10 a 0,30 : AUCUNE ne bat 0,2 / 0,2. Et
+// retirer le terrain coute -9 / -7 (-16 en trois tranches) — il gagne bien sa
+// place, contrairement a ce qu une lecture hative du 16 au matin laissait
+// croire.
+//
+// Les trois corrections passent par le onzième point d’entrée, en buts, et
+// s'ajoutent au mélange en ligne. Un poids à zéro éteint sa part : la couche
+// sert donc aussi à mesurer chaque signal SEUL.
+function avecCalendrier(c: {
+  poidsRepos: number;
+  plafondRepos: number;
+  poidsCharge: number;
+  fenetreCharge: number;
+  poidsProchain: number;
+  plafondProchain: number;
+  poidsEurope: number;
+  joursEurope: number;
+  poidsElan: number;
+  poidsTerrain: number;
+}): { pronostics: Pronostic[]; actifs: number[] } {
+  // Toutes les dates de match de chaque club, dans l’ordre. Le calendrier
+  // entier est connu d’avance : le lire en entier ne fait fuiter aucun
+  // résultat, seulement des dates.
+  const calendrier = new Map<number, number[]>();
+  const calendrierEurope = new Map<number, number[]>();
+  for (const x of toutesLesRencontres) {
+    const t = Date.parse(x.date);
+    if (!Number.isFinite(t)) continue;
+    const europeenne = COUPES.has(Number(x.ligue));
+    for (const club of [Number(x.dom), Number(x.ext)]) {
+      const l = calendrier.get(club);
+      if (l) l.push(t);
+      else calendrier.set(club, [t]);
+      if (europeenne) {
+        const e = calendrierEurope.get(club);
+        if (e) e.push(t);
+        else calendrierEurope.set(club, [t]);
+      }
+    }
+  }
+  for (const l of calendrier.values()) l.sort((a, b) => a - b);
+  for (const l of calendrierEurope.values()) l.sort((a, b) => a - b);
+
+  const JOUR = 86_400_000;
+  const reposDe = (club: number, quand: number) => {
+    const l = calendrier.get(club);
+    if (!l) return c.plafondRepos;
+    let avant: number | null = null;
+    for (const t of l) { if (t >= quand) break; avant = t; }
+    if (avant === null) return c.plafondRepos;
+    return Math.min(c.plafondRepos, Math.max(0, (quand - avant) / JOUR));
+  };
+  const chargeDe = (club: number, quand: number) => {
+    const l = calendrier.get(club);
+    if (!l) return 0;
+    const debut = quand - c.fenetreCharge * JOUR;
+    let n = 0;
+    for (const t of l) { if (t >= quand) break; if (t >= debut) n++; }
+    return n;
+  };
+  // Le contrecoup europeen : le club sort-il d un deplacement de coupe
+  // d Europe dans les derniers jours ? Le repos compte les JOURS ; ceci
+  // compte la NATURE du match precedent, ce qui est autre chose.
+  const sortDEurope = (club: number, quand: number) => {
+    const l = calendrierEurope.get(club);
+    if (!l) return 0;
+    const debut = quand - c.joursEurope * JOUR;
+    for (const t of l) { if (t >= quand) break; if (t >= debut) return 1; }
+    return 0;
+  };
+  const prochainDe = (club: number, quand: number) => {
+    const l = calendrier.get(club);
+    if (!l) return c.plafondProchain;
+    for (const t of l) if (t > quand) return Math.min(c.plafondProchain, (t - quand) / JOUR);
+    return c.plafondProchain;
+  };
+
+  // Le mélange déjà en ligne, repris tel quel.
+  const parLigue = new Map<number, { n: number; somme: number }>();
+  let nLigues = 0;
+  let sommeLigues = 0;
+  const passe = new Map<string, { produit: number; concede: number }[]>();
+  const occ6 = new Map<string, { d: number; e: number }>();
+  for (const t of tirs)
+    occ6.set(String(t.dom) + " · " + String(t.ext) + " · " + String(t.date), {
+      d: BUT_PAR_CADRE * Number(t.cadresD) + BUT_PAR_SURFACE * Number(t.surfaceD),
+      e: BUT_PAR_CADRE * Number(t.cadresE) + BUT_PAR_SURFACE * Number(t.surfaceE),
+    });
+  const apprendre = (x: any) => {
+    const cle = String(x.nomDom) + " · " + String(x.nomExt) + " · " + String(Date.parse(x.date));
+    const o = occ6.get(cle);
+    if (o) {
+      const aj = (club: string, produit: number, concede: number) => {
+        const l = passe.get(club);
+        if (l) l.push({ produit, concede });
+        else passe.set(club, [{ produit, concede }]);
+      };
+      aj(String(x.nomDom), o.d, o.e);
+      aj(String(x.nomExt), o.e, o.d);
+    }
+    const ligue = Number(x.ligue);
+    let k = parLigue.get(ligue);
+    if (!k) { k = { n: 0, somme: 0 }; parLigue.set(ligue, k); }
+    k.n++;
+    k.somme += x.bd - x.be;
+    nLigues++;
+    sommeLigues += x.bd - x.be;
+  };
+  const moy = (l: number[]) => (l.length ? l.reduce((x, y) => x + y, 0) / l.length : 0);
+  const elanDe = (club: string) => {
+    const l = passe.get(club);
+    if (!l || l.length < 10) return null;
+    return {
+      attaque: moy(l.slice(-5).map((x) => x.produit)) - moy(l.slice(-10).map((x) => x.produit)),
+      defense: moy(l.slice(-5).map((x) => x.concede)) - moy(l.slice(-10).map((x) => x.concede)),
+    };
+  };
+  const ecartDeLigue = (ligue: number) => {
+    const k = parLigue.get(Number(ligue));
+    if (!k || k.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
+    return 0.2 * (k.n / (k.n + 20)) * (k.somme / k.n - sommeLigues / nLigues);
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour)
+        apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    const quand = Date.parse(m.date);
+    const dom = Number(m.dom);
+    const ext = Number(m.ext);
+
+    let cd = 0;
+    let ce = 0;
+    let agit = false;
+
+    if (c.poidsRepos !== 0 && c.plafondRepos > 0) {
+      const e = (reposDe(dom, quand) - reposDe(ext, quand)) / c.plafondRepos;
+      if (e !== 0) { cd += c.poidsRepos * e; ce -= c.poidsRepos * e; agit = true; }
+    }
+    if (c.poidsCharge !== 0 && c.fenetreCharge > 0) {
+      // Normalisé par le maximum plausible : un match tous les trois jours.
+      const plafond = Math.max(1, c.fenetreCharge / 3);
+      const e = Math.max(-1, Math.min(1, (chargeDe(dom, quand) - chargeDe(ext, quand)) / plafond));
+      // Plus de matchs joués, plus de fatigue : le signe s'inverse.
+      if (e !== 0) { cd -= c.poidsCharge * e; ce += c.poidsCharge * e; agit = true; }
+    }
+    if (c.poidsProchain !== 0 && c.plafondProchain > 0) {
+      const e = (prochainDe(dom, quand) - prochainDe(ext, quand)) / c.plafondProchain;
+      // Rien avant longtemps : on peut tout donner aujourd'hui.
+      if (e !== 0) { cd += c.poidsProchain * e; ce -= c.poidsProchain * e; agit = true; }
+    }
+    if (c.poidsEurope !== 0 && c.joursEurope > 0) {
+      const e = sortDEurope(dom, quand) - sortDEurope(ext, quand);
+      // Sortir d Europe fatigue : le signe s inverse.
+      if (e !== 0) { cd -= c.poidsEurope * e; ce += c.poidsEurope * e; agit = true; }
+    }
+    if (agit) actifs.push(Number(m.id));
+
+    const a = elanDe(String(m.nomDom));
+    const b = elanDe(String(m.nomExt));
+    const ligue = ecartDeLigue(Number(m.ligue));
+    // Le terrain par championnat est calcule a 0,2 par ecartDeLigue : on le
+    // ramene a son poids voulu en divisant par 0,2.
+    const t = ligue * (c.poidsTerrain / 0.2);
+    cd += (c.poidsElan * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 + t / 2;
+    ce += (c.poidsElan * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 - t / 2;
+
+    const corr = cd === 0 && ce === 0 ? null : { domicile: cd, exterieur: ce };
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corr, avisDeLaProduction(m)
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 // ── CHAQUE ESSAI ──────────────────────────────────────────────────────────
 const sortie: Record<string, Pronostic[]> = {};
 const actifs: Record<string, number[]> = {};
@@ -3422,6 +3659,23 @@ function avecEnvironnement<T>(env: Record<string, string>, faire: () => T): T {
 for (const vBrute of tache.variantes) {
   const v = vBrute;
   avecEnvironnement(v.env, () => {
+  if (v.couche?.type === 'calendrier') {
+    const { pronostics, actifs: ids } = avecCalendrier({
+      poidsRepos: v.couche.poidsRepos ?? 0,
+      plafondRepos: v.couche.plafondRepos ?? 14,
+      poidsCharge: v.couche.poidsCharge ?? 0,
+      fenetreCharge: v.couche.fenetreCharge ?? 21,
+      poidsProchain: v.couche.poidsProchain ?? 0,
+      plafondProchain: v.couche.plafondProchain ?? 14,
+      poidsEurope: v.couche.poidsEurope ?? 0,
+      joursEurope: v.couche.joursEurope ?? 5,
+      poidsElan: v.couche.poidsElan ?? 0.2,
+      poidsTerrain: v.couche.poidsTerrain ?? 0.2,
+    });
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
+    return;
+  }
   if (v.couche?.type === 'occasions-recentes') {
     const { pronostics, actifs: ids } = avecOccasionsRecentes(
       v.couche.jours,
