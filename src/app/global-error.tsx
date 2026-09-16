@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { estErreurReparableParRechargement, rechargerUneFois } from '@/lib/nouvelle-version';
 
 /**
  * LA DERNIÈRE BARRIÈRE : PLUS JAMAIS DE PAGE NOIRE.
@@ -53,24 +54,6 @@ import { useEffect } from 'react';
  * l'ancienne liste ne reconnaissait rien : le visiteur restait bloqué sur un
  * écran définitif alors qu'un simple rechargement suffisait.
  */
-const SIGNES_MORCEAU_MANQUANT = [
-  'ChunkLoadError',
-  'Loading chunk',
-  'Loading CSS chunk',
-  'Failed to fetch dynamically imported module',
-  'error loading dynamically imported module',
-  'Importing a module script failed',
-  // Une coupure réseau pendant le chargement d'un morceau ou d'une page.
-  'Failed to fetch',
-  'NetworkError',
-  'Load failed',
-  'Failed to load',
-  'network error',
-  'Connection closed',
-  'Connection terminated',
-];
-
-const CLE_RECHARGE = 'profoot:recharge-morceau';
 
 export default function GlobalError({
   error,
@@ -95,21 +78,20 @@ export default function GlobalError({
   retry?: () => void;
   reset?: () => void;
 }) {
-  const texte = `${error?.name ?? ''} ${error?.message ?? ''}`;
-  const morceauManquant = SIGNES_MORCEAU_MANQUANT.some((signe) => texte.includes(signe));
+  // ── LA MÊME RECONNAISSANCE QUE PARTOUT AILLEURS, DEPUIS LE 16 SEPTEMBRE ──
+  //
+  // Cette barrière avait sa propre liste, et un drapeau posé à « 1 » qui
+  // n'était effacé que par `RecuperationChargement`. Trois listes recopiées
+  // avaient divergé — l'une d'elles ne reconnaissait plus du tout la forme
+  // Turbopack de la panne, et c'est ce qui a laissé passer les écrans d'erreur
+  // des 14, 15 et 16 septembre 2026. La reconnaissance vit désormais à un seul
+  // endroit, avec un garde-fou qui s'efface de lui-même au bout d'une
+  // demi-minute : un incident du matin n'empêche plus le rattrapage du soir.
+  const morceauManquant = estErreurReparableParRechargement(error);
 
   useEffect(() => {
     if (!morceauManquant) return;
-    try {
-      // Une seule tentative : deux rechargements d'affilée signifient que le
-      // problème est ailleurs, et une page qui se recharge en boucle est pire
-      // qu'une page en erreur.
-      if (sessionStorage.getItem(CLE_RECHARGE)) return;
-      sessionStorage.setItem(CLE_RECHARGE, '1');
-      window.location.reload();
-    } catch {
-      /* Navigation privée, stockage refusé : on laisse le message s'afficher. */
-    }
+    rechargerUneFois();
   }, [morceauManquant]);
 
   return (
@@ -162,11 +144,11 @@ export default function GlobalError({
 
           <button
             onClick={() => {
-              try {
-                sessionStorage.removeItem(CLE_RECHARGE);
-              } catch {
-                /* sans importance */
-              }
+              // Un clic est un geste de l'abonné, pas un rechargement
+              // automatique : le garde-fou contre la boucle n'a pas à s'en
+              // mêler, et s'efface de toute façon seul au bout d'une
+              // demi-minute.
+              //
               // ── LE BOUTON DOIT TOUJOURS FAIRE QUELQUE CHOSE ──────────────
               //
               // `retry` d'abord : il redemande le contenu au serveur. À

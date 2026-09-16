@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { clubs, getClub, matches, competitions } from "@/lib/data";
 import BarriereDeRendu from "@/components/BarriereDeRendu";
+import { noterAnalyseEnCours, oublierAnalyseEnCours, reprendreAnalyse } from "@/lib/nouvelle-version";
 import chargerADemande from "next/dynamic";
 import { signalerEtape } from "@/components/etapes-vente";
 import { usePaysAcheteur } from "@/components/usePaysAcheteur";
@@ -921,6 +922,10 @@ export default function AnalyzePage({
 
     if (!activeT1 || !activeT2 || activeT1 === activeT2) return;
 
+    // Si une mise en ligne recharge la page pendant ce calcul, la page relira
+    // ces deux clubs et relancera l'analyse d'elle-même (voir plus bas).
+    if (tentative === 0) noterAnalyseEnCours(getClub(activeT1) as any, getClub(activeT2) as any);
+
     setAnalyzing(true);
     setResult(null);
     setAnalyzeError(null);
@@ -1151,6 +1156,7 @@ export default function AnalyzePage({
         return handleAnalyze(activeT1, activeT2, tentative + 1);
       }
 
+      oublierAnalyseEnCours();
       setAnalyzing(false);
       setResult(null);
       setAnalyzeError(error?.message || "Erreur inconnue");
@@ -1208,7 +1214,21 @@ export default function AnalyzePage({
     const params = new URLSearchParams(window.location.search);
     const t1 = params.get('t1');
     const t2 = params.get('t2');
-    if (!t1 || !t2) return;
+    if (!t1 || !t2) {
+      // ── L'ANALYSE INTERROMPUE PAR UNE MISE EN LIGNE REPART SEULE ──────
+      //
+      // 16 septembre 2026. Recharger répare la page, mais l'analyse en cours
+      // était perdue : l'abonné retombait sur un formulaire vide. Elle est
+      // relancée ici — uniquement juste après un rechargement de version, jamais
+      // sur un simple rechargement — et le serveur la rend en quelques secondes.
+      const reprise = reprendreAnalyse();
+      if (!reprise) return;
+      repriseFaite.current = true;
+      enregistrerClub(reprise.club1);
+      enregistrerClub(reprise.club2);
+      handleQuickMatchSelect(reprise.club1.id, reprise.club2.id);
+      return;
+    }
 
     repriseFaite.current = true;
     window.history.replaceState({}, '', window.location.pathname);

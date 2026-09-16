@@ -30,6 +30,7 @@
 
 import { useEffect, useState } from 'react';
 import { resumeDeLErreur } from '@/lib/erreurs-affichage';
+import { estErreurReparableParRechargement, rechargerUneFois } from '@/lib/nouvelle-version';
 
 /**
  * ── LA PANNE QUI N'EN EST PAS UNE : LE DÉCALAGE DE VERSION ────────────────
@@ -67,41 +68,24 @@ import { resumeDeLErreur } from '@/lib/erreurs-affichage';
  * sont déjà sur le site passent à côté. Ce filet-ci, lui, rattrape aussi
  * ceux-là — et toute panne de la même famille qu'on n'aurait pas prévue.
  */
-const ERREUR_DE_VERSION = (error: unknown): boolean => {
-  const e = error as { message?: unknown; __NEXT_ERROR_CODE?: unknown } | null;
-  if (!e) return false;
-  if (String(e.__NEXT_ERROR_CODE ?? '') === 'E394') return true;
-  return /unexpected response was received from the server/i.test(String(e.message ?? ''));
-};
-
-/**
- * Un rechargement, pas deux.
- *
- * Si le serveur est RÉELLEMENT en panne et répond mal à chaque fois, recharger
- * en boucle ferait clignoter la page à l'infini — bien pire que l'écran
- * d'erreur. On note donc l'heure du rechargement : au-delà d'un par demi-minute,
- * on s'arrête et on montre l'écran normal, qui laisse la main.
- */
-const CLE_RECHARGEMENT = 'profoot_rechargement_version';
-const ENTRE_DEUX_MS = 30_000;
-
-function rechargerUneFois(): boolean {
-  try {
-    const dernier = Number(sessionStorage.getItem(CLE_RECHARGEMENT) ?? 0);
-    if (Number.isFinite(dernier) && Date.now() - dernier < ENTRE_DEUX_MS) return false;
-    sessionStorage.setItem(CLE_RECHARGEMENT, String(Date.now()));
-  } catch {
-    // Navigation privée, stockage refusé : on recharge quand même une fois.
-    // Le pire cas est un second rechargement, pas une boucle — l'erreur de
-    // version disparaît dès que la nouvelle version est chargée.
-  }
-  try {
-    window.location.reload();
-    return true;
-  } catch {
-    return false;
-  }
-}
+//
+// ── ET CE QUI LUI MANQUAIT, TROUVÉ LE 16 SEPTEMBRE 2026 ────────────────────
+//
+// Ce détecteur ne connaissait QUE la forme E394. La panne la plus fréquente de
+// la même famille — un morceau de code renommé par une mise en ligne, que
+// Turbopack signale par `ChunkLoadError: Failed to load chunk …` — passait à
+// travers et tombait sur l'écran d'erreur ordinaire. C'est exactement la
+// capture envoyée par le propriétaire le 16 au matin sur Atlético–Osasuna, après
+// plusieurs mises en ligne.
+//
+// Les coupures réseau (« Failed to fetch », « Load failed »…) n'y étaient pas
+// non plus, alors que `global-error.tsx` les connaissait depuis le
+// 10 septembre. Trois listes recopiées avaient divergé.
+//
+// La reconnaissance et le rechargement vivent désormais à UN SEUL endroit,
+// `nouvelle-version.ts`, partagé avec la barrière racine et avec l'écoute de la
+// fenêtre. Ici la page est déjà tombée : on accepte donc aussi les coupures
+// réseau, qu'un rechargement répare tout autant.
 
 export interface ProprietesErreurSegment {
   error: Error & { digest?: string };
@@ -163,7 +147,7 @@ export default function EcranErreurSegment({
   }, [error]);
 
   useEffect(() => {
-    if (!ERREUR_DE_VERSION(error)) return;
+    if (!estErreurReparableParRechargement(error)) return;
     if (rechargerUneFois()) setEnTrainDeReparer(true);
   }, [error]);
 

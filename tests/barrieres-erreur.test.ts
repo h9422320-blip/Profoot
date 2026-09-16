@@ -29,6 +29,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { estErreurReparableParRechargement } from '../src/lib/nouvelle-version';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -99,14 +100,30 @@ test('★ ACQUIS — une coupure réseau se répare toute seule', () => {
   // Sur un téléphone en 3G, ce n'est pas toujours le morceau de code qui
   // manque : c'est la requête qui n'aboutit pas. Le navigateur dit alors
   // « Failed to fetch », « Load failed » (Safari) ou « NetworkError ».
-  // Sans ces signes, le visiteur restait bloqué sur un écran définitif alors
-  // qu'un rechargement suffisait.
-  const s = sansCommentaires(lire(GLOBALE));
-  for (const signe of ['ChunkLoadError', 'Loading chunk', 'Failed to fetch', 'NetworkError', 'Load failed']) {
-    assert.ok(s.includes(signe), `Le signe « ${signe} » n’est plus reconnu comme réparable.`);
+  //
+  // Depuis le 16 septembre 2026 la reconnaissance vit à UN SEUL endroit,
+  // `nouvelle-version.ts` : trois listes recopiées avaient divergé, et
+  // l'une d'elles laissait passer la panne depuis trois jours. On éprouve
+  // donc le COMPORTEMENT, et plus seulement la présence de mots dans un fichier.
+  for (const message of ['Failed to fetch', 'NetworkError when attempting to fetch resource.', 'Load failed']) {
+    assert.ok(
+      estErreurReparableParRechargement(new TypeError(message)),
+      `La coupure « ${message} » n’est plus reconnue comme réparable.`
+    );
   }
 
-  // Le rechargement automatique reste limité à UNE fois : une page qui se
-  // recharge en boucle est pire qu'une page en erreur.
-  assert.match(s, /sessionStorage\.getItem\(CLE_RECHARGE\)/, 'Le garde-fou anti-boucle a sauté.');
+  // Les deux barrières doivent employer CE détecteur, et non une copie.
+  for (const fichier of [GLOBALE, 'src/components/EcranErreurSegment.tsx']) {
+    const s = sansCommentaires(lire(fichier));
+    assert.match(
+      s,
+      /estErreurReparableParRechargement\(error\)/,
+      `${fichier} ne passe plus par le détecteur partagé : une copie divergera de nouveau.`
+    );
+  }
+
+  // Le rechargement automatique reste limité : une page qui se recharge en
+  // boucle est pire qu’une page en erreur.
+  const v = sansCommentaires(lire('src/lib/nouvelle-version.ts'));
+  assert.match(v, /sessionStorage\.getItem\(CLE_RECHARGEMENT\)/, 'Le garde-fou anti-boucle a sauté.');
 });

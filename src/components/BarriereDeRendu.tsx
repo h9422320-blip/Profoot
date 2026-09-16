@@ -39,6 +39,7 @@
  */
 
 import { Component, type ReactNode } from 'react';
+import { estErreurDeVersion, rechargerUneFois } from '@/lib/nouvelle-version';
 
 interface Proprietes {
   children: ReactNode;
@@ -50,6 +51,8 @@ interface Proprietes {
 
 interface Etat {
   tombe: boolean;
+  /** Vrai quand la page est déjà en train de se recharger. */
+  actualise?: boolean;
 }
 
 export default class BarriereDeRendu extends Component<Proprietes, Etat> {
@@ -63,10 +66,31 @@ export default class BarriereDeRendu extends Component<Proprietes, Etat> {
     // Journalisé, jamais étouffé : sans cette ligne, un défaut d'affichage
     // deviendrait invisible et vivrait des mois.
     console.error(`[AFFICHAGE${this.props.ou ? ' ' + this.props.ou : ''}]`, erreur);
+
+    // ── UN MORCEAU RENOMMÉ PAR UNE MISE EN LIGNE SE RÉPARE EN RECHARGEANT ──
+    //
+    // Trouvé le 16 septembre 2026. Les sections du résultat se chargent à la
+    // demande. Si une mise en ligne tombe pendant l'analyse, leur fichier
+    // n'existe plus, et l'erreur s'arrêtait ICI — sans jamais atteindre les
+    // écrans qui savent recharger. L'abonné restait devant un message, son
+    // analyse invisible. On recharge donc, et la page relance l'analyse, que
+    // le serveur a gardée en réserve.
+    if (estErreurDeVersion(erreur) && rechargerUneFois()) this.setState({ actualise: true });
   }
 
   render() {
     if (!this.state.tombe) return this.props.children;
+
+    if (this.state.actualise) {
+      return (
+        <div className="rounded-[20px] border px-5 py-6 text-center" style={{ borderColor: 'rgba(255,255,255,.08)', background: 'rgba(29,47,58,.6)' }}>
+          <p className="text-sm font-bold text-white">Un instant, on actualise…</p>
+          <p className="mt-2 text-[12.5px] leading-relaxed text-white/60">
+            Une nouvelle version vient d’être mise en ligne. Votre analyse revient toute seule.
+          </p>
+        </div>
+      );
+    }
 
     return (
       <div
