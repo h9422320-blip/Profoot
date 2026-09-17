@@ -38,6 +38,7 @@
  */
 
 import { createAdminClient } from './supabase-admin';
+import { cleDeCompetition } from './nom-de-competition';
 import { lireReserve, ecrireReserve, apiFootball, CACHE_TTL } from './api-football';
 
 /** En deçà, les facteurs sont mesurés mais NON appliqués. */
@@ -589,7 +590,20 @@ export async function jugerRencontresTerminees(
 
         lignes.push({
           fixture_id: p.fixture_id,
-          ligue: f.league?.name ?? null,
+          // ── LE NOM PORTE SON PAYS, SINON IL DÉSIGNE PLUSIEURS COMPÉTITIONS ──
+          //
+          // Relevé le 17 septembre 2026 : la ligne « Cup » de ce calibrage
+          // mélangeait les coupes de Grèce, d'Autriche, de Pologne, de
+          // Tchéquie, d'Estonie, d'Ukraine, de Lituanie, d'Islande et de
+          // Lettonie ; « Super League » cinq championnats de cinq pays ;
+          // « Premiership » l'Écosse et l'Irlande du Nord. Les facteurs appris
+          // sur ce mélange étaient ensuite appliqués à chacun d'eux — jusqu'à
+          // 0,87 sur les buts du recevant.
+          //
+          // Le pays n'apparaît que lorsqu'il lève une ambiguïté : « Premier
+          // League » reste « Premier League » en Angleterre, et devient
+          // « Premier League (Biélorussie) » ailleurs.
+          ligue: cleDeCompetition(f.league?.name, f.league?.country),
           date_match: f.fixture?.date ?? null,
           equipe_domicile: p.domicile_nom,
           equipe_exterieur: p.exterieur_nom,

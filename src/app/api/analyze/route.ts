@@ -10,6 +10,7 @@ import { toTeaser } from "@/lib/analysis-teaser";
 import { lireForces, butsAttendusOccasions } from "@/lib/forme-occasions";
 import { lireReserve, ecrireReserve } from "@/lib/api-football";
 import { lireCalibrages, facteursPour } from "@/lib/calibrage";
+import { cleDeCompetition } from "@/lib/nom-de-competition";
 import { lireReleve, fiabilitePour } from "@/lib/fiabilite-apprise";
 import { composerApercu as composerApercuVendeur } from "@/lib/apercu-vendeur";
 import { scenarioGabarit } from "@/lib/apercu-ia";
@@ -1442,7 +1443,16 @@ async function analyser(req: Request, billet: BilletQuota) {
     // championnat, en confrontant les buts annoncés aux buts marqués. Sous ce
     // seuil, `facteursPour` rend des facteurs neutres et le calcul est
     // rigoureusement celui d'avant.
-    facteursPour(await lireCalibrages(), nomCompetition),
+    // Le calibrage se cherche sous le nom QUI PORTE SON PAYS : « Cup » seul
+    // désignait neuf coupes différentes, et le moteur appliquait à chacune la
+    // moyenne des neuf.
+    facteursPour(
+      await lireCalibrages(),
+      cleDeCompetition(
+        (targetFutureMatch || targetPastMatch || nextH2H)?.league?.name ?? nomCompetition,
+        (targetFutureMatch || targetPastMatch || nextH2H)?.league?.country ?? null
+      ) ?? nomCompetition
+    ),
     // ── DEUX CHAMPIONNATS, DEUX ÉCHELLES ─────────────────────────────────
     //
     // Abaisse la confiance affichée : le moteur se trompe d'autant plus qu'il
