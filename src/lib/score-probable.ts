@@ -556,7 +556,24 @@ export function calculerScoreProbable(
    * l'aller est connu avant le coup d'envoi ; le moteur l'ignorait. Voir la
    * couche plus bas. Absent ou faux, le moteur rend EXACTEMENT ce qu'il rendait.
    */
-  matchRetour?: boolean | null
+  matchRetour?: boolean | null,
+  /**
+   * ── COUCHE AJOUTÉE : UNE SECONDE LECTURE DE LA RENCONTRE ───────────────
+   *
+   * Les probabilités d'un autre modèle, et la part qu'on leur donne. Elles
+   * sont mêlées aux probabilités du moteur JUSTE AVANT que le score ne soit
+   * choisi : le score reste donc celui de l'issue en tête, et rien ne peut se
+   * contredire à l'écran.
+   *
+   * Ce point d'entrée diffère de `marche` : celui-là traduit un avis en BUTS
+   * et laisse le moteur conclure ; celui-ci mêle deux CONVICTIONS déjà
+   * formées. Mesuré : sur les grands championnats, mêler le modèle de Poisson
+   * par les buts fait baisser la justesse des matchs sûrs, le mêler par les
+   * probabilités la fait monter.
+   *
+   * Absent, nul ou de part nulle, le moteur rend EXACTEMENT ce qu'il rendait.
+   */
+  secondAvis?: { dom: number; nul: number; ext: number; poids: number } | null
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -1018,6 +1035,32 @@ export function calculerScoreProbable(
       victoire1 = q[0] / total;
       nul = q[1] / total;
       victoire2 = q[2] / total;
+    }
+  }
+
+  // ── COUCHE : LA SECONDE LECTURE, MÊLÉE AUX PROBABILITÉS ───────────────
+  //
+  // Posée AVANT la couche du nul et avant l'arrondi : tout ce qui suit — le
+  // nul comprimé, l'issue retenue, le score choisi dans la grille — découle
+  // donc de la conviction mêlée, et reste cohérent.
+  if (
+    secondAvis &&
+    equipe1AJoueADomicile !== null &&
+    Number.isFinite(secondAvis.poids) &&
+    secondAvis.poids > 0
+  ) {
+    const part = Math.min(1, Math.max(0, secondAvis.poids));
+    const somme = secondAvis.dom + secondAvis.nul + secondAvis.ext;
+    if (somme > 0 && Number.isFinite(somme)) {
+      // L'avis est exprimé en domicile / nul / extérieur ; l'équipe 1 n'est
+      // pas toujours celle qui reçoit.
+      const e1Recoit = equipe1AJoueADomicile === true;
+      const a1 = (e1Recoit ? secondAvis.dom : secondAvis.ext) / somme;
+      const an = secondAvis.nul / somme;
+      const a2 = (e1Recoit ? secondAvis.ext : secondAvis.dom) / somme;
+      victoire1 = (1 - part) * victoire1 + part * a1;
+      nul = (1 - part) * nul + part * an;
+      victoire2 = (1 - part) * victoire2 + part * a2;
     }
   }
 

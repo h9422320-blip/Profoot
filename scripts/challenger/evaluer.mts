@@ -31,10 +31,12 @@
 import fs from 'node:fs';
 import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, COUPES_SUIVIES, TIRS_EN_PLUS, COUPES, lireHierarchieDirect } from './commun.mjs';
 import type { Pronostic } from './porte.js';
+import { ajusterPoisson, avisPoisson } from '../../src/lib/forces-poisson.js';
 
 type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
+  | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
   | { type: 'duel'; retrecissement: number; poids: number }
@@ -594,6 +596,67 @@ function avecErreurs(retrecissement: number, poids: number): Pronostic[] {
 // Mesuré auparavant sur un banc qui ne reproduisait pas la production, le
 // marché gagnait +5/+0. C'était un mirage de plus, du même genre que les
 // autres — et il attendait seulement le volume pour être mis en ligne.
+// ── LA COUCHE DU MODÈLE DE POISSON (DIXON-COLES) ────────────────────────────
+//
+// Attaques et défenses de chaque club ajustées par maximum de vraisemblance sur
+// tout le passé du championnat, avec oubli exponentiel — voir
+// `src/lib/forces-poisson.ts`. C'est une SECONDE lecture de la rencontre, d'une
+// famille différente de celle du moteur, passée par le point d'entrée du
+// marché : le moteur garde son total de buts et en ajuste la répartition.
+//
+// L'ajustement est refait tous les `parJour` jours, sur les SEULES rencontres
+// antérieures — exactement ce que fera le challenger chaque nuit.
+function avecPoisson(
+  poids: number,
+  demiVie: number,
+  parJour: number,
+  // Au-dessus de cette confiance, le moteur garde la main : ses matchs sûrs
+  // sont ceux qu'on met en avant, et on ne les touche pas.
+  seuilConfiance = 1
+): { pronostics: Pronostic[]; actifs: number[] } {
+  const base = championDeBase();
+  const baseParId = new Map(base.map((p) => [p.id, p]));
+  const parLigue = new Map<number, any[]>();
+  for (const x of toutesLesRencontres) {
+    const l = Number(x.ligue);
+    const liste = parLigue.get(l);
+    if (liste) liste.push(x);
+    else parLigue.set(l, [x]);
+  }
+
+  const forces = new Map<number, any>();
+  let ajusteeLe = 0;
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+
+  for (const { m, s1, s2, occ } of entrees) {
+    const quand = Date.parse(String(m.date).slice(0, 10) + 'T00:00:00Z');
+    if (!ajusteeLe || quand - ajusteeLe >= parJour * 86_400_000) {
+      forces.clear();
+      for (const [ligue, liste] of parLigue) {
+        const f = ajusterPoisson(
+          liste.map((x: any) => ({ date: x.date, ligue: Number(x.ligue), dom: Number(x.dom), ext: Number(x.ext), bd: Number(x.bd), be: Number(x.be) })),
+          quand,
+          demiVie
+        );
+        if (f) forces.set(ligue, f);
+      }
+      ajusteeLe = quand;
+    }
+    const avis = avisPoisson(forces.get(Number(m.ligue)), Number(m.dom), Number(m.ext));
+    const avant = baseParId.get(Number(m.id));
+    const sur = avant ? Math.max(avant.probas[0], avant.probas[2]) >= seuilConfiance : false;
+    const second = avis && !sur ? { ...avis, poids } : null;
+    if (second) actifs.push(Number(m.id));
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), null,
+      false, second
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 function avecMarche(poids: number): { pronostics: Pronostic[]; actifs: number[] } {
   const pronostics: Pronostic[] = [];
   const actifs: number[] = [];
@@ -4152,6 +4215,17 @@ for (const vBrute of tache.variantes) {
   }
   if (v.couche?.type === 'elo') {
     sortie[v.nom] = avecElo(v.couche.k, v.couche.poids);
+    return;
+  }
+  if (v.couche?.type === 'poisson') {
+    const { pronostics, actifs: ids } = avecPoisson(
+      v.couche.poids,
+      v.couche.demiVie ?? 300,
+      v.couche.parJour ?? 30,
+      v.couche.seuilConfiance ?? 1
+    );
+    sortie[v.nom] = pronostics;
+    actifs[v.nom] = ids;
     return;
   }
   if (v.couche?.type === 'marche') {
