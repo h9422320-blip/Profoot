@@ -1012,6 +1012,33 @@ export function calculerScoreProbable(
     }
   }
 
+  // ── COUCHE : LE NUL NE DÉPASSE PAS CE QU'IL VAUT VRAIMENT ─────────────
+  //
+  // Mesuré le 17 septembre 2026 sur 31 118 rencontres rejouées avec le moteur
+  // en ligne : jusqu'à 28 %, le nul annoncé est exact au point près. Au-delà,
+  // le nul RÉEL plafonne vers 29-30 %, quand le moteur l'annonce jusqu'à 40 %.
+  // Le même plafond sur les deux périodes, avant et depuis août 2025.
+  //
+  // Conséquence : sur les 895 matchs où le nul passait en tête, il était
+  // annoncé à 38,7 % et arrivait 30,5 % du temps. Le moteur annonçait « 1-1 »
+  // sur une issue qui n'était pas la plus probable.
+  //
+  // La couche comprime la part du nul au-dessus du seuil et rend la différence
+  // aux deux victoires, dans leur proportion. Elle ne touche à aucun réglage
+  // existant et se tait sous le seuil.
+  const SEUIL_DU_NUL = Number(process.env.BANC_NUL_SEUIL ?? 0.28);
+  const PENTE_DU_NUL = Number(process.env.BANC_NUL_PENTE ?? 0.3);
+  if (SEUIL_DU_NUL > 0 && PENTE_DU_NUL < 1 && nul > SEUIL_DU_NUL) {
+    const nulCorrige = SEUIL_DU_NUL + PENTE_DU_NUL * (nul - SEUIL_DU_NUL);
+    const victoires = victoire1 + victoire2;
+    if (victoires > 0) {
+      const rendu = nul - nulCorrige;
+      victoire1 += (rendu * victoire1) / victoires;
+      victoire2 += (rendu * victoire2) / victoires;
+      nul = nulCorrige;
+    }
+  }
+
   // Les trois issues doivent totaliser exactement 100 : on ajuste la plus
   // grande du reliquat d'arrondi plutôt que d'afficher 99,8 %.
   let pv1 = Math.round(victoire1 * 100);
