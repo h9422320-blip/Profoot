@@ -457,6 +457,49 @@ async function principal(): Promise<any> {
   }
   ligne('');
 
+  // ── LA SECONDE GRILLE DES SCORES, REFAITE CHAQUE NUIT ───────────────────
+  //
+  // Attaques et défenses ajustées par maximum de vraisemblance sur tout le
+  // passé de chaque compétition (`src/lib/forces-poisson.ts`). La production
+  // s'en sert pour RELIRE le score annoncé, à issue inchangée — mesuré le
+  // 17 septembre 2026 : score exact 7,70 % → 9,94 %, sans qu'un seul vainqueur
+  // annoncé ne bouge.
+  //
+  // Comme la mémoire des clubs, le calcul vit ici : il lit des dizaines de
+  // milliers de rencontres. Un échec ne doit pas faire tomber la nuit ; la
+  // production se tait alors et le score redevient celui d'avant.
+  ligne('## 2 ter. La seconde grille des scores');
+  ligne('');
+  try {
+    const { ajusterPoisson, rangerForcesPoisson } = await import('../../src/lib/forces-poisson.js');
+    const { FICHIER_RENCONTRES } = await import('./commun.mjs');
+    const fsNuit = await import('node:fs');
+    const toutes: any[] = JSON.parse(fsNuit.readFileSync(FICHIER_RENCONTRES, 'utf8'));
+    const parLigue = new Map<number, any[]>();
+    for (const m of toutes) {
+      const l = Number((m as any).ligue);
+      if (!Number.isFinite(l)) continue;
+      const liste = parLigue.get(l);
+      if (liste) liste.push(m);
+      else parLigue.set(l, [m]);
+    }
+    const maintenant = Date.now();
+    const ligues: Record<string, any> = {};
+    for (const [l, liste] of parLigue) {
+      const f = ajusterPoisson(
+        liste.map((m: any) => ({ date: m.date, ligue: Number(m.ligue), dom: Number(m.dom), ext: Number(m.ext), bd: Number(m.bd), be: Number(m.be) })),
+        maintenant
+      );
+      if (f) ligues[String(l)] = f;
+    }
+    await rangerForcesPoisson({ ligues, calculeLe: new Date().toISOString() });
+    const clubs = Object.values(ligues).reduce((n: number, f: any) => n + Object.keys(f.clubs).length, 0);
+    ligne(`- Ajustée et rangée : ${Object.keys(ligues).length} compétition(s), ${clubs} clubs.`);
+  } catch (e: any) {
+    ligne(`- Ajustement impossible aujourd’hui : ${e?.message ?? String(e)}`);
+  }
+  ligne('');
+
   const params = champion();
   const variantes = couchesAEssayer();
   ligne('## 3. Le moteur actuel (le champion)');

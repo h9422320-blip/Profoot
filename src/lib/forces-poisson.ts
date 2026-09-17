@@ -255,3 +255,42 @@ export async function lireForcesPoisson(): Promise<ForcesPoisson | null> {
 export async function rangerForcesPoisson(forces: ForcesPoisson): Promise<void> {
   await ecrireReserve(CLE, forces, DUREE);
 }
+
+/**
+ * Les buts attendus du modèle pour une rencontre, du point de vue de celui qui
+ * reçoit. Sert à RELIRE le score annoncé, jamais à changer l'issue.
+ *
+ * `null` dès qu'un des deux clubs manque : une demi-lecture ne vaut rien.
+ */
+export function butsAttendusPoisson(
+  force: ForcePoissonLigue | null | undefined,
+  domicile: number | string | null | undefined,
+  exterieur: number | string | null | undefined
+): { domicile: number; exterieur: number } | null {
+  if (!force) return null;
+  const a = force.clubs[String(domicile ?? '')];
+  const b = force.clubs[String(exterieur ?? '')];
+  if (!a || !b) return null;
+  const dom = Math.exp(force.base + a.attaque - b.defense + force.terrain);
+  const ext = Math.exp(force.base + b.attaque - a.defense);
+  if (!Number.isFinite(dom) || !Number.isFinite(ext) || dom <= 0 || ext <= 0) return null;
+  return { domicile: dom, exterieur: ext };
+}
+
+/**
+ * La part donnée à la seconde grille dans le choix du score.
+ *
+ * Mesurée le 17 septembre 2026 sur 5 756 rencontres du périmètre suivi
+ * (sept grands championnats + coupes d'Europe), face au témoin exact :
+ *
+ *     couche éteinte ....... 443 scores exacts (7,70 %)
+ *     part 0,5 ............. 572 (9,94 %)   +129, et positif dans les 3 périodes
+ *     part 0,75 ............ 585 (10,16 %)  +142
+ *
+ * Les vainqueurs annoncés ne bougent pas d'UN SEUL match : la relecture ne
+ * choisit qu'entre les scores de l'issue déjà retenue.
+ *
+ * On prend la valeur du MILIEU : elle laisse au moteur la moitié de la
+ * décision, et le score le plus servi (1-0) reste sous le tiers des analyses.
+ */
+export const PART_GRILLE_SCORE = 0.5;

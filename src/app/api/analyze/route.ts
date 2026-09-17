@@ -26,6 +26,7 @@ import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { correctionElanTerrain, lireElanEtTerrain } from "@/lib/elan-et-terrain";
 import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from "@/lib/repos-des-clubs";
 import { statistiquesDepuisMatchs } from "@/lib/statistiques-recentes";
+import { lireForcesPoisson, butsAttendusPoisson, PART_GRILLE_SCORE } from "@/lib/forces-poisson";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
 import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 
@@ -1424,6 +1425,35 @@ async function analyser(req: Request, billet: BilletQuota) {
     equipe1AJoueADomicile === true ? team1.name : team2.name,
     equipe1AJoueADomicile === true ? team2.name : team1.name
   );
+  // ── LA SECONDE GRILLE, POUR LE SEUL CHOIX DU SCORE ─────────────────────
+  //
+  // Attaques et défenses ajustées par maximum de vraisemblance sur tout le
+  // passé du championnat (voir `forces-poisson.ts`), calculées chaque nuit par
+  // le challenger. Elles ne servent QU'À départager les scores de l'issue déjà
+  // retenue : le vainqueur annoncé, les probabilités et la confiance ne bougent
+  // pas d'un centième.
+  //
+  // Mesuré sur 5 756 rencontres du périmètre suivi, face au témoin exact :
+  // score exact 7,70 % → 9,94 %, soit +129, positif dans les trois périodes.
+  //
+  // Relevé absent, vieux de plus de dix jours, ou club inconnu : `null`, et le
+  // score redevient exactement celui d'avant.
+  const forcesPoisson = await lireForcesPoisson();
+  const grilleSeconde = (() => {
+    try {
+      const ligue = (targetFutureMatch || targetPastMatch || nextH2H)?.league?.id;
+      const force = forcesPoisson?.ligues?.[String(ligue ?? '')];
+      const buts = butsAttendusPoisson(
+        force,
+        equipe1AJoueADomicile === true ? team1.id : team2.id,
+        equipe1AJoueADomicile === true ? team2.id : team1.id
+      );
+      return buts ? { ...buts, poids: PART_GRILLE_SCORE } : null;
+    } catch {
+      return null;
+    }
+  })();
+
   const scoreCalcule = calculerScoreProbable(
     brutes1,
     brutes2,
@@ -1630,7 +1660,12 @@ async function analyser(req: Request, billet: BilletQuota) {
           // La part monte quand le moteur sait moins : pleine sous cinq matchs
           // connus dans la compétition. Voir `partDeLaMemoire`.
           partDeLaMemoire(Math.min(Number(brutes1?.matchsJoues ?? 0), Number(brutes2?.matchsJoues ?? 0)))
-        )
+        ),
+    // Le match retour et la seconde conviction restent éteints : mesurés,
+    // refusés le 18 septembre 2026 (voir `forces-poisson.ts`).
+    null,
+    null,
+    grilleSeconde
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────

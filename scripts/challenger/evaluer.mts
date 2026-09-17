@@ -36,7 +36,7 @@ import { ajusterPoisson, avisPoisson } from '../../src/lib/forces-poisson.js';
 type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
-  | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number }
+  | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
   | { type: 'duel'; retrecissement: number; poids: number }
@@ -610,6 +610,9 @@ function avecPoisson(
   poids: number,
   demiVie: number,
   parJour: number,
+  // Vrai : la seconde lecture ne sert QU'À CHOISIR LE SCORE, à l'intérieur de
+  // l'issue que le moteur a retenue. Les probabilités ne bougent pas.
+  pourLeScore = false,
   // Au-dessus de cette confiance, le moteur garde la main : ses matchs sûrs
   // sont ceux qu'on met en avant, et on ne les touche pas.
   seuilConfiance = 1
@@ -643,14 +646,27 @@ function avecPoisson(
       }
       ajusteeLe = quand;
     }
-    const avis = avisPoisson(forces.get(Number(m.ligue)), Number(m.dom), Number(m.ext));
+    const f = forces.get(Number(m.ligue));
+    const avis = avisPoisson(f, Number(m.dom), Number(m.ext));
+    // Les buts attendus du modèle, pour la grille des scores.
+    const a = f?.clubs?.[String(m.dom)];
+    const b = f?.clubs?.[String(m.ext)];
+    const grille =
+      pourLeScore && f && a && b
+        ? {
+            domicile: Math.exp(f.base + a.attaque - b.defense + f.terrain),
+            exterieur: Math.exp(f.base + b.attaque - a.defense),
+            poids,
+          }
+        : null;
     const avant = baseParId.get(Number(m.id));
     const sur = avant ? Math.max(avant.probas[0], avant.probas[2]) >= seuilConfiance : false;
     const second = avis && !sur ? { ...avis, poids } : null;
     if (second) actifs.push(Number(m.id));
+    if (grille) actifs.push(Number(m.id));
     const r: any = calculerScoreProbable(
       s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), null,
-      false, second
+      false, pourLeScore ? null : second, grille
     );
     pronostics.push(versPronostic(m, r));
   }
@@ -4222,6 +4238,7 @@ for (const vBrute of tache.variantes) {
       v.couche.poids,
       v.couche.demiVie ?? 300,
       v.couche.parJour ?? 30,
+      v.couche.pourLeScore === true,
       v.couche.seuilConfiance ?? 1
     );
     sortie[v.nom] = pronostics;

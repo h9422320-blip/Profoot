@@ -50,6 +50,7 @@ import {
 import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from './memoire-clubs';
 import { lireForcesLigue } from './forces-equipes';
 import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-championnats';
+import { lireForcesPoisson, butsAttendusPoisson, PART_GRILLE_SCORE } from './forces-poisson';
 import { figerPrediction } from './prediction-figee';
 
 /**
@@ -364,6 +365,8 @@ export async function precalculerGrandsMatchs(
     // La hiérarchie des championnats, lue une fois : elle ramène deux
     // championnats différents à la même échelle en coupe d'Europe.
     const forcesDesChampionnats = await lireForcesChampionnats().catch(() => null);
+    // La seconde grille des scores, lue une fois pour toute la passe.
+    const forcesPoisson = await lireForcesPoisson().catch(() => null);
 
     // Le championnat domestique d'un club, comme le résout l'analyse : on ne
     // retient qu'une compétition de type « League », et la saison précédente
@@ -559,7 +562,19 @@ export async function precalculerGrandsMatchs(
                 extId,
                 // Pleine part sous cinq matchs connus dans la compétition.
                 partDeLaMemoire(Math.min(brut(sDom).matchsJoues, brut(sExt).matchsJoues))
-              )
+              ),
+          // Le match retour et la seconde conviction restent éteints.
+          null,
+          null,
+          // ── LE SCORE RELU PAR LA SECONDE GRILLE ────────────────────────
+          //
+          // La même que l'analyse : sans elle, la carte de la sélection
+          // annoncerait un score que l'analyse contredirait. Elle ne départage
+          // que les scores de l'issue déjà retenue.
+          (() => {
+            const buts = butsAttendusPoisson(forcesPoisson?.ligues?.[String(ligue)], domId, extId);
+            return buts ? { ...buts, poids: PART_GRILLE_SCORE } : null;
+          })()
         );
 
         await figerPrediction({
