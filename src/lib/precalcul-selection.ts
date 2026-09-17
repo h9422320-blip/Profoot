@@ -50,7 +50,7 @@ import {
 import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from './memoire-clubs';
 import { lireForcesLigue } from './forces-equipes';
 import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-championnats';
-import { lireForcesPoisson, butsAttendusPoisson, PART_GRILLE_SCORE } from './forces-poisson';
+import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from './forces-poisson';
 import { figerPrediction } from './prediction-figee';
 
 /**
@@ -572,7 +572,7 @@ export async function precalculerGrandsMatchs(
           // annoncerait un score que l'analyse contredirait. Elle ne départage
           // que les scores de l'issue déjà retenue.
           (() => {
-            const buts = butsAttendusPoisson(forcesPoisson?.ligues?.[String(ligue)], domId, extId);
+            const buts = butsAttendusPourLeMatch(forcesPoisson, ligue, domId, extId);
             return buts ? { ...buts, poids: PART_GRILLE_SCORE } : null;
           })()
         );

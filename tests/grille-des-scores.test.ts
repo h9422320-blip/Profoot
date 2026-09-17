@@ -77,3 +77,24 @@ test('★ ACQUIS — les chiffres de buts sont relus par la grille mêlée, les 
   assert.equal(avec.probaVictoire2, sans.probaVictoire2);
   assert.equal(avec.confiance, sans.confiance);
 });
+
+test('★ ACQUIS — en coupe d’Europe, la grille vient du modèle GLOBAL', async () => {
+  // 858 matchs de coupe d'Europe : 63 scores exacts au moteur seul, 64 avec le
+  // modèle de la coupe seule, 75 avec le modèle global (17 septembre 2026).
+  const { butsAttendusPourLeMatch } = await import('../src/lib/forces-poisson');
+  const club = (a: number, d: number) => ({ attaque: a, defense: d });
+  const forces = {
+    calculeLe: new Date().toISOString(),
+    ligues: {
+      '2': { clubs: { '1': club(0.9, 0), '2': club(-0.9, 0) }, terrain: 0.2, base: 0.2, rencontres: 300 },
+      '39': { clubs: { '1': club(0.3, 0.1) }, terrain: 0.2, base: 0.2, rencontres: 400 },
+      global: { clubs: { '1': club(0.1, 0), '2': club(0.05, 0) }, terrain: 0.2, base: 0.2, rencontres: 9000 },
+    },
+  };
+  const coupe = butsAttendusPourLeMatch(forces as any, 2, 1, 2)!;
+  const global = butsAttendusPourLeMatch({ ...forces, ligues: { global: forces.ligues.global } } as any, 3, 1, 2)!;
+  assert.ok(Math.abs(coupe.domicile - global.domicile) < 1e-9, 'En coupe d’Europe, la grille ne vient plus du modèle global.');
+  // En championnat, le modèle du championnat… et le global en secours si un club y manque.
+  const secours = butsAttendusPourLeMatch(forces as any, 39, 1, 2);
+  assert.ok(secours, 'Un club absent du championnat fait taire la grille au lieu de passer au modèle global.');
+});

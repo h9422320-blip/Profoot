@@ -492,6 +492,12 @@ async function principal(): Promise<any> {
       );
       if (f) ligues[String(l)] = f;
     }
+    // Le modèle global, pour les coupes d'Europe (voir `butsAttendusPourLeMatch`).
+    const globale = ajusterPoisson(
+      toutes.map((m: any) => ({ date: m.date, ligue: Number(m.ligue), dom: Number(m.dom), ext: Number(m.ext), bd: Number(m.bd), be: Number(m.be) })),
+      maintenant
+    );
+    if (globale) ligues['global'] = globale;
     await rangerForcesPoisson({ ligues, calculeLe: new Date().toISOString() });
     const clubs = Object.values(ligues).reduce((n: number, f: any) => n + Object.keys(f.clubs).length, 0);
     ligne(`- Ajustée et rangée : ${Object.keys(ligues).length} compétition(s), ${clubs} clubs.`);

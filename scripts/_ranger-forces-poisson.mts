@@ -35,6 +35,14 @@ for (const [ligue, liste] of parLigue) {
   retenues++;
 }
 
+const globale = ajusterPoisson(
+  rencontres.map((m) => ({ date: m.date, ligue: Number(m.ligue), dom: Number(m.dom), ext: Number(m.ext), bd: Number(m.bd), be: Number(m.be) })),
+  maintenant
+);
+// Le modèle GLOBAL, sur toutes les compétitions à la fois : il sert aux coupes
+// d'Europe, où chaque club joue trop peu pour un modèle propre.
+if (globale) ligues['global'] = globale;
+console.log(`modèle global : ${globale ? Object.keys(globale.clubs).length + ' clubs' : 'impossible'}`);
 console.log(`${parLigue.size} compétition(s) lues · ${retenues} ajustée(s) (au moins ${RENCONTRES_MINIMUM} rencontres récentes)`);
 for (const [l, f] of Object.entries(ligues).slice(0, 8) as [string, any][])
   console.log(`  ligue ${l.padStart(4)} : ${Object.keys(f.clubs).length} clubs · terrain ${(Math.exp(f.terrain)).toFixed(3)} · base ${(Math.exp(f.base)).toFixed(2)} but(s) · ${f.rencontres} rencontres`);

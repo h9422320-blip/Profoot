@@ -294,3 +294,46 @@ export function butsAttendusPoisson(
  * décision, et le score le plus servi (1-0) reste sous le tiers des analyses.
  */
 export const PART_GRILLE_SCORE = 0.5;
+
+/** La clé sous laquelle est rangé le modèle ajusté sur TOUTES les compétitions. */
+export const CLE_GLOBALE = 'global';
+
+/** Les coupes d'Europe : aucun club n'y joue assez pour un modèle propre. */
+const COUPES_EUROPE = new Set([2, 3, 848]);
+
+/**
+ * Les buts attendus pour UNE rencontre, avec le bon modèle.
+ *
+ * ── LE MODÈLE DE LA COMPÉTITION, OU LE MODÈLE GLOBAL ─────────────────────
+ *
+ * Mesuré le 17 septembre 2026, scores exacts relus par chacun :
+ *
+ *     858 matchs de coupe d'Europe
+ *         moteur seul ..................... 63
+ *         modèle de la coupe seule ........ 64  (clubs connus : 519 matchs)
+ *         modèle GLOBAL ................... 75  (clubs connus : 856 matchs)
+ *
+ *     4 582 matchs des sept grands championnats
+ *         modèle du championnat ........... 486 (4 444 matchs)
+ *         modèle global ................... 484 (4 543 matchs)
+ *
+ * En coupe, chaque club ne joue que quelques rencontres : le modèle de la
+ * coupe seule ne sait presque rien. Le modèle global, lui, relie tous les
+ * championnats par ces mêmes confrontations et connaît chaque club par TOUT
+ * son parcours. En championnat, les deux se valent ; on garde celui du
+ * championnat, et le global ne sert qu'en secours quand un club y manque.
+ */
+export function butsAttendusPourLeMatch(
+  forces: ForcesPoisson | null | undefined,
+  ligue: number | string | null | undefined,
+  domicile: number | string | null | undefined,
+  exterieur: number | string | null | undefined
+): { domicile: number; exterieur: number } | null {
+  if (!forces?.ligues) return null;
+  const globale = forces.ligues[CLE_GLOBALE];
+  if (COUPES_EUROPE.has(Number(ligue))) return butsAttendusPoisson(globale, domicile, exterieur);
+  return (
+    butsAttendusPoisson(forces.ligues[String(ligue ?? '')], domicile, exterieur) ??
+    butsAttendusPoisson(globale, domicile, exterieur)
+  );
+}

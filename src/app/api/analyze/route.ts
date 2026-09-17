@@ -26,7 +26,7 @@ import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { correctionElanTerrain, lireElanEtTerrain } from "@/lib/elan-et-terrain";
 import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from "@/lib/repos-des-clubs";
 import { statistiquesDepuisMatchs } from "@/lib/statistiques-recentes";
-import { lireForcesPoisson, butsAttendusPoisson, PART_GRILLE_SCORE } from "@/lib/forces-poisson";
+import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from "@/lib/forces-poisson";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
 import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 
@@ -1442,9 +1442,10 @@ async function analyser(req: Request, billet: BilletQuota) {
   const grilleSeconde = (() => {
     try {
       const ligue = (targetFutureMatch || targetPastMatch || nextH2H)?.league?.id;
-      const force = forcesPoisson?.ligues?.[String(ligue ?? '')];
-      const buts = butsAttendusPoisson(
-        force,
+      // Le modèle du championnat, ou le modèle global en coupe d'Europe.
+      const buts = butsAttendusPourLeMatch(
+        forcesPoisson,
+        ligue,
         equipe1AJoueADomicile === true ? team1.id : team2.id,
         equipe1AJoueADomicile === true ? team2.id : team1.id
       );
