@@ -48,9 +48,22 @@ test('★ ACQUIS — la couche du marché vient après les autres, en dernier pa
   const iErreurs = s.indexOf('if (correctionErreurs && equipe1AJoueADomicile !== null)');
   const iMarche = s.indexOf('if (marche && equipe1AJoueADomicile !== null)');
   assert.ok(iErreurs > 0 && iMarche > iErreurs, 'La couche du marché n’est plus posée après la couche des erreurs.');
+  // Le marché reste le douzième paramètre. Depuis le 17 septembre 2026, une
+  // couche plus récente — le match retour — est AJOUTÉE après lui : aucun
+  // appel existant ne change de sens, puisque rien n'est inséré avant.
+  const signature = s.slice(s.indexOf('export function calculerScoreProbable('), s.indexOf('): ScoreProbable {'));
+  const params = signature
+    .replace(/\/\*\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => /^[a-zA-Z0-9]+\??\s*[:=]/.test(l))
+    .map((l) => l.match(/^([a-zA-Z0-9]+)/)![1]);
+  assert.equal(params.indexOf('marche'), 11, 'La couche du marché a changé de place : un appel existant pourrait changer de sens.');
+  assert.deepEqual(params.slice(12), ['matchRetour'], 'Un paramètre a été inséré ou ajouté sans que ce garde-fou le sache.');
   assert.match(
     s,
-    /marche\?: \{ dom: number; nul: number; ext: number; poids: number \} \| null\r?\n\): ScoreProbable \{/,
-    'La couche du marché n’est plus le dernier paramètre : un appel existant pourrait changer de sens.'
+    /marche\?: \{ dom: number; nul: number; ext: number; poids: number \} \| null,\r?\n/,
+    'La couche du marché n’est plus déclarée comme avant.'
   );
 });
