@@ -44,3 +44,9 @@ test('★ ACQUIS — les amicaux sont écartés quand il reste quatre matchs off
   assert.equal(r.matchsJoues, 4, 'Un amical compte encore dans la force d’une équipe.');
   assert.equal(r.butsMarques, 1 + 0 + 2 + 1);
 });
+
+test('★ ACQUIS — la préparation ne déborde pas sur l’entretien qui la suit', () => {
+  const s = sans('src/lib/precalcul-selection.ts');
+  assert.match(s, /budgetMs = 20_000/, 'La préparation n’a plus de budget de temps.');
+  assert.match(s, /if \(Date\.now\(\) - debutDuPassage > budgetMs\) \{/, 'Le budget n’est plus contrôlé dans la boucle.');
+});

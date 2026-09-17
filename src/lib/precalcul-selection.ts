@@ -244,7 +244,20 @@ async function api(chemin: string): Promise<any[]> {
  * l'application exactement dans l'état où elle était — la sélection se
  * contentera des rencontres déjà connues, comme avant.
  */
-export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
+export async function precalculerGrandsMatchs(
+  /**
+   * Temps accordé aux calculs, en millisecondes.
+   *
+   * La préparation tourne au milieu de l'entretien quotidien, dans une
+   * fonction que l'hébergeur coupe à soixante secondes ; les étapes qui la
+   * suivent — dont la reconstruction du mur des preuves — ne partiraient
+   * jamais si elle débordait. Mesuré le 17 septembre 2026 : 53 s pour 34
+   * rencontres. Passé ce budget, on s'arrête proprement ; les rencontres
+   * restantes sont préparées au passage suivant, ou par la première analyse.
+   */
+  budgetMs = 20_000
+): Promise<BilanPrecalcul> {
+  const debutDuPassage = Date.now();
   const bilan: BilanPrecalcul = {
     examinees: 0,
     calculees: 0,
@@ -336,6 +349,10 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
     const elanEtTerrain = await lireElanEtTerrain();
 
     for (const f of aPreparer.slice(0, MAX_PAR_PASSAGE)) {
+      if (Date.now() - debutDuPassage > budgetMs) {
+        bilan.details.push(`budget de ${Math.round(budgetMs / 1000)} s atteint : la suite au prochain passage`);
+        break;
+      }
       const ligue = Number(f?.league?.id);
       const saison = Number(f?.league?.season);
       const domId = Number(f?.teams?.home?.id);
