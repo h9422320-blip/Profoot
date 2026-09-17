@@ -31,6 +31,10 @@ export type Pronostic = {
   parScore: number;
   /** Probabilités domicile, nul, extérieur, de somme 1. */
   probas: number[];
+  /** Score annoncé [domicile, extérieur], quand il est connu (mesure des scores exacts). */
+  score?: [number, number];
+  /** Score réel [domicile, extérieur]. */
+  scoreReel?: [number, number];
 };
 
 export type Mesure = {

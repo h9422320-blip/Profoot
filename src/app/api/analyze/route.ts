@@ -24,6 +24,7 @@ import { normaliserMatchDirect, trouverRencontreEnDirect, estEnDirect, type Matc
 import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { correctionElanTerrain, lireElanEtTerrain } from "@/lib/elan-et-terrain";
 import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from "@/lib/repos-des-clubs";
+import { statistiquesDepuisMatchs } from "@/lib/statistiques-recentes";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
 import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 
@@ -1180,46 +1181,8 @@ async function analyser(req: Request, billet: BilletQuota) {
    * précis qu'une saison complète de championnat, mais infiniment plus juste
    * que de déclarer deux équipes équivalentes.
    */
-  /**
-   * Nombre de matchs officiels en dessous duquel on accepte les amicaux.
-   *
-   * Quatre rencontres officielles suffisent à décrire une équipe. En dessous,
-   * mieux vaut un amical qu'une moyenne calculée sur deux matchs.
-   */
-  const MATCHS_OFFICIELS_SUFFISANTS = 4;
-
-  const statistiquesDepuisMatchs = (fixtures: any[], teamId: string) => {
-    const termines = (fixtures || []).filter((f: any) =>
-      ['FT', 'AET', 'PEN'].includes(f?.fixture?.status?.short)
-    );
-
-    // ── LES MATCHS DE PRÉPARATION NE DISENT RIEN DE LA VRAIE FORCE ───────────
-    //
-    // Un amical d'été se joue avec des remplaçants, sans enjeu, contre ce qui
-    // se présente. Les compter à égalité avec une finale européenne fausse tout.
-    //
-    // Cas mesuré : à la veille du Trophée des Champions, le moteur voyait Lens
-    // à 2,00 buts marqués par match et le Paris Saint-Germain à 1,83 — donc
-    // Lens devant. Les douze derniers matchs de Lens contenaient un 4-1 contre
-    // Boulogne et un 3-0 contre Crystal Palace, tous deux amicaux ; ceux du PSG,
-    // un 3-0 encaissé à Majorque avec une équipe remaniée.
-    //
-    // On les écarte donc — mais seulement s'il reste assez de matchs officiels.
-    // En début de saison, un amical vaut mieux que rien.
-    const officiels = termines.filter((f: any) => !estMatchDePreparation(f?.league));
-    const joues = officiels.length >= MATCHS_OFFICIELS_SUFFISANTS ? officiels : termines;
-
-    let marques = 0;
-    let encaisses = 0;
-    for (const f of joues) {
-      const domicile = String(f?.teams?.home?.id) === String(teamId);
-      const bh = Number(f?.goals?.home ?? 0);
-      const ba = Number(f?.goals?.away ?? 0);
-      marques += domicile ? bh : ba;
-      encaisses += domicile ? ba : bh;
-    }
-    return { butsMarques: marques, butsEncaisses: encaisses, matchsJoues: joues.length };
-  };
+  // Calcul partagé avec la préparation de la sélection du jour : voir
+  // `src/lib/statistiques-recentes.ts`.
 
   const getRecentMatches = (fixtures: any[], teamId: string) => {
     const allMatches = (fixtures || []).filter((f: any) => ["FT", "AET", "PEN"].includes(f.fixture.status.short));

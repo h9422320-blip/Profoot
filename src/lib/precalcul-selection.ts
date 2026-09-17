@@ -38,7 +38,10 @@
  */
 
 import { createAdminClient } from './supabase-admin';
-import { calculerScoreProbable, competitionPeuFiable } from './score-probable';
+import { calculerScoreProbable, competitionPeuFiable, melangerStatistiques } from './score-probable';
+import { statistiquesDepuisMatchs } from './statistiques-recentes';
+import { correctionElanTerrain, lireElanEtTerrain } from './elan-et-terrain';
+import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from './repos-des-clubs';
 import {
   lireForces,
   butsAttendusOccasions,
@@ -329,6 +332,8 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
     // La mémoire de tous les clubs, lue une fois pour toute la passe : elle ne
     // servira QUE sur les matchs dont le relevé des tirs ignore un club.
     const memoireDesClubs = await lireMemoireClubs();
+    // Élan et terrain par championnat, lus une fois pour toute la passe.
+    const elanEtTerrain = await lireElanEtTerrain();
 
     for (const f of aPreparer.slice(0, MAX_PAR_PASSAGE)) {
       const ligue = Number(f?.league?.id);
@@ -341,11 +346,16 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
       }
 
       try {
-        const [sDom, sExt, table, fl] = await Promise.all([
+        // Les douze derniers matchs partent EN MÊME TEMPS que le reste : la
+        // préparation tourne dans une fonction coupée à soixante secondes, et
+        // deux appels mis à la suite allongeraient chaque rencontre.
+        const [sDom, sExt, table, fl, recentsDom, recentsExt] = await Promise.all([
           stats(ligue, saison, domId),
           stats(ligue, saison, extId),
           classement(ligue, saison),
           forces(ligue, saison),
+          api(`fixtures?team=${domId}&last=12`),
+          api(`fixtures?team=${extId}&last=12`),
         ]);
 
         const brut = (s: any) => ({
@@ -392,9 +402,33 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
         // inconnu du relevé des tirs. On le garde pour savoir si le moteur
         // voit la rencontre ou non.
         const occasionsDuMatch = butsAttendusOccasions(releveOccasions, f?.teams?.home?.name, f?.teams?.away?.name);
+
+        // ── LE MÊME MOTEUR QUE L'ANALYSE ─────────────────────────────────
+        //
+        // Jusqu'au 17 septembre 2026, cette préparation calculait SANS l'ancre
+        // des douze derniers matchs ni les corrections d'élan, de terrain et de
+        // repos, que la route d'analyse applique toutes. Or c'est elle qui fige
+        // le pronostic jugé au mur des preuves. Mesuré sur 697 matchs joués
+        // depuis le 1er septembre : 23 désaccords avec l'analyse lue par
+        // l'abonné, 14 où l'analyse avait raison contre 4.
+        //
+        // Deux appels de plus au fournisseur par rencontre préparée, lancés
+        // plus haut avec les autres.
+        const coupDEnvoi = Date.parse(String(f?.fixture?.date ?? '')) || Date.now();
+        const ancreDom = recentsDom.length ? statistiquesDepuisMatchs(recentsDom, String(domId)) : null;
+        const ancreExt = recentsExt.length ? statistiquesDepuisMatchs(recentsExt, String(extId)) : null;
+        const corrections = sommeDesCorrections(
+          correctionElanTerrain(elanEtTerrain, f?.teams?.home?.name, f?.teams?.away?.name, ligue),
+          correctionRepos(
+            coupDEnvoi,
+            derniereRencontreAvant(recentsDom, coupDEnvoi),
+            derniereRencontreAvant(recentsExt, coupDEnvoi)
+          )
+        );
+
         const r = calculerScoreProbable(
-          brut(sDom),
-          brut(sExt),
+          melangerStatistiques(brut(sDom), ancreDom),
+          melangerStatistiques(brut(sExt), ancreExt),
           // L'équipe 1 est celle qui reçoit : c'est l'orientation de la table,
           // et s'en écarter inverserait tous les pronostics enregistrés.
           true,
@@ -413,9 +447,8 @@ export async function precalculerGrandsMatchs(): Promise<BilanPrecalcul> {
           // l'un des deux voyait les occasions et pas l'autre, la carte
           // annoncerait un score que l'analyse contredirait.
           occasionsDuMatch,
-          // Aucune correction apprise des erreurs : ce point d'entrée reste
-          // inerte, il n'est nommé que pour atteindre le suivant.
-          null,
+          // Élan, terrain et repos : les mêmes corrections que l'analyse.
+          corrections,
           // ── ET LÀ OÙ LE MOTEUR NE VOIT RIEN, LA MÉMOIRE PARLE ──────────
           //
           // Uniquement quand les occasions manquent — un club hors des sept

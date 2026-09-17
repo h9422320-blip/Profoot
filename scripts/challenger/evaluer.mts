@@ -513,6 +513,8 @@ const versPronostic = (m: any, r: any): Pronostic => {
     reel: m.bd > m.be ? 0 : m.bd === m.be ? 1 : 2,
     parScore: r.buts1 > r.buts2 ? 0 : r.buts1 === r.buts2 ? 1 : 2,
     probas: [p[0] / somme, p[1] / somme, p[2] / somme],
+    score: [Number(r.buts1), Number(r.buts2)],
+    scoreReel: [Number(m.bd), Number(m.be)],
   };
 };
 
