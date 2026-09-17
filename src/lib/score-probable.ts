@@ -547,7 +547,16 @@ export function calculerScoreProbable(
    * Absente, nulle ou de part nulle, le moteur rend EXACTEMENT ce qu'il
    * rendait — couche posée par-dessus, décision du 11 septembre 2026.
    */
-  marche?: { dom: number; nul: number; ext: number; poids: number } | null
+  marche?: { dom: number; nul: number; ext: number; poids: number } | null,
+  /**
+   * ── COUCHE AJOUTÉE : LE MATCH RETOUR D'UNE DOUBLE CONFRONTATION ────────
+   *
+   * Vrai quand la même affiche, dans la même compétition, s'est jouée à
+   * domicile inversé dans les trois semaines précédentes. Le résultat de
+   * l'aller est connu avant le coup d'envoi ; le moteur l'ignorait. Voir la
+   * couche plus bas. Absent ou faux, le moteur rend EXACTEMENT ce qu'il rendait.
+   */
+  matchRetour?: boolean | null
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -1036,6 +1045,39 @@ export function calculerScoreProbable(
       victoire1 += (rendu * victoire1) / victoires;
       victoire2 += (rendu * victoire2) / victoires;
       nul = nulCorrige;
+    }
+  }
+
+  // ── COUCHE : LE MATCH RETOUR ──────────────────────────────────────────
+  //
+  // Mesuré le 17 septembre 2026 sur 963 matchs retour (Conference League 316,
+  // Ligue des champions 127, Europa League 125, coupes nationales) : l'équipe
+  // qui reçoit le retour gagne nettement plus que prévu — 67 % contre 55 %
+  // annoncés quand elle mène de un ou deux buts, 55 % contre 43 % après un
+  // aller nul — et le nul tombe à moitié de ce que le moteur annonce, parce
+  // qu'il faut un qualifié et que la prolongation départage.
+  //
+  // La couche retire une part du nul, la rend aux deux victoires dans leur
+  // proportion, puis déplace un léger avantage vers celui qui reçoit.
+  const PART_NUL_RETOUR = Number(process.env.BANC_RETOUR_NUL ?? 0);
+  const BONUS_RETOUR = Number(process.env.BANC_RETOUR_BONUS ?? 0);
+  if (matchRetour === true && equipe1AJoueADomicile !== null && (PART_NUL_RETOUR > 0 || BONUS_RETOUR > 0)) {
+    const victoires = victoire1 + victoire2;
+    if (victoires > 0) {
+      const retire = nul * PART_NUL_RETOUR;
+      victoire1 += (retire * victoire1) / victoires;
+      victoire2 += (retire * victoire2) / victoires;
+      nul -= retire;
+    }
+    const PLANCHER = 0.02;
+    if (equipe1AJoueADomicile) {
+      const deplace = Math.max(0, Math.min(BONUS_RETOUR, victoire2 - PLANCHER));
+      victoire1 += deplace;
+      victoire2 -= deplace;
+    } else {
+      const deplace = Math.max(0, Math.min(BONUS_RETOUR, victoire1 - PLANCHER));
+      victoire2 += deplace;
+      victoire1 -= deplace;
     }
   }
 

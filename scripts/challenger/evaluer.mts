@@ -3625,6 +3625,21 @@ function avecCalendrier(c: {
   poidsElan: number;
   poidsTerrain: number;
 }): { pronostics: Pronostic[]; actifs: number[] } {
+  // Les MATCHS RETOUR : même affiche, même compétition, domicile inversé,
+  // dans les vingt et un jours. Seul l'aller — déjà joué — sert à les
+  // reconnaître : aucun résultat futur ne fuit. Même définition que
+  // `estMatchRetour` en production.
+  const retours = new Set<number>();
+  {
+    const dernierDuel = new Map<string, any>();
+    for (const x of [...toutesLesRencontres].sort((u: any, v: any) => Date.parse(u.date) - Date.parse(v.date))) {
+      const cle = [Number(x.dom), Number(x.ext)].sort((u, v) => u - v).join('-') + '@' + Number(x.ligue);
+      const aller = dernierDuel.get(cle);
+      if (aller && Number(aller.dom) === Number(x.ext) && (Date.parse(x.date) - Date.parse(aller.date)) / 86_400_000 <= 21)
+        retours.add(Number(x.id));
+      dernierDuel.set(cle, x);
+    }
+  }
   // Toutes les dates de match de chaque club, dans l’ordre. Le calendrier
   // entier est connu d’avance : le lire en entier ne fait fuiter aucun
   // résultat, seulement des dates.
@@ -3780,7 +3795,8 @@ function avecCalendrier(c: {
 
     const corr = cd === 0 && ce === 0 ? null : { domicile: cd, exterieur: ce };
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corr, avisDeLaProduction(m)
+      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corr, avisDeLaProduction(m),
+      retours.has(Number(m.id))
     );
     pronostics.push(versPronostic(m, r));
   }
