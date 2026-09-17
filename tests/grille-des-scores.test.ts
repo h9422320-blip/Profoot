@@ -58,3 +58,22 @@ test('★ ACQUIS — l’ajustement se tait sans matière, et la lecture aussi',
   const force = { clubs: { '1': { attaque: 0.2, defense: 0.1 } }, terrain: 0.2, base: 0.3, rencontres: 400 };
   assert.equal(butsAttendusPoisson(force, 1, 2), null, 'Un club inconnu ne fait plus taire la grille.');
 });
+
+test('★ ACQUIS — les chiffres de buts sont relus par la grille mêlée, les issues non', () => {
+  // Mesuré le 17 septembre 2026 sur 4 444 rencontres des sept grands
+  // championnats : Brier « plus de 2,5 buts » 0,2533 → 0,2472, « les deux
+  // marquent » 0,2538 → 0,2495, dans les trois périodes de contrôle.
+  const sans: any = appel(null);
+  // Un modèle qui voit BEAUCOUP plus de buts que le moteur.
+  const avec: any = appel({ domicile: 2.6, exterieur: 2.2, poids: 0.5 });
+  assert.ok(
+    avec.probaPlusDe.deuxCinq > sans.probaPlusDe.deuxCinq + 3,
+    'La grille mêlée ne change plus les probabilités de buts.'
+  );
+  assert.ok(avec.probaLesDeuxMarquent > sans.probaLesDeuxMarquent, 'Le « les deux marquent » n’est plus relu.');
+  // Et les issues, elles, n'ont pas bougé d'un centième.
+  assert.equal(avec.probaVictoire1, sans.probaVictoire1);
+  assert.equal(avec.probaNul, sans.probaNul);
+  assert.equal(avec.probaVictoire2, sans.probaVictoire2);
+  assert.equal(avec.confiance, sans.confiance);
+});

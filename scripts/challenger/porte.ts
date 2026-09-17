@@ -35,6 +35,8 @@ export type Pronostic = {
   score?: [number, number];
   /** Score réel [domicile, extérieur]. */
   scoreReel?: [number, number];
+  /** Buts attendus par le moteur [équipe 1, équipe 2], avant arrondi. */
+  butsAttendus?: [number, number];
 };
 
 export type Mesure = {

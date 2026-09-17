@@ -517,6 +517,7 @@ const versPronostic = (m: any, r: any): Pronostic => {
     probas: [p[0] / somme, p[1] / somme, p[2] / somme],
     score: [Number(r.buts1), Number(r.buts2)],
     scoreReel: [Number(m.bd), Number(m.be)],
+    butsAttendus: [Number(r.butsAttendus1), Number(r.butsAttendus2)],
   };
 };
 

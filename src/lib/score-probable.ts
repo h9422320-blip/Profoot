@@ -877,6 +877,37 @@ export function calculerScoreProbable(
     }
   }
 
+  // ── LA SECONDE GRILLE, MÊLÉE À CELLE DU MOTEUR ────────────────────────
+  //
+  // Moyenne géométrique des deux grilles : `p^(1-part) × q^part`. À part nulle
+  // il ne reste que la grille du moteur, au centième près.
+  const partGrille =
+    grilleSeconde &&
+    equipe1AJoueADomicile !== null &&
+    Number.isFinite(grilleSeconde.poids) &&
+    Number.isFinite(grilleSeconde.domicile) &&
+    Number.isFinite(grilleSeconde.exterieur) &&
+    grilleSeconde.domicile > 0 &&
+    grilleSeconde.exterieur > 0
+      ? Math.min(1, Math.max(0, grilleSeconde.poids))
+      : 0;
+
+  // L'avis est exprimé du point de vue de celui qui reçoit ; l'équipe 1 ne
+  // reçoit pas toujours.
+  const lambda1 = partGrille > 0
+    ? (equipe1AJoueADomicile === true ? grilleSeconde!.domicile : grilleSeconde!.exterieur)
+    : 0;
+  const lambda2 = partGrille > 0
+    ? (equipe1AJoueADomicile === true ? grilleSeconde!.exterieur : grilleSeconde!.domicile)
+    : 0;
+
+  const probaDuSecondModele = (i: number, j: number) => {
+    const fact = (k: number) => { let f = 1; for (let x = 2; x <= k; x++) f *= x; return f; };
+    const pi = (Math.exp(-lambda1) * Math.pow(lambda1, i)) / fact(i);
+    const pj = (Math.exp(-lambda2) * Math.pow(lambda2, j)) / fact(j);
+    return pi * pj * correctionPetitsScores(i, j, lambda1, lambda2);
+  };
+
   // Grille complète des scores : chaque case est la probabilité de ce score
   // exact. Tout le reste — issue, deux équipes marquent, nombre de buts — s'en
   // déduit, ce qui garantit que ces chiffres ne peuvent pas se contredire.
@@ -986,6 +1017,59 @@ export function calculerScoreProbable(
       // et non `1 - total[3]` qui décrirait « moins de quatre » — une tout
       // autre affirmation, qui ne tient elle que 80 %.
       if (somme >= 5) cinqEtPlus += p;
+    }
+  }
+
+  // ── LES CHIFFRES DE BUTS, RELUS PAR LA GRILLE MÊLÉE ───────────────────
+  //
+  // « Plus de 2,5 buts », « les deux marquent », « cage inviolée », et les
+  // quasi-certitudes se déduisent tous de la grille. Le modèle de Poisson lit
+  // MIEUX le nombre de buts que le moteur — mesuré le 17 septembre 2026 sur
+  // 4 444 rencontres des sept grands championnats :
+  //
+  //     erreur moyenne sur le total ... 1,3355  →  1,3036
+  //     Brier « plus de 2,5 buts » .... 0,2533  →  0,2472  (part 0,5)
+  //     Brier « les deux marquent » ... 0,2538  →  0,2495
+  //
+  // Le gain tient dans les TROIS périodes de contrôle. Seuls ces chiffres-là
+  // sont relus : les probabilités de victoire, de nul et de défaite restent
+  // celles du moteur, et le vainqueur annoncé ne bouge pas.
+  if (partGrille > 0) {
+    let melLesDeux = 0, melCage1 = 0, melCage2 = 0;
+    let melMarque1 = 0, melMarque2 = 0, melNePerdPas1 = 0, melNePerdPas2 = 0, melCinq = 0;
+    const melTotal = [0, 0, 0, 0];
+    let masse = 0;
+    for (let i = 0; i <= BUTS_MAX; i++) {
+      for (let j = 0; j <= BUTS_MAX; j++) {
+        const a = p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2);
+        const b = probaDuSecondModele(i, j);
+        const p = a > 0 && b > 0 ? Math.pow(a, 1 - partGrille) * Math.pow(b, partGrille) : a;
+        masse += p;
+        const somme = i + j;
+        if (i >= 1 && j >= 1) melLesDeux += p;
+        if (somme >= 1) melTotal[0] += p;
+        if (somme >= 2) melTotal[1] += p;
+        if (somme >= 3) melTotal[2] += p;
+        if (somme >= 4) melTotal[3] += p;
+        if (j === 0) melCage1 += p;
+        if (i === 0) melCage2 += p;
+        if (i >= 1) melMarque1 += p;
+        if (j >= 1) melMarque2 += p;
+        if (i >= j) melNePerdPas1 += p;
+        if (j >= i) melNePerdPas2 += p;
+        if (somme >= 5) melCinq += p;
+      }
+    }
+    if (masse > 0) {
+      lesDeux = melLesDeux / masse;
+      cageInviolee1 = melCage1 / masse;
+      cageInviolee2 = melCage2 / masse;
+      marque1 = melMarque1 / masse;
+      marque2 = melMarque2 / masse;
+      nePerdPas1 = melNePerdPas1 / masse;
+      nePerdPas2 = melNePerdPas2 / masse;
+      cinqEtPlus = melCinq / masse;
+      for (let k = 0; k < 4; k++) total[k] = melTotal[k] / masse;
     }
   }
 
@@ -1952,37 +2036,6 @@ export function calculerScoreProbable(
       : pv1 >= pv2
         ? 'victoire1'
         : 'victoire2';
-
-  // ── LA SECONDE GRILLE, MÊLÉE À CELLE DU MOTEUR ────────────────────────
-  //
-  // Moyenne géométrique des deux grilles : `p^(1-part) × q^part`. À part nulle
-  // il ne reste que la grille du moteur, au centième près.
-  const partGrille =
-    grilleSeconde &&
-    equipe1AJoueADomicile !== null &&
-    Number.isFinite(grilleSeconde.poids) &&
-    Number.isFinite(grilleSeconde.domicile) &&
-    Number.isFinite(grilleSeconde.exterieur) &&
-    grilleSeconde.domicile > 0 &&
-    grilleSeconde.exterieur > 0
-      ? Math.min(1, Math.max(0, grilleSeconde.poids))
-      : 0;
-
-  // L'avis est exprimé du point de vue de celui qui reçoit ; l'équipe 1 ne
-  // reçoit pas toujours.
-  const lambda1 = partGrille > 0
-    ? (equipe1AJoueADomicile === true ? grilleSeconde!.domicile : grilleSeconde!.exterieur)
-    : 0;
-  const lambda2 = partGrille > 0
-    ? (equipe1AJoueADomicile === true ? grilleSeconde!.exterieur : grilleSeconde!.domicile)
-    : 0;
-
-  const probaDuSecondModele = (i: number, j: number) => {
-    const fact = (k: number) => { let f = 1; for (let x = 2; x <= k; x++) f *= x; return f; };
-    const pi = (Math.exp(-lambda1) * Math.pow(lambda1, i)) / fact(i);
-    const pj = (Math.exp(-lambda2) * Math.pow(lambda2, j)) / fact(j);
-    return pi * pj * correctionPetitsScores(i, j, lambda1, lambda2);
-  };
 
   const probaDe = (i: number, j: number) =>
     p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2);
