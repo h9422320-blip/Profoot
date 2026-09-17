@@ -173,6 +173,60 @@ const STATUTS_TERMINES = new Set(['FT', 'AET', 'PEN']);
  * Les rencontres non terminées sont simplement absentes du résultat : leurs
  * analyses restent en attente et seront reprises au passage suivant.
  */
+/**
+ * UN PAQUET DE RENCONTRES, LU FRAIS — JAMAIS UNE VIEILLE RÉPONSE.
+ *
+ * ── LE MATCH DU BARÇA QUI N'EST JAMAIS ARRIVÉ SUR LE MUR ──────────────────
+ *
+ * FC Barcelone 7-2 Racing Santander, joué le 16 septembre 2026 à 19 h 30,
+ * analysé 315 fois, pronostic juste : le 17 à 10 h 30, aucune de ces analyses
+ * n'était vérifiée, et le propriétaire a cherché en vain la preuve au mur.
+ *
+ * La cause, reproduite le 17 : le fournisseur borne les appels PAR MINUTE, et
+ * sur les 24 paquets d'une vérification, 3 revenaient « Too many requests » —
+ * les abonnés consomment le même quota au même moment. L'accès partagé
+ * `apiFootball` sert alors, sans rien dire, la DERNIÈRE réponse conservée :
+ * c'est le bon choix pour un écran, qui préfère une donnée ancienne à un vide.
+ * Pour une vérification, c'est le pire : la réponse conservée datait du match
+ * EN COURS, la rencontre y paraissait non terminée, et ses analyses étaient
+ * laissées de côté sans la moindre trace.
+ *
+ * On lit donc ici directement chez le fournisseur, et un refus de quota se
+ * traite en attendant puis en réessayant. Un paquet qui échoue malgré tout
+ * rend `null` : ses analyses restent en attente et repassent au tour suivant,
+ * au lieu d'être jugées sur une réponse périmée.
+ */
+const ESSAIS_PAR_PAQUET = 4;
+const PAUSE_APRES_REFUS_MS = 15_000;
+
+export async function lirePaquetFrais(paquet: string[], pauseMs = PAUSE_APRES_REFUS_MS): Promise<any | null> {
+  const cle = process.env.API_FOOTBALL_KEY;
+  if (!cle) return apiFootball<any>(`/fixtures?ids=${paquet.join('-')}`, CACHE_TTL.FIXTURES_TODAY);
+
+  for (let essai = 1; essai <= ESSAIS_PAR_PAQUET; essai++) {
+    try {
+      const reponse = await fetch(`https://v3.football.api-sports.io/fixtures?ids=${paquet.join('-')}`, {
+        headers: { 'x-apisports-key': cle, 'x-rapidapi-host': 'v3.football.api-sports.io' },
+        signal: AbortSignal.timeout(20_000),
+        cache: 'no-store',
+      });
+      const json: any = reponse.ok ? await reponse.json() : null;
+      const erreurs = json?.errors;
+      const enErreur =
+        !json || (Array.isArray(erreurs) ? erreurs.length > 0 : !!erreurs && Object.keys(erreurs).length > 0);
+      if (!enErreur) return json;
+      console.warn(
+        `[PRECISION] Paquet refusé (essai ${essai}/${ESSAIS_PAR_PAQUET}) : ` +
+          (json ? JSON.stringify(erreurs).slice(0, 160) : `HTTP ${reponse.status}`)
+      );
+    } catch (e: any) {
+      console.warn(`[PRECISION] Paquet illisible (essai ${essai}/${ESSAIS_PAR_PAQUET}) : ${e?.message}`);
+    }
+    if (essai < ESSAIS_PAR_PAQUET) await new Promise((r) => setTimeout(r, pauseMs));
+  }
+  return null;
+}
+
 async function lireRencontresParIdentifiant(
   identifiants: string[]
 ): Promise<Map<string, RencontreTerminee>> {
@@ -199,20 +253,7 @@ async function lireRencontresParIdentifiant(
 
   for (let i = 0; i < paquets.length; i += PAQUETS_SIMULTANES) {
     const vague = await Promise.all(
-      paquets.slice(i, i + PAQUETS_SIMULTANES).map((paquet) =>
-        apiFootball<any>(
-          `/fixtures?ids=${paquet.join('-')}`,
-          // Cinq minutes : une rencontre terminée ne change plus, mais le même
-          // paquet contient souvent des matchs encore à venir. Une réserve
-          // longue les figerait « non joués » jusqu'au lendemain.
-          CACHE_TTL.FIXTURES_TODAY
-        ).catch((e: any) => {
-          // Un paquet perdu n'annule pas les autres : ses analyses restent en
-          // attente et repasseront demain.
-          console.warn(`[PRECISION] Paquet de rencontres illisible : ${e?.message}`);
-          return null;
-        })
-      )
+      paquets.slice(i, i + PAQUETS_SIMULTANES).map((paquet) => lirePaquetFrais(paquet))
     );
     reponses.push(...vague);
   }
