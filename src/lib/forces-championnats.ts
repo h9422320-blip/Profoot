@@ -101,7 +101,41 @@ export interface ForcesChampionnats {
   matchsUtilises: number;
   /** Combien de confrontations entre championnats ont servi. */
   confrontations: number;
+  /**
+   * Combien de confrontations ont servi POUR CHAQUE championnat.
+   *
+   * Ajouté le 17 septembre 2026. Sans ce compte, un championnat qui ne joue
+   * presque jamais contre les autres portait un coefficient aussi crédible
+   * que celui de l'Angleterre — alors qu'il n'a dérivé que sur quelques
+   * matchs. C'est ce qui donnait l'Ekstraklasa polonaise à 1,28, au-dessus
+   * de la Ligue 1, et Lech Poznan favori à Crystal Palace.
+   *
+   * Absent d'une hiérarchie ancienne : le retrait se tait alors, et le
+   * coefficient est employé tel quel, comme avant.
+   */
+  confrontationsParLigue?: Record<string, number>;
 }
+
+/**
+ * ── COUCHE : UN COEFFICIENT BÂTI SUR TROIS MATCHS NE VAUT PAS CELUI-LÀ ────
+ *
+ * Le coefficient d'un championnat s'apprend pas à pas, à chaque confrontation
+ * européenne. Un championnat qui en joue quarante par an voit son coefficient
+ * se poser ; un qui en joue quatre le laisse dériver, et rien ne le ramène.
+ *
+ * On ramène donc le coefficient vers 1 — l'égalité, c'est-à-dire l'absence
+ * d'avis — d'autant plus fort que les confrontations sont peu nombreuses :
+ *
+ *     part = n / (n + MINIMUM)
+ *
+ * À MINIMUM = 0 la couche est ÉTEINTE et le moteur rend exactement ce qu'il
+ * rendait. Réglable par `BANC_HIERARCHIE_MINIMUM` pour la mesure.
+ */
+// Lu à CHAQUE appel, et non au chargement du fichier : le banc d'essai pose
+// ses variables après avoir importé le moteur, et une constante figée au
+// chargement rendait la mesure rigoureusement nulle — défaut attrapé à
+// l'essai le 17 septembre 2026.
+const minimumDeConfrontations = () => Number(process.env.BANC_HIERARCHIE_MINIMUM ?? 0);
 
 /**
  * Le coefficient prêt à l'emploi, amorti.
@@ -116,7 +150,17 @@ export function coefficientDe(
   if (!forces || ligue === null || ligue === undefined) return 1;
   const brut = forces.coefficients[String(ligue)];
   if (!Number.isFinite(brut) || brut <= 0) return 1;
-  return Math.pow(brut, AMORTISSEMENT);
+  const amorti = Math.pow(brut, AMORTISSEMENT);
+
+  // Le retrait par manque de confrontations, quand il est demandé ET que la
+  // hiérarchie porte les comptes.
+  const n = forces.confrontationsParLigue?.[String(ligue)];
+  const minimum = minimumDeConfrontations();
+  if (minimum > 0 && Number.isFinite(n)) {
+    const part = (n as number) / ((n as number) + minimum);
+    return 1 + part * (amorti - 1);
+  }
+  return amorti;
 }
 
 /**
@@ -293,6 +337,7 @@ export function apprendre(rencontres: Rencontre[]): ForcesChampionnats {
   const equipes = new Map<number, { marques: number; encaisses: number; matchs: number; ligues: Map<number, number> }>();
   const ligues = new Map<number, { butsDom: number; butsExt: number; matchs: number }>();
   const coefficients = new Map<number, number>();
+  const confrontationsParLigue = new Map<number, number>();
   let confrontations = 0;
 
   const fiche = (id: number) => {
@@ -361,6 +406,8 @@ export function apprendre(rencontres: Rencontre[]): ForcesChampionnats {
       coefficients.set(lDom, borner(cD * pas));
       coefficients.set(lExt, borner(cE / pas));
       confrontations++;
+      confrontationsParLigue.set(lDom, (confrontationsParLigue.get(lDom) ?? 0) + 1);
+      confrontationsParLigue.set(lExt, (confrontationsParLigue.get(lExt) ?? 0) + 1);
     }
 
     // ── Puis le match nourrit l'état ─────────────────────────────────────
@@ -387,5 +434,6 @@ export function apprendre(rencontres: Rencontre[]): ForcesChampionnats {
     calculeLe: new Date().toISOString(),
     matchsUtilises: parDate.length,
     confrontations,
+    confrontationsParLigue: Object.fromEntries([...confrontationsParLigue].map(([l, n]) => [String(l), n])),
   };
 }

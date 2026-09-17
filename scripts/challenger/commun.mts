@@ -106,7 +106,13 @@ export function journal(...morceaux: unknown[]): void {
  * Ici, on lit directement, avec dix secondes. Hors production : aucun abonné
  * ne patiente derrière.
  */
-export async function lireHierarchieDirect(): Promise<{ coefficients: Record<string, number>; calculeLe: string } | null> {
+export async function lireHierarchieDirect(): Promise<{
+  coefficients: Record<string, number>;
+  calculeLe: string;
+  /** Le compte de confrontations par championnat : sans lui, aucun retrait par manque de matière n'est mesurable. */
+  confrontationsParLigue?: Record<string, number>;
+  confrontations?: number;
+} | null> {
   const { createClient } = await import('@supabase/supabase-js');
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const course = new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000));
@@ -118,5 +124,10 @@ export async function lireHierarchieDirect(): Promise<{ coefficients: Record<str
     .then(({ data }: any) => (data?.contenu ?? null));
   const contenu: any = await Promise.race([lecture, course]);
   if (!contenu?.coefficients) return null;
-  return { coefficients: contenu.coefficients, calculeLe: String(contenu.calculeLe ?? "") };
+  return {
+    coefficients: contenu.coefficients,
+    calculeLe: String(contenu.calculeLe ?? ""),
+    confrontationsParLigue: contenu.confrontationsParLigue ?? undefined,
+    confrontations: contenu.confrontations ?? undefined,
+  };
 }

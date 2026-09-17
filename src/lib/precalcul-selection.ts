@@ -49,6 +49,7 @@ import {
 } from './forme-occasions';
 import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from './memoire-clubs';
 import { lireForcesLigue } from './forces-equipes';
+import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-championnats';
 import { figerPrediction } from './prediction-figee';
 
 /**
@@ -154,6 +155,20 @@ export function rangDeCompetition(nom: string | null | undefined): number {
  */
 const LIGA_I_ROUMAINE = 283;
 
+/**
+ * Les numéros des coupes d'Europe, pour le chemin « championnat de chaque club ».
+ *
+ * Pris sur l'indicateur `europeenne` du relevé des occasions, jamais sur un
+ * nom : le relevé les nomme en français (« Ligue des champions ») et la liste
+ * d'affichage en anglais. Comparer les deux rendait un ensemble VIDE — défaut
+ * attrapé à l'essai le 17 septembre 2026, avant toute mise en ligne.
+ */
+export const COUPES_EUROPE_IDS: ReadonlySet<number> = new Set<number>(
+  COMPETITIONS_APPRISES.filter((c) => (c as { europeenne?: boolean }).europeenne === true).map(
+    (c) => c.id
+  )
+);
+
 export const IDS_PREPARES: ReadonlySet<number> = new Set<number>([
   ...COMPETITIONS_APPRISES.map((c) => c.id),
   LIGA_I_ROUMAINE,
@@ -257,7 +272,6 @@ export async function precalculerGrandsMatchs(
    */
   budgetMs = 20_000
 ): Promise<BilanPrecalcul> {
-  const debutDuPassage = Date.now();
   const bilan: BilanPrecalcul = {
     examinees: 0,
     calculees: 0,
@@ -347,9 +361,35 @@ export async function precalculerGrandsMatchs(
     const memoireDesClubs = await lireMemoireClubs();
     // Élan et terrain par championnat, lus une fois pour toute la passe.
     const elanEtTerrain = await lireElanEtTerrain();
+    // La hiérarchie des championnats, lue une fois : elle ramène deux
+    // championnats différents à la même échelle en coupe d'Europe.
+    const forcesDesChampionnats = await lireForcesChampionnats().catch(() => null);
 
+    // Le championnat domestique d'un club, comme le résout l'analyse : on ne
+    // retient qu'une compétition de type « League », et la saison précédente
+    // sert de recours quand la nouvelle n'est pas encore déclarée.
+    const championnatCache = new Map<string, number | null>();
+    const championnatDe = async (equipe: number, saison: number): Promise<number | null> => {
+      const cle = String(equipe);
+      if (championnatCache.has(cle)) return championnatCache.get(cle) ?? null;
+      let trouve: number | null = null;
+      for (const s2 of [saison, saison - 1]) {
+        const r = await api(`leagues?team=${equipe}&season=${s2}`);
+        const championnat = r.find((x: any) => x?.league?.type === 'League');
+        if (championnat?.league?.id) { trouve = Number(championnat.league.id); break; }
+      }
+      championnatCache.set(cle, trouve);
+      return trouve;
+    };
+
+    // Le budget court à partir d'ICI, et non de l'entrée de la fonction : la
+    // lecture des pronostics déjà connus et du programme prend à elle seule
+    // une vingtaine de secondes quand la base répond lentement, et la
+    // préparation n'aurait alors JAMAIS rien calculé — constaté à l'essai le
+    // 17 septembre 2026.
+    const debutDesCalculs = Date.now();
     for (const f of aPreparer.slice(0, MAX_PAR_PASSAGE)) {
-      if (Date.now() - debutDuPassage > budgetMs) {
+      if (Date.now() - debutDesCalculs > budgetMs) {
         bilan.details.push(`budget de ${Math.round(budgetMs / 1000)} s atteint : la suite au prochain passage`);
         break;
       }
@@ -362,14 +402,36 @@ export async function precalculerGrandsMatchs(
         continue;
       }
 
+      const debutDeLaRencontre = Date.now();
       try {
+        // ── EN COUPE D'EUROPE, ON LIT LE CHAMPIONNAT DE CHAQUE CLUB ──────
+        //
+        // Les statistiques de la coupe elle-même portent une ou deux
+        // rencontres : elles ne décrivent rien. L'analyse résout donc le
+        // championnat domestique de chacun, y prend ses statistiques et son
+        // classement, puis corrige l'écart de niveau entre les deux
+        // championnats. Cette préparation ne le faisait pas.
+        //
+        // Mesuré le 17 septembre 2026 sur les matchs joués depuis le 15 août
+        // (`scripts/_fige-contre-analyse.mts`) : en championnat les deux
+        // calculs font jeu égal (579 contre 577 bons vainqueurs), mais en
+        // COUPES D'EUROPE l'analyse en trouve 96 contre 82 — et sur les 20
+        // désaccords, elle avait raison 17 fois.
+        const enCoupeDEurope = COUPES_EUROPE_IDS.has(ligue);
+        const [ligueDom, ligueExt] = enCoupeDEurope
+          ? await Promise.all([championnatDe(domId, saison), championnatDe(extId, saison)])
+          : [ligue, ligue];
+        const ligueStatsDom = ligueDom ?? ligue;
+        const ligueStatsExt = ligueExt ?? ligue;
+
         // Les douze derniers matchs partent EN MÊME TEMPS que le reste : la
         // préparation tourne dans une fonction coupée à soixante secondes, et
         // deux appels mis à la suite allongeraient chaque rencontre.
-        const [sDom, sExt, table, fl, recentsDom, recentsExt] = await Promise.all([
-          stats(ligue, saison, domId),
-          stats(ligue, saison, extId),
-          classement(ligue, saison),
+        const [sDom, sExt, tableDom, tableExt, fl, recentsDom, recentsExt] = await Promise.all([
+          stats(ligueStatsDom, saison, domId),
+          stats(ligueStatsExt, saison, extId),
+          classement(ligueStatsDom, saison),
+          classement(ligueStatsExt, saison),
           forces(ligue, saison),
           api(`fixtures?team=${domId}&last=12`),
           api(`fixtures?team=${extId}&last=12`),
@@ -397,16 +459,19 @@ export async function precalculerGrandsMatchs(
         // ne le signale. C'est ce que faisait le script de réparation, qui
         // transmettait `{ rang, points, total }` : trois champs, dont aucun
         // n'était celui attendu.
-        const lignes = table as any[];
-        const totalPoints = lignes.reduce((s2, x) => s2 + (Number(x?.points) || 0), 0);
-        const rang = (id: number) => {
+        // En coupe d'Europe, chaque club est classé dans SON championnat : les
+        // deux tables sont donc distinctes, et les points moyens aussi.
+        const rangDans = (lignes: any[], id: number) => {
           const r = lignes.find((x: any) => x?.team?.id === id);
           if (!r || !lignes.length) return null;
+          const totalPoints = lignes.reduce((s2: number, x: any) => s2 + (Number(x?.points) || 0), 0);
           return {
             points: Number(r.points) || 0,
             pointsMoyens: totalPoints / lignes.length,
           };
         };
+        const rang = (id: number) =>
+          rangDans((id === domId ? tableDom : tableExt) as any[], id);
 
         const fDom = fl?.equipes?.get(domId);
         const fExt = fl?.equipes?.get(extId);
@@ -452,11 +517,17 @@ export async function precalculerGrandsMatchs(
           competitionPeuFiable(f?.league?.name ?? null),
           { equipe1: rang(domId), equipe2: rang(extId) },
           forcesDuMatch,
-          // Les trois réglages suivants gardent leur valeur d'origine : ils ne
-          // sont nommés que pour atteindre le dernier.
+          // Le calibrage par championnat garde sa valeur d'origine.
           undefined,
-          false,
-          1,
+          // ── DEUX CHAMPIONNATS, DEUX ÉCHELLES ─────────────────────────────
+          //
+          // La confiance est plafonnée quand les deux clubs ne viennent pas du
+          // même championnat, et les buts attendus sont ramenés à la même
+          // échelle par la hiérarchie des championnats. L'analyse le fait
+          // depuis le 24 août 2026 ; cette préparation, non — elle annonçait
+          // donc en coupe d'Europe une confiance qu'elle ne tenait pas.
+          !!ligueDom && !!ligueExt && Number(ligueDom) !== Number(ligueExt),
+          rapportEntreChampionnats(forcesDesChampionnats, ligueDom, ligueExt),
           // ── LA MÊME LECTURE QUE L'ANALYSE ──────────────────────────────
           //
           // Indispensable, et pas seulement souhaitable : la sélection du jour
@@ -512,9 +583,20 @@ export async function precalculerGrandsMatchs(
           competition: f?.league?.name ? String(f.league.name) : null,
         });
         bilan.calculees++;
+        // La durée de chaque rencontre, pour voir tout de suite ce qui ralentit
+        // la préparation quand le budget est atteint sans que rien ne sorte.
+        console.log(
+          `[PRECALCUL] ${f?.teams?.home?.name} — ${f?.teams?.away?.name} ` +
+            `(${f?.league?.name}) : ${r.buts1}-${r.buts2}, confiance ${r.confiance} ` +
+            `en ${Date.now() - debutDeLaRencontre} ms`
+        );
       } catch (e: any) {
         bilan.echecs++;
         bilan.details.push(`${f?.teams?.home?.name} : ${e?.message}`);
+        console.warn(
+          `[PRECALCUL] ${f?.teams?.home?.name} — ${f?.teams?.away?.name} A ÉCHOUÉ ` +
+            `après ${Date.now() - debutDeLaRencontre} ms : ${e?.message}`
+        );
       }
     }
 

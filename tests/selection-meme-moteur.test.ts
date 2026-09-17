@@ -48,5 +48,32 @@ test('★ ACQUIS — les amicaux sont écartés quand il reste quatre matchs off
 test('★ ACQUIS — la préparation ne déborde pas sur l’entretien qui la suit', () => {
   const s = sans('src/lib/precalcul-selection.ts');
   assert.match(s, /budgetMs = 20_000/, 'La préparation n’a plus de budget de temps.');
-  assert.match(s, /if \(Date\.now\(\) - debutDuPassage > budgetMs\) \{/, 'Le budget n’est plus contrôlé dans la boucle.');
+  assert.match(s, /if \(Date\.now\(\) - debutDesCalculs > budgetMs\) \{/, 'Le budget n’est plus contrôlé dans la boucle.');
+  // Le budget court depuis le début des CALCULS : compté depuis l'entrée de la
+  // fonction, la seule lecture des pronostics connus l'épuisait et la
+  // préparation ne calculait plus rien.
+  assert.match(s, /const debutDesCalculs = Date\.now\(\);/);
+});
+
+test('★ ACQUIS — en coupe d’Europe, la préparation lit le championnat de chaque club', () => {
+  // Les statistiques de la coupe elle-même portent une ou deux rencontres :
+  // elles ne décrivent rien. L'analyse résout le championnat domestique de
+  // chacun, y prend statistiques et classement, et corrige l'écart de niveau
+  // entre les deux championnats. Mesuré le 17 septembre 2026 sur les matchs
+  // joués depuis le 15 août : en coupes d'Europe l'analyse trouvait 96 bons
+  // vainqueurs contre 82 au pronostic figé, et avait raison dans 17 des 20
+  // désaccords.
+  const s = sans('src/lib/precalcul-selection.ts');
+  assert.match(s, /const enCoupeDEurope = COUPES_EUROPE_IDS\.has\(ligue\)/, 'La préparation ne distingue plus les coupes d’Europe.');
+  assert.match(s, /championnatDe\(domId, saison\)/, 'Le championnat domestique n’est plus résolu.');
+  assert.match(s, /rapportEntreChampionnats\(forcesDesChampionnats, ligueDom, ligueExt\)/, 'L’écart de niveau entre championnats n’est plus corrigé.');
+  assert.match(s, /Number\(ligueDom\) !== Number\(ligueExt\)/, 'La confiance n’est plus plafonnée entre deux championnats.');
+});
+
+test('★ ACQUIS — les coupes d’Europe sont reconnues par leur indicateur, pas par leur nom', async () => {
+  // Le relevé les nomme en français, la liste d'affichage en anglais :
+  // comparer les deux rendait un ensemble VIDE, et le chemin « championnat de
+  // chaque club » ne se serait jamais déclenché.
+  const { COUPES_EUROPE_IDS } = await import('../src/lib/precalcul-selection');
+  assert.ok(COUPES_EUROPE_IDS.has(2) && COUPES_EUROPE_IDS.has(3) && COUPES_EUROPE_IDS.has(848), 'Les coupes d’Europe ne sont plus reconnues.');
 });
