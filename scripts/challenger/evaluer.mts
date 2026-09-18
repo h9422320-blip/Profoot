@@ -32,6 +32,7 @@ import fs from 'node:fs';
 import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, COUPES_SUIVIES, TIRS_EN_PLUS, COUPES, lireHierarchieDirect } from './commun.mjs';
 import type { Pronostic } from './porte.js';
 import { ajusterPoisson, avisPoisson } from '../../src/lib/forces-poisson.js';
+import { ciblesDuModele } from './statistiques.mjs';
 
 type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
@@ -621,7 +622,8 @@ function avecPoisson(
   const base = championDeBase();
   const baseParId = new Map(base.map((p) => [p.id, p]));
   const parLigue = new Map<number, any[]>();
-  for (const x of toutesLesRencontres) {
+  // Les mêmes cibles que la production : le xG quand il existe, les buts sinon.
+  for (const x of ciblesDuModele(toutesLesRencontres)) {
     const l = Number(x.ligue);
     const liste = parLigue.get(l);
     if (liste) liste.push(x);

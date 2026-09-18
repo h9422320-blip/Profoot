@@ -19,7 +19,7 @@ test('★ ACQUIS — la nuit du challenger et le rangement passent par les cible
 });
 
 test('★ ACQUIS — le xG remplace les buts rencontre par rencontre, et seulement là', async () => {
-  const { ciblesDuModele, FICHIER_STATISTIQUES } = await import('../scripts/challenger/statistiques.mts');
+  const { ciblesDuModele, FICHIER_STATISTIQUES } = await import('../scripts/challenger/statistiques.mjs');
   const rencontres = [
     { id: -101, date: '2026-01-01', ligue: 39, dom: 1, ext: 2, bd: 3, be: 0 },
     { id: -102, date: '2026-01-08', ligue: 39, dom: 2, ext: 1, bd: 1, be: 1 },
