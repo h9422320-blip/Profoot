@@ -20,7 +20,14 @@ import { DOSSIER, FICHIER_RENCONTRES } from './commun.mjs';
 const DOSSIER_CSV = path.join(DOSSIER, 'cotes-historiques');
 export const FICHIER_COTES_HISTORIQUES = path.join(DOSSIER, 'cotes-historiques.json');
 
-const LIGUE_DE: Record<string, number> = { E0: 39, SP1: 140, I1: 135, D1: 78, F1: 61, P1: 94, N1: 88 };
+const LIGUE_DE: Record<string, number> = {
+  // Les sept grands championnats (téléchargés le 18 septembre 2026).
+  E0: 39, SP1: 140, I1: 135, D1: 78, F1: 61, P1: 94, N1: 88,
+  // Neuf championnats de plus (même jour, accord du propriétaire) :
+  // Championship, Écosse, 2. Bundesliga, Serie B, Segunda División, Ligue 2,
+  // Belgique, Turquie, Grèce.
+  E1: 40, SC0: 179, D2: 79, I2: 136, SP2: 141, F2: 62, B1: 144, T1: 203, G1: 197,
+};
 
 const simple = (s: string) =>
   String(s ?? '')

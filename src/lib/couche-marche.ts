@@ -113,8 +113,28 @@ export function butsAttendusDuMarche(
  */
 export const PART_DU_MARCHE = 1;
 
-/** Premier League, Liga, Serie A, Bundesliga, Ligue 1, Primeira Liga, Eredivisie. */
-export const CHAMPIONNATS_DU_MARCHE: ReadonlySet<number> = new Set([39, 140, 135, 78, 61, 94, 88]);
+/**
+ * Les championnats où l'avis du marché est mesuré, et donc branché.
+ *
+ * Les sept grands : Premier League, Liga, Serie A, Bundesliga, Ligue 1,
+ * Primeira Liga, Eredivisie.
+ *
+ * ── ET NEUF DE PLUS, LE MÊME JOUR ─────────────────────────────────────────
+ *
+ * Championship, Écosse, 2. Bundesliga, Serie B, Segunda División, Ligue 2,
+ * Belgique, Turquie, Grèce — mêmes cotes d'avant-match de football-data.co.uk,
+ * 6 034 rencontres, part pleine :
+ *
+ *     vainqueurs ................ +137, positif sur les trois périodes (+71, +13, +53)
+ *     matchs sûrs ............... 61,8 % → 71,1 %
+ *     chaque championnat gagne : Serie B +39, Turquie +33, Belgique +18,
+ *     Segunda +17, Ligue 2 +9, Championship +8, 2. Bundesliga +7,
+ *     Grèce +4, Écosse +2.
+ */
+export const CHAMPIONNATS_DU_MARCHE: ReadonlySet<number> = new Set([
+  39, 140, 135, 78, 61, 94, 88,
+  40, 179, 79, 136, 141, 62, 144, 203, 197,
+]);
 
 export async function avisDuMarchePour(
   fixtureId: number | string | null | undefined,

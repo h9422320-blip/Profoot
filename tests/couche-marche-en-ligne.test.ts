@@ -12,7 +12,8 @@ import fs from 'node:fs';
 import { avisDuMarchePour, CHAMPIONNATS_DU_MARCHE, PART_DU_MARCHE } from '../src/lib/couche-marche';
 
 test('★ ACQUIS — le marché ne parle QUE sur les sept grands championnats', async () => {
-  assert.deepEqual([...CHAMPIONNATS_DU_MARCHE].sort((a, b) => a - b), [39, 61, 78, 88, 94, 135, 140]);
+  // Les sept grands, puis neuf championnats mesurés le même jour (6 034 rencontres, +137).
+  assert.deepEqual([...CHAMPIONNATS_DU_MARCHE].sort((a, b) => a - b), [39, 40, 61, 62, 78, 79, 88, 94, 135, 136, 140, 141, 144, 179, 197, 203]);
   // Coupes d'Europe, autres championnats, match sans date : silence.
   assert.equal(await avisDuMarchePour(123, '2026-09-19T14:00:00Z', 2), null);
   assert.equal(await avisDuMarchePour(123, '2026-09-19T14:00:00Z', 283), null);
