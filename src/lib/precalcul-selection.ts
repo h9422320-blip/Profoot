@@ -348,7 +348,14 @@ export async function precalculerGrandsMatchs(
       const jour = new Date(Date.now() + d * 86_400_000).toISOString().slice(0, 10);
       for (const f of await api(`fixtures?date=${jour}`)) {
         if (!A_VENIR.includes(String(f?.fixture?.status?.short))) continue;
-        if (!competitionRetenue(f?.league)) continue;
+        // Un pronostic déjà figé par une analyse d'abonné, dans un championnat
+        // que l'on rafraîchit, se refige lui aussi — même si la préparation
+        // ne couvre pas ce championnat. Sans cela, Cottbus–St. Pauli
+        // (2. Bundesliga), figé le 17 septembre avant que le marché ne
+        // couvre cette ligue, gardait un vainqueur que le marché contredit.
+        const dejaFigeARafraichir =
+          connus.has(Number(f?.fixture?.id)) && options.rafraichirLigues?.has(Number(f?.league?.id)) === true;
+        if (!competitionRetenue(f?.league) && !dejaFigeARafraichir) continue;
         bilan.examinees++;
         if (connus.has(Number(f?.fixture?.id))) {
           const loin = Date.parse(String(f?.fixture?.date ?? '')) - Date.now() > GEL_DEFINITIF_MS;

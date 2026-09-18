@@ -67,7 +67,7 @@ export function rattacherCotesHistoriques(): { lignes: number; rattachees: numbe
     if (l) l.push(m);
     else parCle.set(cle, [m]);
   }
-  const sortie: Record<string, { dom: number; nul: number; ext: number }> = {};
+  const sortie: Record<string, { dom: number; nul: number; ext: number; plus?: number }> = {};
   let lignes = 0;
   for (const f of fs.readdirSync(DOSSIER_CSV).filter((x) => x.endsWith('.csv'))) {
     const code = f.replace(/^\d+-/, '').replace('.csv', '');
@@ -92,6 +92,9 @@ export function rattacherCotesHistoriques(): { lignes: number; rattachees: numbe
       // Probabilités implicites, marge retirée.
       const s = 1 / h + 1 / d + 1 / e;
       sortie[String(meilleur.c.id)] = { dom: 1 / h / s, nul: 1 / d / s, ext: 1 / e / s };
+      // « Plus / moins de 2,5 buts », marge retirée, quand le fichier le cote.
+      const plus = Number(r['Avg>2.5']), moins = Number(r['Avg<2.5']);
+      if (plus > 1 && moins > 1) sortie[String(meilleur.c.id)].plus = 1 / plus / (1 / plus + 1 / moins);
     }
   }
   fs.writeFileSync(FICHIER_COTES_HISTORIQUES, JSON.stringify(sortie));

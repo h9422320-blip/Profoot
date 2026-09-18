@@ -39,7 +39,7 @@ type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
   | { type: 'marche-historique'; poids: number; parLesProbabilites?: boolean }
-  | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean }
+  | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean; avecLeMarche?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
   | { type: 'duel'; retrecissement: number; poids: number }
@@ -619,8 +619,13 @@ function avecPoisson(
   pourLeScore = false,
   // Au-dessus de cette confiance, le moteur garde la main : ses matchs sûrs
   // sont ceux qu'on met en avant, et on ne les touche pas.
-  seuilConfiance = 1
+  seuilConfiance = 1,
+  // Vrai : la chaîne entière de la production — cotes 1N2 d'avant-match comme
+  // avis du marché, et « plus de 2,5 » coté pour le total.
+  avecLeMarche = false
 ): { pronostics: Pronostic[]; actifs: number[] } {
+  const historiques: Record<string, { dom: number; nul: number; ext: number; plus?: number }> =
+    avecLeMarche && fs.existsSync(FICHIER_COTES_HISTORIQUES) ? JSON.parse(fs.readFileSync(FICHIER_COTES_HISTORIQUES, 'utf8')) : {};
   const base = championDeBase();
   const baseParId = new Map(base.map((p) => [p.id, p]));
   const parLigue = new Map<number, any[]>();
@@ -669,9 +674,11 @@ function avecPoisson(
     const second = avis && !sur ? { ...avis, poids } : null;
     if (second) actifs.push(Number(m.id));
     if (grille) actifs.push(Number(m.id));
+    const c = historiques[String(m.id)];
+    const marche = c ? { dom: c.dom, nul: c.nul, ext: c.ext, poids: 1 } : null;
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), null,
-      false, pourLeScore ? null : second, grille
+      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), marche,
+      false, pourLeScore ? null : second, grille, c?.plus ?? null
     );
     pronostics.push(versPronostic(m, r));
   }
@@ -4276,7 +4283,8 @@ for (const vBrute of tache.variantes) {
       v.couche.demiVie ?? 300,
       v.couche.parJour ?? 30,
       v.couche.pourLeScore === true,
-      v.couche.seuilConfiance ?? 1
+      v.couche.seuilConfiance ?? 1,
+      v.couche.avecLeMarche === true
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
