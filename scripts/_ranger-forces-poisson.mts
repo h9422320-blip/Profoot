@@ -11,8 +11,11 @@ import fs from 'node:fs';
 import { chargerEnv, FICHIER_RENCONTRES } from './challenger/commun.mjs';
 chargerEnv();
 const { ajusterPoisson, rangerForcesPoisson, RENCONTRES_MINIMUM } = await import('../src/lib/forces-poisson.js');
+const { ciblesDuModele, exporterStatistiquesDeMatch } = await import('./challenger/statistiques.mjs');
+if (process.argv.includes('--exporter')) console.log('statistiques exportées :', JSON.stringify(await exporterStatistiquesDeMatch()));
 
-const rencontres: any[] = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
+// Le xG quand il existe, les buts sinon : voir `ciblesDuModele`.
+const rencontres: any[] = ciblesDuModele(JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8')));
 const parLigue = new Map<number, any[]>();
 for (const m of rencontres) {
   const l = Number(m.ligue);

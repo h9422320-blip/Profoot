@@ -474,7 +474,16 @@ async function principal(): Promise<any> {
     const { ajusterPoisson, rangerForcesPoisson } = await import('../../src/lib/forces-poisson.js');
     const { FICHIER_RENCONTRES } = await import('./commun.mjs');
     const fsNuit = await import('node:fs');
-    const toutes: any[] = JSON.parse(fsNuit.readFileSync(FICHIER_RENCONTRES, 'utf8'));
+    // Les fiches de statistiques de la réserve d'abord : le modèle s'ajuste
+    // sur le xG quand il existe (voir `ciblesDuModele`).
+    const { exporterStatistiquesDeMatch, ciblesDuModele } = await import('./statistiques.mjs');
+    try {
+      const e = await exporterStatistiquesDeMatch();
+      ligne(`- Statistiques de match lues dans la réserve : ${e.exportees} rencontres, dont ${e.avecXg} avec xG.`);
+    } catch (err: any) {
+      ligne(`- Statistiques de match illisibles aujourd’hui (${err?.message ?? err}) : l’export précédent sert.`);
+    }
+    const toutes: any[] = ciblesDuModele(JSON.parse(fsNuit.readFileSync(FICHIER_RENCONTRES, 'utf8')));
     const parLigue = new Map<number, any[]>();
     for (const m of toutes) {
       const l = Number((m as any).ligue);
