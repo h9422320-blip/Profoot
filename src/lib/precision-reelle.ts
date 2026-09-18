@@ -220,6 +220,9 @@ export async function lirePaquetFrais(paquet: string[], pauseMs = PAUSE_APRES_RE
           (json ? JSON.stringify(erreurs).slice(0, 160) : `HTTP ${reponse.status}`)
       );
     } catch (e: any) {
+      // Le cadre refuse une requête hors cache pendant un rendu statique :
+      // inutile d'attendre et de réessayer, la réponse sera la même.
+      if (/Dynamic server usage/i.test(String(e?.message ?? ''))) return null;
       console.warn(`[PRECISION] Paquet illisible (essai ${essai}/${ESSAIS_PAR_PAQUET}) : ${e?.message}`);
     }
     if (essai < ESSAIS_PAR_PAQUET) await new Promise((r) => setTimeout(r, pauseMs));

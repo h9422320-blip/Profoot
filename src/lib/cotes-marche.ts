@@ -551,6 +551,19 @@ export async function releverCotes(
   return { jours: detail.length, matchs: total, ligues: interroges, detail };
 }
 
+/**
+ * Relit une journée de cotes, avec cinq secondes de patience au lieu d'une et
+ * demie. Sert au MOTEUR : une journée manquée lui fait perdre l'avis du marché
+ * sans rien signaler — constaté le 18 septembre 2026 sur Werder Brême —
+ * Augsbourg, figé par l'analyse sans le marché.
+ */
+export async function lireCotesDuJourPatiemment(jour: string): Promise<ReleveDuJour | null> {
+  const rapide = await lireCotesDuJour(jour);
+  if (rapide) return rapide;
+  const lu = await relireSansDelai(cleDuJour(jour));
+  return lu && lu !== 'illisible' ? lu.contenu : null;
+}
+
 /** Relit les cotes d'une rencontre, si elles ont été relevées avant le match. */
 export async function lireCotesDuJour(jour: string): Promise<ReleveDuJour | null> {
   try {

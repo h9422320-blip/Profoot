@@ -29,3 +29,11 @@ test('★ ACQUIS — l’analyse et la sélection lisent le marché, puis la mé
   assert.match(selection, /\(await avisDuMarchePour\(f\?\.fixture\?\.id, f\?\.fixture\?\.date, ligue\)\) \?\?/,
     'La sélection du jour ne lit plus l’avis du marché : sa carte contredirait l’analyse.');
 });
+
+test('★ ACQUIS — le moteur lit sa journée de cotes avec patience, et une seule fois', () => {
+  // Le 18 septembre 2026, Werder Brême — Augsbourg a été figé par l'analyse
+  // SANS le marché : la lecture de la journée avait dépassé une seconde et demie.
+  const s = fs.readFileSync('src/lib/couche-marche.ts', 'utf8');
+  assert.match(s, /lireCotesDuJourPatiemment\(jour\)/, 'Le moteur relit ses cotes avec le garde-temps court : le marché peut se perdre en silence.');
+  assert.match(s, /const DUREE_JOURNEE_MS = 10 \* 60 \* 1000;/, 'La journée de cotes n’est plus gardée en mémoire.');
+});

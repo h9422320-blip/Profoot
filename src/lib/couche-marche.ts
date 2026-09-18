@@ -126,8 +126,8 @@ const DUREE_JOURNEE_MS = 10 * 60 * 1000;
 async function journeeDeCotes(jour: string): Promise<Map<number, any> | null> {
   const connue = JOURNEES.get(jour);
   if (connue && Date.now() - connue.quand < DUREE_JOURNEE_MS) return connue.matchs;
-  const { lireCotesDuJour } = await import('./cotes-marche');
-  const releve = await lireCotesDuJour(jour);
+  const { lireCotesDuJourPatiemment } = await import('./cotes-marche');
+  const releve = await lireCotesDuJourPatiemment(jour);
   if (!releve?.matchs) return null;
   const matchs = new Map(releve.matchs.map((m) => [Number(m.id), m]));
   JOURNEES.set(jour, { quand: Date.now(), matchs });

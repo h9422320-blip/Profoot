@@ -96,6 +96,18 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
   const debut = Date.now();
   const etapes: { nom: string; ok: boolean; detail: string }[] = [];
 
+  // ── JAMAIS PENDANT LA CONSTRUCTION DE L'APPLICATION ──────────────────────
+  //
+  // La page du mur réveille l'entretien quand il date de plus de vingt heures.
+  // Elle est aussi pré-rendue à la construction : l'entretien partait alors
+  // DANS la construction — écritures en base, appels au fournisseur, et des
+  // pauses de reprise de quinze secondes quand le cadre refuse une requête
+  // non mise en cache. Le 18 septembre 2026, la construction a fini par
+  // dépasser son temps. Une construction n'entretient rien.
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return { lance: false, raison: 'construction en cours', etapes, dureeMs: 0 };
+  }
+
   if (!forcer) {
     const dernier = await dernierEntretien();
     if (dernier && Date.now() - dernier.getTime() < FRAICHEUR_MAX_MS)
