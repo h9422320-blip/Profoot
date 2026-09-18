@@ -161,7 +161,12 @@ export function probabilitesDepuisCotes(cote: { dom: number; nul: number; ext: n
 }
 
 /** Les compétitions qui nous intéressent : celles que nos abonnés analysent. */
-const NOS_LIGUES = new Set<number>([...Object.values(LEAGUE_IDS), 2, 3, 848, 531]);
+//
+// MLS (253), Brasileirão (71) et Liga Profesional argentine (128) ajoutées le
+// 18 septembre 2026 : la préparation les figeait chaque jour, mais aucune cote
+// n'y était jamais relevée — le moteur y restait donc seul, alors que l'avis
+// du marché bat le moteur dans toutes les autres compétitions mesurées.
+const NOS_LIGUES = new Set<number>([...Object.values(LEAGUE_IDS), 2, 3, 848, 531, 253, 71, 128]);
 
 /**
  * Extrait ce qui compte d'une réponse du fournisseur.
@@ -412,7 +417,38 @@ export async function releverCotes(
   const parId = new Map<number, CoteMatch>();
   for (const m of tous) parId.set(m.id, m);
 
-  const identifiants = [...parId.keys()];
+  // ── D'ABORD LE PROGRAMME DU JOUR : UN APPEL PAR JOURNÉE ─────────────────
+  //
+  // Constaté le 18 septembre 2026 : un soir où le fournisseur répondait
+  // lentement, la lecture des fiches par paquets de vingt a épuisé le budget,
+  // et 235 cotes ont été jetées faute d'équipes — les dernières de la liste,
+  // dont TOUTE la MLS, le Brésil et l'Argentine. Le programme d'une journée
+  // donne les équipes de tous ses matchs en un seul appel : cinq journées
+  // coûtent cinq appels au lieu de quarante-cinq. Les paquets ne servent plus
+  // qu'aux rares matchs absents du programme.
+  const journees = [...new Set([...parId.values()].map((m) => String(m.date).slice(0, 10)))].filter((j) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(j)
+  );
+  for (let i = 0; i < journees.length; i += deFront) {
+    if (Date.now() - debut > budgetMs * 1.5) break;
+    const lot = journees.slice(i, i + deFront);
+    const programmes = await Promise.all(
+      lot.map((j) => apiFootball<any>(`/fixtures?date=${j}`, CACHE_TTL.FIXTURES_UPCOMING).catch(() => null))
+    );
+    for (const r of programmes) {
+      for (const f of r?.response ?? []) {
+        const m = parId.get(Number(f?.fixture?.id));
+        if (!m) continue;
+        m.dom = Number(f?.teams?.home?.id ?? 0);
+        m.ext = Number(f?.teams?.away?.id ?? 0);
+      }
+    }
+  }
+
+  const identifiants = [...parId.keys()].filter((id) => {
+    const m = parId.get(id)!;
+    return !(m.dom > 0 && m.ext > 0);
+  });
   const paquets: number[][] = [];
   for (let i = 0; i < identifiants.length; i += 20) paquets.push(identifiants.slice(i, i + 20));
 
