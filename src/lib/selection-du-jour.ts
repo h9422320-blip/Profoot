@@ -52,7 +52,7 @@ import { getLiveTeams } from './teams-live';
 import { CHAMPIONNATS, competitionRetenue, rangDeCompetition } from './precalcul-selection';
 import type { EquipeDuJour } from './grands-matchs-du-jour';
 import { lireForcesPoisson, avisPourLeMatch } from './forces-poisson';
-import { CHAMPIONNATS_DU_MARCHE } from './couche-marche';
+import { avisDuMarcheBranche } from './couche-marche';
 import { lireCotesDuJour } from './cotes-marche';
 
 /** Une heure : la liste bouge quand un match commence, pas plus vite. */
@@ -245,7 +245,7 @@ async function calculer(): Promise<SelectionDuJour> {
   // dans le pronostic du moteur (voir `couche-marche.ts`).
   const cotesParJour = new Map<string, Set<number>>();
   const estCotee = async (fixtureId: number, coupDEnvoi: string, ligue: number): Promise<boolean> => {
-    if (!CHAMPIONNATS_DU_MARCHE.has(Number(ligue))) return false;
+    if (!avisDuMarcheBranche(ligue)) return false;
     const jour = String(coupDEnvoi).slice(0, 10);
     if (!cotesParJour.has(jour)) {
       const r = await lireCotesDuJour(jour).catch(() => null);

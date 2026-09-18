@@ -157,12 +157,38 @@ export const CHAMPIONNATS_DU_MARCHE: ReadonlySet<number> = new Set([
   40, 179, 79, 136, 141, 62, 144, 203, 197,
 ]);
 
+/**
+ * ── LES COUPES D'EUROPE, DEPUIS LE 18 SEPTEMBRE 2026 ──────────────────────
+ *
+ * Ligue des champions, Ligue Europa, Ligue Conférence. Aucune cote historique
+ * publique ne couvre les coupes : la mesure vient des cotes relevées par la
+ * production, sur 68 matchs joués depuis août (`scripts/_marche-en-coupe.mts`) :
+ *
+ *     favori du marché juste ....... 42
+ *     analyse du moteur juste ...... 32
+ *     quand les deux divergent (29) : marché 16, moteur 6
+ *
+ * C'est là que le moteur faisait ses pires fautes : Manchester United 0-3
+ * Sabah (4-0), Crystal Palace 1-4 Lech Poznan (4-0), Sunderland 1-3 AZ (1-0),
+ * NEC vainqueur à la Juventus (5-0). Le rapport entre championnats y décide
+ * seul, et un championnat peu confronté aux autres le fausse.
+ *
+ * Seul l'avis 1N2 est branché ici ; le nombre de buts du marché reste
+ * réservé aux championnats, où il est mesuré.
+ */
+export const COUPES_DU_MARCHE: ReadonlySet<number> = new Set([2, 3, 848]);
+
+/** Le marché donne-t-il son avis sur le vainqueur dans cette compétition ? */
+export function avisDuMarcheBranche(ligue: number | string | null | undefined): boolean {
+  return CHAMPIONNATS_DU_MARCHE.has(Number(ligue)) || COUPES_DU_MARCHE.has(Number(ligue));
+}
+
 export async function avisDuMarchePour(
   fixtureId: number | string | null | undefined,
   coupDEnvoi: string | null | undefined,
   ligue: number | string | null | undefined
 ): Promise<{ dom: number; nul: number; ext: number; poids: number } | null> {
-  if (!fixtureId || !coupDEnvoi || !CHAMPIONNATS_DU_MARCHE.has(Number(ligue))) return null;
+  if (!fixtureId || !coupDEnvoi || !avisDuMarcheBranche(ligue)) return null;
   try {
     const m = (await journeeDeCotes(String(coupDEnvoi).slice(0, 10)))?.get(Number(fixtureId));
     const p = m?.proba;

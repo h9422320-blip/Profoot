@@ -9,13 +9,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { avisDuMarchePour, CHAMPIONNATS_DU_MARCHE, PART_DU_MARCHE } from '../src/lib/couche-marche';
+import { avisDuMarchePour, avisDuMarcheBranche, CHAMPIONNATS_DU_MARCHE, COUPES_DU_MARCHE, PART_DU_MARCHE } from '../src/lib/couche-marche';
 
 test('★ ACQUIS — le marché ne parle QUE sur les sept grands championnats', async () => {
   // Les sept grands, puis neuf championnats mesurés le même jour (6 034 rencontres, +137).
   assert.deepEqual([...CHAMPIONNATS_DU_MARCHE].sort((a, b) => a - b), [39, 40, 61, 62, 78, 79, 88, 94, 135, 136, 140, 141, 144, 179, 197, 203]);
-  // Coupes d'Europe, autres championnats, match sans date : silence.
-  assert.equal(await avisDuMarchePour(123, '2026-09-19T14:00:00Z', 2), null);
+  // Les coupes d'Europe depuis le 18 septembre 2026 : sur 68 matchs joués, le
+  // favori du marché 42 justes contre 32 pour le moteur (16 contre 6 quand ils divergent).
+  assert.deepEqual([...COUPES_DU_MARCHE].sort((a, b) => a - b), [2, 3, 848]);
+  assert.ok(avisDuMarcheBranche(2) && avisDuMarcheBranche(3) && avisDuMarcheBranche(848) && avisDuMarcheBranche(39));
+  // Autres compétitions, match sans date : silence.
+  assert.equal(avisDuMarcheBranche(283), false);
   assert.equal(await avisDuMarchePour(123, '2026-09-19T14:00:00Z', 283), null);
   assert.equal(await avisDuMarchePour(123, null, 39), null);
   assert.equal(PART_DU_MARCHE, 1);
