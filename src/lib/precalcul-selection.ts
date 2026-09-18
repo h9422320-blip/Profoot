@@ -243,14 +243,27 @@ async function api(chemin: string): Promise<any[]> {
   const cle = process.env.API_FOOTBALL_KEY;
   if (!cle) return [];
   try {
+    // ── SURTOUT PAS `cache: 'no-store'` ICI ──────────────────────────────
+    //
+    // L'entretien quotidien tourne dans le `after()` de la page des preuves,
+    // une page régénérée toutes les dix minutes. Dans ce cadre, le moteur de
+    // rendu REFUSE une requête marquée « sans cache » — il lève une erreur
+    // de rendu dynamique, que le `catch` ci-dessous changeait en liste vide.
+    // Constaté le 18 septembre 2026 dans les comptes rendus : « 0 calculée,
+    // 0 déjà connue sur 0 examinée » CHAQUE JOUR depuis le 5 septembre. La
+    // préparation n'avait jamais rien préparé en production.
+    //
+    // Sans option, comme `apiFootballFetch` dont le relevé des cotes se sert
+    // chaque nuit avec succès, la requête part et rien n'est gardé en cache.
     const r = await fetch(`https://v3.football.api-sports.io/${chemin}`, {
       headers: { 'x-apisports-key': cle },
-      cache: 'no-store',
     });
     if (!r.ok) return [];
     const j = await r.json();
     return j?.response ?? [];
-  } catch {
+  } catch (e: any) {
+    // Jamais plus en silence : c'est ce silence qui a caché la panne.
+    console.warn(`[PRECALCUL] Fournisseur illisible sur ${chemin} : ${e?.message}`);
     return [];
   }
 }

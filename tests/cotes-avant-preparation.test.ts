@@ -28,3 +28,13 @@ test('★ ACQUIS — un pronostic figé sans le marché se refige quand la cote 
   assert.match(s, /\(await figeSansLeMarche\(f\)\)/, 'Le rattrapage automatique n’est plus branché.');
   assert.match(s, /GEL_DEFINITIF_MS = 24 \* 3_600_000/, 'Le gel des vingt-quatre heures a changé.');
 });
+
+test('★ ACQUIS — la préparation interroge le fournisseur SANS « no-store »', () => {
+  // Du 5 au 18 septembre 2026, l'option faisait échouer chaque requête dans
+  // l'entretien (page régénérée) : « 0 sur 0 examinée » chaque jour.
+  const s = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');
+  const api = s.slice(s.indexOf('async function api('), s.indexOf('async function api(') + 2000);
+  assert.doesNotMatch(api.replace(/\/\/.*$/gm, ''), /cache:\s*'no-store'/, 'La préparation redemande « no-store » : elle ne préparera plus rien en production.');
+  const e = fs.readFileSync('src/lib/entretien-quotidien.ts', 'utf8');
+  assert.match(e, /if \(r\.examinees === 0\) throw/, 'Une préparation vide redevient silencieuse dans les comptes rendus.');
+});

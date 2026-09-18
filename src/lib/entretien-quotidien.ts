@@ -252,6 +252,10 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
     async () => {
       const { precalculerGrandsMatchs } = await import('./precalcul-selection');
       const r = await precalculerGrandsMatchs();
+      // Aucune rencontre examinée un jour ordinaire, c'est une panne, pas un
+      // calme plat : de jours en jours du 5 au 18 septembre 2026, ce « 0 sur
+      // 0 » passait pour une réussite dans les comptes rendus.
+      if (r.examinees === 0) throw new Error('aucune rencontre examinée — le fournisseur n’a rien rendu');
       return (
         `${r.calculees} calculée(s), ${r.dejaConnues} déjà connue(s) sur ${r.examinees} examinée(s)` +
         (r.echecs ? ` — ${r.echecs} échec(s)` : '')
