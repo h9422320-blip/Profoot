@@ -154,3 +154,25 @@ export async function avisDuMarchePour(
     return null;
   }
 }
+
+/**
+ * La probabilité de « plus de 2,5 buts » selon le marché, pour une rencontre
+ * des championnats où le marché est mesuré. `null` si le relevé ne la porte
+ * pas (relevé antérieur au 18 septembre 2026, ou bookmakers muets).
+ */
+export async function totalDuMarchePour(
+  fixtureId: number | string | null | undefined,
+  coupDEnvoi: string | null | undefined,
+  ligue: number | string | null | undefined
+): Promise<number | null> {
+  if (!fixtureId || !coupDEnvoi || !CHAMPIONNATS_DU_MARCHE.has(Number(ligue))) return null;
+  try {
+    const { lireCotesDuJour } = await import('./cotes-marche');
+    const releve = await lireCotesDuJour(String(coupDEnvoi).slice(0, 10));
+    const m = releve?.matchs?.find((x) => Number(x.id) === Number(fixtureId));
+    const p = Number(m?.plusDeDeuxCinq);
+    return Number.isFinite(p) && p > 0 && p < 1 ? p : null;
+  } catch {
+    return null;
+  }
+}

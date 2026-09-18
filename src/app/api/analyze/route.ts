@@ -27,7 +27,7 @@ import { correctionElanTerrain, lireElanEtTerrain } from "@/lib/elan-et-terrain"
 import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from "@/lib/repos-des-clubs";
 import { statistiquesDepuisMatchs } from "@/lib/statistiques-recentes";
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from "@/lib/forces-poisson";
-import { avisDuMarchePour } from "@/lib/couche-marche";
+import { avisDuMarchePour, totalDuMarchePour } from "@/lib/couche-marche";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
 import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 
@@ -1681,7 +1681,10 @@ async function analyser(req: Request, billet: BilletQuota) {
     // refusés le 18 septembre 2026 (voir `forces-poisson.ts`).
     null,
     null,
-    grilleSeconde
+    grilleSeconde,
+    // Le nombre de buts selon le marché, pour les seuls chiffres de buts
+    // affichés (voir `score-probable.ts`).
+    await totalDuMarchePour(targetFutureMatch?.fixture?.id, targetFutureMatch?.fixture?.date, targetFutureMatch?.league?.id)
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────

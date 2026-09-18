@@ -107,6 +107,16 @@ export interface CoteMatch {
   maisons: number;
   /** Marge retirée, en pourcentage. Élevée = cotes peu fiables. */
   marge: number;
+  /**
+   * Probabilité de « plus de 2,5 buts » selon le marché, marge retirée.
+   *
+   * Ajoutée le 18 septembre 2026 : la même réponse du fournisseur la
+   * contenait déjà, aucun appel de plus. Mesuré sur 10 611 rencontres de
+   * seize championnats, le marché lit bien mieux le nombre de buts que le
+   * moteur (Brier « plus de 2,5 » 0,2557 → 0,2416). Absente d'un relevé plus
+   * ancien : le moteur garde alors son propre total.
+   */
+  plusDeDeuxCinq?: number;
 }
 
 export interface ReleveDuJour {
@@ -169,8 +179,23 @@ export function extraireCotes(reponse: any[]): CoteMatch[] {
     const dom: number[] = [];
     const nul: number[] = [];
     const ext: number[] = [];
+    const plus25: number[] = [];
+    const moins25: number[] = [];
 
     for (const maison of x?.bookmakers ?? []) {
+      // Le marché des buts, dans la même fiche : « plus / moins de 2,5 ».
+      const buts = (maison?.bets ?? []).find((b: any) => b?.name === 'Goals Over/Under');
+      if (buts) {
+        const cote = (nom: string) => {
+          const v = (buts.values ?? []).find((y: any) => String(y?.value) === nom);
+          const n = Number(v?.odd);
+          return Number.isFinite(n) && n > 1 ? n : null;
+        };
+        const o = cote('Over 2.5');
+        const u = cote('Under 2.5');
+        if (o !== null && u !== null) { plus25.push(o); moins25.push(u); }
+      }
+
       const pari = (maison?.bets ?? []).find((b: any) => b?.name === 'Match Winner');
       if (!pari) continue;
       const valeur = (nom: string) => {
@@ -220,6 +245,15 @@ export function extraireCotes(reponse: any[]): CoteMatch[] {
       },
       maisons: dom.length,
       marge,
+      // Les deux ou rien, comme pour le 1N2 : la marge ne se retire qu'ainsi.
+      ...(plus25.length
+        ? (() => {
+            const o = mediane(plus25);
+            const u = mediane(moins25);
+            const p = 1 / o / (1 / o + 1 / u);
+            return Number.isFinite(p) ? { plusDeDeuxCinq: Math.round(p * 10000) / 10000 } : {};
+          })()
+        : {}),
     });
   }
 

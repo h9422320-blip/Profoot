@@ -51,7 +51,7 @@ import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from './memoire-cl
 import { lireForcesLigue } from './forces-equipes';
 import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-championnats';
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from './forces-poisson';
-import { avisDuMarchePour } from './couche-marche';
+import { avisDuMarchePour, totalDuMarchePour } from './couche-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
 
 /**
@@ -594,7 +594,9 @@ export async function precalculerGrandsMatchs(
           (() => {
             const buts = butsAttendusPourLeMatch(forcesPoisson, ligue, domId, extId);
             return buts ? { ...buts, poids: PART_GRILLE_SCORE } : null;
-          })()
+          })(),
+          // Le nombre de buts selon le marché, comme l'analyse.
+          await totalDuMarchePour(f?.fixture?.id, f?.fixture?.date, ligue)
         );
 
         await (aRemplacer.has(Number(f.fixture.id)) ? remplacerPredictionFigee : figerPrediction)({
