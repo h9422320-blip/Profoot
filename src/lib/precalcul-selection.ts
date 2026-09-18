@@ -51,6 +51,7 @@ import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from './memoire-cl
 import { lireForcesLigue } from './forces-equipes';
 import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-championnats';
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from './forces-poisson';
+import { avisDuMarchePour } from './couche-marche';
 import { figerPrediction } from './prediction-figee';
 
 /**
@@ -554,7 +555,10 @@ export async function precalculerGrandsMatchs(
           // championnat ; sans ancrage elle se tait. Mesuré sur 4 409 matchs
           // aveugles : +29 vainqueurs justes, et 72,0 / 68,9 % quand le moteur
           // est sûr de lui contre 64,0 %.
-          occasionsDuMatch
+          // L'avis du marché d'abord, sur les sept grands championnats — le
+          // même que l'analyse, voir `couche-marche.ts`.
+          (await avisDuMarchePour(f?.fixture?.id, f?.fixture?.date, ligue)) ??
+          (occasionsDuMatch
             ? null
             : avisDeLaMemoire(
                 memoireDesClubs,
@@ -562,7 +566,7 @@ export async function precalculerGrandsMatchs(
                 extId,
                 // Pleine part sous cinq matchs connus dans la compétition.
                 partDeLaMemoire(Math.min(brut(sDom).matchsJoues, brut(sExt).matchsJoues))
-              ),
+              )),
           // Le match retour et la seconde conviction restent éteints.
           null,
           null,

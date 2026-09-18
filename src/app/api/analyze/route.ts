@@ -27,6 +27,7 @@ import { correctionElanTerrain, lireElanEtTerrain } from "@/lib/elan-et-terrain"
 import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from "@/lib/repos-des-clubs";
 import { statistiquesDepuisMatchs } from "@/lib/statistiques-recentes";
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from "@/lib/forces-poisson";
+import { avisDuMarchePour } from "@/lib/couche-marche";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
 import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 
@@ -1439,6 +1440,19 @@ async function analyser(req: Request, billet: BilletQuota) {
   // Relevé absent, vieux de plus de dix jours, ou club inconnu : `null`, et le
   // score redevient exactement celui d'avant.
   const forcesPoisson = await lireForcesPoisson();
+
+  // ── L'AVIS DU MARCHÉ, SUR LES SEPT GRANDS CHAMPIONNATS ──────────────────
+  //
+  // Les cotes relevées avant le match (médiane des bookmakers, marge retirée).
+  // Mesuré sur 4 577 rencontres : +107 vainqueurs justes sur trois tranches,
+  // matchs sûrs 72-73 %, 3 mis en avant par jour 66,0 → 68,6 %. Voir
+  // `couche-marche.ts`. Absent — autre compétition, match sans cote, match
+  // passé — il se tait, et la mémoire des clubs garde sa place.
+  const avisDuMarche = await avisDuMarchePour(
+    targetFutureMatch?.fixture?.id,
+    targetFutureMatch?.fixture?.date,
+    targetFutureMatch?.league?.id
+  );
   const grilleSeconde = (() => {
     try {
       const ligue = (targetFutureMatch || targetPastMatch || nextH2H)?.league?.id;
@@ -1652,7 +1666,8 @@ async function analyser(req: Request, billet: BilletQuota) {
     //
     // Quand les occasions sont là, la mémoire se TAIT : appliquée partout,
     // elle dégrade le pronostic (mesuré le 11 septembre, couche Elo refusée).
-    occasionsDuMatch
+    avisDuMarche ??
+    (occasionsDuMatch
       ? null
       : avisDeLaMemoire(
           await lireMemoireClubs(),
@@ -1661,7 +1676,7 @@ async function analyser(req: Request, billet: BilletQuota) {
           // La part monte quand le moteur sait moins : pleine sous cinq matchs
           // connus dans la compétition. Voir `partDeLaMemoire`.
           partDeLaMemoire(Math.min(Number(brutes1?.matchsJoues ?? 0), Number(brutes2?.matchsJoues ?? 0)))
-        ),
+        )),
     // Le match retour et la seconde conviction restent éteints : mesurés,
     // refusés le 18 septembre 2026 (voir `forces-poisson.ts`).
     null,

@@ -83,3 +83,54 @@ export function butsAttendusDuMarche(
   const ecart = (bas + haut) / 2;
   return { dom: (total + ecart) / 2, ext: (total - ecart) / 2 };
 }
+
+/**
+ * ── L'AVIS DU MARCHÉ POUR UNE RENCONTRE, TEL QUE LE MOTEUR LE PREND ────────
+ *
+ * EN LIGNE DEPUIS LE 18 SEPTEMBRE 2026, SUR LES SEPT GRANDS CHAMPIONNATS.
+ *
+ * Les cotes relevées par la production ne remontaient qu'au 11 septembre :
+ * 307 matchs, trop peu pour trancher — et la mesure faite dessus concluait,
+ * à tort, que le marché ne désignait pas mieux le vainqueur. Avec les cotes
+ * d'avant-match publiques de football-data.co.uk (moyenne des bookmakers,
+ * relevée avant le match, jamais la clôture), rattachées à 4 577 rencontres
+ * des sept grands championnats depuis août 2024 :
+ *
+ *     vainqueurs, deux moitiés ............ +53 / +54
+ *     vainqueurs, trois tranches .......... +39 / +36 / +32   (+107)
+ *     matchs sûrs ......................... 72,0 / 73,5 %  (moteur ~69-70 %)
+ *     3 mis en avant par jour ............. 66,0 → 68,6 %   (+20 journées parfaites)
+ *     5 mis en avant par jour ............. 64,9 → 68,5 %
+ *
+ * Sept dosages essayés (part 0,25 à 1, par les buts ou par les probabilités) :
+ * TOUS passent la porte et les trois tranches. Le gain croît avec la part ; on
+ * retient la part pleine, par les buts : le moteur garde son total de buts et
+ * reprend l'avis du marché sur qui domine.
+ *
+ * Seulement les sept grands championnats : c'est là, et là seulement, que la
+ * mesure a été faite. Ailleurs — coupes d'Europe comprises — le moteur reste
+ * seul. Les cotes ne sont JAMAIS montrées à l'abonné.
+ */
+export const PART_DU_MARCHE = 1;
+
+/** Premier League, Liga, Serie A, Bundesliga, Ligue 1, Primeira Liga, Eredivisie. */
+export const CHAMPIONNATS_DU_MARCHE: ReadonlySet<number> = new Set([39, 140, 135, 78, 61, 94, 88]);
+
+export async function avisDuMarchePour(
+  fixtureId: number | string | null | undefined,
+  coupDEnvoi: string | null | undefined,
+  ligue: number | string | null | undefined
+): Promise<{ dom: number; nul: number; ext: number; poids: number } | null> {
+  if (!fixtureId || !coupDEnvoi || !CHAMPIONNATS_DU_MARCHE.has(Number(ligue))) return null;
+  try {
+    const { lireCotesDuJour } = await import('./cotes-marche');
+    const jour = String(coupDEnvoi).slice(0, 10);
+    const releve = await lireCotesDuJour(jour);
+    const m = releve?.matchs?.find((x) => Number(x.id) === Number(fixtureId));
+    const p = m?.proba;
+    if (!p || !(p.dom > 0) || !(p.ext > 0) || !(p.nul > 0)) return null;
+    return { dom: p.dom, nul: p.nul, ext: p.ext, poids: PART_DU_MARCHE };
+  } catch {
+    return null;
+  }
+}

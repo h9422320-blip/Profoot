@@ -33,10 +33,12 @@ import { chargerEnv, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, GRANDS, CO
 import type { Pronostic } from './porte.js';
 import { ajusterPoisson, avisPoisson } from '../../src/lib/forces-poisson.js';
 import { ciblesDuModele } from './statistiques.mjs';
+import { FICHIER_COTES_HISTORIQUES } from './cotes-historiques.mjs';
 
 type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
+  | { type: 'marche-historique'; poids: number; parLesProbabilites?: boolean }
   | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
@@ -671,6 +673,35 @@ function avecPoisson(
       s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), null,
       false, pourLeScore ? null : second, grille
     );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
+// ── LA COUCHE DU MARCHÉ, MESURÉE SUR LES COTES D'AVANT-MATCH HISTORIQUES ────
+//
+// Les cotes relevées par la production ne remontent qu'au 11 septembre 2026 :
+// 307 matchs, trop peu. Les fichiers publics de football-data.co.uk donnent la
+// MOYENNE des bookmakers relevée avant chaque match des sept grands
+// championnats depuis 2023 (voir `cotes-historiques.mts`) — la même nature de
+// cote que celle que la production relève à minuit.
+//
+// Deux points d'entrée possibles : `marche` traduit l'avis en buts et laisse le
+// moteur conclure ; `secondAvis` mêle les deux convictions avant le choix du
+// score.
+function avecMarcheHistorique(poids: number, parLesProbabilites: boolean): { pronostics: Pronostic[]; actifs: number[] } {
+  const historiques: Record<string, { dom: number; nul: number; ext: number }> = fs.existsSync(FICHIER_COTES_HISTORIQUES)
+    ? JSON.parse(fs.readFileSync(FICHIER_COTES_HISTORIQUES, 'utf8'))
+    : {};
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  for (const { m, s1, s2, occ } of entrees) {
+    const c = historiques[String(m.id)];
+    const avis = c ? { ...c, poids } : null;
+    if (avis) actifs.push(Number(m.id));
+    const r: any = parLesProbabilites
+      ? calculerScoreProbable(s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), avisDeLaProduction(m), false, avis)
+      : calculerScoreProbable(s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), avis ?? avisDeLaProduction(m));
     pronostics.push(versPronostic(m, r));
   }
   return { pronostics, actifs };
@@ -4249,6 +4280,12 @@ for (const vBrute of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
+    return;
+  }
+  if (v.couche?.type === 'marche-historique') {
+    const r = avecMarcheHistorique(v.couche.poids, v.couche.parLesProbabilites === true);
+    sortie[v.nom] = r.pronostics;
+    actifs[v.nom] = r.actifs;
     return;
   }
   if (v.couche?.type === 'marche') {

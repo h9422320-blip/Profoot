@@ -1,0 +1,30 @@
+/**
+ * ★ ACQUIS — L'AVIS DU MARCHÉ EST BRANCHÉ SUR LES SEPT GRANDS CHAMPIONNATS.
+ *
+ * Mesuré le 18 septembre 2026 sur 4 577 rencontres (cotes d'avant-match de
+ * football-data.co.uk, moyenne des bookmakers, jamais la clôture) :
+ * vainqueurs +53/+54 sur les deux moitiés, +39/+36/+32 sur trois tranches,
+ * matchs sûrs 72,0/73,5 %, 3 mis en avant par jour 66,0 → 68,6 %.
+ */
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { avisDuMarchePour, CHAMPIONNATS_DU_MARCHE, PART_DU_MARCHE } from '../src/lib/couche-marche';
+
+test('★ ACQUIS — le marché ne parle QUE sur les sept grands championnats', async () => {
+  assert.deepEqual([...CHAMPIONNATS_DU_MARCHE].sort((a, b) => a - b), [39, 61, 78, 88, 94, 135, 140]);
+  // Coupes d'Europe, autres championnats, match sans date : silence.
+  assert.equal(await avisDuMarchePour(123, '2026-09-19T14:00:00Z', 2), null);
+  assert.equal(await avisDuMarchePour(123, '2026-09-19T14:00:00Z', 283), null);
+  assert.equal(await avisDuMarchePour(123, null, 39), null);
+  assert.equal(PART_DU_MARCHE, 1);
+});
+
+test('★ ACQUIS — l’analyse et la sélection lisent le marché, puis la mémoire à défaut', () => {
+  const route = fs.readFileSync('src/app/api/analyze/route.ts', 'utf8');
+  assert.match(route, /avisDuMarchePour\(\s*targetFutureMatch\?\.fixture\?\.id,/, 'L’analyse ne lit plus l’avis du marché.');
+  assert.match(route, /avisDuMarche \?\?\s*\(occasionsDuMatch/, 'Le marché ne passe plus avant la mémoire des clubs.');
+  const selection = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');
+  assert.match(selection, /\(await avisDuMarchePour\(f\?\.fixture\?\.id, f\?\.fixture\?\.date, ligue\)\) \?\?/,
+    'La sélection du jour ne lit plus l’avis du marché : sa carte contredirait l’analyse.');
+});
