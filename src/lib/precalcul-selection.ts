@@ -280,7 +280,7 @@ export async function precalculerGrandsMatchs(
    * moteur : sans lui, les cartes du week-end garderaient l'ancien calcul.
    * Dans les vingt-quatre dernières heures, un pronostic ne bouge JAMAIS.
    */
-  options: { rafraichirLigues?: ReadonlySet<number>; joursEnPlus?: number } = {}
+  options: { rafraichirLigues?: ReadonlySet<number>; joursEnPlus?: number; maxParPassage?: number } = {}
 ): Promise<BilanPrecalcul> {
   const bilan: BilanPrecalcul = {
     examinees: 0,
@@ -408,7 +408,7 @@ export async function precalculerGrandsMatchs(
     // préparation n'aurait alors JAMAIS rien calculé — constaté à l'essai le
     // 17 septembre 2026.
     const debutDesCalculs = Date.now();
-    for (const f of aPreparer.slice(0, MAX_PAR_PASSAGE)) {
+    for (const f of aPreparer.slice(0, options.maxParPassage ?? MAX_PAR_PASSAGE)) {
       if (Date.now() - debutDesCalculs > budgetMs) {
         bilan.details.push(`budget de ${Math.round(budgetMs / 1000)} s atteint : la suite au prochain passage`);
         break;
@@ -635,9 +635,9 @@ export async function precalculerGrandsMatchs(
       }
     }
 
-    if (aPreparer.length > MAX_PAR_PASSAGE) {
+    if (aPreparer.length > (options.maxParPassage ?? MAX_PAR_PASSAGE)) {
       bilan.details.push(
-        `${aPreparer.length - MAX_PAR_PASSAGE} rencontre(s) laissée(s) au prochain passage (plafond).`
+        `${aPreparer.length - (options.maxParPassage ?? MAX_PAR_PASSAGE)} rencontre(s) laissée(s) au prochain passage (plafond).`
       );
     }
   } catch (e: any) {

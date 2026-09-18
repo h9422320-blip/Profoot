@@ -10,6 +10,6 @@ chargerEnv();
 const { precalculerGrandsMatchs } = await import('../src/lib/precalcul-selection.js');
 const { CHAMPIONNATS_DU_MARCHE } = await import('../src/lib/couche-marche.js');
 const t = Date.now();
-const r = await precalculerGrandsMatchs(300_000, { rafraichirLigues: CHAMPIONNATS_DU_MARCHE, joursEnPlus: 1 });
+const r = await precalculerGrandsMatchs(900_000, { rafraichirLigues: CHAMPIONNATS_DU_MARCHE, joursEnPlus: 1, maxParPassage: 400 });
 console.log(JSON.stringify({ ...r, details: r.details.slice(0, 5) }));
 console.log(`durée : ${Math.round((Date.now() - t) / 1000)} s`);
