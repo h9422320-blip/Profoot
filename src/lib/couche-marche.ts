@@ -113,6 +113,27 @@ export function butsAttendusDuMarche(
  */
 export const PART_DU_MARCHE = 1;
 
+// ── UNE JOURNÉE DE COTES, LUE UNE FOIS ─────────────────────────────────────
+//
+// La lecture de la réserve abandonne au bout d'une seconde et demie. Lue une
+// fois par MATCH, une journée chargée multipliait les chances qu'une lecture
+// lente fasse manquer l'avis du marché — sans rien signaler, le moteur
+// retombant sur son seul calcul. Constaté le 18 septembre 2026 en local.
+// La journée est donc gardée en mémoire dix minutes ; une lecture ratée
+// n'est PAS gardée, pour être retentée au match suivant.
+const JOURNEES = new Map<string, { quand: number; matchs: Map<number, any> }>();
+const DUREE_JOURNEE_MS = 10 * 60 * 1000;
+async function journeeDeCotes(jour: string): Promise<Map<number, any> | null> {
+  const connue = JOURNEES.get(jour);
+  if (connue && Date.now() - connue.quand < DUREE_JOURNEE_MS) return connue.matchs;
+  const { lireCotesDuJour } = await import('./cotes-marche');
+  const releve = await lireCotesDuJour(jour);
+  if (!releve?.matchs) return null;
+  const matchs = new Map(releve.matchs.map((m) => [Number(m.id), m]));
+  JOURNEES.set(jour, { quand: Date.now(), matchs });
+  return matchs;
+}
+
 /**
  * Les championnats où l'avis du marché est mesuré, et donc branché.
  *
@@ -143,10 +164,7 @@ export async function avisDuMarchePour(
 ): Promise<{ dom: number; nul: number; ext: number; poids: number } | null> {
   if (!fixtureId || !coupDEnvoi || !CHAMPIONNATS_DU_MARCHE.has(Number(ligue))) return null;
   try {
-    const { lireCotesDuJour } = await import('./cotes-marche');
-    const jour = String(coupDEnvoi).slice(0, 10);
-    const releve = await lireCotesDuJour(jour);
-    const m = releve?.matchs?.find((x) => Number(x.id) === Number(fixtureId));
+    const m = (await journeeDeCotes(String(coupDEnvoi).slice(0, 10)))?.get(Number(fixtureId));
     const p = m?.proba;
     if (!p || !(p.dom > 0) || !(p.ext > 0) || !(p.nul > 0)) return null;
     return { dom: p.dom, nul: p.nul, ext: p.ext, poids: PART_DU_MARCHE };
@@ -167,9 +185,7 @@ export async function totalDuMarchePour(
 ): Promise<number | null> {
   if (!fixtureId || !coupDEnvoi || !CHAMPIONNATS_DU_MARCHE.has(Number(ligue))) return null;
   try {
-    const { lireCotesDuJour } = await import('./cotes-marche');
-    const releve = await lireCotesDuJour(String(coupDEnvoi).slice(0, 10));
-    const m = releve?.matchs?.find((x) => Number(x.id) === Number(fixtureId));
+    const m = (await journeeDeCotes(String(coupDEnvoi).slice(0, 10)))?.get(Number(fixtureId));
     const p = Number(m?.plusDeDeuxCinq);
     return Number.isFinite(p) && p > 0 && p < 1 ? p : null;
   } catch {
