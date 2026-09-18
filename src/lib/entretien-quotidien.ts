@@ -223,6 +223,20 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
   //
   // Il vit désormais ici, dans l'entretien porté par les visites, qui lui
   // s'exécute réellement tous les jours.
+  // Le relevé des cotes passe AVANT la préparation. Constaté le 18 septembre
+  // 2026 : l'ordre était inversé malgré le commentaire ci-dessous, et chaque
+  // rencontre figée cette nuit-là l'était sans les cotes du jour — donc sans
+  // l'avis du marché, qui est la couche la plus précise du moteur.
+  await etape(
+    'Relever les cotes du marché',
+    async () => {
+      const { releverCotes } = await import('./cotes-marche');
+      const r = await releverCotes();
+      return `${r.matchs} rencontre(s) cotée(s) sur ${r.jours} journée(s), ${r.ligues} championnat(s)`;
+    },
+    etapes
+  );
+
   // ── PRÉPARER CE QUE LA SÉLECTION POURRA PROPOSER DEMAIN ────────────────
   //
   // Elle ne classe que les rencontres dont les probabilités existent, donc
@@ -242,16 +256,6 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
         `${r.calculees} calculée(s), ${r.dejaConnues} déjà connue(s) sur ${r.examinees} examinée(s)` +
         (r.echecs ? ` — ${r.echecs} échec(s)` : '')
       );
-    },
-    etapes
-  );
-
-  await etape(
-    'Relever les cotes du marché',
-    async () => {
-      const { releverCotes } = await import('./cotes-marche');
-      const r = await releverCotes();
-      return `${r.matchs} rencontre(s) cotée(s) sur ${r.jours} journée(s), ${r.ligues} championnat(s)`;
     },
     etapes
   );

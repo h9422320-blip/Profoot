@@ -51,7 +51,8 @@ import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from './memoire-cl
 import { lireForcesLigue } from './forces-equipes';
 import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-championnats';
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from './forces-poisson';
-import { avisDuMarchePour, totalDuMarchePour } from './couche-marche';
+import { avisDuMarchePour, avisDuMarcheBranche, totalDuMarchePour } from './couche-marche';
+import { lireCotesDuJourPatiemment } from './cotes-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
 
 /**
@@ -296,13 +297,18 @@ export async function precalculerGrandsMatchs(
     // Tous les identifiants déjà calculés, en une lecture paginée : Supabase
     // rend mille lignes et s'arrête sans le dire.
     const connus = new Set<number>();
+    // Les probabilités figées, pour voir si le marché y est entré.
+    const probasFigees = new Map<number, { dom: number; ext: number }>();
     for (let de = 0; de < 50_000; de += 1000) {
       const { data, error } = await sb
         .from('predictions_match')
-        .select('fixture_id')
+        .select('fixture_id, proba_domicile, proba_exterieur')
         .range(de, de + 999);
       if (error) break;
-      for (const p of data ?? []) connus.add(Number(p.fixture_id));
+      for (const p of data ?? []) {
+        connus.add(Number(p.fixture_id));
+        probasFigees.set(Number(p.fixture_id), { dom: Number(p.proba_domicile), ext: Number(p.proba_exterieur) });
+      }
       if (!data || data.length < 1000) break;
     }
 
@@ -344,6 +350,35 @@ export async function precalculerGrandsMatchs(
     const aPreparer: any[] = [];
     const aRemplacer = new Set<number>();
     const GEL_DEFINITIF_MS = 24 * 3_600_000;
+
+    // ── UN PRONOSTIC FIGÉ SANS LE MARCHÉ SE REFAIT QUAND LA COTE ARRIVE ────
+    //
+    // Constaté le 18 septembre 2026 : figé deux jours avant le match, un
+    // pronostic l'était souvent AVANT que sa cote soit relevée — et restait
+    // ainsi, sans sa couche la plus précise, jusqu'au coup d'envoi. Seul un
+    // rafraîchissement lancé à la main le rattrapait.
+    //
+    // Avec le marché à pleine part, les probabilités figées collent à celles
+    // du marché : écart médian 2 points, 4 points pour 90 % des matchs
+    // (mesuré sur 90 rencontres figées ce jour-là). Au-delà de 8 points, le
+    // marché n'y est pas entré : on refige — jamais à moins de vingt-quatre
+    // heures du coup d'envoi.
+    const ECART_SANS_MARCHE = 8;
+    const cotesParJour = new Map<string, Map<number, any>>();
+    const figeSansLeMarche = async (f: any): Promise<boolean> => {
+      if (!avisDuMarcheBranche(f?.league?.id)) return false;
+      const fige = probasFigees.get(Number(f?.fixture?.id));
+      if (!fige) return false;
+      const jour = String(f?.fixture?.date ?? '').slice(0, 10);
+      if (!cotesParJour.has(jour)) {
+        const r = await lireCotesDuJourPatiemment(jour).catch(() => null);
+        cotesParJour.set(jour, new Map((r?.matchs ?? []).map((m) => [Number(m.id), m])));
+      }
+      const c = cotesParJour.get(jour)!.get(Number(f.fixture.id));
+      if (!c?.proba) return false;
+      const ecart = Math.max(Math.abs(fige.dom - 100 * c.proba.dom), Math.abs(fige.ext - 100 * c.proba.ext));
+      return ecart > ECART_SANS_MARCHE;
+    };
     for (let d = 0; d < JOURS_A_PREPARER + (options.joursEnPlus ?? 0); d++) {
       const jour = new Date(Date.now() + d * 86_400_000).toISOString().slice(0, 10);
       for (const f of await api(`fixtures?date=${jour}`)) {
@@ -354,12 +389,13 @@ export async function precalculerGrandsMatchs(
         // (2. Bundesliga), figé le 17 septembre avant que le marché ne
         // couvre cette ligue, gardait un vainqueur que le marché contredit.
         const dejaFigeARafraichir =
-          connus.has(Number(f?.fixture?.id)) && options.rafraichirLigues?.has(Number(f?.league?.id)) === true;
+          connus.has(Number(f?.fixture?.id)) &&
+          (options.rafraichirLigues?.has(Number(f?.league?.id)) === true || avisDuMarcheBranche(f?.league?.id));
         if (!competitionRetenue(f?.league) && !dejaFigeARafraichir) continue;
         bilan.examinees++;
         if (connus.has(Number(f?.fixture?.id))) {
           const loin = Date.parse(String(f?.fixture?.date ?? '')) - Date.now() > GEL_DEFINITIF_MS;
-          if (loin && options.rafraichirLigues?.has(Number(f?.league?.id))) {
+          if (loin && (options.rafraichirLigues?.has(Number(f?.league?.id)) || (await figeSansLeMarche(f)))) {
             aRemplacer.add(Number(f.fixture.id));
             aPreparer.push(f);
             continue;

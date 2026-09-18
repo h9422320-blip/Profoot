@@ -364,10 +364,19 @@ export async function releverCotes(
   //
   // Le point de départ avance donc chaque jour. Sur trois ou quatre jours,
   // toute la liste est passée, et aucun championnat n'est laissé de côté.
-  const toutes = [...NOS_LIGUES];
+  //
+  // ── SAUF LES COMPÉTITIONS OÙ LE MOTEUR LIT LE MARCHÉ ────────────────────
+  //
+  // Là, une cote manquée n'est pas une mesure perdue : c'est un pronostic
+  // figé sans sa couche la plus précise. Constaté le 18 septembre 2026 :
+  // 10 matchs de Serie A sur 19 sans cote à trois jours. Elles passent donc
+  // TOUJOURS en tête ; seul le reste de la liste tourne.
+  const { CHAMPIONNATS_DU_MARCHE, COUPES_DU_MARCHE } = await import('./couche-marche');
+  const prioritaires = [...CHAMPIONNATS_DU_MARCHE, ...COUPES_DU_MARCHE].filter((l) => NOS_LIGUES.has(l));
+  const toutes = [...NOS_LIGUES].filter((l) => !prioritaires.includes(l));
   const jourAbsolu = Math.floor(maintenant.getTime() / 86400000);
   const depart = toutes.length ? (jourAbsolu * DE_FRONT * 3) % toutes.length : 0;
-  const ligues = [...toutes.slice(depart), ...toutes.slice(0, depart)];
+  const ligues = [...prioritaires, ...toutes.slice(depart), ...toutes.slice(0, depart)];
 
   // ── LES CHAMPIONNATS SONT INTERROGÉS PAR PAQUETS ────────────────────────
   //
