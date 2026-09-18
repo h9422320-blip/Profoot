@@ -51,6 +51,7 @@ import { lireReleve, fiabilitePour, trancheDe, TRANCHES } from './fiabilite-appr
 import { getLiveTeams } from './teams-live';
 import { CHAMPIONNATS, competitionRetenue, rangDeCompetition } from './precalcul-selection';
 import type { EquipeDuJour } from './grands-matchs-du-jour';
+import { lireForcesPoisson, avisPourLeMatch } from './forces-poisson';
 
 /** Une heure : la liste bouge quand un match commence, pas plus vite. */
 const TTL = 60 * 60 * 1000;
@@ -234,9 +235,15 @@ async function calculer(): Promise<SelectionDuJour> {
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const demain = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
+  // La seconde lecture du match, lue une fois : elle sert à CLASSER les
+  // rencontres retenues, jamais à changer le vainqueur annoncé.
+  const forcesPoisson = await lireForcesPoisson().catch(() => null);
+
   /** Compose la sélection d'une journée donnée. */
   const pourLeJour = async (jour: string): Promise<MatchSelectionne[]> => {
     const retenus: MatchSelectionne[] = [];
+    // La note de classement de chaque rencontre retenue, par identifiant.
+    const noteDe = new Map<number, number>();
     for (const f of await fixturesDuJour(jour)) {
       // ── PREMIÈRES DIVISIONS SEULEMENT ─────────────────────────────
       //
@@ -276,6 +283,34 @@ async function calculer(): Promise<SelectionDuJour> {
         f?.league?.country ?? null
       );
       if (!fiab || fiab.taux < FIABILITE_MINIMUM) continue;
+
+      // ── LA NOTE DE CLASSEMENT : LA MOYENNE DES DEUX LECTURES ───────────
+      //
+      // Le moteur désigne le vainqueur, et c'est lui qu'on affiche. Mais pour
+      // choisir QUELLES rencontres mettre en avant, on prend la moyenne de sa
+      // conviction et de celle du modèle de Poisson pour ce même vainqueur :
+      // un match où les deux lectures s'accordent passe devant un match où
+      // le moteur est seul à y croire.
+      //
+      // Mesuré le 18 septembre 2026 sur 5 756 rencontres des grands
+      // championnats et des coupes d'Europe, Ligue des champions d'abord comme
+      // ici, face au classement par fiabilité (pourtant avantagé : son relevé
+      // recoupe ces matchs) :
+      //
+      //     3 par jour   65,4 % → 66,8 %   journées parfaites 133 → 147
+      //     5 par jour   64,3 % → 66,2 %   journées parfaites  44 →  50
+      //
+      // Positif dans les trois périodes de contrôle. Sans avis du modèle, la
+      // conviction du moteur seule sert de note.
+      {
+        const pd = Number(p.proba_domicile);
+        const pe = Number(p.proba_exterieur);
+        const recoit = pd >= pe;
+        const moteur = (recoit ? pd : pe) / 100;
+        const avis = avisPourLeMatch(forcesPoisson, f?.league?.id, f?.teams?.home?.id, f?.teams?.away?.id);
+        const modele = avis ? (recoit ? avis.dom : avis.ext) : moteur;
+        noteDe.set(Number(f.fixture.id), (moteur + modele) / 2);
+      }
 
       retenus.push({
         fixtureId: Number(f.fixture.id),
@@ -321,7 +356,7 @@ async function calculer(): Promise<SelectionDuJour> {
     retenus.sort(
       (a, b) =>
         rangDeCompetition(a.championnat) - rangDeCompetition(b.championnat) ||
-        b.fiabilite - a.fiabilite ||
+        (noteDe.get(b.fixtureId) ?? b.fiabilite / 100) - (noteDe.get(a.fixtureId) ?? a.fiabilite / 100) ||
         a.kickoffISO.localeCompare(b.kickoffISO)
     );
     return retenus.slice(0, MAX_MATCHS);

@@ -337,3 +337,19 @@ export function butsAttendusPourLeMatch(
     butsAttendusPoisson(globale, domicile, exterieur)
   );
 }
+
+/**
+ * L'avis du modèle sur une rencontre (victoire, nul, défaite du point de vue de
+ * celui qui reçoit), avec le même choix de modèle que `butsAttendusPourLeMatch`.
+ */
+export function avisPourLeMatch(
+  forces: ForcesPoisson | null | undefined,
+  ligue: number | string | null | undefined,
+  domicile: number | string | null | undefined,
+  exterieur: number | string | null | undefined
+): { dom: number; nul: number; ext: number } | null {
+  if (!forces?.ligues) return null;
+  const globale = forces.ligues[CLE_GLOBALE];
+  if (COUPES_EUROPE.has(Number(ligue))) return avisPoisson(globale, domicile, exterieur);
+  return avisPoisson(forces.ligues[String(ligue ?? '')], domicile, exterieur) ?? avisPoisson(globale, domicile, exterieur);
+}
