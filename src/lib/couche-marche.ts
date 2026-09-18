@@ -178,9 +178,28 @@ export const CHAMPIONNATS_DU_MARCHE: ReadonlySet<number> = new Set([
  */
 export const COUPES_DU_MARCHE: ReadonlySet<number> = new Set([2, 3, 848]);
 
-/** Le marché donne-t-il son avis sur le vainqueur dans cette compétition ? */
+/**
+ * ── ET PARTOUT OÙ UNE COTE EST RELEVÉE, DEPUIS LE 18 SEPTEMBRE 2026 ──────
+ *
+ * Mesuré sur les cotes relevées par la production dans les 37 autres
+ * championnats (Tchéquie, Pologne, Suède, Norvège, Danemark, Suisse,
+ * Autriche, Roumanie, Hongrie, Croatie, Israël, Écosse…), 318 matchs joués
+ * depuis août, dernière analyse lancée avant le coup d'envoi
+ * (`scripts/_marche-ailleurs.mts`) :
+ *
+ *     favori du marché juste ....... 188
+ *     analyse du moteur juste ...... 165
+ *     quand les deux divergent (50) : marché 31, moteur 8
+ *
+ * Le relevé ne couvre que nos compétitions : une compétition sans cote reste
+ * au seul moteur. Les listes ci-dessus gardent leur rôle : elles passent en
+ * tête du relevé, et seules les seize premières reçoivent aussi le nombre de
+ * buts du marché.
+ */
 export function avisDuMarcheBranche(ligue: number | string | null | undefined): boolean {
-  return CHAMPIONNATS_DU_MARCHE.has(Number(ligue)) || COUPES_DU_MARCHE.has(Number(ligue));
+  if (ligue === null || ligue === undefined || ligue === '') return false;
+  const id = Number(ligue);
+  return Number.isInteger(id) && id > 0;
 }
 
 export async function avisDuMarchePour(

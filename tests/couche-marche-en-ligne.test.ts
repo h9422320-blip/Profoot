@@ -18,9 +18,12 @@ test('★ ACQUIS — le marché ne parle QUE sur les sept grands championnats', 
   // favori du marché 42 justes contre 32 pour le moteur (16 contre 6 quand ils divergent).
   assert.deepEqual([...COUPES_DU_MARCHE].sort((a, b) => a - b), [2, 3, 848]);
   assert.ok(avisDuMarcheBranche(2) && avisDuMarcheBranche(3) && avisDuMarcheBranche(848) && avisDuMarcheBranche(39));
-  // Autres compétitions, match sans date : silence.
-  assert.equal(avisDuMarcheBranche(283), false);
-  assert.equal(await avisDuMarchePour(123, '2026-09-19T14:00:00Z', 283), null);
+  // Partout où une cote est relevée, depuis le 18 septembre 2026 (318 matchs
+  // de 37 autres championnats : marché 188 justes, moteur 165 ; 31 contre 8
+  // quand ils divergent). Compétition inconnue, match sans date : silence.
+  assert.ok(avisDuMarcheBranche(283) && avisDuMarcheBranche(345));
+  assert.equal(avisDuMarcheBranche(null), false);
+  assert.equal(await avisDuMarchePour(123, '2026-09-19T14:00:00Z', null), null);
   assert.equal(await avisDuMarchePour(123, null, 39), null);
   assert.equal(PART_DU_MARCHE, 1);
 });
