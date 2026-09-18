@@ -52,7 +52,7 @@ import { lireForcesLigue } from './forces-equipes';
 import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-championnats';
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from './forces-poisson';
 import { avisDuMarchePour } from './couche-marche';
-import { figerPrediction } from './prediction-figee';
+import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
 
 /**
  * Les championnats que la sélection a vocation à couvrir.
@@ -272,7 +272,15 @@ export async function precalculerGrandsMatchs(
    * rencontres. Passé ce budget, on s'arrête proprement ; les rencontres
    * restantes sont préparées au passage suivant, ou par la première analyse.
    */
-  budgetMs = 20_000
+  budgetMs = 20_000,
+  /**
+   * Rafraîchir aussi des pronostics DÉJÀ figés, dans ces championnats, tant que
+   * le coup d'envoi est à plus de vingt-quatre heures — la même règle que
+   * l'analyse (`HEURES_AVANT_GEL_DEFINITIF`). Sert après une amélioration du
+   * moteur : sans lui, les cartes du week-end garderaient l'ancien calcul.
+   * Dans les vingt-quatre dernières heures, un pronostic ne bouge JAMAIS.
+   */
+  options: { rafraichirLigues?: ReadonlySet<number>; joursEnPlus?: number } = {}
 ): Promise<BilanPrecalcul> {
   const bilan: BilanPrecalcul = {
     examinees: 0,
@@ -334,13 +342,21 @@ export async function precalculerGrandsMatchs(
 
     // ── LES RENCONTRES À PRÉPARER ─────────────────────────────────────────
     const aPreparer: any[] = [];
-    for (let d = 0; d < JOURS_A_PREPARER; d++) {
+    const aRemplacer = new Set<number>();
+    const GEL_DEFINITIF_MS = 24 * 3_600_000;
+    for (let d = 0; d < JOURS_A_PREPARER + (options.joursEnPlus ?? 0); d++) {
       const jour = new Date(Date.now() + d * 86_400_000).toISOString().slice(0, 10);
       for (const f of await api(`fixtures?date=${jour}`)) {
         if (!A_VENIR.includes(String(f?.fixture?.status?.short))) continue;
         if (!competitionRetenue(f?.league)) continue;
         bilan.examinees++;
         if (connus.has(Number(f?.fixture?.id))) {
+          const loin = Date.parse(String(f?.fixture?.date ?? '')) - Date.now() > GEL_DEFINITIF_MS;
+          if (loin && options.rafraichirLigues?.has(Number(f?.league?.id))) {
+            aRemplacer.add(Number(f.fixture.id));
+            aPreparer.push(f);
+            continue;
+          }
           bilan.dejaConnues++;
           continue;
         }
@@ -581,7 +597,7 @@ export async function precalculerGrandsMatchs(
           })()
         );
 
-        await figerPrediction({
+        await (aRemplacer.has(Number(f.fixture.id)) ? remplacerPredictionFigee : figerPrediction)({
           fixtureId: Number(f.fixture.id),
           domicileId: domId,
           domicileNom: String(f?.teams?.home?.name ?? ''),

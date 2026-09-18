@@ -77,3 +77,13 @@ test('★ ACQUIS — les coupes d’Europe sont reconnues par leur indicateur, p
   const { COUPES_EUROPE_IDS } = await import('../src/lib/precalcul-selection');
   assert.ok(COUPES_EUROPE_IDS.has(2) && COUPES_EUROPE_IDS.has(3) && COUPES_EUROPE_IDS.has(848), 'Les coupes d’Europe ne sont plus reconnues.');
 });
+
+test('★ ACQUIS — un pronostic rafraîchi ne l’est jamais dans les 24 dernières heures', () => {
+  // Deux abonnés du même match doivent lire la même chose quand ça compte :
+  // le rafraîchissement (après une amélioration du moteur) s'arrête à 24 h du
+  // coup d'envoi, comme dans l'analyse.
+  const s = sans('src/lib/precalcul-selection.ts');
+  assert.match(s, /const GEL_DEFINITIF_MS = 24 \* 3_600_000;/);
+  assert.match(s, /Date\.parse\(String\(f\?\.fixture\?\.date \?\? ''\)\) - Date\.now\(\) > GEL_DEFINITIF_MS/,
+    'Le rafraîchissement ne respecte plus le gel des 24 dernières heures.');
+});
