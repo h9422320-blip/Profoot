@@ -36,3 +36,11 @@ test('★ ACQUIS — en coupe d’Europe, l’avis vient du modèle global', () 
   assert.ok(a && a.dom > a.ext, 'En coupe d’Europe, le modèle global n’est plus lu.');
   assert.equal(avisPourLeMatch(null, 39, 1, 2), null);
 });
+
+test('★ ACQUIS — quand le marché est déjà dans le pronostic, le moteur classe seul', () => {
+  // Mesuré le 18 septembre 2026 après l'entrée du marché : 3 par jour
+  // 68,2 → 69,0 %, 5 par jour 67,6 → 68,9 %, dans les trois périodes.
+  const s = fs.readFileSync('src/lib/selection-du-jour.ts', 'utf8');
+  assert.match(s, /const cotee = await estCotee\(Number\(f\.fixture\.id\), kickoff, Number\(f\?\.league\?\.id\)\);/);
+  assert.match(s, /const avis = cotee \? null : avisPourLeMatch\(/, 'Le modèle de Poisson dilue de nouveau un pronostic qui intègre le marché.');
+});

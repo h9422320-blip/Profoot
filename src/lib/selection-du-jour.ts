@@ -52,6 +52,8 @@ import { getLiveTeams } from './teams-live';
 import { CHAMPIONNATS, competitionRetenue, rangDeCompetition } from './precalcul-selection';
 import type { EquipeDuJour } from './grands-matchs-du-jour';
 import { lireForcesPoisson, avisPourLeMatch } from './forces-poisson';
+import { CHAMPIONNATS_DU_MARCHE } from './couche-marche';
+import { lireCotesDuJour } from './cotes-marche';
 
 /** Une heure : la liste bouge quand un match commence, pas plus vite. */
 const TTL = 60 * 60 * 1000;
@@ -239,6 +241,19 @@ async function calculer(): Promise<SelectionDuJour> {
   // rencontres retenues, jamais à changer le vainqueur annoncé.
   const forcesPoisson = await lireForcesPoisson().catch(() => null);
 
+  // Les rencontres cotées avant le match, par jour : le marché est alors DÉJÀ
+  // dans le pronostic du moteur (voir `couche-marche.ts`).
+  const cotesParJour = new Map<string, Set<number>>();
+  const estCotee = async (fixtureId: number, coupDEnvoi: string, ligue: number): Promise<boolean> => {
+    if (!CHAMPIONNATS_DU_MARCHE.has(Number(ligue))) return false;
+    const jour = String(coupDEnvoi).slice(0, 10);
+    if (!cotesParJour.has(jour)) {
+      const r = await lireCotesDuJour(jour).catch(() => null);
+      cotesParJour.set(jour, new Set((r?.matchs ?? []).map((m) => Number(m.id))));
+    }
+    return cotesParJour.get(jour)!.has(Number(fixtureId));
+  };
+
   /** Compose la sélection d'une journée donnée. */
   const pourLeJour = async (jour: string): Promise<MatchSelectionne[]> => {
     const retenus: MatchSelectionne[] = [];
@@ -307,7 +322,16 @@ async function calculer(): Promise<SelectionDuJour> {
         const pe = Number(p.proba_exterieur);
         const recoit = pd >= pe;
         const moteur = (recoit ? pd : pe) / 100;
-        const avis = avisPourLeMatch(forcesPoisson, f?.league?.id, f?.teams?.home?.id, f?.teams?.away?.id);
+        // ── MAIS QUAND LE MARCHÉ EST DÉJÀ DANS LE PRONOSTIC, LE MOTEUR SEUL ──
+        //
+        // Depuis le 18 septembre 2026, sur les sept grands championnats, le
+        // pronostic du moteur intègre l'avis du marché. Y ajouter encore le
+        // modèle de Poisson dilue une conviction devenue meilleure que lui.
+        // Mesuré sur 5 756 rencontres : 3 par jour 68,2 → 69,0 % (journées
+        // parfaites 154 → 163), 5 par jour 67,6 → 68,9 % (52 → 59), meilleur ou
+        // égal dans les trois périodes.
+        const cotee = await estCotee(Number(f.fixture.id), kickoff, Number(f?.league?.id));
+        const avis = cotee ? null : avisPourLeMatch(forcesPoisson, f?.league?.id, f?.teams?.home?.id, f?.teams?.away?.id);
         const modele = avis ? (recoit ? avis.dom : avis.ext) : moteur;
         noteDe.set(Number(f.fixture.id), (moteur + modele) / 2);
       }
