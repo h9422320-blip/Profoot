@@ -102,6 +102,11 @@ export interface MatchDuJour {
   /** L'instant du coup d'envoi. Mis à l'heure du lecteur par le navigateur. */
   kickoffISO: string;
   championnat: string;
+  /**
+   * Le pays du championnat : la fiabilité apprise est rangée sous le nom qui
+   * porte son pays depuis le 17 septembre 2026.
+   */
+  paysDuChampionnat?: string | null;
   dom: EquipeDuJour;
   ext: EquipeDuJour;
   /**
@@ -168,6 +173,7 @@ async function enCartes(brutes: any[]): Promise<MatchDuJour[]> {
       id: `md-${f?.fixture?.id}`,
       kickoffISO: kickoff,
       championnat: String(f?.league?.name ?? ''),
+      paysDuChampionnat: f?.league?.country ?? null,
       // Renseignée juste après, en une seule lecture pour toutes les cartes.
       fiabilite: null,
       dom: {
@@ -238,7 +244,8 @@ async function poserLaFiabilite(cartes: MatchDuJour[]): Promise<MatchDuJour[]> {
         Number(p.proba_domicile),
         Number(p.proba_nul),
         Number(p.proba_exterieur),
-        c.championnat
+        c.championnat,
+        c.paysDuChampionnat ?? null
       );
       return f ? { ...c, fiabilite: f.taux } : c;
     });

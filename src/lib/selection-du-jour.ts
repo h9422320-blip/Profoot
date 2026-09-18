@@ -272,7 +272,8 @@ async function calculer(): Promise<SelectionDuJour> {
         Number(p.proba_domicile),
         Number(p.proba_nul),
         Number(p.proba_exterieur),
-        f?.league?.name
+        f?.league?.name,
+        f?.league?.country ?? null
       );
       if (!fiab || fiab.taux < FIABILITE_MINIMUM) continue;
 

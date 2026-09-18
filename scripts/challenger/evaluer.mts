@@ -1417,7 +1417,10 @@ if (hierarchie) {
     if (!occ) avisProduction.set(Number(m.id), avis);
   }
 }
-const avisDeLaProduction = (m: any) => avisProduction.get(Number(m.id)) ?? null;
+// `BANC_SANS_MEMOIRE=oui` éteint la mémoire des clubs : sert à rejouer le moteur
+// tel qu'il était AVANT elle, pour mesurer le chemin parcouru.
+const avisDeLaProduction = (m: any) =>
+  process.env.BANC_SANS_MEMOIRE === 'oui' ? null : avisProduction.get(Number(m.id)) ?? null;
 
 // ── LA CORRECTION EN BUTS DE LA PRODUCTION, CALCULÉE UNE SEULE FOIS ───
 //

@@ -2017,7 +2017,10 @@ async function analyser(req: Request, billet: BilletQuota) {
       scoreCalcule.probaVictoire1,
       scoreCalcule.probaNul,
       scoreCalcule.probaVictoire2,
-      nomCompetition
+      nomCompetition,
+      // Le relevé est rangé sous le nom qui porte son pays : sans lui, la
+      // fiabilité du championnat n'est jamais trouvée.
+      (targetFutureMatch || targetPastMatch || nextH2H)?.league?.country ?? null
     );
 
     // ── LES QUASI-CERTITUDES ────────────────────────────────────────────

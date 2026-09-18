@@ -47,6 +47,7 @@
 
 import { createAdminClient } from './supabase-admin';
 import { lireReserve, ecrireReserve } from './api-football';
+import { cleDeCompetition } from './nom-de-competition';
 
 /**
  * ── LA MESURE PAR CHAMPIONNAT SE FAIT SUR UN PALIER CUMULÉ ────────────────
@@ -384,7 +385,16 @@ export function fiabilitePour(
   proba1: number,
   probaNul: number,
   proba2: number,
-  ligue: string | null | undefined
+  ligue: string | null | undefined,
+  /**
+   * Le pays de la compétition. Depuis le 17 septembre 2026, les jugements —
+   * donc ce relevé — sont rangés sous le nom QUI PORTE SON PAYS
+   * (« Premier League (England) »), pour ne plus mélanger l'Angleterre et la
+   * Russie. Sans ce pays, la recherche par championnat échouait en silence et
+   * retombait sur le chiffre global. Absent, on cherche sous le nom seul,
+   * comme avant.
+   */
+  pays?: string | null
 ): Fiabilite | null {
   if (!releve) return null;
 
@@ -397,7 +407,12 @@ export function fiabilitePour(
   // Championnat ET côté du terrain d'abord : c'est la mesure la plus fine, et
   // celle qui distingue une Primeira Liga à 82,9 % d'une Premier League à
   // 61,5 %. On ne descend d'un cran que faute de matière, jamais par défaut.
-  const nom = String(ligue ?? '').trim();
+  const brut = String(ligue ?? '').trim();
+  // La clé avec pays d'abord ; le nom seul en secours, pour un relevé bâti
+  // avant le renommage.
+  const avecPays = pays ? cleDeCompetition(brut, pays) ?? brut : brut;
+  const nom = avecPays;
+  const ancien = brut && brut !== avecPays ? brut : null;
   const candidats: [{ justes: number; total: number } | undefined, string | null][] = [
     // La tranche EXACTE du championnat, avec le côté du terrain : le chiffre
     // le plus juste qui existe.
@@ -406,6 +421,11 @@ export function fiabilitePour(
     // Puis la mesure cumulée du championnat — plus de matière, mais optimiste.
     [nom ? releve.parLigue[`${nom}|${t}|${c}`] : undefined, nom],
     [nom ? releve.parLigue[`${nom}|${t}`] : undefined, nom],
+    // Le même chemin sous l'ancien nom, pour un relevé bâti avant le 17 septembre.
+    [ancien ? releve.parLigue[`${ancien}|x${t}|${c}`] : undefined, ancien],
+    [ancien ? releve.parLigue[`${ancien}|x${t}`] : undefined, ancien],
+    [ancien ? releve.parLigue[`${ancien}|${t}|${c}`] : undefined, ancien],
+    [ancien ? releve.parLigue[`${ancien}|${t}`] : undefined, ancien],
     // Enfin le chiffre global, qui est exclusif et donc juste.
     [releve.global[`${t}|${c}`], null],
   ];

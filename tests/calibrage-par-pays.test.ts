@@ -41,3 +41,25 @@ test('★ ACQUIS — le jugement et le moteur emploient la MÊME clé', () => {
   assert.match(route, /facteursPour\(\s*await lireCalibrages\(\),\s*cleDeCompetition\(/,
     'Le moteur cherche de nouveau son calibrage sous un nom sans pays.');
 });
+
+test('★ ACQUIS — la fiabilité affichée est cherchée sous la clé qui porte le pays', async () => {
+  // Le relevé est bâti sur les jugements, renommés le 17 septembre 2026. Sans
+  // le pays, la recherche par championnat échouait et retombait sur le chiffre
+  // global : « Premier League » y valait 67 %, mélangée à la Russie et à
+  // l'Ukraine ; la Premier League anglaise seule vaut 50 %.
+  const { fiabilitePour } = await import('../src/lib/fiabilite-apprise');
+  const releve: any = {
+    parLigue: {
+      'Premier League (England)|nette': { justes: 50, total: 100 },
+      'Premier League|nette': { justes: 67, total: 100 },
+    },
+    global: {},
+  };
+  const f = fiabilitePour(releve, 62, 22, 16, 'Premier League', 'England');
+  if (f) assert.equal(f.ligue, 'Premier League (England)', 'La fiabilité ne vient plus du championnat de ce pays.');
+  for (const fichier of ['src/app/api/analyze/route.ts', 'src/lib/selection-du-jour.ts', 'src/lib/grands-matchs-du-jour.ts']) {
+    const s = fs.readFileSync(fichier, 'utf8');
+    const appel = s.slice(s.indexOf('fiabilitePour('), s.indexOf('fiabilitePour(') + 500);
+    assert.match(appel, /country|paysDuChampionnat/, `${fichier} appelle la fiabilité sans le pays : elle retombe sur le chiffre global.`);
+  }
+});
