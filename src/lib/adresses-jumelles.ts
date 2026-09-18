@@ -82,6 +82,28 @@ export interface CompteConnu {
   creeLe: string;
 }
 
+/**
+ * Les mêmes lettres, et les mêmes chiffres tapés dans un autre ordre.
+ *
+ * Le 18 septembre 2026, un acheteur a payé sous konem5633@gmail.com alors que
+ * son compte, créé la veille, est konem3356@gmail.com — il a lancé trois
+ * analyses cinq minutes après le paiement, et rien ne s'est ouvert. La
+ * distance d'édition vaut 4 : trop pour la règle des deux fautes. Mais les
+ * lettres sont identiques et les chiffres sont les mêmes, seulement mêlés :
+ * c'est une adresse retapée de mémoire, pas une autre personne.
+ *
+ * Au moins trois chiffres, sinon « jean12 » et « jean21 » seraient confondus.
+ */
+export function chiffresPermutes(a: string, b: string): boolean {
+  if (a === b) return false;
+  const lettres = (x: string) => x.replace(/[0-9]/g, '');
+  const chiffres = (x: string) => x.replace(/[^0-9]/g, '');
+  if (lettres(a) !== lettres(b)) return false;
+  const ca = chiffres(a), cb = chiffres(b);
+  if (ca.length < 3 || ca.length !== cb.length) return false;
+  return [...ca].sort().join('') === [...cb].sort().join('');
+}
+
 /** Le plus petit nombre de caractères avant l'arobase pour oser comparer. */
 const LOCALE_MINIMALE = 6;
 
@@ -115,7 +137,7 @@ export function jumelleProbable(
     // ce serait un homonyme arrivé depuis.
     if (avantLe && c.creeLe && c.creeLe > avantLe) continue;
 
-    if (distance(localePayee, email.slice(0, k), 2) <= 2) {
+    if (distance(localePayee, email.slice(0, k), 2) <= 2 || chiffresPermutes(localePayee, email.slice(0, k))) {
       candidates.push(c);
       // Deux candidates suffisent à renoncer : inutile de continuer.
       if (candidates.length > 1) return null;
