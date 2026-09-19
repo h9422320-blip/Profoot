@@ -38,3 +38,12 @@ test('★ ACQUIS — la préparation interroge le fournisseur SANS « no-store �
   const e = fs.readFileSync('src/lib/entretien-quotidien.ts', 'utf8');
   assert.match(e, /if \(r\.examinees === 0\) throw/, 'Une préparation vide redevient silencieuse dans les comptes rendus.');
 });
+
+test('★ ACQUIS — la vérification des résultats lit le fournisseur SANS « no-store »', () => {
+  // Le rattrapage du soir tourne dans la page des preuves (régénérée) : avec
+  // « no-store », chaque paquet rendait null et rien n'était vérifié.
+  const s = fs.readFileSync('src/lib/precision-reelle.ts', 'utf8');
+  const f = s.slice(s.indexOf('export async function lirePaquetFrais('), s.indexOf('async function lireRencontresParIdentifiant('));
+  assert.doesNotMatch(f.replace(/\/\/.*$/gm, ''), /cache:\s*'no-store'/, 'La vérification redemande « no-store » : le rattrapage du soir ne vérifiera plus rien.');
+  assert.match(f, /next: \{ revalidate: 60 \}/);
+});

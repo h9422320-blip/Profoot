@@ -257,6 +257,10 @@ async function api(chemin: string): Promise<any[]> {
     // chaque nuit avec succès, la requête part et rien n'est gardé en cache.
     const r = await fetch(`https://v3.football.api-sports.io/${chemin}`, {
       headers: { 'x-apisports-key': cle },
+      // Sans option, une page régénérée garderait la réponse aussi longtemps
+      // qu'elle-même. Cinq minutes au plus : un programme et des statistiques
+      // ne bougent pas plus vite que cela.
+      next: { revalidate: 300 },
     });
     if (!r.ok) return [];
     const j = await r.json();

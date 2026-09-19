@@ -208,7 +208,17 @@ export async function lirePaquetFrais(paquet: string[], pauseMs = PAUSE_APRES_RE
       const reponse = await fetch(`https://v3.football.api-sports.io/fixtures?ids=${paquet.join('-')}`, {
         headers: { 'x-apisports-key': cle, 'x-rapidapi-host': 'v3.football.api-sports.io' },
         signal: AbortSignal.timeout(20_000),
-        cache: 'no-store',
+        // ── PAS DE « no-store » : UNE MINUTE DE RÉSERVE AU PLUS ─────────────
+        //
+        // La vérification tourne aussi dans le `after()` de la page des
+        // preuves, une page régénérée toutes les dix minutes. Là, le cadre
+        // REFUSE une requête « no-store » : chaque paquet rendait `null`, et
+        // le rattrapage du soir ne vérifiait rien. Constaté le 19 septembre
+        // 2026 : les matchs du 18 au soir absents du mur jusqu'à ce qu'on
+        // relance la vérification à la main. Une réserve d'une minute est
+        // admise partout, et une minute ne fait jamais passer un match
+        // terminé pour un match en cours.
+        next: { revalidate: 60 },
       });
       const json: any = reponse.ok ? await reponse.json() : null;
       const erreurs = json?.errors;
