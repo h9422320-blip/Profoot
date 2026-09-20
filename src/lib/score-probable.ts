@@ -602,7 +602,21 @@ export function calculerScoreProbable(
    * probabilités 1N2 et le score annoncé n'en dépendent pas. Absente, le
    * moteur rend EXACTEMENT ce qu'il rendait.
    */
-  plusDeDeuxCinqDuMarche?: number | null
+  plusDeDeuxCinqDuMarche?: number | null,
+  /**
+   * ── QUI MANQUE, DE CHAQUE CÔTÉ ────────────────────────────────────────
+   *
+   * `equipe1` et `equipe2` valent la part de l'équipe qui manque au coup
+   * d'envoi : 0 = tout le monde est là, 0,2 = un cinquième de la valeur de
+   * l'équipe est absent (blessés et suspendus, pesés par leurs minutes de la
+   * saison précédente). `poids` est la force de la couche : à 0, le moteur
+   * rend EXACTEMENT ce qu'il rendait.
+   *
+   * Ajoutée le 20 septembre 2026 sur demande du propriétaire, pour les cinq
+   * grands championnats : le moteur y égale les bookmakers, et la seule
+   * information qui lui manque encore est la composition réelle des équipes.
+   */
+  absences?: { equipe1: number; equipe2: number; poids: number } | null
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -885,6 +899,29 @@ export function calculerScoreProbable(
       butsAttendus1 = borner(butsAttendus1 + part * (cible1 - butsAttendus1), BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
       butsAttendus2 = borner(butsAttendus2 + part * (cible2 - butsAttendus2), BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
     }
+  }
+
+  // ── CE QUI MANQUE SUR LE TERRAIN ──────────────────────────────────────
+  //
+  // Une équipe privée d'un cinquième de sa valeur marque moins et encaisse
+  // plus. On abaisse donc ses buts attendus et on relève ceux d'en face, du
+  // même geste et dans la même proportion. La couche vient APRÈS le marché :
+  // sans elle — poids nul, absences inconnues — rien ne bouge.
+  if (
+    absences &&
+    Number.isFinite(absences.poids) &&
+    absences.poids > 0 &&
+    Number.isFinite(absences.equipe1) &&
+    Number.isFinite(absences.equipe2)
+  ) {
+    const manque1 = Math.min(0.5, Math.max(0, absences.equipe1));
+    const manque2 = Math.min(0.5, Math.max(0, absences.equipe2));
+    const p = absences.poids;
+    const attaque1 = 1 - p * manque1;
+    const attaque2 = 1 - p * manque2;
+    // La défense de l'un profite à l'attaque de l'autre.
+    butsAttendus1 = borner(butsAttendus1 * attaque1 * (1 + p * manque2), BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
+    butsAttendus2 = borner(butsAttendus2 * attaque2 * (1 + p * manque1), BUTS_ATTENDUS_MIN, BUTS_ATTENDUS_MAX);
   }
 
   // ── LA SECONDE GRILLE, MÊLÉE À CELLE DU MOTEUR ────────────────────────

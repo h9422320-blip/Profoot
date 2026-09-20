@@ -39,6 +39,7 @@ type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
   | { type: 'marche-historique'; poids: number; parLesProbabilites?: boolean }
+  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean }
   | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean; avecLeMarche?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
@@ -110,7 +111,7 @@ const tache: {
    * assez de matchs pour être jugées : dans le périmètre du produit, la
    * demi-vue n'en concerne que 132.
    */
-  univers?: 'suivies' | 'cotes' | 'tout';
+  univers?: 'suivies' | 'cotes' | 'tout' | 'cinq';
   sortie: string;
 } = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 
@@ -494,8 +495,22 @@ const suivies = new Set([...Object.keys(GRANDS), ...Object.keys(COUPES_SUIVIES)]
 const entrees: { m: any; s1: any; s2: any; occ: any; jour: string }[] = [];
 const surCotes = tache.univers === 'cotes';
 const toutesCompetitions = tache.univers === 'tout';
+// ── LES CINQ GRANDS, ET RIEN D'AUTRE ────────────────────────────────────
+//
+// Demande du propriétaire, le 20 septembre 2026 : « ton focus doit être sur
+// les plus gros championnats européens. Angleterre, Espagne, France,
+// Allemagne, Italie. » Une couche peut très bien gagner des vainqueurs
+// ailleurs et n'en gagner aucun ici — c'est ici que ça compte.
+const CINQ_GRANDS = new Set([39, 140, 135, 78, 61]);
+const cinqGrands = tache.univers === 'cinq';
 for (const m of rencontres) {
-  const retenue = surCotes ? cotes[String(m.id)] !== undefined : toutesCompetitions ? true : suivies.has(Number(m.ligue));
+  const retenue = cinqGrands
+    ? CINQ_GRANDS.has(Number(m.ligue))
+    : surCotes
+      ? cotes[String(m.id)] !== undefined
+      : toutesCompetitions
+        ? true
+        : suivies.has(Number(m.ligue));
   if (!retenue || m.date < tache.debut || m.date >= tache.fin) continue;
   const brut1 = statsAvant(m.dom, m);
   const brut2 = statsAvant(m.ext, m);
@@ -696,6 +711,103 @@ function avecPoisson(
 // Deux points d'entrée possibles : `marche` traduit l'avis en buts et laisse le
 // moteur conclure ; `secondAvis` mêle les deux convictions avant le choix du
 // score.
+// ── LA COUCHE DES ABSENTS ───────────────────────────────────────────────
+//
+// Ce que le moteur ne savait pas : QUI JOUE. Les blessés et les suspendus de
+// chaque rencontre viennent du fournisseur (`scripts/challenger/absences.mts`),
+// et le poids d'un joueur est ce qu'il a joué LA SAISON PRÉCÉDENTE — jamais
+// la saison en cours, qui contiendrait l'avenir du match qu'on juge.
+//
+// `manque` vaut la part de l'équipe absente : un titulaire à temps plein
+// vaut un onzième. La couche est mesurée AVEC le marché et la grille de
+// Poisson, c'est-à-dire contre la production telle qu'elle tourne.
+function avecAbsences(poids: number, avecLeMarche: boolean, avecLaGrille: boolean): { pronostics: Pronostic[]; actifs: number[] } {
+  const absences: Record<string, { j: number; e: number; t: string }[]> = fs.existsSync('.challenger/absences.json')
+    ? JSON.parse(fs.readFileSync('.challenger/absences.json', 'utf8'))
+    : {};
+  const joueurs: Record<string, { e: number; min: number; note: number }> = fs.existsSync('.challenger/joueurs.json')
+    ? JSON.parse(fs.readFileSync('.challenger/joueurs.json', 'utf8'))
+    : {};
+  const historiques: Record<string, { dom: number; nul: number; ext: number; plus?: number }> =
+    avecLeMarche && fs.existsSync(FICHIER_COTES_HISTORIQUES)
+      ? JSON.parse(fs.readFileSync(FICHIER_COTES_HISTORIQUES, 'utf8'))
+      : {};
+  const forcesPoisson = new Map<number, any>();
+  let ajusteeLe = 0;
+  const parLigue = new Map<number, any[]>();
+  if (avecLaGrille) {
+    for (const x of ciblesDuModele(toutesLesRencontres)) {
+      const l = Number(x.ligue);
+      const liste = parLigue.get(l);
+      if (liste) liste.push(x);
+      else parLigue.set(l, [x]);
+    }
+  }
+
+  // Un titulaire à temps plein sur une saison : environ trente-quatre matchs.
+  const MINUTES_PLEINES = 34 * 90;
+  const partDe = (idJoueur: number, saison: number) => {
+    const j = joueurs[`${saison - 1}:${idJoueur}`];
+    if (!j || !(j.min > 0)) return 0;
+    return Math.min(1, j.min / MINUTES_PLEINES) / 11;
+  };
+
+  const pronostics: Pronostic[] = [];
+  const actifs: number[] = [];
+  for (const { m, s1, s2, occ } of entrees) {
+    const liste = absences[String(m.id)] ?? [];
+    const saison = Number(m.saison);
+    let manqueDom = 0, manqueExt = 0;
+    for (const a of liste) {
+      const part = partDe(Number(a.j), saison);
+      if (!part) continue;
+      if (Number(a.e) === Number(m.dom)) manqueDom += part;
+      else if (Number(a.e) === Number(m.ext)) manqueExt += part;
+    }
+    const couche = liste.length && (manqueDom > 0 || manqueExt > 0)
+      ? { equipe1: manqueDom, equipe2: manqueExt, poids }
+      : null;
+    if (couche && poids > 0) actifs.push(Number(m.id));
+
+    const c = historiques[String(m.id)];
+    const marche = c ? { dom: c.dom, nul: c.nul, ext: c.ext, poids: 1 } : null;
+
+    let grille: { domicile: number; exterieur: number; poids: number } | null = null;
+    if (avecLaGrille) {
+      const quand = Date.parse(String(m.date).slice(0, 10) + 'T00:00:00Z');
+      if (!ajusteeLe || quand - ajusteeLe >= 30 * 86_400_000) {
+        forcesPoisson.clear();
+        for (const [ligue, liste2] of parLigue) {
+          const f = ajusterPoisson(
+            liste2.map((x: any) => ({ date: x.date, ligue: Number(x.ligue), dom: Number(x.dom), ext: Number(x.ext), bd: Number(x.bd), be: Number(x.be) })),
+            quand,
+            300
+          );
+          if (f) forcesPoisson.set(ligue, f);
+        }
+        ajusteeLe = quand;
+      }
+      const f = forcesPoisson.get(Number(m.ligue));
+      const a = f?.clubs?.[String(m.dom)];
+      const b = f?.clubs?.[String(m.ext)];
+      if (f && a && b) {
+        grille = {
+          domicile: Math.exp(f.base + a.attaque - b.defense + f.terrain),
+          exterieur: Math.exp(f.base + b.attaque - a.defense),
+          poids: 0.5,
+        };
+      }
+    }
+
+    const r: any = calculerScoreProbable(
+      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), marche,
+      false, null, grille, c?.plus ?? null, couche
+    );
+    pronostics.push(versPronostic(m, r));
+  }
+  return { pronostics, actifs };
+}
+
 function avecMarcheHistorique(poids: number, parLesProbabilites: boolean): { pronostics: Pronostic[]; actifs: number[] } {
   const historiques: Record<string, { dom: number; nul: number; ext: number }> = fs.existsSync(FICHIER_COTES_HISTORIQUES)
     ? JSON.parse(fs.readFileSync(FICHIER_COTES_HISTORIQUES, 'utf8'))
@@ -4288,6 +4400,12 @@ for (const vBrute of tache.variantes) {
     );
     sortie[v.nom] = pronostics;
     actifs[v.nom] = ids;
+    return;
+  }
+  if (v.couche?.type === 'absences') {
+    const r = avecAbsences(v.couche.poids, v.couche.avecLeMarche !== false, v.couche.avecLaGrille !== false);
+    sortie[v.nom] = r.pronostics;
+    actifs[v.nom] = r.actifs;
     return;
   }
   if (v.couche?.type === 'marche-historique') {

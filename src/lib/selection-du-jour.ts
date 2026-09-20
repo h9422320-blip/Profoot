@@ -383,6 +383,27 @@ async function calculer(): Promise<SelectionDuJour> {
         (noteDe.get(b.fixtureId) ?? b.fiabilite / 100) - (noteDe.get(a.fixtureId) ?? a.fiabilite / 100) ||
         a.kickoffISO.localeCompare(b.kickoffISO)
     );
+    // ── ON NE MET EN AVANT QUE CE DONT ON EST SÛR ─────────────────────────
+    //
+    // Demande du propriétaire, répétée : « quand il dit telle équipe gagne,
+    // que telle équipe gagne ». Or la sélection prenait les MEILLEURS du
+    // jour, même quand les meilleurs du jour étaient à 52 %.
+    //
+    // Mesuré le 20 septembre 2026 sur 3 402 rencontres des cinq grands
+    // championnats depuis août 2024, cotes d'avant-match comprises, en ne
+    // gardant que les rencontres annoncées à 65 % ou plus :
+    //
+    //     3 par jour   66,2 % → 77,5 %   journées 100 % justes  35 % → 61 %
+    //     5 par jour   64,0 % → 77,0 %   journées 100 % justes  19 % → 56 %
+    //
+    // Le seuil descend par paliers plutôt que de vider la section : une
+    // journée creuse montre moins de matchs, et des matchs moins sûrs, mais
+    // jamais rien du tout — le repli final est exactement l'ancien tri.
+    const PALIERS_DE_CERTITUDE = [0.65, 0.55];
+    for (const seuil of PALIERS_DE_CERTITUDE) {
+      const surs = retenus.filter((r) => (noteDe.get(r.fixtureId) ?? 0) >= seuil);
+      if (surs.length >= MINIMUM_POUR_AFFICHER) return surs.slice(0, MAX_MATCHS);
+    }
     return retenus.slice(0, MAX_MATCHS);
   };
 
