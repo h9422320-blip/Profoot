@@ -90,3 +90,12 @@ test('★ ACQUIS — le calcul garde un filet : un enrichissement fautif ne coû
     'Le repli n’appelle plus le calcul de base, qui ne dépend d’aucun enrichissement.'
   );
 });
+
+test('★ ACQUIS — une analyse perdue pour l’abonné déclenche l’alerte, dès la première', () => {
+  // Le 20 septembre 2026, ce chiffre est passé de 0 à 21 en trois minutes sans
+  // que personne ne soit prévenu. Il doit rester à zéro, et se signaler seul.
+  const s = fs.readFileSync('src/lib/entretien-quotidien.ts', 'utf8');
+  assert.match(s, /\.eq\('servi_quand_meme', false\)/, 'L’entretien ne compte plus les analyses perdues.');
+  assert.match(s, /if \(\(rienServi \?\? 0\) > 0\) \{/, 'Le seuil n’est plus « la première analyse perdue ».');
+  assert.match(s, /analyse\(s\) perdue\(s\) pour l'abonné/, 'L’alerte ne dit plus ce qui s’est passé.');
+});

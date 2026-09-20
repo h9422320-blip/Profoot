@@ -462,6 +462,36 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
 
       const total = analyses ?? 0;
       const rates = echecs ?? 0;
+
+      // ── CE CHIFFRE-LÀ DOIT RESTER À ZÉRO ──────────────────────────────
+      //
+      // Un échec « rattrapé » ne se voit pas : un autre modèle prend le relais
+      // et l'abonné reçoit son analyse. Sur trente jours, 511 incidents, dont
+      // 490 invisibles. Le chiffre qui compte est l'autre : combien d'abonnés
+      // sont repartis les mains vides.
+      //
+      // Le 20 septembre 2026, il est passé de 0 à 21 en trois minutes — une
+      // couche lisait un relevé qui avait changé de forme — et personne ne
+      // l'a su avant que le propriétaire ouvre l'écran d'administration. Cette
+      // alerte-là part désormais toute seule, dès la première analyse perdue.
+      const { count: rienServi } = await sb
+        .from('analysis_failures')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', depuis)
+        .eq('servi_quand_meme', false);
+      if ((rienServi ?? 0) > 0) {
+        const { data: exemples } = await sb
+          .from('analysis_failures')
+          .select('message')
+          .gte('created_at', depuis)
+          .eq('servi_quand_meme', false)
+          .limit(3);
+        throw new Error(
+          `${rienServi} analyse(s) perdue(s) pour l'abonné en 6 h — ` +
+            (exemples ?? []).map((x: any) => String(x.message).slice(0, 90)).join(' | ')
+        );
+      }
+
       if (total < 10) return `trop peu d'analyses (${total}) pour conclure`;
 
       const taux = Math.round((100 * rates) / total);
