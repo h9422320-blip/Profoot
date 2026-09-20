@@ -60,7 +60,11 @@ test('★ ACQUIS — la couche du marché vient après les autres, en dernier pa
     .filter((l) => /^[a-zA-Z0-9]+\??\s*[:=]/.test(l))
     .map((l) => l.match(/^([a-zA-Z0-9]+)/)![1]);
   assert.equal(params.indexOf('marche'), 11, 'La couche du marché a changé de place : un appel existant pourrait changer de sens.');
-  assert.deepEqual(params.slice(12), ['matchRetour', 'secondAvis', 'grilleSeconde', 'plusDeDeuxCinqDuMarche', 'absences'], 'Un paramètre a été inséré ou ajouté sans que ce garde-fou le sache.');
+  assert.deepEqual(
+    params.slice(12),
+    ['matchRetour', 'secondAvis', 'grilleSeconde', 'plusDeDeuxCinqDuMarche', 'absences', 'rhoDesScores'],
+    'Un paramètre a été inséré ou ajouté sans que ce garde-fou le sache.'
+  );
   assert.match(
     s,
     /marche\?: \{ dom: number; nul: number; ext: number; poids: number \} \| null,\r?\n/,

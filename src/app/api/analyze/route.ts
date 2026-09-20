@@ -16,7 +16,7 @@ import { composerApercu as composerApercuVendeur } from "@/lib/apercu-vendeur";
 import { scenarioGabarit } from "@/lib/apercu-ia";
 import { clubs } from "@/lib/data";
 import { findLiveTeam } from "@/lib/teams-live";
-import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, type ForcesDuMatch } from "@/lib/score-probable";
+import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, RHO_CINQ_GRANDS, type ForcesDuMatch } from "@/lib/score-probable";
 import { lireForcesLigue } from "@/lib/forces-equipes";
 import { lireForcesChampionnats, rapportEntreChampionnats } from "@/lib/forces-championnats";
 import { avisDeLaMemoire, lireMemoireClubs, partDeLaMemoire } from "@/lib/memoire-clubs";
@@ -42,7 +42,7 @@ type Composition = {
 };
 
 import { completerLesBlocs } from "@/lib/analyse-complete";
-import { coucheDesAbsences } from "@/lib/forces-absences";
+import { coucheDesAbsences, CINQ_GRANDS } from "@/lib/forces-absences";
 import { lireEntraineurs, partDeLEntraineurNeuf } from "@/lib/entraineurs";
 
 const analysisCache = new Map<string, { data: any; timestamp: number }>();
@@ -1729,7 +1729,14 @@ async function analyser(req: Request, billet: BilletQuota) {
         partDeLEntraineurNeuf(entraineurs, ligueDuMatch, targetFutureMatch?.teams?.home?.id, quand),
         partDeLEntraineurNeuf(entraineurs, ligueDuMatch, targetFutureMatch?.teams?.away?.id, quand)
       );
-    })()
+    })(),
+    // ── LES CINQ GRANDS RESSERRENT MOINS LES PETITS SCORES ──────────────
+    //
+    // Mesuré sur 3 553 rencontres : vainqueurs 1 917 → 1 923, scores exacts
+    // 408 → 419, positif sur les deux moitiés et sans période négative. Dans
+    // les onze autres championnats, la même valeur fait perdre trois
+    // vainqueurs : elle n'y est pas appliquée. Voir `score-probable.ts`.
+    CINQ_GRANDS.has(Number(targetFutureMatch?.league?.id)) ? RHO_CINQ_GRANDS : null
   );
 
   let scoreCalcule: ReturnType<typeof calculerScoreProbable>;

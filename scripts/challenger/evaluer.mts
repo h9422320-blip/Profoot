@@ -727,6 +727,9 @@ function avecPoisson(
 // `manque` vaut la part de l'équipe absente : un titulaire à temps plein
 // vaut un onzième. La couche est mesurée AVEC le marché et la grille de
 // Poisson, c'est-à-dire contre la production telle qu'elle tourne.
+const CINQ_GRANDS_BANC = new Set([39, 140, 135, 78, 61]);
+const RHO_CINQ_GRANDS_BANC = Number(process.env.BANC_RHO_GRANDS ?? -0.05);
+
 function avecAbsences(
   poids: number,
   avecLeMarche: boolean,
@@ -1100,7 +1103,9 @@ function avecAbsences(
     const r: any = calculerScoreProbable(
       s1, s2, true, false, classementsDe(m), forcesDe(m), calibrage[String(m.ligue)] ?? undefined,
       croisePour(m), rapportPour(m), occ, corrEnLigne(m), marche,
-      false, second, grille, c?.plus ?? null, couche
+      false, second, grille, c?.plus ?? null, couche,
+      // Les cinq grands championnats resserrent moins les petits scores.
+      CINQ_GRANDS_BANC.has(Number(m.ligue)) ? RHO_CINQ_GRANDS_BANC : null
     );
     pronostics.push(versPronostic(m, r));
   }

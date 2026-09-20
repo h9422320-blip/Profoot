@@ -38,7 +38,7 @@
  */
 
 import { createAdminClient } from './supabase-admin';
-import { calculerScoreProbable, competitionPeuFiable, melangerStatistiques } from './score-probable';
+import { calculerScoreProbable, competitionPeuFiable, melangerStatistiques, RHO_CINQ_GRANDS } from './score-probable';
 import { statistiquesDepuisMatchs } from './statistiques-recentes';
 import { correctionElanTerrain, lireElanEtTerrain } from './elan-et-terrain';
 import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from './repos-des-clubs';
@@ -54,7 +54,7 @@ import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from '.
 import { avisDuMarchePour, avisDuMarcheBranche, totalDuMarchePour } from './couche-marche';
 import { lireCotesDuJourPatiemment } from './cotes-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
-import { coucheDesAbsences, LIGUES_DES_ABSENCES } from './forces-absences';
+import { coucheDesAbsences, LIGUES_DES_ABSENCES, CINQ_GRANDS } from './forces-absences';
 import { lireEntraineurs, partDeLEntraineurNeuf } from './entraineurs';
 
 /**
@@ -680,7 +680,9 @@ export async function precalculerGrandsMatchs(
             extId,
             partDeLEntraineurNeuf(entraineurs, ligue, domId, f?.fixture?.date),
             partDeLEntraineurNeuf(entraineurs, ligue, extId, f?.fixture?.date)
-          )
+          ),
+          // Les cinq grands championnats resserrent moins les petits scores.
+          CINQ_GRANDS.has(ligue) ? RHO_CINQ_GRANDS : null
         );
 
         // ── ON NE RÉÉCRIT PAS POUR TROIS DIXIÈMES DE POINT ────────────────

@@ -189,9 +189,49 @@ function poisson(k: number, lambda: number): number {
  * La valeur retenue est celle de la littérature, pas un chiffre ajusté à nos
  * données.
  */
-const CORRECTION_PETITS_SCORES = -0.1;
+// Lue à CHAQUE APPEL, et non au chargement : le banc d'essai pose ses
+// variables après avoir importé le moteur, et une constante figée au
+// chargement rendrait la mesure rigoureusement nulle — le piège est déjà
+// documenté dans `forces-championnats.ts`, il vient de se représenter.
+const rhoDesPetitsScores = () => Number(process.env.BANC_RHO ?? -0.1);
 
-function correctionPetitsScores(i: number, j: number, l1: number, l2: number): number {
+/**
+ * ── LE RESSERREMENT DES PETITS SCORES, REMESURÉ ──────────────────────────
+ *
+ * La valeur de la littérature (−0,10) ajoute de la masse sur 0-0 et 1-1, et
+ * en retire à 1-0 et 0-1. Elle a été posée sur un moteur qui n'avait ni le
+ * marché, ni les absents, ni l'entraîneur.
+ *
+ * Remesurée le 20 septembre 2026 sur 3 553 rencontres des cinq grands
+ * championnats, avec la production d'aujourd'hui :
+ *
+ *     valeur    vainqueurs justes    scores exacts
+ *     −0,10       1 917                408   ← la littérature
+ *     −0,05       1 923                419   ← retenue
+ *      0          1 920                420   (une période recule)
+ *     +0,05       1 912                421
+ *
+ * À −0,05, le gain est positif sur les DEUX moitiés (+2 et +4) et aucune des
+ * trois périodes de contrôle ne recule. Dans les onze autres championnats, la
+ * même valeur fait PERDRE trois vainqueurs : elle n'y est pas appliquée, et le
+ * défaut y reste −0,10.
+ *
+ * ── CE QUE CE RÉGLAGE NE CORRIGE PAS ────────────────────────────────────
+ *
+ * Il ne répare pas l'écart trouvé le même jour sur les chiffres annexes :
+ * sur 1 469 rencontres jouées, « les deux marquent » arrive 55,0 % du temps
+ * pour 51,6 annoncés, et « plus de 2,5 buts » 58,5 % pour 54,1. Relâcher le
+ * resserrement va même dans l'autre sens (54 % → 53 % annoncés). Le total de
+ * buts, lui, est juste — 2,78 attendus contre 2,82 réels. C'est donc une
+ * question ouverte, et elle reste à traiter à part.
+ */
+export const RHO_CINQ_GRANDS = -0.05;
+
+function correctionPetitsScores(i: number, j: number, l1: number, l2: number, rho?: number | null): number {
+  // `null` et `undefined` veulent dire « garde le réglage d'avant » — et non
+  // « zéro », qui supprimerait la correction sans que personne l'ait demandé.
+  const CORRECTION_PETITS_SCORES =
+    rho === null || rho === undefined || !Number.isFinite(Number(rho)) ? rhoDesPetitsScores() : Number(rho);
   if (i === 0 && j === 0) return 1 - l1 * l2 * CORRECTION_PETITS_SCORES;
   if (i === 0 && j === 1) return 1 + l1 * CORRECTION_PETITS_SCORES;
   if (i === 1 && j === 0) return 1 + l2 * CORRECTION_PETITS_SCORES;
@@ -616,7 +656,12 @@ export function calculerScoreProbable(
    * grands championnats : le moteur y égale les bookmakers, et la seule
    * information qui lui manque encore est la composition réelle des équipes.
    */
-  absences?: { domicile: number; exterieur: number; poids: number } | null
+  absences?: { domicile: number; exterieur: number; poids: number } | null,
+  /**
+   * Le resserrement des petits scores. Absent, c'est la valeur de la
+   * littérature (−0,10) ; les cinq grands championnats passent −0,05, mesuré.
+   */
+  rhoDesScores?: number | null
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -958,7 +1003,7 @@ export function calculerScoreProbable(
     const fact = (k: number) => { let f = 1; for (let x = 2; x <= k; x++) f *= x; return f; };
     const pi = (Math.exp(-lambda1) * Math.pow(lambda1, i)) / fact(i);
     const pj = (Math.exp(-lambda2) * Math.pow(lambda2, j)) / fact(j);
-    return pi * pj * correctionPetitsScores(i, j, lambda1, lambda2);
+    return pi * pj * correctionPetitsScores(i, j, lambda1, lambda2, rhoDesScores);
   };
 
   // Grille complète des scores : chaque case est la probabilité de ce score
@@ -1016,7 +1061,7 @@ export function calculerScoreProbable(
 
   for (let i = 0; i <= BUTS_MAX; i++) {
     for (let j = 0; j <= BUTS_MAX; j++) {
-      const p = p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2);
+      const p = p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2, rhoDesScores);
       const issue = i > j ? 'victoire1' : i === j ? 'nul' : 'victoire2';
       const ecart = ecartAuxAttendus(i, j);
       const actuel = meilleurParIssue[issue];
@@ -1094,7 +1139,7 @@ export function calculerScoreProbable(
     let masse = 0;
     for (let i = 0; i <= BUTS_MAX; i++) {
       for (let j = 0; j <= BUTS_MAX; j++) {
-        const a = p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2);
+        const a = p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2, rhoDesScores);
         const b = probaDuSecondModele(i, j);
         const p = a > 0 && b > 0 ? Math.pow(a, 1 - partGrille) * Math.pow(b, partGrille) : a;
         masse += p;
@@ -1156,7 +1201,7 @@ export function calculerScoreProbable(
       const l2 = butsAttendus2 * facteur;
       const q1 = Array.from({ length: BUTS_MAX + 1 }, (_, i) => poisson(i, l1));
       const q2 = Array.from({ length: BUTS_MAX + 1 }, (_, j) => poisson(j, l2));
-      return (i: number, j: number) => q1[i] * q2[j] * correctionPetitsScores(i, j, l1, l2);
+      return (i: number, j: number) => q1[i] * q2[j] * correctionPetitsScores(i, j, l1, l2, rhoDesScores);
     };
     const plusDe25 = (f: number) => {
       const g = grilleDe(f);
@@ -1659,7 +1704,7 @@ export function calculerScoreProbable(
       buts2: b2,
       // La probabilité affichée est celle du score RÉELLEMENT annoncé, relue
       // dans la même grille — jamais celle d'un score qu'on n'affiche plus.
-      proba: p1[b1] * p2[b2] * correctionPetitsScores(b1, b2, butsAttendus1, butsAttendus2),
+      proba: p1[b1] * p2[b2] * correctionPetitsScores(b1, b2, butsAttendus1, butsAttendus2, rhoDesScores),
     };
   }
 
@@ -2175,7 +2220,7 @@ export function calculerScoreProbable(
         : 'victoire2';
 
   const probaDe = (i: number, j: number) =>
-    p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2);
+    p1[i] * p2[j] * correctionPetitsScores(i, j, butsAttendus1, butsAttendus2, rhoDesScores);
 
   // La référence : le score le plus probable DE CETTE ISSUE, 2-1 exclu.
   let referenceProba = 0;
