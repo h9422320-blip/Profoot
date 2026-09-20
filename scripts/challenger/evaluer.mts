@@ -39,7 +39,7 @@ type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
   | { type: 'marche-historique'; poids: number; parLesProbabilites?: boolean }
-  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number; boostButeurs?: number; marcheSerreSeuil?: number; marcheSerrePart?: number; partPromu?: number; avisPoissonSerre?: number; marcheTresSerreSeuil?: number; marcheTresSerrePart?: number; coachEnSaison?: boolean; parClub?: boolean; avecCalibrage?: boolean; partIncertain?: number }
+  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number; boostButeurs?: number; marcheSerreSeuil?: number; marcheSerrePart?: number; partPromu?: number; avisPoissonSerre?: number; marcheTresSerreSeuil?: number; marcheTresSerrePart?: number; coachEnSaison?: boolean; parClub?: boolean; avecCalibrage?: boolean; partIncertain?: number; partGrille?: number; repliSaisonAvant?: boolean; ecartCoucheFort?: number; partMarcheInformee?: number; partCoupeApres?: number; marcheAsiatique?: boolean; partAsiatique?: number }
   | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean; avecLeMarche?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
@@ -755,8 +755,130 @@ function avecAbsences(
   avecCalibrage = false,
   // Un joueur « incertain » n'est pas un joueur absent : il joue souvent. On
   // peut lui donner moins de poids qu'à un forfait déclaré.
-  partIncertain = 1
+  partIncertain = 1,
+  // Le poids de la grille de Poisson dans le choix du score. Réglé à 0,5 le
+  // 17 septembre, sur un moteur qui n'avait ni les absents ni l'entraîneur.
+  partGrille = 0.5,
+  // Vrai : quand la saison précédente ne connaît pas le joueur (transfert,
+  // blessure longue, jeune), on regarde celle d'avant. La moitié des absences
+  // ne sont pesées par personne aujourd'hui ; 7,6 % de plus le seraient.
+  repliSaisonAvant = false,
+  // Quand la couche (absents + entraîneur) penche NETTEMENT d'un côté, le
+  // moteur détient une information que le marché n'a peut-être pas digérée.
+  // On peut alors lui rendre un peu plus la parole, même hors match serré.
+  coucheInformee: { ecart: number; part: number } = { ecart: 0, part: 1 },
+  // ── UNE COUPE D'EUROPE DANS LES QUATRE JOURS ──────────────────────────
+  //
+  // Contre toute attente, ces équipes-là gagnent PLUS que ce que le moteur
+  // annonce : 57,5 % contre 53,0 % annoncés, sur 332 cas. Elles ne font pas
+  // tourner avant, elles sont lancées. On les renforce donc, en affaiblissant
+  // l'adversaire d'autant — c'est le même geste dans le moteur.
+  partCoupeApres = 0,
+  // ── LIRE LE MARCHÉ PAR LE HANDICAP ASIATIQUE ──────────────────────────
+  //
+  // Au lieu de partir des probabilités 1N2, on part des deux chiffres que le
+  // marché le plus liquide cote directement : la suprématie (ligne de
+  // handicap) et le total (« plus de 2,5 »). On en déduit les buts attendus de
+  // chaque camp, donc la grille des scores, donc le 1N2 — dans le bon sens.
+  marcheAsiatique = false,
+  // Part du handicap asiatique dans la lecture du marché : 1 = lui seul,
+  // 0,5 = moitié-moitié avec le 1N2.
+  partAsiatique = 1
 ): { pronostics: Pronostic[]; actifs: number[] } {
+  const asiatiques: Record<string, { ligne: number; dom: number; ext: number }> =
+    marcheAsiatique && fs.existsSync('.challenger/cotes-asiatiques.json')
+      ? JSON.parse(fs.readFileSync('.challenger/cotes-asiatiques.json', 'utf8'))
+      : {};
+
+  const factorielle = (k: number) => { let f = 1; for (let i = 2; i <= k; i++) f *= i; return f; };
+  const poissonBanc = (k: number, l: number) => (Math.exp(-l) * Math.pow(l, k)) / factorielle(k);
+  const RHO = -0.1;
+  const correction = (i: number, j: number, l1: number, l2: number) =>
+    i === 0 && j === 0 ? 1 - l1 * l2 * RHO : i === 0 && j === 1 ? 1 + l1 * RHO : i === 1 && j === 0 ? 1 + l2 * RHO : i === 1 && j === 1 ? 1 - RHO : 1;
+  /** La grille des scores de deux buts attendus. */
+  const grilleDe = (l1: number, l2: number) => {
+    const g: number[][] = [];
+    for (let i = 0; i <= 9; i++) {
+      g[i] = [];
+      for (let j = 0; j <= 9; j++) g[i][j] = poissonBanc(i, l1) * poissonBanc(j, l2) * correction(i, j, l1, l2);
+    }
+    return g;
+  };
+  /** Ce que rapporte un handicap : 1 gagné, 0,5 remboursé, 0 perdu. */
+  const valeurDuHandicap = (marge: number) =>
+    marge >= 0.5 ? 1 : marge === 0.25 ? 0.75 : marge === 0 ? 0.5 : marge === -0.25 ? 0.25 : 0;
+  const partGagnante = (g: number[][], ligne: number) => {
+    let somme = 0, masse = 0;
+    for (let i = 0; i <= 9; i++)
+      for (let j = 0; j <= 9; j++) {
+        // La ligne s'applique à l'équipe qui reçoit : négative, elle est favorite.
+        const marge = Math.round((i - j + ligne) * 4) / 4;
+        somme += g[i][j] * valeurDuHandicap(marge);
+        masse += g[i][j];
+      }
+    return masse > 0 ? somme / masse : 0.5;
+  };
+  const plusDeDeuxCinq = (g: number[][]) => {
+    let plus = 0, masse = 0;
+    for (let i = 0; i <= 9; i++) for (let j = 0; j <= 9; j++) { masse += g[i][j]; if (i + j >= 3) plus += g[i][j]; }
+    return masse > 0 ? plus / masse : 0;
+  };
+  /**
+   * Les buts attendus du marché, déduits de la suprématie et du total.
+   * Deux dichotomies imbriquées, trois allers-retours : elles convergent.
+   */
+  const butsDuMarcheAsiatique = (ligne: number, partDom: number, cible25: number) => {
+    let total = 2.6, supr = 0;
+    for (let tour = 0; tour < 4; tour++) {
+      let bas = -3, haut = 3;
+      for (let k = 0; k < 30; k++) {
+        const m = (bas + haut) / 2;
+        const g = grilleDe(Math.max(0.05, (total + m) / 2), Math.max(0.05, (total - m) / 2));
+        if (partGagnante(g, ligne) < partDom) bas = m;
+        else haut = m;
+      }
+      supr = (bas + haut) / 2;
+      let bt = 0.6, ht = 6;
+      for (let k = 0; k < 30; k++) {
+        const t = (bt + ht) / 2;
+        const g = grilleDe(Math.max(0.05, (t + supr) / 2), Math.max(0.05, (t - supr) / 2));
+        if (plusDeDeuxCinq(g) < cible25) bt = t;
+        else ht = t;
+      }
+      total = (bt + ht) / 2;
+    }
+    return { dom: Math.max(0.05, (total + supr) / 2), ext: Math.max(0.05, (total - supr) / 2) };
+  };
+  const probasAsiatiques = (id: number, cible25: number | undefined) => {
+    const a = asiatiques[String(id)];
+    if (!a || !Number.isFinite(a.ligne) || !(a.dom > 1) || !(a.ext > 1) || !(cible25 && cible25 > 0.05 && cible25 < 0.95)) return null;
+    const partDom = (1 / a.dom) / (1 / a.dom + 1 / a.ext);
+    const buts = butsDuMarcheAsiatique(a.ligne, partDom, cible25);
+    const g = grilleDe(buts.dom, buts.ext);
+    let dom = 0, nul = 0, ext = 0, masse = 0;
+    for (let i = 0; i <= 9; i++) for (let j = 0; j <= 9; j++) {
+      masse += g[i][j];
+      if (i > j) dom += g[i][j]; else if (i === j) nul += g[i][j]; else ext += g[i][j];
+    }
+    return masse > 0 ? { dom: dom / masse, nul: nul / masse, ext: ext / masse } : null;
+  };
+  const COUPES_EUROPE_BANC = new Set([2, 3, 848]);
+  const matchsParClub = new Map<number, { t: number; ligue: number }[]>();
+  if (partCoupeApres) {
+    for (const m of toutesLesRencontres) {
+      for (const club of [Number(m.dom), Number(m.ext)]) {
+        const l = matchsParClub.get(club) ?? [];
+        l.push({ t: Date.parse(String(m.date)), ligue: Number(m.ligue) });
+        matchsParClub.set(club, l);
+      }
+    }
+    for (const l of matchsParClub.values()) l.sort((a, b) => a.t - b.t);
+  }
+  const coupeDansQuatreJours = (club: number, quand: number) => {
+    const l = matchsParClub.get(club) ?? [];
+    const suivant = l.find((e) => e.t > quand + 3_600_000);
+    return !!suivant && COUPES_EUROPE_BANC.has(suivant.ligue) && (suivant.t - quand) / 86_400_000 <= 4;
+  };
   const calibrage: Record<string, { domicile: number; exterieur: number }> =
     avecCalibrage && fs.existsSync('.challenger/calibrage.json')
       ? JSON.parse(fs.readFileSync('.challenger/calibrage.json', 'utf8'))
@@ -862,8 +984,14 @@ function avecAbsences(
   // même filtre, sinon il mesurerait autre chose que ce qui sera en ligne.
   const MINUTES_MINIMUM = 450;
   const partDe = (idJoueur: number, saison: number) => {
-    const j: any = joueurs[`${saison - 1}:${idJoueur}`];
-    if (!j || !(j.min >= MINUTES_MINIMUM)) return 0;
+    let j: any = joueurs[`${saison - 1}:${idJoueur}`];
+    if ((!j || !(j.min >= MINUTES_MINIMUM)) && repliSaisonAvant) {
+      const avant: any = joueurs[`${saison - 2}:${idJoueur}`];
+      // La saison d'avant décrit moins bien le joueur d'aujourd'hui : on ne
+      // lui accorde que la moitié du poids.
+      if (avant?.min >= MINUTES_MINIMUM) j = { ...avant, min: avant.min / 2 };
+    }
+    if (!j || !(j.min >= MINUTES_MINIMUM / 2)) return 0;
     let base = Math.min(1, j.min / MINUTES_PLEINES) / 11;
     if (parClub) {
       const total = minutesDuOnze.get(`${saison - 1}:${Number(j.e ?? 0)}`) ?? 0;
@@ -898,20 +1026,43 @@ function avecAbsences(
     const coachExt =
       partDuCoach(Number(m.ext), String(m.date), Number(m.ligue), Number(m.saison)) +
       (partPromu && estPromu(Number(m.ligue), Number(m.saison), Number(m.ext)) ? partPromu : 0);
-    const totalDom = manqueDom * poids + coachDom;
-    const totalExt = manqueExt * poids + coachExt;
+    let totalDom = manqueDom * poids + coachDom;
+    let totalExt = manqueExt * poids + coachExt;
+    if (partCoupeApres) {
+      const quand = Date.parse(String(m.date));
+      // Renforcer une équipe = affaiblir l'autre du même geste.
+      if (coupeDansQuatreJours(Number(m.dom), quand)) totalExt += partCoupeApres;
+      if (coupeDansQuatreJours(Number(m.ext), quand)) totalDom += partCoupeApres;
+    }
     const couche = totalDom > 0 || totalExt > 0
       ? { domicile: totalDom, exterieur: totalExt, poids: 1 }
       : null;
     if (couche) actifs.push(Number(m.id));
 
-    const c = historiques[String(m.id)];
+    let c = historiques[String(m.id)];
+    if (marcheAsiatique && c) {
+      const asia = probasAsiatiques(Number(m.id), c.plus);
+      if (asia) {
+        const q = Math.min(1, Math.max(0, partAsiatique));
+        const melange = {
+          dom: (1 - q) * c.dom + q * asia.dom,
+          nul: (1 - q) * c.nul + q * asia.nul,
+          ext: (1 - q) * c.ext + q * asia.ext,
+        };
+        const somme = melange.dom + melange.nul + melange.ext || 1;
+        c = { ...c, dom: melange.dom / somme, nul: melange.nul / somme, ext: melange.ext / somme };
+      }
+    }
     // Quand le marché hésite lui-même, faut-il l'écouter autant ? Le moteur y
     // fait mieux que lui (39,0 % contre 37,2 % sous cinq points d'écart).
     const ecart = c ? Math.abs(c.dom - c.ext) : 1;
     const tresSerre = c ? (marcheSerre.seuil2 ?? 0) > 0 && ecart < (marcheSerre.seuil2 ?? 0) : false;
     const serre = c ? ecart < marcheSerre.seuil : false;
-    const partDuMarche = tresSerre ? (marcheSerre.part2 ?? marcheSerre.part) : serre ? marcheSerre.part : 1;
+    let partDuMarche = tresSerre ? (marcheSerre.part2 ?? marcheSerre.part) : serre ? marcheSerre.part : 1;
+    // La couche penche-t-elle nettement d'un côté ?
+    if (coucheInformee.ecart > 0 && Math.abs(totalDom - totalExt) >= coucheInformee.ecart) {
+      partDuMarche = Math.min(partDuMarche, coucheInformee.part);
+    }
     const marche = c ? { dom: c.dom, nul: c.nul, ext: c.ext, poids: partDuMarche } : null;
 
     let grille: { domicile: number; exterieur: number; poids: number } | null = null;
@@ -937,7 +1088,7 @@ function avecAbsences(
         grille = {
           domicile: Math.exp(f.base + a.attaque - b.defense + f.terrain),
           exterieur: Math.exp(f.base + b.attaque - a.defense),
-          poids: 0.5,
+          poids: partGrille,
         };
       }
       if (avisPoissonSerre > 0 && serre) {
@@ -1738,15 +1889,23 @@ const avisDeLaProduction = (m: any) =>
 //     (`src/lib/repos-des-clubs.ts`, en ligne depuis le 16 septembre 2026).
 //
 // Une couche nouvelle n’a plus qu’à AJOUTER la sienne à celle-ci.
-const POIDS_ELAN_EN_LIGNE = 0.2;
-const POIDS_TERRAIN_EN_LIGNE = 0.2;
-const POIDS_REPOS_EN_LIGNE = 0.05;
-const PLAFOND_REPOS_EN_LIGNE = 14;
+// Lus À CHAQUE APPEL, pour qu'une variante puisse les faire varier : ces trois
+// réglages datent d'avant le marché, les absents et l'entraîneur, et personne
+// ne les a revérifiés depuis.
+const POIDS_ELAN_EN_LIGNE = () => Number(process.env.BANC_POIDS_ELAN ?? 0.2);
+const POIDS_TERRAIN_EN_LIGNE = () => Number(process.env.BANC_POIDS_TERRAIN ?? 0.2);
+const POIDS_REPOS_EN_LIGNE = () => Number(process.env.BANC_POIDS_REPOS ?? 0.05);
+const PLAFOND_REPOS_EN_LIGNE = () => Number(process.env.BANC_PLAFOND_REPOS ?? 14);
 
-let corrections: Map<number, { domicile: number; exterieur: number } | null> | null = null;
+// Une table par jeu de réglages : sans cette clé, la première variante
+// figerait ses corrections pour toutes les suivantes.
+const correctionsParReglage = new Map<string, Map<number, { domicile: number; exterieur: number } | null>>();
 function corrEnLigne(m: any): { domicile: number; exterieur: number } | null {
+  const cleReglage = `${POIDS_ELAN_EN_LIGNE()}:${POIDS_TERRAIN_EN_LIGNE()}:${POIDS_REPOS_EN_LIGNE()}:${PLAFOND_REPOS_EN_LIGNE()}`;
+  let corrections = correctionsParReglage.get(cleReglage) ?? null;
   if (!corrections) {
     corrections = new Map();
+    correctionsParReglage.set(cleReglage, corrections);
     const JOUR = 86_400_000;
     const parLigue = new Map<number, { n: number; somme: number }>();
     let nLigues = 0;
@@ -1796,12 +1955,12 @@ function corrEnLigne(m: any): { domicile: number; exterieur: number } | null {
     const ecartDeLigue = (ligue: number) => {
       const c = parLigue.get(Number(ligue));
       if (!c || c.n < MIN_RENCONTRES_LIGUE || nLigues === 0) return 0;
-      return POIDS_TERRAIN_EN_LIGNE * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
+      return POIDS_TERRAIN_EN_LIGNE() * (c.n / (c.n + 20)) * (c.somme / c.n - sommeLigues / nLigues);
     };
     const reposDe = (club: number, quand: number) => {
       const d = dernier.get(Number(club));
-      if (!d || !Number.isFinite(quand)) return PLAFOND_REPOS_EN_LIGNE;
-      return Math.min(PLAFOND_REPOS_EN_LIGNE, Math.max(0, (quand - d) / JOUR));
+      if (!d || !Number.isFinite(quand)) return PLAFOND_REPOS_EN_LIGNE();
+      return Math.min(PLAFOND_REPOS_EN_LIGNE(), Math.max(0, (quand - d) / JOUR));
     };
 
     let j = 0;
@@ -1817,15 +1976,15 @@ function corrEnLigne(m: any): { domicile: number; exterieur: number } | null {
       const ligue = ecartDeLigue(Number(x.ligue));
       const quand = Date.parse(x.date);
       const ecartRepos =
-        (reposDe(Number(x.dom), quand) - reposDe(Number(x.ext), quand)) / PLAFOND_REPOS_EN_LIGNE;
+        (reposDe(Number(x.dom), quand) - reposDe(Number(x.ext), quand)) / PLAFOND_REPOS_EN_LIGNE();
       const dom =
-        (POIDS_ELAN_EN_LIGNE * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 +
+        (POIDS_ELAN_EN_LIGNE() * ((a?.attaque ?? 0) + (b?.defense ?? 0))) / 2 +
         ligue / 2 +
-        POIDS_REPOS_EN_LIGNE * ecartRepos;
+        POIDS_REPOS_EN_LIGNE() * ecartRepos;
       const ext =
-        (POIDS_ELAN_EN_LIGNE * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 -
+        (POIDS_ELAN_EN_LIGNE() * ((b?.attaque ?? 0) + (a?.defense ?? 0))) / 2 -
         ligue / 2 -
-        POIDS_REPOS_EN_LIGNE * ecartRepos;
+        POIDS_REPOS_EN_LIGNE() * ecartRepos;
       corrections.set(Number(x.id), dom === 0 && ext === 0 ? null : { domicile: dom, exterieur: ext });
     }
   }
@@ -4561,7 +4720,10 @@ for (const vBrute of tache.variantes) {
       part: v.couche.marcheSerrePart ?? 1,
       seuil2: v.couche.marcheTresSerreSeuil ?? 0,
       part2: v.couche.marcheTresSerrePart ?? 1,
-    }, v.couche.partPromu ?? 0, v.couche.avisPoissonSerre ?? 0, v.couche.coachEnSaison === true, v.couche.parClub === true, v.couche.avecCalibrage === true, v.couche.partIncertain ?? 1);
+    }, v.couche.partPromu ?? 0, v.couche.avisPoissonSerre ?? 0, v.couche.coachEnSaison === true, v.couche.parClub === true, v.couche.avecCalibrage === true, v.couche.partIncertain ?? 1, v.couche.partGrille ?? 0.5, v.couche.repliSaisonAvant === true, {
+      ecart: v.couche.ecartCoucheFort ?? 0,
+      part: v.couche.partMarcheInformee ?? 1,
+    }, v.couche.partCoupeApres ?? 0, v.couche.marcheAsiatique === true, v.couche.partAsiatique ?? 1);
     sortie[v.nom] = r.pronostics;
     actifs[v.nom] = r.actifs;
     return;

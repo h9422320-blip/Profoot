@@ -47,3 +47,20 @@ test('★ ACQUIS — la vérification des résultats lit le fournisseur SANS « 
   assert.doesNotMatch(f.replace(/\/\/.*$/gm, ''), /cache:\s*'no-store'/, 'La vérification redemande « no-store » : le rattrapage du soir ne vérifiera plus rien.');
   assert.match(f, /next: \{ revalidate: 60 \}/);
 });
+
+test('★ ACQUIS — un pronostic figé se recalcule tant qu’il reste plus de 24 h', () => {
+  // Un pronostic figé 48 h à l'avance ignore les blessures annoncées la veille
+  // et un changement d'entraîneur du lendemain. On recalcule donc chaque
+  // rencontre enrichie encore à plus de 24 h, et on ne réécrit que si le
+  // vainqueur change ou qu'une probabilité bouge de plus de cinq points.
+  const s = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');
+  assert.match(s, /const ECART_POUR_REFIGER = 5;/, 'Le seuil de réécriture a disparu.');
+  assert.match(
+    s,
+    /const enrichie = avisDuMarcheBranche\(f\?\.league\?\.id\) \|\| LIGUES_DES_ABSENCES\.has\(Number\(f\?\.league\?\.id\)\)/,
+    'Les rencontres enrichies ne sont plus réexaminées.'
+  );
+  assert.match(s, /vainqueurAvant !== vainqueurMaintenant/, 'Le changement de vainqueur ne déclenche plus la réécriture.');
+  // Et le gel des vingt-quatre heures reste la loi.
+  assert.match(s, /const loin = Date\.parse\(String\(f\?\.fixture\?\.date \?\? ''\)\) - Date\.now\(\) > GEL_DEFINITIF_MS/);
+});

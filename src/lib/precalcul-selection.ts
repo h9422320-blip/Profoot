@@ -54,7 +54,7 @@ import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from '.
 import { avisDuMarchePour, avisDuMarcheBranche, totalDuMarchePour } from './couche-marche';
 import { lireCotesDuJourPatiemment } from './cotes-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
-import { coucheDesAbsences } from './forces-absences';
+import { coucheDesAbsences, LIGUES_DES_ABSENCES } from './forces-absences';
 import { lireEntraineurs, partDeLEntraineurNeuf } from './entraineurs';
 
 /**
@@ -414,7 +414,16 @@ export async function precalculerGrandsMatchs(
         bilan.examinees++;
         if (connus.has(Number(f?.fixture?.id))) {
           const loin = Date.parse(String(f?.fixture?.date ?? '')) - Date.now() > GEL_DEFINITIF_MS;
-          if (loin && (options.rafraichirLigues?.has(Number(f?.league?.id)) || (await figeSansLeMarche(f)))) {
+          // ── ET ON RECALCULE CE QUI A PU CHANGER DEPUIS LE GEL ─────────
+          //
+          // Un pronostic figé quarante-huit heures à l'avance ignore les
+          // blessures annoncées la veille, et un changement d'entraîneur du
+          // lendemain. On recalcule donc toute rencontre encore à plus de
+          // vingt-quatre heures dans une compétition que le moteur enrichit —
+          // et on ne réécrit QUE si le calcul d'aujourd'hui diverge vraiment
+          // de celui qui est figé (voir `ECART_POUR_REFIGER` plus bas).
+          const enrichie = avisDuMarcheBranche(f?.league?.id) || LIGUES_DES_ABSENCES.has(Number(f?.league?.id));
+          if (loin && (options.rafraichirLigues?.has(Number(f?.league?.id)) || enrichie || (await figeSansLeMarche(f)))) {
             aRemplacer.add(Number(f.fixture.id));
             aPreparer.push(f);
             continue;
@@ -674,7 +683,33 @@ export async function precalculerGrandsMatchs(
           )
         );
 
-        await (aRemplacer.has(Number(f.fixture.id)) ? remplacerPredictionFigee : figerPrediction)({
+        // ── ON NE RÉÉCRIT PAS POUR TROIS DIXIÈMES DE POINT ────────────────
+        //
+        // Réécrire un pronostic identique ferait « bouger » une carte sans
+        // raison aux yeux de l'abonné, et changerait sa date de calcul pour
+        // rien. On ne remplace que si le vainqueur annoncé change, ou si une
+        // probabilité bouge de plus de cinq points.
+        const ECART_POUR_REFIGER = 5;
+        const dejaFige = probasFigees.get(Number(f.fixture.id));
+        const remplace = aRemplacer.has(Number(f.fixture.id));
+        if (remplace && dejaFige) {
+          const vainqueurAvant = dejaFige.dom >= dejaFige.ext ? 'dom' : 'ext';
+          const vainqueurMaintenant = r.probaVictoire1 >= r.probaVictoire2 ? 'dom' : 'ext';
+          const bouge =
+            vainqueurAvant !== vainqueurMaintenant ||
+            Math.abs(dejaFige.dom - r.probaVictoire1) > ECART_POUR_REFIGER ||
+            Math.abs(dejaFige.ext - r.probaVictoire2) > ECART_POUR_REFIGER;
+          if (!bouge) {
+            bilan.dejaConnues++;
+            continue;
+          }
+          console.log(
+            `[PRECALCUL] ${f?.teams?.home?.name} — ${f?.teams?.away?.name} refigé : ` +
+              `${dejaFige.dom}/${dejaFige.ext} → ${r.probaVictoire1}/${r.probaVictoire2}`
+          );
+        }
+
+        await (remplace ? remplacerPredictionFigee : figerPrediction)({
           fixtureId: Number(f.fixture.id),
           domicileId: domId,
           domicileNom: String(f?.teams?.home?.name ?? ''),
