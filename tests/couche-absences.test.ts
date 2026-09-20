@@ -88,7 +88,27 @@ test('★ ACQUIS — les absents pèsent dans les seize championnats cotés, l�
     'Le poids ne vient plus de la saison PRÉCÉDENTE : la mesure contiendrait l’avenir.'
   );
   const route = fs.readFileSync('src/app/api/analyze/route.ts', 'utf8');
-  assert.match(route, /await absencesPourLeMatch\(/, 'L’analyse ne lit plus les absents.');
+  assert.match(route, /coucheDesAbsences\(/, 'L’analyse ne lit plus les absents.');
   const pre = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');
-  assert.match(pre, /await absencesPourLeMatch\(/, 'La préparation ne lit plus les absents.');
+  assert.match(pre, /await coucheDesAbsences\(/, 'La préparation ne lit plus les absents.');
+});
+
+test('★ ACQUIS — une couche ne peut JAMAIS faire échouer une analyse', async () => {
+  // Le 20 septembre 2026, 21 analyses ont échoué en trois minutes avec
+  // « Cannot read properties of undefined » : le relevé des joueurs avait
+  // changé de forme avant la version qui sait la lire. Une couche est un
+  // confort : elle disparaît sans bruit, elle n'emporte jamais l'analyse.
+  const { coucheDesAbsences } = await import('../src/lib/forces-absences');
+  // Compétition inconnue, identifiants absurdes : rien ne doit être levé.
+  assert.equal(await coucheDesAbsences(null, null, null, null, null), null);
+  assert.equal(await coucheDesAbsences(-1, 99999, 'pas une saison', 'x', 'y'), null);
+  const route = fs.readFileSync('src/app/api/analyze/route.ts', 'utf8');
+  assert.match(route, /coucheDesAbsences\(/, 'L’analyse n’appelle plus le point d’entrée protégé.');
+  assert.doesNotMatch(route, /absencesPourLeMatch\(/, 'L’analyse appelle encore la lecture NON protégée.');
+  const pre = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');
+  assert.match(pre, /await coucheDesAbsences\(/, 'La préparation n’appelle plus le point d’entrée protégé.');
+  assert.doesNotMatch(pre, /absencesPourLeMatch\(/, 'La préparation appelle encore la lecture NON protégée.');
+  const lib = fs.readFileSync('src/lib/forces-absences.ts', 'utf8');
+  const bloc = lib.slice(lib.indexOf('export async function coucheDesAbsences('));
+  assert.match(bloc, /catch \(e: any\) \{[\s\S]{0,200}return null;/, 'Le filet a disparu du point d’entrée.');
 });

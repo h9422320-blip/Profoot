@@ -302,3 +302,38 @@ export function composerLaCouche(
   if (!(domicile > 0) && !(exterieur > 0)) return null;
   return { domicile, exterieur, poids: 1 };
 }
+
+/**
+ * LA COUCHE COMPLÈTE, ET SURTOUT : ELLE NE PEUT PAS FAIRE TOMBER UNE ANALYSE.
+ *
+ * ── CE QUI EST ARRIVÉ LE 20 SEPTEMBRE 2026 ──────────────────────────────
+ *
+ * Le relevé des joueurs a changé de forme (compacte) AVANT que la version qui
+ * sait la lire soit en ligne. L'ancienne lisait `poids.minutes[…]` sur un
+ * objet qui n'existait plus : « Cannot read properties of undefined ». Vingt
+ * et une analyses ont échoué en trois minutes, et l'abonné voyait « rien
+ * servi » — pour un confort dont il ignore jusqu'au nom.
+ *
+ * Une couche est un CONFORT. Elle améliore le pronostic quand elle fonctionne,
+ * et elle doit disparaître sans bruit quand elle ne fonctionne pas. Tout passe
+ * donc désormais par ici, sous un seul `try` : la moindre erreur rend `null`,
+ * et le moteur calcule comme avant la couche.
+ */
+export async function coucheDesAbsences(
+  fixtureId: number | string | null | undefined,
+  ligue: number | string | null | undefined,
+  saison: number | string | null | undefined,
+  equipeDomicile: number | string | null | undefined,
+  equipeExterieur: number | string | null | undefined,
+  entraineurNeufDomicile = 0,
+  entraineurNeufExterieur = 0
+): Promise<{ domicile: number; exterieur: number; poids: number } | null> {
+  try {
+    const poids = await lirePoidsDesJoueurs();
+    const absences = await absencesPourLeMatch(fixtureId, ligue, saison, equipeDomicile, equipeExterieur, poids);
+    return composerLaCouche(absences, entraineurNeufDomicile, entraineurNeufExterieur);
+  } catch (e: any) {
+    console.warn('[ABSENCES] Couche ignorée pour cette analyse :', e?.message);
+    return null;
+  }
+}

@@ -54,7 +54,7 @@ import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from '.
 import { avisDuMarchePour, avisDuMarcheBranche, totalDuMarchePour } from './couche-marche';
 import { lireCotesDuJourPatiemment } from './cotes-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
-import { absencesPourLeMatch, lirePoidsDesJoueurs, composerLaCouche } from './forces-absences';
+import { coucheDesAbsences } from './forces-absences';
 import { lireEntraineurs, partDeLEntraineurNeuf } from './entraineurs';
 
 /**
@@ -447,7 +447,6 @@ export async function precalculerGrandsMatchs(
     // La seconde grille des scores, lue une fois pour toute la passe.
     const forcesPoisson = await lireForcesPoisson().catch(() => null);
     // Le poids des joueurs sert à toutes les rencontres : une seule lecture.
-    const poidsDesJoueurs = await lirePoidsDesJoueurs().catch(() => null);
     // Les passages d'entraîneurs, lus une fois pour toutes les rencontres.
     const entraineurs = await lireEntraineurs().catch(() => null);
 
@@ -664,8 +663,12 @@ export async function precalculerGrandsMatchs(
           // Le nombre de buts selon le marché, comme l'analyse.
           await totalDuMarchePour(f?.fixture?.id, f?.fixture?.date, ligue),
           // Les absents ET l'entraîneur fraîchement arrivé, comme l'analyse.
-          composerLaCouche(
-            await absencesPourLeMatch(f?.fixture?.id, ligue, saison, domId, extId, poidsDesJoueurs),
+          await coucheDesAbsences(
+            f?.fixture?.id,
+            ligue,
+            saison,
+            domId,
+            extId,
             partDeLEntraineurNeuf(entraineurs, ligue, domId, f?.fixture?.date),
             partDeLEntraineurNeuf(entraineurs, ligue, extId, f?.fixture?.date)
           )

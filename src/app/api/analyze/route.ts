@@ -42,7 +42,7 @@ type Composition = {
 };
 
 import { completerLesBlocs } from "@/lib/analyse-complete";
-import { absencesPourLeMatch, lirePoidsDesJoueurs, composerLaCouche } from "@/lib/forces-absences";
+import { coucheDesAbsences } from "@/lib/forces-absences";
 import { lireEntraineurs, partDeLEntraineurNeuf } from "@/lib/entraineurs";
 
 const analysisCache = new Map<string, { data: any; timestamp: number }>();
@@ -1478,7 +1478,19 @@ async function analyser(req: Request, billet: BilletQuota) {
     }
   })();
 
-  const scoreCalcule = calculerScoreProbable(
+  // ── LE CALCUL COMPLET, ET UN FILET SOUS LE CALCUL COMPLET ────────────
+  //
+  // Le 20 septembre 2026, vingt et une analyses ont échoué en trois minutes :
+  // un relevé avait changé de forme et une couche lisait dans le vide. Chaque
+  // enrichissement est désormais protégé chez lui, mais la règle doit valoir
+  // même pour ce qu'on n'a pas prévu.
+  //
+  // Le calcul complet est donc tenté ; s'il tombe, on recalcule avec les
+  // SEULS chiffres indispensables — les statistiques des deux équipes et le
+  // lieu. Le pronostic est alors moins fin, mais il existe : un abonné qui a
+  // payé ne repart jamais les mains vides à cause d'un confort.
+  const calculComplet = async () =>
+    calculerScoreProbable(
     brutes1,
     brutes2,
     equipe1AJoueADomicile,
@@ -1703,27 +1715,38 @@ async function analyser(req: Request, billet: BilletQuota) {
     // la couche se tait et le moteur rend ce qu'il rendait. Voir
     // `forces-absences.ts`.
     await (async () => {
-      const [poidsJoueurs, entraineurs] = await Promise.all([lirePoidsDesJoueurs(), lireEntraineurs()]);
       const ligueDuMatch = targetFutureMatch?.league?.id;
       const quand = targetFutureMatch?.fixture?.date;
-      return composerLaCouche(
-        await absencesPourLeMatch(
-          targetFutureMatch?.fixture?.id,
-          ligueDuMatch,
-          targetFutureMatch?.league?.season,
-          targetFutureMatch?.teams?.home?.id,
-          targetFutureMatch?.teams?.away?.id,
-          poidsJoueurs
-        ),
-        // ── ET L'ENTRAÎNEUR FRAÎCHEMENT ARRIVÉ ────────────────────────────
-        //
-        // Une équipe qui vient de changer d'entraîneur gagne 26 % de ses
-        // matchs là où le moteur en annonce 32,8 %. Voir `entraineurs.ts`.
+      // Les absents, et l'entraîneur fraîchement arrivé. Le tout sous un seul
+      // filet : une couche ne fait jamais échouer une analyse.
+      const entraineurs = await lireEntraineurs().catch(() => null);
+      return coucheDesAbsences(
+        targetFutureMatch?.fixture?.id,
+        ligueDuMatch,
+        targetFutureMatch?.league?.season,
+        targetFutureMatch?.teams?.home?.id,
+        targetFutureMatch?.teams?.away?.id,
         partDeLEntraineurNeuf(entraineurs, ligueDuMatch, targetFutureMatch?.teams?.home?.id, quand),
         partDeLEntraineurNeuf(entraineurs, ligueDuMatch, targetFutureMatch?.teams?.away?.id, quand)
       );
     })()
   );
+
+  let scoreCalcule: ReturnType<typeof calculerScoreProbable>;
+  try {
+    scoreCalcule = await calculComplet();
+  } catch (e: any) {
+    console.error(
+      `[BACKEND_ANALYZE] Calcul complet impossible pour ${team1?.name} — ${team2?.name} : ${e?.message}. ` +
+        'Repli sur le calcul de base.'
+    );
+    scoreCalcule = calculerScoreProbable(
+      brutes1,
+      brutes2,
+      equipe1AJoueADomicile,
+      competitionPeuFiable(nomCompetition)
+    );
+  }
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────
   //

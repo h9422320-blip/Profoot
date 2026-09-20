@@ -71,3 +71,22 @@ test('★ ACQUIS — quand un bloc tombe, l’abonné garde l’essentiel de son
   assert.match(barriere, /if \(this\.props\.secours\) return this\.props\.secours;/, 'La barrière n’affiche plus le secours fourni.');
   assert.match(client, /setResult\(completerLesBlocs\(data\)\)/, 'L’analyse reçue n’est plus complétée côté navigateur.');
 });
+
+test('★ ACQUIS — le calcul garde un filet : un enrichissement fautif ne coûte pas l’analyse', () => {
+  // Le 20 septembre 2026, 21 analyses ont échoué en trois minutes parce qu'une
+  // couche lisait un relevé qui avait changé de forme. Chaque enrichissement
+  // est protégé chez lui ; ce filet-ci vaut pour ce qu'on n'a pas prévu.
+  const route = fs.readFileSync('src/app/api/analyze/route.ts', 'utf8');
+  assert.match(route, /const calculComplet = async \(\) =>/, 'Le calcul complet n’est plus isolé.');
+  assert.match(
+    route,
+    /try \{\s*scoreCalcule = await calculComplet\(\);\s*\} catch/,
+    'Le calcul complet n’est plus sous filet.'
+  );
+  const repli = route.slice(route.indexOf('Repli sur le calcul de base'));
+  assert.match(
+    repli,
+    /calculerScoreProbable\(\s*brutes1,\s*brutes2,\s*equipe1AJoueADomicile,\s*competitionPeuFiable\(nomCompetition\)\s*\)/,
+    'Le repli n’appelle plus le calcul de base, qui ne dépend d’aucun enrichissement.'
+  );
+});
