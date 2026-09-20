@@ -11,7 +11,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { calculerScoreProbable } from '../src/lib/score-probable';
-import { PART_DES_ABSENCES, CINQ_GRANDS } from '../src/lib/forces-absences';
+import { PART_DES_ABSENCES, CINQ_GRANDS, AUTRES_DU_MARCHE, LIGUES_DES_ABSENCES } from '../src/lib/forces-absences';
 
 const dom = { butsMarques: 22, butsEncaisses: 14, matchsJoues: 12 };
 const ext = { butsMarques: 15, butsEncaisses: 18, matchsJoues: 12 };
@@ -54,10 +54,34 @@ test('★ ACQUIS — le lieu décide qui est amputé, jamais l’ordre de saisie
   assert.ok(appel(absences, false).butsAttendus1 > appel(undefined, false).butsAttendus1);
 });
 
-test('★ ACQUIS — la couche ne parle que des cinq grands championnats', () => {
+test('★ ACQUIS — les absents pèsent dans les seize championnats cotés, l’entraîneur dans cinq', () => {
+  // Étendue le 20 septembre 2026 aux onze autres championnats cotés : sur
+  // 7 742 rencontres, 3 885 → 3 895 bons vainqueurs, positif sur les deux
+  // moitiés et les trois périodes. L'entraîneur (−4) et la parole rendue sur
+  // les matchs serrés (−11) n'y ont PAS été étendus.
   assert.deepEqual([...CINQ_GRANDS].sort((a, b) => a - b), [39, 61, 78, 135, 140]);
+  assert.equal(AUTRES_DU_MARCHE.size, 11);
+  assert.equal(LIGUES_DES_ABSENCES.size, 16);
+  for (const l of [...CINQ_GRANDS, ...AUTRES_DU_MARCHE]) assert.ok(LIGUES_DES_ABSENCES.has(l));
+  const marche = fs.readFileSync('src/lib/couche-marche.ts', 'utf8');
+  assert.match(
+    marche,
+    /CINQ_GRANDS\.has\(Number\(ligue\)\)/,
+    'La part réduite du marché doit rester aux cinq grands championnats.'
+  );
+  const ent = fs.readFileSync('src/lib/entraineurs.ts', 'utf8');
+  assert.match(
+    ent,
+    /if \(!CINQ_GRANDS\.has\(Number\(ligue\)\)\) return 0;/,
+    'La couche de l’entraîneur doit rester aux cinq grands championnats.'
+  );
   assert.equal(PART_DES_ABSENCES, 0.25);
   const s = fs.readFileSync('src/lib/forces-absences.ts', 'utf8');
+  assert.match(
+    s,
+    /LIGUES_DES_ABSENCES\.has\(Number\(ligue\)\)/,
+    'Les absents ne visent plus les seize championnats cotés.'
+  );
   assert.match(
     s,
     /tableDeLaSaison\(poids, s - 1\)/,

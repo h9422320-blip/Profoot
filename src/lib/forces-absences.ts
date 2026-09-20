@@ -43,6 +43,24 @@ import { apiFootball, CACHE_TTL, lireReserve, ecrireReserve } from './api-footba
 /** Angleterre, Espagne, Italie, Allemagne, France. */
 export const CINQ_GRANDS: ReadonlySet<number> = new Set([39, 140, 135, 78, 61]);
 
+/**
+ * ── ET LES ONZE AUTRES CHAMPIONNATS COTÉS, DEPUIS LE 20 SEPTEMBRE 2026 ───
+ *
+ * Championship, Écosse, 2. Bundesliga, Serie B, Segunda, Ligue 2, Belgique,
+ * Turquie, Grèce, Pays-Bas, Portugal. Mesuré sur 7 742 rencontres depuis août
+ * 2024, avec le marché et la grille de Poisson : 3 885 → 3 895 bons
+ * vainqueurs, positif sur les deux moitiés (+6, +4) et sur les trois périodes
+ * (+2, +5, +3), avec 4 scores exacts de plus.
+ *
+ * DEUX COUCHES N'Y ONT PAS ÉTÉ ÉTENDUES, parce qu'elles y font perdre :
+ * l'entraîneur fraîchement arrivé (−4) et la parole rendue au moteur sur les
+ * matchs serrés (−11). Elles restent réservées aux cinq grands championnats.
+ */
+export const AUTRES_DU_MARCHE: ReadonlySet<number> = new Set([40, 179, 79, 136, 141, 62, 144, 203, 197, 88, 94]);
+
+/** Les compétitions où les absents sont pesés. */
+export const LIGUES_DES_ABSENCES: ReadonlySet<number> = new Set([...CINQ_GRANDS, ...AUTRES_DU_MARCHE]);
+
 /** La part retenue par la mesure. Plus haut, la correction double celle du marché. */
 export const PART_DES_ABSENCES = 0.25;
 
@@ -171,7 +189,7 @@ export async function recalculerPoidsDesJoueurs(
   for (const saison of Object.keys(existant?.saisons ?? {})) {
     for (const [joueur, min] of tableDeLaSaison(existant, Number(saison))) minutes[`${saison}:${joueur}`] = min;
   }
-  for (const ligue of CINQ_GRANDS) {
+  for (const ligue of LIGUES_DES_ABSENCES) {
     for (const s of [saison - 1, saison]) {
       for (let page = 1; page <= 60; page++) {
         // ── UNE PAGE MANQUÉE N'ARRÊTE PAS LE RELEVÉ ───────────────────────
@@ -228,7 +246,7 @@ export async function absencesPourLeMatch(
   equipeExterieur: number | string | null | undefined,
   poids: PoidsDesJoueurs | null
 ): Promise<{ domicile: number; exterieur: number; poids: number } | null> {
-  if (!fixtureId || !poids || !CINQ_GRANDS.has(Number(ligue))) return null;
+  if (!fixtureId || !poids || !LIGUES_DES_ABSENCES.has(Number(ligue))) return null;
   const s = Number(saison);
   if (!Number.isFinite(s)) return null;
 

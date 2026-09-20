@@ -39,7 +39,7 @@ type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
   | { type: 'marche-historique'; poids: number; parLesProbabilites?: boolean }
-  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number; boostButeurs?: number; marcheSerreSeuil?: number; marcheSerrePart?: number }
+  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number; boostButeurs?: number; marcheSerreSeuil?: number; marcheSerrePart?: number; partPromu?: number; avisPoissonSerre?: number; marcheTresSerreSeuil?: number; marcheTresSerrePart?: number; coachEnSaison?: boolean; parClub?: boolean; avecCalibrage?: boolean; partIncertain?: number }
   | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean; avecLeMarche?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
@@ -111,7 +111,7 @@ const tache: {
    * assez de matchs pour être jugées : dans le périmètre du produit, la
    * demi-vue n'en concerne que 132.
    */
-  univers?: 'suivies' | 'cotes' | 'tout' | 'cinq';
+  univers?: 'suivies' | 'cotes' | 'tout' | 'cinq' | 'autres';
   sortie: string;
 } = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 
@@ -502,10 +502,16 @@ const toutesCompetitions = tache.univers === 'tout';
 // Allemagne, Italie. » Une couche peut très bien gagner des vainqueurs
 // ailleurs et n'en gagner aucun ici — c'est ici que ça compte.
 const CINQ_GRANDS = new Set([39, 140, 135, 78, 61]);
+// Les onze autres championnats où le marché est branché : on y mesure si les
+// couches des absents et de l'entraîneur valent aussi, sans toucher aux cinq.
+const AUTRES_DU_MARCHE = new Set([40, 179, 79, 136, 141, 62, 144, 203, 197, 88, 94]);
 const cinqGrands = tache.univers === 'cinq';
+const autresDuMarche = tache.univers === 'autres';
 for (const m of rencontres) {
   const retenue = cinqGrands
     ? CINQ_GRANDS.has(Number(m.ligue))
+    : autresDuMarche
+    ? AUTRES_DU_MARCHE.has(Number(m.ligue))
     : surCotes
       ? cotes[String(m.id)] !== undefined
       : toutesCompetitions
@@ -729,8 +735,52 @@ function avecAbsences(
   boostButeurs = 0,
   // Quand le marché lui-même hésite, faut-il l'écouter autant ? Le moteur y
   // bat le marché (39,0 % contre 37,2 % sous cinq points d'écart).
-  marcheSerre: { seuil: number; part: number } = { seuil: 0, part: 1 }
+  marcheSerre: { seuil: number; part: number; seuil2?: number; part2?: number } = { seuil: 0, part: 1 },
+  // Un club promu : le moteur lui annonce 26,7 % de victoires, il en obtient
+  // 22,6 % (971 cas). Il juge une équipe sur un championnat qu'elle n'a jamais
+  // joué.
+  partPromu = 0,
+  // Sur les rencontres serrées, le modèle de Poisson a-t-il quelque chose à
+  // dire sur le VAINQUEUR ? Il ne sert aujourd'hui qu'à choisir le score.
+  avisPoissonSerre = 0,
+  // Vrai : seules comptent les arrivées EN COURS DE SAISON. Un entraîneur
+  // nommé l'été a fait toute la préparation — mesuré, il ne change rien
+  // (+0 sur 626 rencontres d'août-septembre, contre +17 d'octobre à juillet).
+  coachEnSaison = false,
+  // Vrai : le poids d'un absent se mesure par rapport à SON club (part des
+  // minutes du onze type), et non sur une saison pleine théorique.
+  parClub = false,
+  // Vrai : on applique EN PLUS les facteurs appris par championnat que la
+  // production applique déjà — et que le banc n'a jamais mesurés.
+  avecCalibrage = false,
+  // Un joueur « incertain » n'est pas un joueur absent : il joue souvent. On
+  // peut lui donner moins de poids qu'à un forfait déclaré.
+  partIncertain = 1
 ): { pronostics: Pronostic[]; actifs: number[] } {
+  const calibrage: Record<string, { domicile: number; exterieur: number }> =
+    avecCalibrage && fs.existsSync('.challenger/calibrage.json')
+      ? JSON.parse(fs.readFileSync('.challenger/calibrage.json', 'utf8'))
+      : {};
+  const debutDeSaison = new Map<string, number>();
+  for (const m of toutesLesRencontres) {
+    const cle = `${m.ligue}:${m.saison}`;
+    const t = Date.parse(String(m.date));
+    const connu = debutDeSaison.get(cle);
+    if (connu === undefined || t < connu) debutDeSaison.set(cle, t);
+  }
+  const clubsParLigueSaison = new Map<string, Set<number>>();
+  for (const m of toutesLesRencontres) {
+    const cle = `${m.ligue}:${m.saison}`;
+    const s = clubsParLigueSaison.get(cle) ?? new Set<number>();
+    s.add(Number(m.dom));
+    s.add(Number(m.ext));
+    clubsParLigueSaison.set(cle, s);
+  }
+  const estPromu = (ligue: number, saison: number, club: number) => {
+    const avant = clubsParLigueSaison.get(`${ligue}:${saison - 1}`);
+    // Sans la saison précédente en mémoire, on ne sait pas : on se tait.
+    return avant ? !avant.has(club) : false;
+  };
   // ── L'ENTRAÎNEUR QUI VIENT D'ARRIVER ──────────────────────────────────
   //
   // Mesuré sur 5 679 côtés d'équipe des cinq grands championnats : une équipe
@@ -752,9 +802,15 @@ function avecAbsences(
     }
     return dernier === null ? null : Math.round((t - dernier) / 86_400_000);
   };
-  const partDuCoach = (club: number, dateISO: string): number => {
+  const partDuCoach = (club: number, dateISO: string, ligue?: number, saison?: number): number => {
     const j = joursDepuisLArrivee(club, dateISO);
     if (j === null) return 0;
+    if (coachEnSaison && ligue !== undefined && saison !== undefined) {
+      const arrivee = Date.parse(dateISO) - j * 86_400_000;
+      const debut = debutDeSaison.get(`${ligue}:${saison}`);
+      // Arrivé avant la première journée : il a fait la préparation d'été.
+      if (debut !== undefined && arrivee < debut) return 0;
+    }
     if (coach.jours > 0 && j <= coach.jours) return coach.part;
     if (coach.jours2 > 0 && j <= coach.jours2) return coach.part2;
     return 0;
@@ -770,6 +826,23 @@ function avecAbsences(
     avecLeMarche && fs.existsSync(FICHIER_COTES_HISTORIQUES)
       ? JSON.parse(fs.readFileSync(FICHIER_COTES_HISTORIQUES, 'utf8'))
       : {};
+  // Les minutes du onze le plus utilisé de chaque club, saison par saison.
+  const minutesDuOnze = new Map<string, number>();
+  if (parClub) {
+    const parEquipe = new Map<string, number[]>();
+    for (const [cle, j] of Object.entries(joueurs)) {
+      const [saison] = cle.split(':');
+      const equipe = Number((j as any)?.e ?? 0);
+      const min = Number((j as any)?.min ?? 0);
+      if (!equipe || !(min > 0)) continue;
+      const k = `${saison}:${equipe}`;
+      (parEquipe.get(k) ?? parEquipe.set(k, []).get(k)!).push(min);
+    }
+    for (const [k, liste] of parEquipe) {
+      const onze = liste.sort((a, b) => b - a).slice(0, 11);
+      minutesDuOnze.set(k, onze.reduce((t, x) => t + x, 0));
+    }
+  }
   const forcesPoisson = new Map<number, any>();
   let ajusteeLe = 0;
   const parLigue = new Map<number, any[]>();
@@ -791,7 +864,11 @@ function avecAbsences(
   const partDe = (idJoueur: number, saison: number) => {
     const j: any = joueurs[`${saison - 1}:${idJoueur}`];
     if (!j || !(j.min >= MINUTES_MINIMUM)) return 0;
-    const base = Math.min(1, j.min / MINUTES_PLEINES) / 11;
+    let base = Math.min(1, j.min / MINUTES_PLEINES) / 11;
+    if (parClub) {
+      const total = minutesDuOnze.get(`${saison - 1}:${Number(j.e ?? 0)}`) ?? 0;
+      if (total > 0) base = Math.min(0.25, j.min / total);
+    }
     // Un buteur absent ne vaut pas un remplaçant absent : on peut peser sa
     // contribution offensive de la saison précédente (buts + demi-passes).
     if (!boostButeurs) return base;
@@ -806,15 +883,21 @@ function avecAbsences(
     const saison = Number(m.saison);
     let manqueDom = 0, manqueExt = 0;
     for (const a of liste) {
-      const part = partDe(Number(a.j), saison);
+      const brut = partDe(Number(a.j), saison);
+      if (!brut) continue;
+      const part = /missing/i.test(String(a.t)) ? brut : brut * partIncertain;
       if (!part) continue;
       if (Number(a.e) === Number(m.dom)) manqueDom += part;
       else if (Number(a.e) === Number(m.ext)) manqueExt += part;
     }
     // L'entraîneur neuf s'ajoute à ce qui manque : une équipe qu'on ne
     // connaît plus se traite comme une équipe amputée.
-    const coachDom = partDuCoach(Number(m.dom), String(m.date));
-    const coachExt = partDuCoach(Number(m.ext), String(m.date));
+    const coachDom =
+      partDuCoach(Number(m.dom), String(m.date), Number(m.ligue), Number(m.saison)) +
+      (partPromu && estPromu(Number(m.ligue), Number(m.saison), Number(m.dom)) ? partPromu : 0);
+    const coachExt =
+      partDuCoach(Number(m.ext), String(m.date), Number(m.ligue), Number(m.saison)) +
+      (partPromu && estPromu(Number(m.ligue), Number(m.saison), Number(m.ext)) ? partPromu : 0);
     const totalDom = manqueDom * poids + coachDom;
     const totalExt = manqueExt * poids + coachExt;
     const couche = totalDom > 0 || totalExt > 0
@@ -825,10 +908,14 @@ function avecAbsences(
     const c = historiques[String(m.id)];
     // Quand le marché hésite lui-même, faut-il l'écouter autant ? Le moteur y
     // fait mieux que lui (39,0 % contre 37,2 % sous cinq points d'écart).
-    const serre = c ? Math.abs(c.dom - c.ext) < marcheSerre.seuil : false;
-    const marche = c ? { dom: c.dom, nul: c.nul, ext: c.ext, poids: serre ? marcheSerre.part : 1 } : null;
+    const ecart = c ? Math.abs(c.dom - c.ext) : 1;
+    const tresSerre = c ? (marcheSerre.seuil2 ?? 0) > 0 && ecart < (marcheSerre.seuil2 ?? 0) : false;
+    const serre = c ? ecart < marcheSerre.seuil : false;
+    const partDuMarche = tresSerre ? (marcheSerre.part2 ?? marcheSerre.part) : serre ? marcheSerre.part : 1;
+    const marche = c ? { dom: c.dom, nul: c.nul, ext: c.ext, poids: partDuMarche } : null;
 
     let grille: { domicile: number; exterieur: number; poids: number } | null = null;
+    let second: any = null;
     if (avecLaGrille) {
       const quand = Date.parse(String(m.date).slice(0, 10) + 'T00:00:00Z');
       if (!ajusteeLe || quand - ajusteeLe >= 30 * 86_400_000) {
@@ -853,11 +940,16 @@ function avecAbsences(
           poids: 0.5,
         };
       }
+      if (avisPoissonSerre > 0 && serre) {
+        const avis = avisPoisson(f, Number(m.dom), Number(m.ext));
+        if (avis) second = { ...avis, poids: avisPoissonSerre };
+      }
     }
 
     const r: any = calculerScoreProbable(
-      s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), marche,
-      false, null, grille, c?.plus ?? null, couche
+      s1, s2, true, false, classementsDe(m), forcesDe(m), calibrage[String(m.ligue)] ?? undefined,
+      croisePour(m), rapportPour(m), occ, corrEnLigne(m), marche,
+      false, second, grille, c?.plus ?? null, couche
     );
     pronostics.push(versPronostic(m, r));
   }
@@ -4467,7 +4559,9 @@ for (const vBrute of tache.variantes) {
     }, v.couche.boostButeurs ?? 0, {
       seuil: v.couche.marcheSerreSeuil ?? 0,
       part: v.couche.marcheSerrePart ?? 1,
-    });
+      seuil2: v.couche.marcheTresSerreSeuil ?? 0,
+      part2: v.couche.marcheTresSerrePart ?? 1,
+    }, v.couche.partPromu ?? 0, v.couche.avisPoissonSerre ?? 0, v.couche.coachEnSaison === true, v.couche.parClub === true, v.couche.avecCalibrage === true, v.couche.partIncertain ?? 1);
     sortie[v.nom] = r.pronostics;
     actifs[v.nom] = r.actifs;
     return;

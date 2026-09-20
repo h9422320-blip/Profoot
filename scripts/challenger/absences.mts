@@ -37,6 +37,13 @@ const FICHIER_RENCONTRES = path.join(DOSSIER, 'rencontres.json');
 /** Angleterre, Espagne, Italie, Allemagne, France. Rien d'autre. */
 export const CINQ_GRANDS = new Set([39, 140, 135, 78, 61]);
 
+// Les onze autres championnats où le marché est branché : Championship,
+// Écosse, 2. Bundesliga, Serie B, Segunda, Ligue 2, Belgique, Turquie, Grèce,
+// Pays-Bas, Portugal. Ramasser leur matière permettra d'y étendre les deux
+// couches mesurées sur les cinq grands.
+export const AUTRES_DU_MARCHE = new Set([40, 179, 79, 136, 141, 62, 144, 203, 197, 88, 94]);
+const LIGUES = () => (process.env.BANC_LIGUES === 'autres' ? AUTRES_DU_MARCHE : CINQ_GRANDS);
+
 const CLE = () => process.env.API_FOOTBALL_KEY ?? '';
 const DE_FRONT = 12;
 const PAUSE_MS = 400;
@@ -75,7 +82,7 @@ export async function ramasserAbsences(_limite = Infinity): Promise<{ faites: nu
   // des appels pour des rencontres que personne ne mesurera.
   const DEBUT_UTILE = '2024-07-01';
   const voulues = rencontres.filter(
-    (m) => CINQ_GRANDS.has(Number(m.ligue)) && String(m.date) >= DEBUT_UTILE
+    (m) => LIGUES().has(Number(m.ligue)) && String(m.date) >= DEBUT_UTILE
   );
   const aRamasser = new Set(voulues.map((m) => Number(m.id)));
   const saisons = [...new Set(voulues.map((m) => Number(m.saison)))].sort();
@@ -84,7 +91,7 @@ export async function ramasserAbsences(_limite = Infinity): Promise<{ faites: nu
     : {};
 
   let faites = 0;
-  for (const ligue of CINQ_GRANDS) {
+  for (const ligue of LIGUES()) {
     for (const saison of saisons) {
       const j = await lire(`injuries?league=${ligue}&season=${saison}`);
       if (!j) {
@@ -123,7 +130,7 @@ export async function ramasserJoueurs(saisons = [2023, 2024, 2025, 2026]): Promi
     ? JSON.parse(fs.readFileSync(FICHIER_JOUEURS, 'utf8'))
     : {};
   let ecrits = 0;
-  for (const ligue of CINQ_GRANDS) {
+  for (const ligue of LIGUES()) {
     for (const saison of saisons) {
       if (deja[`fait:${ligue}:${saison}`]) continue;
       let page = 1, total = 1;

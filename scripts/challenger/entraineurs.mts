@@ -25,6 +25,8 @@ const DOSSIER = '.challenger';
 export const FICHIER_ENTRAINEURS = path.join(DOSSIER, 'entraineurs.json');
 const FICHIER_RENCONTRES = path.join(DOSSIER, 'rencontres.json');
 const CINQ_GRANDS = new Set([39, 140, 135, 78, 61]);
+const AUTRES_DU_MARCHE = new Set([40, 179, 79, 136, 141, 62, 144, 203, 197, 88, 94]);
+const LIGUES = () => (process.env.BANC_LIGUES === 'autres' ? AUTRES_DU_MARCHE : CINQ_GRANDS);
 const DEBUT_UTILE = '2024-07-01';
 
 /** Par club : chaque passage d'entraîneur, du plus ancien au plus récent. */
@@ -57,7 +59,7 @@ export async function ramasserEntraineurs(): Promise<{ clubs: number; passages: 
   const rencontres: any[] = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
   const clubs = new Set<number>();
   for (const m of rencontres) {
-    if (!CINQ_GRANDS.has(Number(m.ligue)) || String(m.date) < DEBUT_UTILE) continue;
+    if (!LIGUES().has(Number(m.ligue)) || String(m.date) < DEBUT_UTILE) continue;
     clubs.add(Number(m.dom));
     clubs.add(Number(m.ext));
   }
