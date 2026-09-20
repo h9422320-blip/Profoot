@@ -542,6 +542,14 @@ const versPronostic = (m: any, r: any): Pronostic => {
     score: [Number(r.buts1), Number(r.buts2)],
     scoreReel: [Number(m.bd), Number(m.be)],
     butsAttendus: [Number(r.butsAttendus1), Number(r.butsAttendus2)],
+    // Les chiffres annexes tels que l'abonné les lit, pour mesurer s'ils
+    // tiennent leur promesse.
+    annexes: {
+      deuxMarquent: Number(r.probaLesDeuxMarquent),
+      plusDeDeuxCinq: Number(r.probaPlusDe?.deuxCinq),
+      plusDeUnCinq: Number(r.probaPlusDe?.unCinq),
+      plusDeTroisCinq: Number(r.probaPlusDe?.troisCinq),
+    },
   };
 };
 

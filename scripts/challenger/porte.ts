@@ -37,6 +37,19 @@ export type Pronostic = {
   scoreReel?: [number, number];
   /** Buts attendus par le moteur [équipe 1, équipe 2], avant arrondi. */
   butsAttendus?: [number, number];
+  /**
+   * Les chiffres annexes TELS QUE L'ABONNÉ LES LIT, en pourcentage.
+   *
+   * Ils sortent du moteur complet — grille de Poisson mêlée et recalage sur le
+   * total du marché compris —, et non d'un calcul refait de côté. C'est la
+   * seule façon de vérifier qu'ils tiennent leur promesse.
+   */
+  annexes?: {
+    deuxMarquent: number;
+    plusDeUnCinq: number;
+    plusDeDeuxCinq: number;
+    plusDeTroisCinq: number;
+  };
 };
 
 export type Mesure = {
