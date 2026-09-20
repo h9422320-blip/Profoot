@@ -616,7 +616,7 @@ export function calculerScoreProbable(
    * grands championnats : le moteur y égale les bookmakers, et la seule
    * information qui lui manque encore est la composition réelle des équipes.
    */
-  absences?: { equipe1: number; equipe2: number; poids: number } | null
+  absences?: { domicile: number; exterieur: number; poids: number } | null
 ): ScoreProbable {
   // ── ON NETTOIE CE QUI ENTRE, UNE FOIS, À LA PORTE ─────────────────────────
   //
@@ -907,15 +907,21 @@ export function calculerScoreProbable(
   // plus. On abaisse donc ses buts attendus et on relève ceux d'en face, du
   // même geste et dans la même proportion. La couche vient APRÈS le marché :
   // sans elle — poids nul, absences inconnues — rien ne bouge.
+  // Le lieu décide qui est qui : l'équipe 1 n'est pas toujours celle qui
+  // reçoit, et inverser les absents reviendrait à affaiblir la mauvaise
+  // équipe. Lieu inconnu, la couche se tait.
   if (
     absences &&
+    equipe1AJoueADomicile !== null &&
     Number.isFinite(absences.poids) &&
     absences.poids > 0 &&
-    Number.isFinite(absences.equipe1) &&
-    Number.isFinite(absences.equipe2)
+    Number.isFinite(absences.domicile) &&
+    Number.isFinite(absences.exterieur)
   ) {
-    const manque1 = Math.min(0.5, Math.max(0, absences.equipe1));
-    const manque2 = Math.min(0.5, Math.max(0, absences.equipe2));
+    const brut1 = equipe1AJoueADomicile === true ? absences.domicile : absences.exterieur;
+    const brut2 = equipe1AJoueADomicile === true ? absences.exterieur : absences.domicile;
+    const manque1 = Math.min(0.5, Math.max(0, brut1));
+    const manque2 = Math.min(0.5, Math.max(0, brut2));
     const p = absences.poids;
     const attaque1 = 1 - p * manque1;
     const attaque2 = 1 - p * manque2;

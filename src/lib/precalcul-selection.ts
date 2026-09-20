@@ -54,6 +54,7 @@ import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from '.
 import { avisDuMarchePour, avisDuMarcheBranche, totalDuMarchePour } from './couche-marche';
 import { lireCotesDuJourPatiemment } from './cotes-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
+import { absencesPourLeMatch, lirePoidsDesJoueurs } from './forces-absences';
 
 /**
  * Les championnats que la sélection a vocation à couvrir.
@@ -444,6 +445,8 @@ export async function precalculerGrandsMatchs(
     const forcesDesChampionnats = await lireForcesChampionnats().catch(() => null);
     // La seconde grille des scores, lue une fois pour toute la passe.
     const forcesPoisson = await lireForcesPoisson().catch(() => null);
+    // Le poids des joueurs sert à toutes les rencontres : une seule lecture.
+    const poidsDesJoueurs = await lirePoidsDesJoueurs().catch(() => null);
 
     // Le championnat domestique d'un club, comme le résout l'analyse : on ne
     // retient qu'une compétition de type « League », et la saison précédente
@@ -656,7 +659,9 @@ export async function precalculerGrandsMatchs(
             return buts ? { ...buts, poids: PART_GRILLE_SCORE } : null;
           })(),
           // Le nombre de buts selon le marché, comme l'analyse.
-          await totalDuMarchePour(f?.fixture?.id, f?.fixture?.date, ligue)
+          await totalDuMarchePour(f?.fixture?.id, f?.fixture?.date, ligue),
+          // Les absents des cinq grands championnats, comme l'analyse.
+          await absencesPourLeMatch(f?.fixture?.id, ligue, saison, domId, extId, poidsDesJoueurs)
         );
 
         await (aRemplacer.has(Number(f.fixture.id)) ? remplacerPredictionFigee : figerPrediction)({

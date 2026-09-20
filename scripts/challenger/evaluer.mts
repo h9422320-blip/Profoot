@@ -765,7 +765,7 @@ function avecAbsences(poids: number, avecLeMarche: boolean, avecLaGrille: boolea
       else if (Number(a.e) === Number(m.ext)) manqueExt += part;
     }
     const couche = liste.length && (manqueDom > 0 || manqueExt > 0)
-      ? { equipe1: manqueDom, equipe2: manqueExt, poids }
+      ? { domicile: manqueDom, exterieur: manqueExt, poids }
       : null;
     if (couche && poids > 0) actifs.push(Number(m.id));
 

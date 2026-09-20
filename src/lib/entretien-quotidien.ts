@@ -237,6 +237,23 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
     etapes
   );
 
+  // ── LE POIDS DES JOUEURS, POUR SAVOIR CE QUE VAUT UN ABSENT ───────────
+  //
+  // Les minutes jouées par chaque joueur des cinq grands championnats. Elles
+  // ne bougent pas en vingt-quatre heures : la fonction se recalcule d'elle-même
+  // une fois par semaine et se contente de relire le reste du temps. Sans
+  // elles, la couche des absents se tait — elle ne se trompe jamais faute de
+  // matière.
+  await etape(
+    'Relever le poids des joueurs',
+    async () => {
+      const { recalculerPoidsDesJoueurs } = await import('./forces-absences');
+      const r = await recalculerPoidsDesJoueurs();
+      return r ? `${Object.keys(r.minutes).length} joueur(s) pesé(s)` : 'rien à relever';
+    },
+    etapes
+  );
+
   // ── PRÉPARER CE QUE LA SÉLECTION POURRA PROPOSER DEMAIN ────────────────
   //
   // Elle ne classe que les rencontres dont les probabilités existent, donc

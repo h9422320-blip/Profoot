@@ -42,6 +42,7 @@ type Composition = {
 };
 
 import { completerLesBlocs } from "@/lib/analyse-complete";
+import { absencesPourLeMatch, lirePoidsDesJoueurs } from "@/lib/forces-absences";
 
 const analysisCache = new Map<string, { data: any; timestamp: number }>();
 const apiFootballCache = new Map<string, { data: any; timestamp: number }>();
@@ -1691,7 +1692,23 @@ async function analyser(req: Request, billet: BilletQuota) {
     grilleSeconde,
     // Le nombre de buts selon le marché, pour les seuls chiffres de buts
     // affichés (voir `score-probable.ts`).
-    await totalDuMarchePour(targetFutureMatch?.fixture?.id, targetFutureMatch?.fixture?.date, targetFutureMatch?.league?.id)
+    await totalDuMarchePour(targetFutureMatch?.fixture?.id, targetFutureMatch?.fixture?.date, targetFutureMatch?.league?.id),
+    // ── QUI MANQUE AU COUP D'ENVOI ────────────────────────────────────────
+    //
+    // Blessés et suspendus, pesés par les minutes de la saison précédente, sur
+    // les cinq grands championnats. Mesuré sur 3 553 rencontres : +12
+    // vainqueurs justes à part 0,25, positif sur les deux moitiés et dans
+    // quatre championnats sur cinq. Absente — autre championnat, relevé muet —
+    // la couche se tait et le moteur rend ce qu'il rendait. Voir
+    // `forces-absences.ts`.
+    await absencesPourLeMatch(
+      targetFutureMatch?.fixture?.id,
+      targetFutureMatch?.league?.id,
+      targetFutureMatch?.league?.season,
+      targetFutureMatch?.teams?.home?.id,
+      targetFutureMatch?.teams?.away?.id,
+      await lirePoidsDesJoueurs()
+    )
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────
