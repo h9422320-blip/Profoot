@@ -41,6 +41,8 @@ type Composition = {
   titulaires: { nom: string; poste: string | null }[];
 };
 
+import { completerLesBlocs } from "@/lib/analyse-complete";
+
 const analysisCache = new Map<string, { data: any; timestamp: number }>();
 const apiFootballCache = new Map<string, { data: any; timestamp: number }>();
 
@@ -751,6 +753,11 @@ async function analyser(req: Request, billet: BilletQuota) {
     // Le filtre ne touche que les champs de prose, jamais les noms de clubs ni
     // les chiffres — voir `CHAMPS_DE_PROSE` dans `filtre-vocabulaire.ts`.
     assainirAnalyse(data);
+
+    // Et la forme est garantie ICI, sur le passage obligé : analyse fraîche,
+    // analyse en réserve, match déjà joué ou repli. Une réserve écrite avant
+    // ce correctif peut être incomplète ; elle ne fera plus tomber la page.
+    completerLesBlocs(data);
 
     // Le billet est honoré : quelque chose part vers l'abonné — une analyse
     // complète, un match déjà joué ou un repli, peu importe. Le décompte est

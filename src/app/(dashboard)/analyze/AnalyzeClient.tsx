@@ -2102,12 +2102,12 @@ export default function AnalyzePage({
                   </div>
 
                   <div className="space-y-5">
-                    <DualBar label="Possession" v1={result.stats.possession.team1} v2={result.stats.possession.team2} suffix="%" />
-                    <DualBar label="Tirs" v1={result.stats.shots.team1} v2={result.stats.shots.team2} />
-                    <DualBar label="Tirs Cadrés" v1={result.stats.shotsOnTarget.team1} v2={result.stats.shotsOnTarget.team2} />
-                    <DualBar label="Corners" v1={result.stats.corners.team1} v2={result.stats.corners.team2} />
-                    <DualBar label="Fautes Commises" v1={result.stats.fouls.team1} v2={result.stats.fouls.team2} invertColors={true} />
-                    <DualBar label="Passes Réussies" v1={result.stats.passes.team1} v2={result.stats.passes.team2} />
+                    <DualBar label="Possession" v1={result.stats?.possession?.team1} v2={result.stats?.possession?.team2} suffix="%" />
+                    <DualBar label="Tirs" v1={result.stats?.shots?.team1} v2={result.stats?.shots?.team2} />
+                    <DualBar label="Tirs Cadrés" v1={result.stats?.shotsOnTarget?.team1} v2={result.stats?.shotsOnTarget?.team2} />
+                    <DualBar label="Corners" v1={result.stats?.corners?.team1} v2={result.stats?.corners?.team2} />
+                    <DualBar label="Fautes Commises" v1={result.stats?.fouls?.team1} v2={result.stats?.fouls?.team2} invertColors={true} />
+                    <DualBar label="Passes Réussies" v1={result.stats?.passes?.team1} v2={result.stats?.passes?.team2} />
                   </div>
                 </div>
               )}
@@ -2824,12 +2824,12 @@ export default function AnalyzePage({
                     <span className="text-[#EF4444]">{getClub(team2!).name}</span>
                   </div>
                   <div className="space-y-5">
-                    <DualBar label="Attaque" v1={result.comparison.attack.team1} v2={result.comparison.attack.team2} suffix="%" />
-                    <DualBar label="Défense" v1={result.comparison.defense.team1} v2={result.comparison.defense.team2} suffix="%" />
-                    <DualBar label="Forme" v1={result.comparison.form.team1} v2={result.comparison.form.team2} suffix="%" />
-                    <DualBar label="H2H" v1={result.comparison.h2h.team1} v2={result.comparison.h2h.team2} suffix="%" />
-                    <DualBar label="Buts" v1={result.comparison.goals.team1} v2={result.comparison.goals.team2} suffix="%" />
-                    <DualBar label="Global" v1={result.comparison.global.team1} v2={result.comparison.global.team2} suffix="%" />
+                    <DualBar label="Attaque" v1={result.comparison?.attack?.team1} v2={result.comparison?.attack?.team2} suffix="%" />
+                    <DualBar label="Défense" v1={result.comparison?.defense?.team1} v2={result.comparison?.defense?.team2} suffix="%" />
+                    <DualBar label="Forme" v1={result.comparison?.form?.team1} v2={result.comparison?.form?.team2} suffix="%" />
+                    <DualBar label="H2H" v1={result.comparison?.h2h?.team1} v2={result.comparison?.h2h?.team2} suffix="%" />
+                    <DualBar label="Buts" v1={result.comparison?.goals?.team1} v2={result.comparison?.goals?.team2} suffix="%" />
+                    <DualBar label="Global" v1={result.comparison?.global?.team1} v2={result.comparison?.global?.team2} suffix="%" />
                   </div>
                 </div>
               )}
@@ -2848,11 +2848,11 @@ export default function AnalyzePage({
                       <div className="space-y-3 bg-black/25 p-4 rounded-[20px] border border-white/5">
                         <div className="flex justify-between text-xs font-semibold text-white/80">
                           <span>{getClub(team1!).name}</span>
-                          <span className="font-black">{result.predictions.expectedGoals.team1} buts</span>
+                          <span className="font-black">{result.predictions?.expectedGoals?.team1} buts</span>
                         </div>
                         <div className="flex justify-between text-xs font-semibold text-white/80">
                           <span>{getClub(team2!).name}</span>
-                          <span className="font-black">{result.predictions.expectedGoals.team2} buts</span>
+                          <span className="font-black">{result.predictions?.expectedGoals?.team2} buts</span>
                         </div>
                         <div className="flex justify-between text-xs pt-3 border-t border-white/5 text-white/90">
                           <span className="font-black">Total</span>
@@ -2877,8 +2877,8 @@ export default function AnalyzePage({
                         <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-4">Garde sa cage inviolée</h5>
                         <div className="space-y-2.5">
                           {[
-                            { nom: getClub(team1!).name, valeur: result.predictions.cleanSheet.team1 },
-                            { nom: getClub(team2!).name, valeur: result.predictions.cleanSheet.team2 },
+                            { nom: getClub(team1!).name, valeur: result.predictions?.cleanSheet?.team1 },
+                            { nom: getClub(team2!).name, valeur: result.predictions?.cleanSheet?.team2 },
                           ].map((c) => (
                             <div key={c.nom} className="flex items-center gap-3">
                               <span className="text-xs text-white/60 flex-1 min-w-0 truncate">{c.nom}</span>
@@ -2919,7 +2919,7 @@ export default function AnalyzePage({
                    </div>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      {[team1!, team2!].map((tid, idx) => {
-                       const strengths = idx === 0 ? result.keyStrengths.team1 : result.keyStrengths.team2;
+                       const strengths = idx === 0 ? result.keyStrengths?.team1 ?? [] : result.keyStrengths?.team2 ?? [];
                        return (
                          <div key={tid} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[28px] space-y-4 shadow-md">
                            <div className="flex items-center gap-3">
@@ -2984,14 +2984,14 @@ export default function AnalyzePage({
                     return (
                       <div className="space-y-8 mt-6 px-1">
                         {possessionMesuree && (
-                          <ModernMetricBar label="Possession Moyenne" description="Pourcentage de contrôle du ballon estimé" val1={m.possession.team1} val2={m.possession.team2} suffix="%" />
+                          <ModernMetricBar label="Possession Moyenne" description="Pourcentage de contrôle du ballon estimé" val1={m.possession?.team1} val2={m.possession?.team2} suffix="%" />
                         )}
-                        <ModernMetricBar label="Expected Goals (xG)" description="Buts Attendus : Qualité des occasions créées" val1={m.xG.team1} val2={m.xG.team2} />
+                        <ModernMetricBar label="Expected Goals (xG)" description="Buts Attendus : Qualité des occasions créées" val1={m.xG?.team1} val2={m.xG?.team2} />
                         {menaceMesuree && (
-                          <ModernMetricBar label="Expected Threat (xT)" description="Menace Attendue : Danger généré par les passes" val1={m.xT.team1} val2={m.xT.team2} />
+                          <ModernMetricBar label="Expected Threat (xT)" description="Menace Attendue : Danger généré par les passes" val1={m.xT?.team1} val2={m.xT?.team2} />
                         )}
                         {pressingMesure && (
-                          <ModernMetricBar label="Pressing (PPDA)" description="Plus ce chiffre est BAS, plus l'équipe presse haut et fort" val1={m.ppda.team1} val2={m.ppda.team2} invertColors={true} />
+                          <ModernMetricBar label="Pressing (PPDA)" description="Plus ce chiffre est BAS, plus l'équipe presse haut et fort" val1={m.ppda?.team1} val2={m.ppda?.team2} invertColors={true} />
                         )}
                       </div>
                     );
