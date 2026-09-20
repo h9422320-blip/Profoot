@@ -54,7 +54,8 @@ import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from '.
 import { avisDuMarchePour, avisDuMarcheBranche, totalDuMarchePour } from './couche-marche';
 import { lireCotesDuJourPatiemment } from './cotes-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
-import { absencesPourLeMatch, lirePoidsDesJoueurs } from './forces-absences';
+import { absencesPourLeMatch, lirePoidsDesJoueurs, composerLaCouche } from './forces-absences';
+import { lireEntraineurs, partDeLEntraineurNeuf } from './entraineurs';
 
 /**
  * Les championnats que la sélection a vocation à couvrir.
@@ -447,6 +448,8 @@ export async function precalculerGrandsMatchs(
     const forcesPoisson = await lireForcesPoisson().catch(() => null);
     // Le poids des joueurs sert à toutes les rencontres : une seule lecture.
     const poidsDesJoueurs = await lirePoidsDesJoueurs().catch(() => null);
+    // Les passages d'entraîneurs, lus une fois pour toutes les rencontres.
+    const entraineurs = await lireEntraineurs().catch(() => null);
 
     // Le championnat domestique d'un club, comme le résout l'analyse : on ne
     // retient qu'une compétition de type « League », et la saison précédente
@@ -660,8 +663,12 @@ export async function precalculerGrandsMatchs(
           })(),
           // Le nombre de buts selon le marché, comme l'analyse.
           await totalDuMarchePour(f?.fixture?.id, f?.fixture?.date, ligue),
-          // Les absents des cinq grands championnats, comme l'analyse.
-          await absencesPourLeMatch(f?.fixture?.id, ligue, saison, domId, extId, poidsDesJoueurs)
+          // Les absents ET l'entraîneur fraîchement arrivé, comme l'analyse.
+          composerLaCouche(
+            await absencesPourLeMatch(f?.fixture?.id, ligue, saison, domId, extId, poidsDesJoueurs),
+            partDeLEntraineurNeuf(entraineurs, ligue, domId, f?.fixture?.date),
+            partDeLEntraineurNeuf(entraineurs, ligue, extId, f?.fixture?.date)
+          )
         );
 
         await (aRemplacer.has(Number(f.fixture.id)) ? remplacerPredictionFigee : figerPrediction)({

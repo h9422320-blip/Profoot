@@ -58,7 +58,11 @@ test('★ ACQUIS — la couche ne parle que des cinq grands championnats', () =>
   assert.deepEqual([...CINQ_GRANDS].sort((a, b) => a - b), [39, 61, 78, 135, 140]);
   assert.equal(PART_DES_ABSENCES, 0.25);
   const s = fs.readFileSync('src/lib/forces-absences.ts', 'utf8');
-  assert.match(s, /minutes\[`\$\{s - 1\}:\$\{idJoueur\}`\]/, 'Le poids ne vient plus de la saison PRÉCÉDENTE : la mesure contiendrait l’avenir.');
+  assert.match(
+    s,
+    /tableDeLaSaison\(poids, s - 1\)/,
+    'Le poids ne vient plus de la saison PRÉCÉDENTE : la mesure contiendrait l’avenir.'
+  );
   const route = fs.readFileSync('src/app/api/analyze/route.ts', 'utf8');
   assert.match(route, /await absencesPourLeMatch\(/, 'L’analyse ne lit plus les absents.');
   const pre = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');

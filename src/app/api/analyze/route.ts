@@ -42,7 +42,8 @@ type Composition = {
 };
 
 import { completerLesBlocs } from "@/lib/analyse-complete";
-import { absencesPourLeMatch, lirePoidsDesJoueurs } from "@/lib/forces-absences";
+import { absencesPourLeMatch, lirePoidsDesJoueurs, composerLaCouche } from "@/lib/forces-absences";
+import { lireEntraineurs, partDeLEntraineurNeuf } from "@/lib/entraineurs";
 
 const analysisCache = new Map<string, { data: any; timestamp: number }>();
 const apiFootballCache = new Map<string, { data: any; timestamp: number }>();
@@ -1701,14 +1702,27 @@ async function analyser(req: Request, billet: BilletQuota) {
     // quatre championnats sur cinq. Absente — autre championnat, relevé muet —
     // la couche se tait et le moteur rend ce qu'il rendait. Voir
     // `forces-absences.ts`.
-    await absencesPourLeMatch(
-      targetFutureMatch?.fixture?.id,
-      targetFutureMatch?.league?.id,
-      targetFutureMatch?.league?.season,
-      targetFutureMatch?.teams?.home?.id,
-      targetFutureMatch?.teams?.away?.id,
-      await lirePoidsDesJoueurs()
-    )
+    await (async () => {
+      const [poidsJoueurs, entraineurs] = await Promise.all([lirePoidsDesJoueurs(), lireEntraineurs()]);
+      const ligueDuMatch = targetFutureMatch?.league?.id;
+      const quand = targetFutureMatch?.fixture?.date;
+      return composerLaCouche(
+        await absencesPourLeMatch(
+          targetFutureMatch?.fixture?.id,
+          ligueDuMatch,
+          targetFutureMatch?.league?.season,
+          targetFutureMatch?.teams?.home?.id,
+          targetFutureMatch?.teams?.away?.id,
+          poidsJoueurs
+        ),
+        // ── ET L'ENTRAÎNEUR FRAÎCHEMENT ARRIVÉ ────────────────────────────
+        //
+        // Une équipe qui vient de changer d'entraîneur gagne 26 % de ses
+        // matchs là où le moteur en annonce 32,8 %. Voir `entraineurs.ts`.
+        partDeLEntraineurNeuf(entraineurs, ligueDuMatch, targetFutureMatch?.teams?.home?.id, quand),
+        partDeLEntraineurNeuf(entraineurs, ligueDuMatch, targetFutureMatch?.teams?.away?.id, quand)
+      );
+    })()
   );
 
   // ── UNE RENCONTRE, UNE SEULE PRÉDICTION ────────────────────────────────────

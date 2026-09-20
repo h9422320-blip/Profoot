@@ -249,7 +249,21 @@ export async function entretenirSiNecessaire(forcer = false): Promise<ResultatEn
     async () => {
       const { recalculerPoidsDesJoueurs } = await import('./forces-absences');
       const r = await recalculerPoidsDesJoueurs();
-      return r ? `${Object.keys(r.minutes).length} joueur(s) pesé(s)` : 'rien à relever';
+      return r
+        ? `${Object.values(r.saisons).reduce((t, x) => t + String(x).split(',').length, 0)} joueur(s) pesé(s)`
+        : 'rien à relever';
+    },
+    etapes
+  );
+
+  // Les passages d'entraîneurs des clubs des cinq grands championnats : une
+  // fois par semaine, cent vingt appels. Sans eux, la couche se tait.
+  await etape(
+    'Relever les entraîneurs',
+    async () => {
+      const { recalculerEntraineurs } = await import('./entraineurs');
+      const r = await recalculerEntraineurs();
+      return r ? `${Object.keys(r.clubs).length} club(s) suivi(s)` : 'rien à relever';
     },
     etapes
   );

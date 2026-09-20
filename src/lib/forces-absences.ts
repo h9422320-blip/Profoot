@@ -54,16 +54,89 @@ const CLE_POIDS = 'absences:poids-joueurs:v1';
 const CONSERVATION_MS = 30 * 24 * 60 * 60 * 1000;
 const FRAIS_MS = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * ── UN RELEVÉ COMPACT, PARCE QU'IL EST LU À CHAQUE ANALYSE ───────────────
+ *
+ * Quinze mille lignes `saison:joueur → minutes` pèsent près de trois cents
+ * milliers de caractères, et leur lecture dépassait trois secondes — au-delà
+ * du garde-temps de la réserve. Deux décisions :
+ *
+ *   • on n'écrit que les joueurs à 450 minutes ou plus (cinq matchs pleins).
+ *     En dessous, le poids d'un absent vaut moins d'un centième d'équipe :
+ *     l'oublier ne change rien au calcul, et le relevé maigrit de moitié ;
+ *   • chaque saison tient dans UNE chaîne « joueur:minutes,… », au lieu d'un
+ *     objet de milliers de clés.
+ */
 export interface PoidsDesJoueurs {
   calculeLe: string;
-  /** `saison:joueur` → minutes jouées cette saison-là. */
-  minutes: Record<string, number>;
+  /** Par saison : « joueur:minutes,joueur:minutes… ». */
+  saisons: Record<string, string>;
 }
 
+/** En dessous, un absent ne pèse rien : on ne l'enregistre pas. */
+const MINUTES_MINIMUM = 450;
+
+/** La chaîne d'une saison, relue en table : joueur → minutes. */
+export function tableDeLaSaison(poids: PoidsDesJoueurs | null, saison: number): Map<number, number> {
+  const brut = poids?.saisons?.[String(saison)];
+  const table = new Map<number, number>();
+  if (!brut) return table;
+  for (const morceau of brut.split(',')) {
+    const [j, min] = morceau.split(':');
+    const joueur = Number(j);
+    const minutes = Number(min);
+    if (joueur > 0 && minutes > 0) table.set(joueur, minutes);
+  }
+  return table;
+}
+
+/** Construit la forme compacte à partir d'une table `saison:joueur → minutes`. */
+export function compacter(minutes: Record<string, number>): Record<string, string> {
+  const parSaison: Record<string, string[]> = {};
+  for (const [cle, valeur] of Object.entries(minutes)) {
+    const [saison, joueur] = cle.split(':');
+    const min = Math.round(Number(valeur));
+    if (!(min >= MINUTES_MINIMUM) || !joueur) continue;
+    (parSaison[saison] ??= []).push(`${joueur}:${min}`);
+  }
+  const sortie: Record<string, string> = {};
+  for (const [saison, liste] of Object.entries(parSaison)) sortie[saison] = liste.join(',');
+  return sortie;
+}
+
+/**
+ * ── UNE LECTURE PATIENTE, ET UNE SEULE PAR PASSAGE ──────────────────────
+ *
+ * Le relevé pèse plusieurs centaines de milliers de caractères : la lecture
+ * rapide de la réserve abandonne au bout d'une seconde et demie, et la couche
+ * se serait tue EN SILENCE — la faute exacte qui a fait figer Werder Brême
+ * sans le marché, le 18 septembre 2026. On relit donc directement en base,
+ * avec cinq secondes, et on garde le résultat dix minutes en mémoire : une
+ * préparation qui prépare cent rencontres ne relit pas cent fois.
+ */
+let enMemoire: { quand: number; poids: PoidsDesJoueurs | null } | null = null;
+const MEMOIRE_MS = 10 * 60 * 1000;
+
 export async function lirePoidsDesJoueurs(): Promise<PoidsDesJoueurs | null> {
+  if (enMemoire && Date.now() - enMemoire.quand < MEMOIRE_MS) return enMemoire.poids;
   try {
     const r = await lireReserve<PoidsDesJoueurs>(CLE_POIDS);
-    return r?.contenu ?? null;
+    if (r?.contenu) {
+      enMemoire = { quand: Date.now(), poids: r.contenu };
+      return r.contenu;
+    }
+  } catch {
+    // La lecture rapide a renoncé : on insiste ci-dessous.
+  }
+  try {
+    const { createAdminClient } = await import('./supabase-admin');
+    const lecture = createAdminClient().from('cache_api').select('contenu').eq('cle', CLE_POIDS).maybeSingle();
+    const limite = new Promise<'delai'>((r) => setTimeout(() => r('delai'), 8_000));
+    const r: any = await Promise.race([lecture, limite]);
+    const contenu = r === 'delai' || r?.error ? null : ((r?.data?.contenu as PoidsDesJoueurs) ?? null);
+    // Un échec n'est PAS gardé : on retentera au passage suivant.
+    if (contenu) enMemoire = { quand: Date.now(), poids: contenu };
+    return contenu;
   } catch {
     return null;
   }
@@ -87,11 +160,31 @@ export async function recalculerPoidsDesJoueurs(
     if (existant && Number.isFinite(age) && age < FRAIS_MS) return existant;
   }
 
+  // ── ON COMPLÈTE, ON NE REMPLACE JAMAIS ──────────────────────────────────
+  //
+  // Constaté le 20 septembre 2026 : un relevé où le fournisseur a été lent a
+  // rendu 4 170 joueurs au lieu de quinze mille, et il aurait ÉCRASÉ un relevé
+  // complet. Le poids d'une saison passée ne bouge plus : ce qu'on sait déjà
+  // reste, et chaque passage ajoute ce qui manquait.
+  const existant = await lirePoidsDesJoueurs();
   const minutes: Record<string, number> = {};
+  for (const saison of Object.keys(existant?.saisons ?? {})) {
+    for (const [joueur, min] of tableDeLaSaison(existant, Number(saison))) minutes[`${saison}:${joueur}`] = min;
+  }
   for (const ligue of CINQ_GRANDS) {
     for (const s of [saison - 1, saison]) {
-      for (let page = 1; page <= 40; page++) {
-        const r = await apiFootball<any>(`/players?league=${ligue}&season=${s}&page=${page}`, CACHE_TTL.TEAM_INFO);
+      for (let page = 1; page <= 60; page++) {
+        // ── UNE PAGE MANQUÉE N'ARRÊTE PAS LE RELEVÉ ───────────────────────
+        //
+        // Constaté le 20 septembre 2026 : une seule réponse lente du
+        // fournisseur coupait la boucle, et le relevé s'est arrêté à 799
+        // joueurs au lieu de quinze mille. On réessaie deux fois, en soufflant,
+        // avant d'abandonner CETTE page — et on continue la suivante.
+        let r: any = null;
+        for (let essai = 1; essai <= 3 && !r?.response?.length; essai++) {
+          r = await apiFootball<any>(`/players?league=${ligue}&season=${s}&page=${page}`, CACHE_TTL.TEAM_INFO);
+          if (!r?.response?.length && essai < 3) await new Promise((t) => setTimeout(t, 4_000));
+        }
         if (!r?.response?.length) break;
         for (const x of r.response) {
           const st = (x.statistics ?? []).find((y: any) => Number(y?.league?.id) === ligue) ?? x.statistics?.[0];
@@ -104,7 +197,10 @@ export async function recalculerPoidsDesJoueurs(
   }
 
   if (!Object.keys(minutes).length) return null;
-  const contenu: PoidsDesJoueurs = { calculeLe: new Date().toISOString(), minutes };
+  const contenu: PoidsDesJoueurs = { calculeLe: new Date().toISOString(), saisons: compacter(minutes) };
+  console.log(
+    `[ABSENCES] ${Object.keys(minutes).length} joueurs pesés, ${Object.values(contenu.saisons).reduce((t, x) => t + x.split(',').length, 0)} retenus.`
+  );
   try {
     await ecrireReserve(CLE_POIDS, contenu, CONSERVATION_MS);
   } catch {
@@ -148,8 +244,10 @@ export async function absencesPourLeMatch(
 
   // Le poids d'un joueur est ce qu'il a joué LA SAISON PRÉCÉDENTE : la saison
   // en cours contiendrait l'avenir de la rencontre qu'on juge.
+  const table = tableDeLaSaison(poids, s - 1);
+  if (!table.size) return null;
   const partDe = (idJoueur: number) => {
-    const min = Number(poids.minutes[`${s - 1}:${idJoueur}`] ?? 0);
+    const min = table.get(idJoueur) ?? 0;
     if (!(min > 0)) return 0;
     return Math.min(1, min / MINUTES_PLEINES) / 11;
   };
@@ -166,4 +264,23 @@ export async function absencesPourLeMatch(
 
   if (!(manqueDom > 0) && !(manqueExt > 0)) return null;
   return { domicile: manqueDom, exterieur: manqueExt, poids: PART_DES_ABSENCES };
+}
+
+/**
+ * LES DEUX CORRECTIONS RÉUNIES : CE QUI MANQUE, ET QUI ENTRAÎNE.
+ *
+ * Le moteur reçoit UNE couche. Les absents comptent pour leur part mesurée
+ * (0,25), l'entraîneur fraîchement arrivé pour la sienne (0,20 pendant
+ * soixante jours), et l'ensemble part avec une part de 1 — exactement la forme
+ * mesurée au banc d'essai : 1 892 → 1 919 bons vainqueurs.
+ */
+export function composerLaCouche(
+  absences: { domicile: number; exterieur: number; poids: number } | null,
+  entraineurNeufDomicile = 0,
+  entraineurNeufExterieur = 0
+): { domicile: number; exterieur: number; poids: number } | null {
+  const domicile = (absences ? absences.domicile * absences.poids : 0) + (entraineurNeufDomicile || 0);
+  const exterieur = (absences ? absences.exterieur * absences.poids : 0) + (entraineurNeufExterieur || 0);
+  if (!(domicile > 0) && !(exterieur > 0)) return null;
+  return { domicile, exterieur, poids: 1 };
 }

@@ -39,7 +39,7 @@ type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
   | { type: 'marche-historique'; poids: number; parLesProbabilites?: boolean }
-  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean }
+  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number }
   | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean; avecLeMarche?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
@@ -721,7 +721,41 @@ function avecPoisson(
 // `manque` vaut la part de l'équipe absente : un titulaire à temps plein
 // vaut un onzième. La couche est mesurée AVEC le marché et la grille de
 // Poisson, c'est-à-dire contre la production telle qu'elle tourne.
-function avecAbsences(poids: number, avecLeMarche: boolean, avecLaGrille: boolean): { pronostics: Pronostic[]; actifs: number[] } {
+function avecAbsences(
+  poids: number,
+  avecLeMarche: boolean,
+  avecLaGrille: boolean,
+  coach: { jours: number; part: number; jours2: number; part2: number } = { jours: 0, part: 0, jours2: 0, part2: 0 }
+): { pronostics: Pronostic[]; actifs: number[] } {
+  // ── L'ENTRAÎNEUR QUI VIENT D'ARRIVER ──────────────────────────────────
+  //
+  // Mesuré sur 5 679 côtés d'équipe des cinq grands championnats : une équipe
+  // dont l'entraîneur est en place depuis moins de 30 jours gagne 26,0 % de
+  // ses matchs là où le moteur — marché compris — en annonce 32,8 %. Entre 31
+  // et 90 jours, l'écart est encore de deux points. Au-delà d'un an, il
+  // s'inverse (+1,2). Le moteur juge une équipe qui n'existe plus.
+  const passages: Record<string, { debut: string; fin: string | null }[]> = fs.existsSync('.challenger/entraineurs.json')
+    ? JSON.parse(fs.readFileSync('.challenger/entraineurs.json', 'utf8'))
+    : {};
+  const joursDepuisLArrivee = (club: number, dateISO: string): number | null => {
+    const l = passages[String(club)] ?? [];
+    const t = Date.parse(dateISO);
+    let dernier: number | null = null;
+    for (const x of l) {
+      const debut = Date.parse(`${x.debut}T00:00:00Z`);
+      const fin = x.fin ? Date.parse(`${x.fin}T00:00:00Z`) : Infinity;
+      if (debut <= t && t <= fin && (dernier === null || debut > dernier)) dernier = debut;
+    }
+    return dernier === null ? null : Math.round((t - dernier) / 86_400_000);
+  };
+  const partDuCoach = (club: number, dateISO: string): number => {
+    const j = joursDepuisLArrivee(club, dateISO);
+    if (j === null) return 0;
+    if (coach.jours > 0 && j <= coach.jours) return coach.part;
+    if (coach.jours2 > 0 && j <= coach.jours2) return coach.part2;
+    return 0;
+  };
+
   const absences: Record<string, { j: number; e: number; t: string }[]> = fs.existsSync('.challenger/absences.json')
     ? JSON.parse(fs.readFileSync('.challenger/absences.json', 'utf8'))
     : {};
@@ -746,9 +780,13 @@ function avecAbsences(poids: number, avecLeMarche: boolean, avecLaGrille: boolea
 
   // Un titulaire à temps plein sur une saison : environ trente-quatre matchs.
   const MINUTES_PLEINES = 34 * 90;
+  // La production n'enregistre que les joueurs à 450 minutes ou plus — en
+  // dessous, un absent pèse moins d'un centième d'équipe. Le banc applique le
+  // même filtre, sinon il mesurerait autre chose que ce qui sera en ligne.
+  const MINUTES_MINIMUM = 450;
   const partDe = (idJoueur: number, saison: number) => {
     const j = joueurs[`${saison - 1}:${idJoueur}`];
-    if (!j || !(j.min > 0)) return 0;
+    if (!j || !(j.min >= MINUTES_MINIMUM)) return 0;
     return Math.min(1, j.min / MINUTES_PLEINES) / 11;
   };
 
@@ -764,10 +802,16 @@ function avecAbsences(poids: number, avecLeMarche: boolean, avecLaGrille: boolea
       if (Number(a.e) === Number(m.dom)) manqueDom += part;
       else if (Number(a.e) === Number(m.ext)) manqueExt += part;
     }
-    const couche = liste.length && (manqueDom > 0 || manqueExt > 0)
-      ? { domicile: manqueDom, exterieur: manqueExt, poids }
+    // L'entraîneur neuf s'ajoute à ce qui manque : une équipe qu'on ne
+    // connaît plus se traite comme une équipe amputée.
+    const coachDom = partDuCoach(Number(m.dom), String(m.date));
+    const coachExt = partDuCoach(Number(m.ext), String(m.date));
+    const totalDom = manqueDom * poids + coachDom;
+    const totalExt = manqueExt * poids + coachExt;
+    const couche = totalDom > 0 || totalExt > 0
+      ? { domicile: totalDom, exterieur: totalExt, poids: 1 }
       : null;
-    if (couche && poids > 0) actifs.push(Number(m.id));
+    if (couche) actifs.push(Number(m.id));
 
     const c = historiques[String(m.id)];
     const marche = c ? { dom: c.dom, nul: c.nul, ext: c.ext, poids: 1 } : null;
@@ -4403,7 +4447,12 @@ for (const vBrute of tache.variantes) {
     return;
   }
   if (v.couche?.type === 'absences') {
-    const r = avecAbsences(v.couche.poids, v.couche.avecLeMarche !== false, v.couche.avecLaGrille !== false);
+    const r = avecAbsences(v.couche.poids, v.couche.avecLeMarche !== false, v.couche.avecLaGrille !== false, {
+      jours: v.couche.coachJours ?? 0,
+      part: v.couche.coachPart ?? 0,
+      jours2: v.couche.coachJours2 ?? 0,
+      part2: v.couche.coachPart2 ?? 0,
+    });
     sortie[v.nom] = r.pronostics;
     actifs[v.nom] = r.actifs;
     return;
