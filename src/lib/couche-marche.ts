@@ -113,6 +113,33 @@ export function butsAttendusDuMarche(
  */
 export const PART_DU_MARCHE = 1;
 
+/**
+ * ── QUAND LE MARCHÉ HÉSITE, LE MOTEUR A SON MOT À DIRE ───────────────────
+ *
+ * Mesuré le 20 septembre 2026 sur les cinq grands championnats, une fois les
+ * couches des absents et de l'entraîneur en place :
+ *
+ *     marché très serré (moins de 5 points d'écart)   moteur 39,0 %  marché 37,2 %
+ *     écart 5 à 15 points                             moteur 43,0 %  marché 41,2 %
+ *     écart 15 à 30 points                            moteur 49,2 %  marché 48,3 %
+ *     favori net (plus de 30 points)                  moteur 65,8 %  marché 65,8 %
+ *
+ * Le moteur ne dépasse le marché QUE là où le marché doute. On lui rend donc
+ * un peu la parole sur ces rencontres — et rien ailleurs.
+ *
+ * Mesuré sur 3 553 rencontres : 1 919 → 1 927 bons vainqueurs, positif sur les
+ * deux moitiés (+4, +4) et sur les trois périodes, avec 4 scores exacts de
+ * plus. Les réglages voisins vont tous dans le même sens (0,8 sous 8 points
+ * +10, 0,9 sous 10 points +2, 0,8 sous 10 points +8) : ce n'est pas un réglage
+ * trouvé par hasard.
+ *
+ * Hors des cinq grands championnats, le marché garde toute sa place : la
+ * mesure n'y a pas été faite, et le moteur n'y a ni les absents ni les
+ * entraîneurs.
+ */
+export const ECART_MARCHE_SERRE = 0.12;
+export const PART_DU_MARCHE_SERRE = 0.85;
+
 // ── UNE JOURNÉE DE COTES, LUE UNE FOIS ─────────────────────────────────────
 //
 // La lecture de la réserve abandonne au bout d'une seconde et demie. Lue une
@@ -212,7 +239,9 @@ export async function avisDuMarchePour(
     const m = (await journeeDeCotes(String(coupDEnvoi).slice(0, 10)))?.get(Number(fixtureId));
     const p = m?.proba;
     if (!p || !(p.dom > 0) || !(p.ext > 0) || !(p.nul > 0)) return null;
-    return { dom: p.dom, nul: p.nul, ext: p.ext, poids: PART_DU_MARCHE };
+    const { CINQ_GRANDS } = await import('./forces-absences');
+    const serre = CINQ_GRANDS.has(Number(ligue)) && Math.abs(p.dom - p.ext) < ECART_MARCHE_SERRE;
+    return { dom: p.dom, nul: p.nul, ext: p.ext, poids: serre ? PART_DU_MARCHE_SERRE : PART_DU_MARCHE };
   } catch {
     return null;
   }

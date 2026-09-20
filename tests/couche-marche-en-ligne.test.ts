@@ -44,3 +44,19 @@ test('★ ACQUIS — le moteur lit sa journée de cotes avec patience, et une se
   assert.match(s, /lireCotesDuJourPatiemment\(jour\)/, 'Le moteur relit ses cotes avec le garde-temps court : le marché peut se perdre en silence.');
   assert.match(s, /const DUREE_JOURNEE_MS = 10 \* 60 \* 1000;/, 'La journée de cotes n’est plus gardée en mémoire.');
 });
+
+test('★ ACQUIS — le marché rend un peu la parole au moteur quand il hésite, chez les grands', async () => {
+  // Mesuré le 20 septembre 2026 : le moteur ne dépasse le marché QUE sur les
+  // rencontres serrées (39,0 % contre 37,2 % sous cinq points d'écart), une
+  // fois les absents et l'entraîneur en place. 1 919 → 1 927 bons vainqueurs,
+  // positif sur les deux moitiés et les trois périodes.
+  const { ECART_MARCHE_SERRE, PART_DU_MARCHE_SERRE } = await import('../src/lib/couche-marche');
+  assert.equal(ECART_MARCHE_SERRE, 0.12);
+  assert.equal(PART_DU_MARCHE_SERRE, 0.85);
+  const s = fs.readFileSync('src/lib/couche-marche.ts', 'utf8');
+  assert.match(
+    s,
+    /CINQ_GRANDS\.has\(Number\(ligue\)\) && Math\.abs\(p\.dom - p\.ext\) < ECART_MARCHE_SERRE/,
+    'La part réduite ne vise plus les seuls cinq grands championnats : elle n’a été mesurée que là.'
+  );
+});

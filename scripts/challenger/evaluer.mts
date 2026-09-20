@@ -39,7 +39,7 @@ type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
   | { type: 'marche-historique'; poids: number; parLesProbabilites?: boolean }
-  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number }
+  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number; boostButeurs?: number; marcheSerreSeuil?: number; marcheSerrePart?: number }
   | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean; avecLeMarche?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
@@ -725,7 +725,11 @@ function avecAbsences(
   poids: number,
   avecLeMarche: boolean,
   avecLaGrille: boolean,
-  coach: { jours: number; part: number; jours2: number; part2: number } = { jours: 0, part: 0, jours2: 0, part2: 0 }
+  coach: { jours: number; part: number; jours2: number; part2: number } = { jours: 0, part: 0, jours2: 0, part2: 0 },
+  boostButeurs = 0,
+  // Quand le marché lui-même hésite, faut-il l'écouter autant ? Le moteur y
+  // bat le marché (39,0 % contre 37,2 % sous cinq points d'écart).
+  marcheSerre: { seuil: number; part: number } = { seuil: 0, part: 1 }
 ): { pronostics: Pronostic[]; actifs: number[] } {
   // ── L'ENTRAÎNEUR QUI VIENT D'ARRIVER ──────────────────────────────────
   //
@@ -785,9 +789,14 @@ function avecAbsences(
   // même filtre, sinon il mesurerait autre chose que ce qui sera en ligne.
   const MINUTES_MINIMUM = 450;
   const partDe = (idJoueur: number, saison: number) => {
-    const j = joueurs[`${saison - 1}:${idJoueur}`];
+    const j: any = joueurs[`${saison - 1}:${idJoueur}`];
     if (!j || !(j.min >= MINUTES_MINIMUM)) return 0;
-    return Math.min(1, j.min / MINUTES_PLEINES) / 11;
+    const base = Math.min(1, j.min / MINUTES_PLEINES) / 11;
+    // Un buteur absent ne vaut pas un remplaçant absent : on peut peser sa
+    // contribution offensive de la saison précédente (buts + demi-passes).
+    if (!boostButeurs) return base;
+    const offensif = Math.min(1, (Number(j.buts ?? 0) + 0.5 * Number(j.passes ?? 0)) / 15);
+    return base * (1 + boostButeurs * offensif);
   };
 
   const pronostics: Pronostic[] = [];
@@ -814,7 +823,10 @@ function avecAbsences(
     if (couche) actifs.push(Number(m.id));
 
     const c = historiques[String(m.id)];
-    const marche = c ? { dom: c.dom, nul: c.nul, ext: c.ext, poids: 1 } : null;
+    // Quand le marché hésite lui-même, faut-il l'écouter autant ? Le moteur y
+    // fait mieux que lui (39,0 % contre 37,2 % sous cinq points d'écart).
+    const serre = c ? Math.abs(c.dom - c.ext) < marcheSerre.seuil : false;
+    const marche = c ? { dom: c.dom, nul: c.nul, ext: c.ext, poids: serre ? marcheSerre.part : 1 } : null;
 
     let grille: { domicile: number; exterieur: number; poids: number } | null = null;
     if (avecLaGrille) {
@@ -4452,6 +4464,9 @@ for (const vBrute of tache.variantes) {
       part: v.couche.coachPart ?? 0,
       jours2: v.couche.coachJours2 ?? 0,
       part2: v.couche.coachPart2 ?? 0,
+    }, v.couche.boostButeurs ?? 0, {
+      seuil: v.couche.marcheSerreSeuil ?? 0,
+      part: v.couche.marcheSerrePart ?? 1,
     });
     sortie[v.nom] = r.pronostics;
     actifs[v.nom] = r.actifs;
