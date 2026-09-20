@@ -38,8 +38,8 @@ const FICHIER_RENCONTRES = path.join(DOSSIER, 'rencontres.json');
 export const CINQ_GRANDS = new Set([39, 140, 135, 78, 61]);
 
 const CLE = () => process.env.API_FOOTBALL_KEY ?? '';
-const DE_FRONT = 6;
-const PAUSE_MS = 1500;
+const DE_FRONT = 12;
+const PAUSE_MS = 400;
 
 async function lire(chemin: string, essais = 3): Promise<any | null> {
   for (let i = 1; i <= essais; i++) {
@@ -61,38 +61,59 @@ async function lire(chemin: string, essais = 3): Promise<any | null> {
   return null;
 }
 
-/** Les absents, rencontre par rencontre. Reprend là où il s'était arrêté. */
-export async function ramasserAbsences(limite = Infinity): Promise<{ faites: number; total: number }> {
+/**
+ * Les absents de toutes les rencontres, championnat par championnat.
+ *
+ * UNE SEULE DEMANDE PAR CHAMPIONNAT ET PAR SAISON : le fournisseur rend les
+ * trois mille absences de la saison d'un coup, chacune portant le numéro de sa
+ * rencontre. Ramasser match par match coûtait 3 700 demandes et des heures ;
+ * ici il en faut quinze.
+ */
+export async function ramasserAbsences(_limite = Infinity): Promise<{ faites: number; total: number }> {
   const rencontres: any[] = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
-  const voulues = rencontres.filter((m) => CINQ_GRANDS.has(Number(m.ligue)));
-  const deja: Record<string, any[]> = fs.existsSync(FICHIER_ABSENCES)
+  // Le banc d'essai ne juge que depuis le 1er août 2024 : ramasser 2023 coûte
+  // des appels pour des rencontres que personne ne mesurera.
+  const DEBUT_UTILE = '2024-07-01';
+  const voulues = rencontres.filter(
+    (m) => CINQ_GRANDS.has(Number(m.ligue)) && String(m.date) >= DEBUT_UTILE
+  );
+  const aRamasser = new Set(voulues.map((m) => Number(m.id)));
+  const saisons = [...new Set(voulues.map((m) => Number(m.saison)))].sort();
+  const deja: Record<string, { j: number; e: number; t: string }[]> = fs.existsSync(FICHIER_ABSENCES)
     ? JSON.parse(fs.readFileSync(FICHIER_ABSENCES, 'utf8'))
     : {};
-  const aFaire = voulues.filter((m) => !deja[String(m.id)]).slice(0, limite);
-  let faites = 0;
 
-  for (let i = 0; i < aFaire.length; i += DE_FRONT) {
-    const paquet = aFaire.slice(i, i + DE_FRONT);
-    const reponses = await Promise.all(paquet.map((m) => lire(`injuries?fixture=${m.id}`)));
-    paquet.forEach((m, k) => {
-      const r = reponses[k];
-      // Une réponse absente n'est PAS un match sans blessé : on ne l'écrit pas,
-      // sinon le passage suivant croirait la rencontre déjà ramassée.
-      if (!r) return;
-      deja[String(m.id)] = (r.response ?? []).map((x: any) => ({
-        j: Number(x?.player?.id ?? 0),
-        e: Number(x?.team?.id ?? 0),
-        t: String(x?.player?.type ?? ''),
-      }));
-      faites++;
-    });
-    if (faites % 120 === 0 || i + DE_FRONT >= aFaire.length) {
+  let faites = 0;
+  for (const ligue of CINQ_GRANDS) {
+    for (const saison of saisons) {
+      const j = await lire(`injuries?league=${ligue}&season=${saison}`);
+      if (!j) {
+        console.warn(`[ABSENCES] ligue ${ligue} saison ${saison} : illisible, on réessaiera.`);
+        continue;
+      }
+      // Une rencontre citée par le fournisseur a ses absents ; une rencontre
+      // jamais citée n'en avait aucun — on l'écrit vide, pour ne pas la
+      // redemander indéfiniment.
+      const parMatch = new Map<number, { j: number; e: number; t: string }[]>();
+      for (const x of j.response ?? []) {
+        const id = Number(x?.fixture?.id ?? 0);
+        if (!aRamasser.has(id)) continue;
+        const liste = parMatch.get(id) ?? [];
+        liste.push({ j: Number(x?.player?.id ?? 0), e: Number(x?.team?.id ?? 0), t: String(x?.player?.type ?? '') });
+        parMatch.set(id, liste);
+      }
+      for (const m of voulues) {
+        if (Number(m.ligue) !== ligue || Number(m.saison) !== saison) continue;
+        deja[String(m.id)] = parMatch.get(Number(m.id)) ?? [];
+        faites++;
+      }
       fs.writeFileSync(FICHIER_ABSENCES, JSON.stringify(deja));
-      console.log(`[ABSENCES] ${Object.keys(deja).length} / ${voulues.length} rencontres ramassées.`);
+      console.log(
+        `[ABSENCES] ligue ${ligue} saison ${saison} : ${j.results} absences, ${parMatch.size} rencontres concernées.`
+      );
+      await new Promise((t) => setTimeout(t, 1500));
     }
-    await new Promise((t) => setTimeout(t, PAUSE_MS));
   }
-  fs.writeFileSync(FICHIER_ABSENCES, JSON.stringify(deja));
   return { faites, total: voulues.length };
 }
 
@@ -138,5 +159,6 @@ export async function ramasserJoueurs(saisons = [2023, 2024, 2025, 2026]): Promi
 if (process.argv[1]?.includes('absences')) {
   const quoi = process.argv[2] ?? 'tout';
   if (quoi === 'joueurs' || quoi === 'tout') await ramasserJoueurs();
-  if (quoi === 'absences' || quoi === 'tout') console.log(JSON.stringify(await ramasserAbsences()));
+  const limite = Number(process.argv[3] ?? Infinity);
+  if (quoi === 'absences' || quoi === 'tout') console.log(JSON.stringify(await ramasserAbsences(limite)));
 }
