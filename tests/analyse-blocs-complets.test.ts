@@ -54,3 +54,20 @@ test('★ ACQUIS — la complétion est branchée sur le passage obligé des ré
     'L’affichage relit une paire sans précaution : la page peut retomber.'
   );
 });
+
+test('★ ACQUIS — l’écran d’analyse ne lit plus aucune cascade sans précaution', () => {
+  // « Cannot read properties of undefined » vient TOUJOURS d'une lecture en
+  // cascade sur un objet absent. Ce garde-fou interdit la forme fautive.
+  const client = fs.readFileSync('src/app/(dashboard)/analyze/AnalyzeClient.tsx', 'utf8');
+  const cascades = client.match(/result\.[a-zA-Z]+\.[a-zA-Z]+/g) ?? [];
+  assert.deepEqual(cascades, [], `Lectures en cascade non protégées : ${[...new Set(cascades)].slice(0, 5).join(', ')}`);
+});
+
+test('★ ACQUIS — quand un bloc tombe, l’abonné garde l’essentiel de son analyse', () => {
+  const client = fs.readFileSync('src/app/(dashboard)/analyze/AnalyzeClient.tsx', 'utf8');
+  assert.match(client, /secours=\{<EssentielDeLAnalyse/, 'Le filet de secours a été retiré de la barrière.');
+  assert.match(client, /function EssentielDeLAnalyse/, 'Le bloc de secours n’existe plus.');
+  const barriere = fs.readFileSync('src/components/BarriereDeRendu.tsx', 'utf8');
+  assert.match(barriere, /if \(this\.props\.secours\) return this\.props\.secours;/, 'La barrière n’affiche plus le secours fourni.');
+  assert.match(client, /setResult\(completerLesBlocs\(data\)\)/, 'L’analyse reçue n’est plus complétée côté navigateur.');
+});

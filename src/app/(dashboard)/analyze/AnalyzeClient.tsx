@@ -51,6 +51,7 @@ const futureMatches = matches.filter(m => m.status === "upcoming");
  * qu'a vécu le FC Bâle le jour de Bâle–Barcelone.
  */
 import { sigleClub, siglesDuMatch } from '@/lib/sigles';
+import { completerLesBlocs } from '@/lib/analyse-complete';
 export { sigleClub, siglesDuMatch };
 
 function enregistrerClub(t: any) {
@@ -1075,7 +1076,14 @@ export default function AnalyzePage({
       }
 
       setTimeout(() => {
-        setResult(data);
+        // ── LA FORME EST GARANTIE UNE SECONDE FOIS, ICI ────────────────────
+        //
+        // Le serveur complète déjà les blocs manquants. Mais une analyse
+        // rangée AVANT ce correctif — dans l'historique, dans une réserve, ou
+        // sur un téléphone qui garde l'ancienne version de la page — peut
+        // encore arriver amputée. On ne laisse pas cette chance à l'écran
+        // d'erreur : ce qui entre ici est complété avant d'être affiché.
+        setResult(completerLesBlocs(data));
         setAnalyzing(false);
 
         // Enregistrer automatiquement dans l'historique privé de l'utilisateur
@@ -1808,7 +1816,11 @@ export default function AnalyzePage({
           et l'abonné perd tout. Avec elle, l'erreur s'arrête au bloc : la page
           reste, le formulaire reste, et il peut relancer. */}
       {result && (
-        <BarriereDeRendu ou="analyse" message="L’analyse n’a pas pu s’afficher en entier.">
+        <BarriereDeRendu
+          ou="analyse"
+          message="L’analyse n’a pas pu s’afficher en entier."
+          secours={<EssentielDeLAnalyse result={result} nom1={getClub(team1!)?.name} nom2={getClub(team2!)?.name} />}
+        >
         <div className="space-y-8 animate-fade-in">
           
           {/* 🔴 MATCH EN COURS.
@@ -1823,8 +1835,8 @@ export default function AnalyzePage({
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#EF4444]" />
                 </span>
                 <span className="text-[9.5px] sm:text-[10px] font-black text-[#EF4444] uppercase tracking-widest text-center">
-                  En direct · {result.live.statutLibelle}
-                  {result.live.minute !== null && !result.live.miTemps && ` · ${result.live.minute}'`}
+                  En direct · {result.live?.statutLibelle}
+                  {result.live?.minute !== null && !result.live?.miTemps && ` · ${result.live?.minute}'`}
                 </span>
               </div>
 
@@ -1840,7 +1852,7 @@ export default function AnalyzePage({
 
                 <div className="flex items-center justify-center bg-black/40 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full border border-white/5 shrink-0 self-start mt-3 md:mt-0">
                   <span className="text-2xl sm:text-3xl md:text-5xl font-black text-white tracking-tight whitespace-nowrap">
-                    {result.live.buts1} <span className="text-white/25">-</span> {result.live.buts2}
+                    {result.live?.buts1} <span className="text-white/25">-</span> {result.live?.buts2}
                   </span>
                 </div>
 
@@ -1856,9 +1868,9 @@ export default function AnalyzePage({
                   de 360 px : le nom du buteur, le passeur et le club dans une
                   seule rangée écrasaient tout. Le buteur reste donc en tête, le
                   passeur et le club passent en dessous. */}
-              {result.live.buteurs?.length > 0 && (
+              {result.live?.buteurs?.length > 0 && (
                 <div className="mt-6 pt-5 border-t border-white/5 space-y-3">
-                  {result.live.buteurs.map((b: any, i: number) => (
+                  {result.live?.buteurs.map((b: any, i: number) => (
                     <div key={i} className="flex items-start gap-2.5">
                       <span className="text-white/35 font-bold tabular-nums w-8 shrink-0 text-[12px] pt-[3px]">
                         {b.minute}&apos;
@@ -1894,15 +1906,15 @@ export default function AnalyzePage({
               {/* Trois statistiques côte à côte débordaient à 360 px. Une
                   grille de trois colonnes égales tient sur toutes les largeurs
                   et se lit mieux qu'une ligne qui se coupe n'importe où. */}
-              {result.live.statistiques && (
+              {result.live?.statistiques && (
                 <div className="mt-5 pt-4 border-t border-white/5 grid grid-cols-3 gap-2 text-center">
                   {[
-                    { libelle: "Tirs", a: result.live.statistiques.tirs1, b: result.live.statistiques.tirs2 },
-                    { libelle: "Cadrés", a: result.live.statistiques.cadres1, b: result.live.statistiques.cadres2 },
+                    { libelle: "Tirs", a: result.live?.statistiques?.tirs1, b: result.live?.statistiques?.tirs2 },
+                    { libelle: "Cadrés", a: result.live?.statistiques?.cadres1, b: result.live?.statistiques?.cadres2 },
                     {
                       libelle: "Possession",
-                      a: result.live.statistiques.possession1,
-                      b: result.live.statistiques.possession2,
+                      a: result.live?.statistiques?.possession1,
+                      b: result.live?.statistiques?.possession2,
                     },
                   ].map((s) => (
                     <div key={s.libelle}>
@@ -1930,20 +1942,20 @@ export default function AnalyzePage({
                       score le moteur voyait le match se terminer. */}
                   <div className="flex items-center justify-center gap-3 bg-black/40 px-5 py-2.5 rounded-full border border-white/5 w-fit mx-auto mb-3.5">
                     <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                      {result.finalPrediction.scoreFinal1}
+                      {result.finalPrediction?.scoreFinal1}
                       <span className="text-white/25 mx-1.5">-</span>
-                      {result.finalPrediction.scoreFinal2}
+                      {result.finalPrediction?.scoreFinal2}
                     </span>
                   </div>
 
                   <p className="text-[13px] sm:text-sm text-white font-bold leading-relaxed mb-4">
-                    {result.finalPrediction.verdict}
+                    {result.finalPrediction?.verdict}
                   </p>
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
                     {[
-                      { cle: "t1", libelle: getClub(team1!).name, valeur: result.finalPrediction.probaVictoire1 },
-                      { cle: "nul", libelle: "Nul", valeur: result.finalPrediction.probaNul },
-                      { cle: "t2", libelle: getClub(team2!).name, valeur: result.finalPrediction.probaVictoire2 },
+                      { cle: "t1", libelle: getClub(team1!).name, valeur: result.finalPrediction?.probaVictoire1 },
+                      { cle: "nul", libelle: "Nul", valeur: result.finalPrediction?.probaNul },
+                      { cle: "t2", libelle: getClub(team2!).name, valeur: result.finalPrediction?.probaVictoire2 },
                     ].map((c) => (
                       <div key={c.cle} className="bg-white/[0.03] rounded-2xl py-2.5 sm:py-3 px-1 min-w-0">
                         <p className="text-lg sm:text-xl font-black text-[#10B981] tabular-nums">{c.valeur}%</p>
@@ -1954,7 +1966,7 @@ export default function AnalyzePage({
                     ))}
                   </div>
                   <p className="text-[9.5px] sm:text-[10px] text-white/25 mt-3 text-center leading-relaxed">
-                    Recalculé sur le score actuel et les {result.finalPrediction.minutesRestantes} minutes restantes.
+                    Recalculé sur le score actuel et les {result.finalPrediction?.minutesRestantes} minutes restantes.
                   </p>
                 </div>
               )}
@@ -1982,7 +1994,7 @@ export default function AnalyzePage({
 
                   {/* ── LE SCORE RÉEL, LU SANS JAMAIS FAIRE TOMBER LA PAGE ──
                       Défaut trouvé à l'audit du 15 septembre 2026, et resté
-                      invisible des mois. Ici on lisait `result.score.split("-")`
+                      invisible des mois. Ici on lisait `result.score?.split("-")`
                       puis `[1].trim()`, sans aucun filet. Or le score d'un match
                       terminé peut parfaitement valoir `null` : c'est écrit noir
                       sur blanc à l'enregistrement — « Aucune valeur de repli :
@@ -2042,7 +2054,7 @@ export default function AnalyzePage({
               </div>
 
               {/* Match Events Timeline */}
-              {result.events && result.events.length > 0 && (
+              {result.events && result.events?.length > 0 && (
                 <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-md">
                   <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
                     <Timer className="w-5 h-5 text-[#10B981]" />
@@ -2052,7 +2064,7 @@ export default function AnalyzePage({
                   </div>
 
                   <div className="space-y-4 relative before:absolute before:left-1/2 before:top-2 before:bottom-2 before:w-[2px] before:bg-white/5 before:-translate-x-1/2">
-                    {result.events.map((ev: any, idx: number) => {
+                    {result.events?.map((ev: any, idx: number) => {
                       const isLeft = ev.side === "team1";
                       return (
                         <div key={idx} className="flex items-center w-full relative z-10">
@@ -2441,23 +2453,23 @@ export default function AnalyzePage({
                     <div className="h-3 flex-1 bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5">
                       <div
                         className={`h-full rounded-full transition-all duration-1000 ${
-                          result.fiabilite.taux >= 60
+                          result.fiabilite?.taux >= 60
                             ? 'bg-gradient-to-r from-[#10B981] to-[#2DD4BF]'
-                            : result.fiabilite.taux >= 45
+                            : result.fiabilite?.taux >= 45
                               ? 'bg-gradient-to-r from-amber-500 to-amber-300'
                               : 'bg-gradient-to-r from-orange-600 to-orange-400'
                         }`}
-                        style={{ width: `${result.fiabilite.taux}%` }}
+                        style={{ width: `${result.fiabilite?.taux}%` }}
                       ></div>
                     </div>
                     <span className="text-sm font-black text-white shrink-0">
-                      {result.fiabilite.taux} %
+                      {result.fiabilite?.taux} %
                     </span>
                   </div>
                   <p className="text-[11px] text-white/60 font-semibold pt-1 leading-relaxed">
-                    {result.fiabilite.famille} : sur les {result.fiabilite.matchs.toLocaleString('fr-FR')} rencontres
-                    de ce type déjà jouées{result.fiabilite.ligue ? ` en ${result.fiabilite.ligue}` : ''},
-                    l&apos;IA a trouvé le bon résultat {result.fiabilite.taux} fois sur 100.
+                    {result.fiabilite?.famille} : sur les {result.fiabilite?.matchs.toLocaleString('fr-FR')} rencontres
+                    de ce type déjà jouées{result.fiabilite?.ligue ? ` en ${result.fiabilite?.ligue}` : ''},
+                    l&apos;IA a trouvé le bon résultat {result.fiabilite?.taux} fois sur 100.
                   </p>
                 </div>
               ) : result.confidence ? (
@@ -2593,9 +2605,9 @@ export default function AnalyzePage({
                           </span>
                         </div>
                         <div className="flex items-center justify-center gap-3 bg-black/40 px-6 py-3 rounded-full border border-white/5 shadow-inner">
-                          <span className="text-3xl md:text-5xl font-black text-[#10B981] font-[Space Grotesk]">{result.predictedScore.team1Goals}</span>
+                          <span className="text-3xl md:text-5xl font-black text-[#10B981] font-[Space Grotesk]">{result.predictedScore?.team1Goals}</span>
                           <span className="text-lg font-bold text-white/20">-</span>
-                          <span className="text-3xl md:text-5xl font-black text-[#EF4444] font-[Space Grotesk]">{result.predictedScore.team2Goals}</span>
+                          <span className="text-3xl md:text-5xl font-black text-[#EF4444] font-[Space Grotesk]">{result.predictedScore?.team2Goals}</span>
                         </div>
                         <div className="flex flex-col items-center gap-2 w-[30%]">
                           <img src={getClub(team2!).logo} className="w-10 h-10 object-contain" alt="" />
@@ -2607,7 +2619,7 @@ export default function AnalyzePage({
 
                   <div className="mt-6 bg-black/35 border border-white/5 rounded-[20px] p-5">
                     <h5 className="text-xs font-black uppercase tracking-wider text-white/40 mb-2">Explication stratégique</h5>
-                    <p className="text-xs text-white/70 leading-relaxed font-semibold">{result.predictedScore.reasoning}</p>
+                    <p className="text-xs text-white/70 leading-relaxed font-semibold">{result.predictedScore?.reasoning}</p>
                   </div>
 
                   {/* ── LA MENTION EST ICI, PAS EN BAS DE PAGE ────────────────
@@ -2633,10 +2645,10 @@ export default function AnalyzePage({
                   temps, et l'écran n'annonce alors rien plutôt que d'inventer
                   un onze probable. */}
               {result.effectif &&
-                (result.effectif.absents?.equipe1?.length > 0 ||
-                  result.effectif.absents?.equipe2?.length > 0 ||
-                  result.effectif.compositions?.equipe1 ||
-                  result.effectif.compositions?.equipe2) && (
+                (result.effectif?.absents?.equipe1?.length > 0 ||
+                  result.effectif?.absents?.equipe2?.length > 0 ||
+                  result.effectif?.compositions?.equipe1 ||
+                  result.effectif?.compositions?.equipe2) && (
                   <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 space-y-5 shadow-md">
                     <div className="flex items-center gap-3">
                       <span className="text-lg">🩺</span>
@@ -2650,8 +2662,8 @@ export default function AnalyzePage({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {([
-                        [getClub(team1!).name, result.effectif.absents?.equipe1 ?? [], result.effectif.compositions?.equipe1],
-                        [getClub(team2!).name, result.effectif.absents?.equipe2 ?? [], result.effectif.compositions?.equipe2],
+                        [getClub(team1!).name, result.effectif?.absents?.equipe1 ?? [], result.effectif?.compositions?.equipe1],
+                        [getClub(team2!).name, result.effectif?.absents?.equipe2 ?? [], result.effectif?.compositions?.equipe2],
                       ] as [string, { nom: string; motif: string }[], any][]).map(
                         ([nomEquipe, absents, compo]) => (
                           <div
@@ -2725,7 +2737,7 @@ export default function AnalyzePage({
 
                   Rien n'est promis en dessous de 85 % : la section disparaît
                   plutôt que d'annoncer une certitude qui n'en est pas une. */}
-              {Array.isArray(result.quasiCertitudes) && result.quasiCertitudes.length > 0 && (
+              {Array.isArray(result.quasiCertitudes) && result.quasiCertitudes?.length > 0 && (
                 <div className="rounded-[32px] border border-[#10B981]/25 bg-[#10B981]/[0.07] p-6 space-y-4 shadow-md">
                   <div className="flex items-center gap-3">
                     <span className="text-lg">🔒</span>
@@ -2738,7 +2750,7 @@ export default function AnalyzePage({
                   </div>
 
                   <ul className="space-y-2.5">
-                    {result.quasiCertitudes.map((c: { texte: string; probabilite: number }) => (
+                    {result.quasiCertitudes?.map((c: { texte: string; probabilite: number }) => (
                       <li
                         key={c.texte}
                         className="flex items-center justify-between gap-3 rounded-[16px] border border-white/8 bg-black/20 px-4 py-3"
@@ -2795,14 +2807,14 @@ export default function AnalyzePage({
               </div>
 
               {/* Scenarios 2 to 4 */}
-              {result.scenarios && result.scenarios.length > 1 && (
+              {result.scenarios && result.scenarios?.length > 1 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 px-2">
                     <span className="text-lg">💡</span>
                     <h4 className="font-black text-base text-white" style={{fontFamily: "var(--police-titre), sans-serif"}}>Scénarios #2 à #4</h4>
                   </div>
                   <div className="space-y-3.5">
-                    {result.scenarios.slice(1).map((sc: any, idx: number) => (
+                    {result.scenarios?.slice(1).map((sc: any, idx: number) => (
                       <div key={idx} className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 p-5 rounded-[28px] shadow-sm">
                         <h5 className="text-sm font-black text-[#10B981] mb-2">{sc.title}</h5>
                         <p className="text-xs text-white/70 leading-relaxed font-semibold">{sc.content}</p>
@@ -2856,14 +2868,14 @@ export default function AnalyzePage({
                         </div>
                         <div className="flex justify-between text-xs pt-3 border-t border-white/5 text-white/90">
                           <span className="font-black">Total</span>
-                          <span className="font-black text-[#10B981]">{result.predictions.expectedGoals.total} buts</span>
+                          <span className="font-black text-[#10B981]">{result.predictions?.expectedGoals?.total} buts</span>
                         </div>
                       </div>
                     </div>
                     
                     <div className="pt-4 border-t border-white/5">
                       <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-4">Les deux équipes marquent</h5>
-                      <DualBar label="" v1={result.predictions.btts.yes} v2={result.predictions.btts.no} suffix="%" customL1="Oui" customL2="Non" hideTitle={true} />
+                      <DualBar label="" v1={result.predictions?.btts?.yes} v2={result.predictions?.btts?.no} suffix="%" customL1="Oui" customL2="Non" hideTitle={true} />
                     </div>
 
                     {/* ── LA CAGE INVIOLÉE ──────────────────────────────────
@@ -2872,7 +2884,7 @@ export default function AnalyzePage({
                         que « les deux marquent : non » laissait ouvert : cette
                         réponse-là couvre 1-0, 0-1 et 0-0 sans jamais dire
                         laquelle des deux défenses tient. */}
-                    {result.predictions.cleanSheet && (
+                    {result.predictions?.cleanSheet && (
                       <div className="pt-4 border-t border-white/5">
                         <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-4">Garde sa cage inviolée</h5>
                         <div className="space-y-2.5">
@@ -2901,10 +2913,10 @@ export default function AnalyzePage({
                   <div className="bg-[#1d2f3a]/60 backdrop-blur-md border border-white/5 rounded-[32px] p-6 shadow-sm">
                     <h5 className="text-xs font-black text-white/50 uppercase tracking-widest mb-6">Tendance sur le nombre de buts</h5>
                     <div className="space-y-5">
-                       <DualBar label="" v1={result.predictions.overUnder.over05} v2={100 - result.predictions.overUnder.over05} suffix="%" customL1="Plus de 0.5 buts" customL2="Moins de 0.5 buts" hideTitle={true} isThin={true} />
-                       <DualBar label="" v1={result.predictions.overUnder.over15} v2={100 - result.predictions.overUnder.over15} suffix="%" customL1="Plus de 1.5 buts" customL2="Moins de 1.5 buts" hideTitle={true} isThin={true} />
-                       <DualBar label="" v1={result.predictions.overUnder.over25} v2={100 - result.predictions.overUnder.over25} suffix="%" customL1="Plus de 2.5 buts" customL2="Moins de 2.5 buts" hideTitle={true} isThin={true} />
-                       <DualBar label="" v1={result.predictions.overUnder.over35} v2={100 - result.predictions.overUnder.over35} suffix="%" customL1="Plus de 3.5 buts" customL2="Moins de 3.5 buts" hideTitle={true} isThin={true} />
+                       <DualBar label="" v1={result.predictions?.overUnder?.over05} v2={100 - result.predictions?.overUnder?.over05} suffix="%" customL1="Plus de 0.5 buts" customL2="Moins de 0.5 buts" hideTitle={true} isThin={true} />
+                       <DualBar label="" v1={result.predictions?.overUnder?.over15} v2={100 - result.predictions?.overUnder?.over15} suffix="%" customL1="Plus de 1.5 buts" customL2="Moins de 1.5 buts" hideTitle={true} isThin={true} />
+                       <DualBar label="" v1={result.predictions?.overUnder?.over25} v2={100 - result.predictions?.overUnder?.over25} suffix="%" customL1="Plus de 2.5 buts" customL2="Moins de 2.5 buts" hideTitle={true} isThin={true} />
+                       <DualBar label="" v1={result.predictions?.overUnder?.over35} v2={100 - result.predictions?.overUnder?.over35} suffix="%" customL1="Plus de 3.5 buts" customL2="Moins de 3.5 buts" hideTitle={true} isThin={true} />
                     </div>
                   </div>
                 </div>
@@ -3256,6 +3268,44 @@ function LockedAnalysisPreview({ scenarios, sections }: { scenarios?: number; se
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * L'ESSENTIEL D'UNE ANALYSE, QUAND LE RESTE EST TOMBÉ.
+ *
+ * Demande du propriétaire, le 20 septembre 2026 : plus jamais d'écran vide au
+ * bout d'une analyse. Ce bloc n'affiche que ce qui vient du CALCUL — score
+ * annoncé, trois probabilités, résumé — et il lit tout avec précaution : il ne
+ * peut pas tomber à son tour. C'est le dernier filet, sous la barrière.
+ */
+function EssentielDeLAnalyse({ result, nom1, nom2 }: { result: any; nom1?: string; nom2?: string }) {
+  const b1 = result?.predictedScore?.team1Goals;
+  const b2 = result?.predictedScore?.team2Goals;
+  const score = Number.isFinite(Number(b1)) && Number.isFinite(Number(b2)) ? `${Number(b1)} - ${Number(b2)}` : null;
+  const pct = (v: any) => (Number.isFinite(Number(v)) ? `${Math.round(Number(v))} %` : '—');
+  const resume = String(result?.quickSummary ?? result?.apercuResume ?? '').trim();
+  return (
+    <div className="rounded-[20px] border px-5 py-6 space-y-4" style={{ borderColor: 'rgba(255,255,255,.08)', background: 'rgba(29,47,58,.6)' }}>
+      <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40">Votre analyse</p>
+      <p className="text-sm font-bold text-white">
+        {nom1 ?? 'Équipe 1'} — {nom2 ?? 'Équipe 2'}
+      </p>
+      {score && (
+        <p className="text-3xl font-black text-white" style={{ fontFamily: 'var(--police-titre), sans-serif' }}>
+          {score}
+        </p>
+      )}
+      <div className="flex justify-between text-[12.5px] font-bold text-white/70">
+        <span>Victoire {nom1 ?? '1'} : {pct(result?.winProb)}</span>
+        <span>Nul : {pct(result?.drawProb)}</span>
+        <span>Victoire {nom2 ?? '2'} : {pct(result?.loseProb)}</span>
+      </div>
+      {resume && <p className="text-[12.5px] leading-relaxed text-white/70">{resume}</p>}
+      <p className="text-[11.5px] leading-relaxed text-white/40">
+        Le détail n’a pas pu s’afficher, mais votre analyse est intacte et reste dans votre historique.
+      </p>
     </div>
   );
 }

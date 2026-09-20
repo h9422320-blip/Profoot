@@ -80,7 +80,9 @@ test('★ ACQUIS — un défaut d’affichage ne peut plus emporter toute la pag
   const s = lire(ANALYSE);
   assert.match(
     s,
-    /<BarriereDeRendu[\s\S]{0,120}?>/,
+    // Fenêtre élargie le 20 septembre 2026 : la barrière porte désormais son
+    // filet de secours (`secours={<EssentielDeLAnalyse …`), sur plusieurs lignes.
+    /<BarriereDeRendu[\s\S]{0,400}?>/,
     'L’analyse n’est plus entourée d’une barrière : le moindre défaut d’affichage ' +
       'emportera de nouveau toute la page.'
   );

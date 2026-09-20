@@ -291,15 +291,15 @@ export default function MobileHistoryListPage() {
               <div className={`flex justify-between gap-2 ${!isPro ? 'blur-lg select-none' : ''}`}>
                 <div className="flex-1 bg-white/5 rounded-[16px] p-2 text-center border border-white/5">
                   <span className="text-[8px] font-bold text-white/40 block mb-0.5">VICTOIRE T1</span>
-                  <span className="text-sm font-black text-[#10B981]">{selectedItem.data.winProb}%</span>
+                  <span className="text-sm font-black text-[#10B981]">{selectedItem.data?.winProb}%</span>
                 </div>
                 <div className="flex-1 bg-white/5 rounded-[16px] p-2 text-center border border-white/5">
                   <span className="text-[8px] font-bold text-white/40 block mb-0.5">NUL</span>
-                  <span className="text-sm font-black text-yellow-400">{selectedItem.data.drawProb}%</span>
+                  <span className="text-sm font-black text-yellow-400">{selectedItem.data?.drawProb}%</span>
                 </div>
                 <div className="flex-1 bg-white/5 rounded-[16px] p-2 text-center border border-white/5">
                   <span className="text-[8px] font-bold text-white/40 block mb-0.5">VICTOIRE T2</span>
-                  <span className="text-sm font-black text-red-400">{selectedItem.data.loseProb}%</span>
+                  <span className="text-sm font-black text-red-400">{selectedItem.data?.loseProb}%</span>
                 </div>
               </div>
             )}
@@ -318,9 +318,9 @@ export default function MobileHistoryListPage() {
                 <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest text-center mb-3">Statistiques</h4>
                 <div className="space-y-2">
                   {[
-                    { label: "Possession", val1: `${selectedItem.data.stats.possession?.team1}%`, val2: `${selectedItem.data.stats.possession?.team2}%` },
-                    { label: "Tirs", val1: selectedItem.data.stats.shots?.team1, val2: selectedItem.data.stats.shots?.team2 },
-                    { label: "Cadrés", val1: selectedItem.data.stats.shotsOnTarget?.team1, val2: selectedItem.data.stats.shotsOnTarget?.team2 },
+                    { label: "Possession", val1: `${selectedItem.data?.stats?.possession?.team1}%`, val2: `${selectedItem.data?.stats?.possession?.team2}%` },
+                    { label: "Tirs", val1: selectedItem.data?.stats?.shots?.team1, val2: selectedItem.data?.stats?.shots?.team2 },
+                    { label: "Cadrés", val1: selectedItem.data?.stats?.shotsOnTarget?.team1, val2: selectedItem.data?.stats?.shotsOnTarget?.team2 },
                   ].map((st, i) => (
                     <div key={i} className="flex justify-between items-center text-[11px] font-bold">
                       <span className="w-12 text-center text-white">{st.val1}</span>

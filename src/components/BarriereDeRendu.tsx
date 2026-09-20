@@ -47,6 +47,16 @@ interface Proprietes {
   message?: string;
   /** Pour retrouver l'endroit dans les journaux. */
   ou?: string;
+  /**
+   * CE QU'ON MONTRE À LA PLACE, quand on a mieux qu'un message.
+   *
+   * Demande du propriétaire, le 20 septembre 2026 : « fais tout ton possible
+   * pour que ça n'arrive plus ». Un abonné qui a payé son analyse ne doit
+   * jamais se retrouver les mains vides à cause d'un défaut d'affichage. Si
+   * l'appelant sait composer l'essentiel — score annoncé, probabilités,
+   * résumé —, c'est CELA qui s'affiche, et le morceau fautif disparaît seul.
+   */
+  secours?: ReactNode;
 }
 
 interface Etat {
@@ -91,6 +101,10 @@ export default class BarriereDeRendu extends Component<Proprietes, Etat> {
         </div>
       );
     }
+
+    // Mieux qu'un message : l'essentiel de l'analyse, quand l'appelant l'a
+    // préparé. L'abonné garde ce pour quoi il est venu.
+    if (this.props.secours) return this.props.secours;
 
     return (
       <div

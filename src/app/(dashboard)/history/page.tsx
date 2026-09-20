@@ -606,15 +606,15 @@ export default function HistoryPage() {
                 <div className={`grid grid-cols-3 gap-4 ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">Victoire {selectedItem.team1?.name}</span>
-                    <span className="text-xl font-black text-[#10B981]">{selectedItem.data.winProb}%</span>
+                    <span className="text-xl font-black text-[#10B981]">{selectedItem.data?.winProb}%</span>
                   </div>
                   <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">Match Nul</span>
-                    <span className="text-xl font-black text-yellow-400">{selectedItem.data.drawProb}%</span>
+                    <span className="text-xl font-black text-yellow-400">{selectedItem.data?.drawProb}%</span>
                   </div>
                   <div className="bg-white/5 border border-white/5 rounded-[20px] p-4 text-center">
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">Victoire {selectedItem.team2?.name}</span>
-                    <span className="text-xl font-black text-red-400">{selectedItem.data.loseProb}%</span>
+                    <span className="text-xl font-black text-red-400">{selectedItem.data?.loseProb}%</span>
                   </div>
                 </div>
               )}
@@ -634,7 +634,7 @@ export default function HistoryPage() {
                 <div className={`space-y-4 ${!isPro ? 'blur-lg select-none' : ''}`}>
                   <h4 className="text-xs font-black text-white/40 uppercase tracking-widest">Points Clés de l'Analyse</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedItem.data.sections.map((sec: any, idx: number) => (
+                    {selectedItem.data?.sections?.map((sec: any, idx: number) => (
                       <div key={idx} className="bg-white/5 border border-white/5 rounded-[20px] p-4 space-y-2">
                         <h5 className="text-xs font-bold text-[#10B981] flex items-center gap-2">
                           <Brain className="w-4 h-4" /> {sec.title}
@@ -652,10 +652,10 @@ export default function HistoryPage() {
                   <h4 className="text-xs font-black text-white/40 uppercase tracking-widest text-center">Statistiques du Match</h4>
                   <div className="space-y-3 max-w-md mx-auto">
                     {[
-                      { label: "Possession", val1: `${selectedItem.data.stats.possession?.team1}%`, val2: `${selectedItem.data.stats.possession?.team2}%` },
-                      { label: "Tirs (Cadrés)", val1: `${selectedItem.data.stats.shots?.team1} (${selectedItem.data.stats.shotsOnTarget?.team1})`, val2: `${selectedItem.data.stats.shots?.team2} (${selectedItem.data.stats.shotsOnTarget?.team2})` },
-                      { label: "Passes", val1: selectedItem.data.stats.passes?.team1, val2: selectedItem.data.stats.passes?.team2 },
-                      { label: "Corners", val1: selectedItem.data.stats.corners?.team1, val2: selectedItem.data.stats.corners?.team2 },
+                      { label: "Possession", val1: `${selectedItem.data?.stats?.possession?.team1}%`, val2: `${selectedItem.data?.stats?.possession?.team2}%` },
+                      { label: "Tirs (Cadrés)", val1: `${selectedItem.data?.stats?.shots?.team1} (${selectedItem.data?.stats?.shotsOnTarget?.team1})`, val2: `${selectedItem.data?.stats?.shots?.team2} (${selectedItem.data?.stats?.shotsOnTarget?.team2})` },
+                      { label: "Passes", val1: selectedItem.data?.stats?.passes?.team1, val2: selectedItem.data?.stats?.passes?.team2 },
+                      { label: "Corners", val1: selectedItem.data?.stats?.corners?.team1, val2: selectedItem.data?.stats?.corners?.team2 },
                     ].map((st, i) => (
                       <div key={i} className="flex items-center justify-between text-xs font-semibold">
                         <span className="text-white w-20 text-left">{st.val1}</span>
