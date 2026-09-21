@@ -139,3 +139,19 @@ test('★ ACQUIS — les sélections africaines se reconnaissent par leur nom fr
   assert.equal(nomAffiche(999999, 'Inconnue FC'), 'Inconnue FC');
   assert.ok((selectionParApiId(1501)?.interet ?? 0) > (selectionParApiId(1493)?.interet ?? 0), 'La Côte d’Ivoire ne passe plus devant la Namibie.');
 });
+
+test('★ ACQUIS — chaque carte de sélection porte un identifiant que le serveur accepte', async () => {
+  // Le serveur d'analyse ne connaît une équipe que par son catalogue : une
+  // carte au nom inventé recevait « Équipe inconnue » (404), et l'abonné qui
+  // la touchait voyait l'analyse échouer deux fois. Constaté le 21 septembre
+  // 2026 sur Côte d'Ivoire–Ghana, le jour même de la mise en ligne.
+  const { clubs } = await import('../src/lib/data');
+  const { SELECTIONS_AFRICAINES } = await import('../src/lib/selections-africaines');
+  for (const s of SELECTIONS_AFRICAINES) {
+    const c = (clubs as any)[s.catalogue];
+    assert.ok(c, `« ${s.nom} » porte l’identifiant « ${s.catalogue} », absent du catalogue : son analyse échouera.`);
+    assert.equal(c.league, 'can', `« ${s.nom} » n’est pas rangée dans la CAN du catalogue.`);
+  }
+  const source = (await import('node:fs')).readFileSync('src/lib/grands-matchs-du-jour.ts', 'utf8');
+  assert.doesNotMatch(source, /id: `nat-/, 'Les cartes de sélection reprennent un identifiant inventé.');
+});

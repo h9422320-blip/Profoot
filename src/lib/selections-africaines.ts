@@ -41,6 +41,17 @@ export interface SelectionAfricaine {
   /** Code du drapeau (ISO 3166 alpha-2). */
   drapeau: string;
   /**
+   * L'identifiant de cette nation dans le catalogue de l'application
+   * (`data.ts`) — le SEUL que le serveur d'analyse accepte.
+   *
+   * Le serveur ne reprend jamais un nom venu du navigateur : il ne connaît une
+   * équipe que par un identifiant de son catalogue, et c'est ce qui ferme
+   * l'injection dans le texte envoyé à l'IA. Constaté le 21 septembre 2026 :
+   * une carte portant un identifiant inventé (« nat-1501 ») recevait « Équipe
+   * inconnue », et l'abonné qui la touchait voyait l'analyse échouer deux fois.
+   */
+  catalogue: string;
+  /**
    * Une nation que le public de ProFoot suit de près — et combien.
    *
    * 2 : une grande nation de ce public — Côte d'Ivoire, Sénégal, Mali,
@@ -60,54 +71,54 @@ export interface SelectionAfricaine {
 }
 
 export const SELECTIONS_AFRICAINES: readonly SelectionAfricaine[] = [
-  { apiId: 1501, nom: "Côte d'Ivoire", en: 'Ivory Coast', drapeau: 'ci', interet: 2, vedette: true },
-  { apiId: 13, nom: 'Sénégal', en: 'Senegal', drapeau: 'sn', interet: 2, vedette: true },
-  { apiId: 1500, nom: 'Mali', en: 'Mali', drapeau: 'ml', interet: 2, vedette: true },
-  { apiId: 1502, nom: 'Burkina Faso', en: 'Burkina Faso', drapeau: 'bf', interet: 2, vedette: true },
-  { apiId: 1509, nom: 'Guinée', en: 'Guinea', drapeau: 'gn', interet: 2, vedette: true },
-  { apiId: 1530, nom: 'Cameroun', en: 'Cameroon', drapeau: 'cm', interet: 2, vedette: true },
-  { apiId: 1516, nom: 'Bénin', en: 'Benin', drapeau: 'bj', interet: 1, vedette: true },
-  { apiId: 1534, nom: 'Togo', en: 'Togo', drapeau: 'tg', interet: 1, vedette: true },
-  { apiId: 1505, nom: 'Niger', en: 'Niger', drapeau: 'ne', interet: 1, vedette: true },
-  { apiId: 1503, nom: 'Gabon', en: 'Gabon', drapeau: 'ga', interet: 1, vedette: true },
-  { apiId: 1517, nom: 'Congo', en: 'Congo', drapeau: 'cg', interet: 1, vedette: true },
-  { apiId: 1508, nom: 'RD Congo', en: 'Congo DR', drapeau: 'cd', interet: 2, vedette: true },
-  { apiId: 31, nom: 'Maroc', en: 'Morocco', drapeau: 'ma', interet: 2, vedette: true },
-  { apiId: 1532, nom: 'Algérie', en: 'Algeria', drapeau: 'dz', interet: 2, vedette: true },
-  { apiId: 28, nom: 'Tunisie', en: 'Tunisia', drapeau: 'tn', interet: 2, vedette: true },
-  { apiId: 1491, nom: 'Mauritanie', en: 'Mauritania', drapeau: 'mr', interet: 1, vedette: true },
-  { apiId: 1527, nom: 'Centrafrique', en: 'Central African Republic', drapeau: 'cf', interet: 1, vedette: true },
-  { apiId: 1524, nom: 'Comores', en: 'Comoros', drapeau: 'km', interet: 1, vedette: true },
-  { apiId: 1490, nom: 'Madagascar', en: 'Madagascar', drapeau: 'mg', interet: 1, vedette: true },
-  { apiId: 19, nom: 'Nigeria', en: 'Nigeria', drapeau: 'ng', interet: 2, vedette: true },
-  { apiId: 1504, nom: 'Ghana', en: 'Ghana', drapeau: 'gh', interet: 2, vedette: true },
-  { apiId: 32, nom: 'Égypte', en: 'Egypt', drapeau: 'eg', interet: 2, vedette: true },
-  { apiId: 1531, nom: 'Afrique du Sud', en: 'South Africa', drapeau: 'za', interet: 0, vedette: false },
-  { apiId: 1533, nom: 'Cap-Vert', en: 'Cape Verde Islands', drapeau: 'cv', interet: 0, vedette: false },
-  { apiId: 1513, nom: 'Guinée-Bissau', en: 'Guinea-Bissau', drapeau: 'gw', interet: 0, vedette: false },
-  { apiId: 1521, nom: 'Guinée équatoriale', en: 'Equatorial Guinea', drapeau: 'gq', interet: 0, vedette: false },
-  { apiId: 1492, nom: 'Gambie', en: 'Gambia', drapeau: 'gm', interet: 0, vedette: false },
-  { apiId: 1499, nom: 'Sierra Leone', en: 'Sierra Leone', drapeau: 'sl', interet: 0, vedette: false },
-  { apiId: 1525, nom: 'Liberia', en: 'Liberia', drapeau: 'lr', interet: 0, vedette: false },
-  { apiId: 1529, nom: 'Angola', en: 'Angola', drapeau: 'ao', interet: 0, vedette: false },
-  { apiId: 1507, nom: 'Zambie', en: 'Zambia', drapeau: 'zm', interet: 0, vedette: false },
-  { apiId: 1522, nom: 'Zimbabwe', en: 'Zimbabwe', drapeau: 'zw', interet: 0, vedette: false },
-  { apiId: 1512, nom: 'Mozambique', en: 'Mozambique', drapeau: 'mz', interet: 0, vedette: false },
-  { apiId: 1495, nom: 'Malawi', en: 'Malawi', drapeau: 'mw', interet: 0, vedette: false },
-  { apiId: 1493, nom: 'Namibie', en: 'Namibia', drapeau: 'na', interet: 0, vedette: false },
-  { apiId: 1520, nom: 'Botswana', en: 'Botswana', drapeau: 'bw', interet: 0, vedette: false },
-  { apiId: 1518, nom: 'Lesotho', en: 'Lesotho', drapeau: 'ls', interet: 0, vedette: false },
-  { apiId: 1511, nom: 'Kenya', en: 'Kenya', drapeau: 'ke', interet: 0, vedette: false },
-  { apiId: 1489, nom: 'Tanzanie', en: 'Tanzania', drapeau: 'tz', interet: 0, vedette: false },
-  { apiId: 1519, nom: 'Ouganda', en: 'Uganda', drapeau: 'ug', interet: 0, vedette: false },
-  { apiId: 1514, nom: 'Rwanda', en: 'Rwanda', drapeau: 'rw', interet: 0, vedette: false },
-  { apiId: 1528, nom: 'Burundi', en: 'Burundi', drapeau: 'bi', interet: 0, vedette: false },
-  { apiId: 1506, nom: 'Éthiopie', en: 'Ethiopia', drapeau: 'et', interet: 0, vedette: false },
-  { apiId: 1498, nom: 'Érythrée', en: 'Eritrea', drapeau: 'er', interet: 0, vedette: false },
-  { apiId: 8050, nom: 'Somalie', en: 'Somalia', drapeau: 'so', interet: 0, vedette: false },
-  { apiId: 1510, nom: 'Soudan', en: 'Sudan', drapeau: 'sd', interet: 0, vedette: false },
-  { apiId: 1496, nom: 'Soudan du Sud', en: 'South Sudan', drapeau: 'ss', interet: 0, vedette: false },
-  { apiId: 1526, nom: 'Libye', en: 'Libya', drapeau: 'ly', interet: 0, vedette: false },
+  { apiId: 1501, nom: "Côte d'Ivoire", en: 'Ivory Coast', drapeau: 'ci', catalogue: 'ivory_coast_can', interet: 2, vedette: true },
+  { apiId: 13, nom: 'Sénégal', en: 'Senegal', drapeau: 'sn', catalogue: 'senegal_can', interet: 2, vedette: true },
+  { apiId: 1500, nom: 'Mali', en: 'Mali', drapeau: 'ml', catalogue: 'mali', interet: 2, vedette: true },
+  { apiId: 1502, nom: 'Burkina Faso', en: 'Burkina Faso', drapeau: 'bf', catalogue: 'bf_can_nat', interet: 2, vedette: true },
+  { apiId: 1509, nom: 'Guinée', en: 'Guinea', drapeau: 'gn', catalogue: 'guinea', interet: 2, vedette: true },
+  { apiId: 1530, nom: 'Cameroun', en: 'Cameroon', drapeau: 'cm', catalogue: 'cameroon', interet: 2, vedette: true },
+  { apiId: 1516, nom: 'Bénin', en: 'Benin', drapeau: 'bj', catalogue: 'bj_can_nat', interet: 1, vedette: true },
+  { apiId: 1534, nom: 'Togo', en: 'Togo', drapeau: 'tg', catalogue: 'tg_can_nat', interet: 1, vedette: true },
+  { apiId: 1505, nom: 'Niger', en: 'Niger', drapeau: 'ne', catalogue: 'ne_can_nat', interet: 1, vedette: true },
+  { apiId: 1503, nom: 'Gabon', en: 'Gabon', drapeau: 'ga', catalogue: 'ga_can_nat', interet: 1, vedette: true },
+  { apiId: 1517, nom: 'Congo', en: 'Congo', drapeau: 'cg', catalogue: 'cg_can_nat', interet: 1, vedette: true },
+  { apiId: 1508, nom: 'RD Congo', en: 'Congo DR', drapeau: 'cd', catalogue: 'dr_congo', interet: 2, vedette: true },
+  { apiId: 31, nom: 'Maroc', en: 'Morocco', drapeau: 'ma', catalogue: 'morocco_can', interet: 2, vedette: true },
+  { apiId: 1532, nom: 'Algérie', en: 'Algeria', drapeau: 'dz', catalogue: 'algeria', interet: 2, vedette: true },
+  { apiId: 28, nom: 'Tunisie', en: 'Tunisia', drapeau: 'tn', catalogue: 'tunisia_can', interet: 2, vedette: true },
+  { apiId: 1491, nom: 'Mauritanie', en: 'Mauritania', drapeau: 'mr', catalogue: 'mr_can_nat', interet: 1, vedette: true },
+  { apiId: 1527, nom: 'Centrafrique', en: 'Central African Republic', drapeau: 'cf', catalogue: 'cf_can_nat', interet: 1, vedette: true },
+  { apiId: 1524, nom: 'Comores', en: 'Comoros', drapeau: 'km', catalogue: 'km_can_nat', interet: 1, vedette: true },
+  { apiId: 1490, nom: 'Madagascar', en: 'Madagascar', drapeau: 'mg', catalogue: 'mg_can_nat', interet: 1, vedette: true },
+  { apiId: 19, nom: 'Nigeria', en: 'Nigeria', drapeau: 'ng', catalogue: 'nigeria', interet: 2, vedette: true },
+  { apiId: 1504, nom: 'Ghana', en: 'Ghana', drapeau: 'gh', catalogue: 'ghana', interet: 2, vedette: true },
+  { apiId: 32, nom: 'Égypte', en: 'Egypt', drapeau: 'eg', catalogue: 'egypt_can', interet: 2, vedette: true },
+  { apiId: 1531, nom: 'Afrique du Sud', en: 'South Africa', drapeau: 'za', catalogue: 'za_can_nat', interet: 0, vedette: false },
+  { apiId: 1533, nom: 'Cap-Vert', en: 'Cape Verde Islands', drapeau: 'cv', catalogue: 'cv_can_nat', interet: 0, vedette: false },
+  { apiId: 1513, nom: 'Guinée-Bissau', en: 'Guinea-Bissau', drapeau: 'gw', catalogue: 'gw_can_nat', interet: 0, vedette: false },
+  { apiId: 1521, nom: 'Guinée équatoriale', en: 'Equatorial Guinea', drapeau: 'gq', catalogue: 'gq_can_nat', interet: 0, vedette: false },
+  { apiId: 1492, nom: 'Gambie', en: 'Gambia', drapeau: 'gm', catalogue: 'gm_can_nat', interet: 0, vedette: false },
+  { apiId: 1499, nom: 'Sierra Leone', en: 'Sierra Leone', drapeau: 'sl', catalogue: 'sl_can_nat', interet: 0, vedette: false },
+  { apiId: 1525, nom: 'Liberia', en: 'Liberia', drapeau: 'lr', catalogue: 'lr_can_nat', interet: 0, vedette: false },
+  { apiId: 1529, nom: 'Angola', en: 'Angola', drapeau: 'ao', catalogue: 'ao_can_nat', interet: 0, vedette: false },
+  { apiId: 1507, nom: 'Zambie', en: 'Zambia', drapeau: 'zm', catalogue: 'zm_can_nat', interet: 0, vedette: false },
+  { apiId: 1522, nom: 'Zimbabwe', en: 'Zimbabwe', drapeau: 'zw', catalogue: 'zw_can_nat', interet: 0, vedette: false },
+  { apiId: 1512, nom: 'Mozambique', en: 'Mozambique', drapeau: 'mz', catalogue: 'mz_can_nat', interet: 0, vedette: false },
+  { apiId: 1495, nom: 'Malawi', en: 'Malawi', drapeau: 'mw', catalogue: 'mw_can_nat', interet: 0, vedette: false },
+  { apiId: 1493, nom: 'Namibie', en: 'Namibia', drapeau: 'na', catalogue: 'na_can_nat', interet: 0, vedette: false },
+  { apiId: 1520, nom: 'Botswana', en: 'Botswana', drapeau: 'bw', catalogue: 'bw_can_nat', interet: 0, vedette: false },
+  { apiId: 1518, nom: 'Lesotho', en: 'Lesotho', drapeau: 'ls', catalogue: 'ls_can_nat', interet: 0, vedette: false },
+  { apiId: 1511, nom: 'Kenya', en: 'Kenya', drapeau: 'ke', catalogue: 'ke_can_nat', interet: 0, vedette: false },
+  { apiId: 1489, nom: 'Tanzanie', en: 'Tanzania', drapeau: 'tz', catalogue: 'tz_can_nat', interet: 0, vedette: false },
+  { apiId: 1519, nom: 'Ouganda', en: 'Uganda', drapeau: 'ug', catalogue: 'ug_can_nat', interet: 0, vedette: false },
+  { apiId: 1514, nom: 'Rwanda', en: 'Rwanda', drapeau: 'rw', catalogue: 'rw_can_nat', interet: 0, vedette: false },
+  { apiId: 1528, nom: 'Burundi', en: 'Burundi', drapeau: 'bi', catalogue: 'bi_can_nat', interet: 0, vedette: false },
+  { apiId: 1506, nom: 'Éthiopie', en: 'Ethiopia', drapeau: 'et', catalogue: 'et_can_nat', interet: 0, vedette: false },
+  { apiId: 1498, nom: 'Érythrée', en: 'Eritrea', drapeau: 'er', catalogue: 'er_can_nat', interet: 0, vedette: false },
+  { apiId: 8050, nom: 'Somalie', en: 'Somalia', drapeau: 'so', catalogue: 'so_can_nat', interet: 0, vedette: false },
+  { apiId: 1510, nom: 'Soudan', en: 'Sudan', drapeau: 'sd', catalogue: 'sd_can_nat', interet: 0, vedette: false },
+  { apiId: 1496, nom: 'Soudan du Sud', en: 'South Sudan', drapeau: 'ss', catalogue: 'ss_can_nat', interet: 0, vedette: false },
+  { apiId: 1526, nom: 'Libye', en: 'Libya', drapeau: 'ly', catalogue: 'ly_can_nat', interet: 0, vedette: false },
 ];
 
 /** Minuscules, sans accents, sans apostrophes ni tirets : « Côte d'Ivoire » = « cote divoire ». */

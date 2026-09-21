@@ -197,7 +197,9 @@ async function enCartes(brutes: any[]): Promise<MatchDuJour[]> {
       const equipe = (t: any) => {
         const nom = nomAffiche(t?.id, String(t?.name ?? ''));
         return {
-          id: `nat-${t?.id}`,
+          // L'identifiant du CATALOGUE : le seul que le serveur d'analyse
+          // accepte. Voir `SelectionAfricaine.catalogue`.
+          id: selectionParApiId(t?.id)?.catalogue ?? '',
           name: nom,
           logo: String(t?.logo ?? ''),
           // Même nom que l'équipe : c'est ainsi que l'analyse reconnaît une
@@ -208,6 +210,9 @@ async function enCartes(brutes: any[]): Promise<MatchDuJour[]> {
         };
       };
       if (!f?.teams?.home?.id || !f?.teams?.away?.id) continue;
+      // Une nation absente du catalogue serait refusée par le serveur au
+      // moment du clic : mieux vaut une carte de moins qu'une carte qui échoue.
+      if (!selectionParApiId(f.teams.home.id)?.catalogue || !selectionParApiId(f.teams.away.id)?.catalogue) continue;
       const vedette =
         (selectionParApiId(f.teams.home.id)?.interet ?? 0) + (selectionParApiId(f.teams.away.id)?.interet ?? 0);
       // Un Libye–Botswana reste analysable depuis le sélecteur, mais il n'a
@@ -217,7 +222,10 @@ async function enCartes(brutes: any[]): Promise<MatchDuJour[]> {
       cartes.push({
         id: `md-${f?.fixture?.id}`,
         kickoffISO: kickoff,
-        championnat: String(f?.league?.name ?? ''),
+        // L'étiquette de la carte, en français : « AFRICA CUP OF NATIONS -
+        // QUALIFICATION » s'affichait en capitales au-dessus de Côte
+        // d'Ivoire–Ghana.
+        championnat: ligue === 36 ? 'Qualifications CAN' : ligue === 6 ? "Coupe d'Afrique des nations" : String(f?.league?.name ?? ''),
         paysDuChampionnat: f?.league?.country ?? null,
         fiabilite: null,
         vedette,
@@ -361,7 +369,7 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
 
   try {
     // ── AUJOURD'HUI ────────────────────────────────────────────────────────
-    const cleJour = `matchs-du-jour:v2:${jour}`;
+    const cleJour = `matchs-du-jour:v3:${jour}`;
     let cartes: MatchDuJour[] | null = null;
 
     const enReserve = await lireReserve<MatchDuJour[]>(cleJour).catch(() => null);
@@ -385,7 +393,7 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
     // Une trêve internationale, un lundi de janvier, ou simplement 23 h passées
     // et tout est joué. Une section vide n'apprendrait rien : on montre la
     // suite du calendrier.
-    const cleSuite = `prochains-grands-matchs:v3:${jour}`;
+    const cleSuite = `prochains-grands-matchs:v4:${jour}`;
     let suite: MatchDuJour[] | null = null;
 
     const suiteEnReserve = await lireReserve<MatchDuJour[]>(cleSuite).catch(() => null);
