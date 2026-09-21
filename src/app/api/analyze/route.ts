@@ -28,6 +28,7 @@ import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from "@/
 import { statistiquesDepuisMatchs } from "@/lib/statistiques-recentes";
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from "@/lib/forces-poisson";
 import { avisDuMarchePour, totalDuMarchePour } from "@/lib/couche-marche";
+import { coucheEloSelections } from "@/lib/forces-selections";
 import { enregistrerAnalyse } from "@/lib/enregistrer-analyse";
 import { assainirAnalyse } from "@/lib/filtre-vocabulaire";
 
@@ -1474,6 +1475,18 @@ async function analyser(req: Request, billet: BilletQuota) {
     targetFutureMatch?.fixture?.date,
     targetFutureMatch?.league?.id
   );
+  // ── LA FORCE DES SÉLECTIONS NATIONALES ────────────────────────────────
+  //
+  // Un classement Elo sur 9 819 matchs internationaux depuis 2014 — voir
+  // `forces-selections.ts`. Mesuré en marche avant sur 4 626 matchs de 2022 à
+  // 2026 : 53,2 → 57,2 % de vainqueurs justes, Brier 0,5862 → 0,5438. Il ne
+  // parle que pour deux SÉLECTIONS connues (dix matchs au moins chacune) : un
+  // club n'y figure jamais. Vu de l'équipe qui reçoit, comme le moteur l'attend.
+  const avisEloSelections = await coucheEloSelections(
+    equipe1AJoueADomicile === false ? id2 : id1,
+    equipe1AJoueADomicile === false ? id1 : id2,
+    (targetFutureMatch || targetPastMatch || nextH2H)?.league?.id
+  );
   const grilleSeconde = (() => {
     try {
       const ligue = (targetFutureMatch || targetPastMatch || nextH2H)?.league?.id;
@@ -1700,6 +1713,7 @@ async function analyser(req: Request, billet: BilletQuota) {
     // Quand les occasions sont là, la mémoire se TAIT : appliquée partout,
     // elle dégrade le pronostic (mesuré le 11 septembre, couche Elo refusée).
     avisDuMarche ??
+    avisEloSelections ??
     (occasionsDuMatch
       ? null
       : avisDeLaMemoire(

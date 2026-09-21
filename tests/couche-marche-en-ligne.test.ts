@@ -31,7 +31,9 @@ test('★ ACQUIS — le marché ne parle QUE sur les sept grands championnats', 
 test('★ ACQUIS — l’analyse et la sélection lisent le marché, puis la mémoire à défaut', () => {
   const route = fs.readFileSync('src/app/api/analyze/route.ts', 'utf8');
   assert.match(route, /avisDuMarchePour\(\s*targetFutureMatch\?\.fixture\?\.id,/, 'L’analyse ne lit plus l’avis du marché.');
-  assert.match(route, /avisDuMarche \?\?\s*\(occasionsDuMatch/, 'Le marché ne passe plus avant la mémoire des clubs.');
+  // La couche Elo des sélections (21 septembre 2026) s'insère ENTRE les deux :
+  // elle ne parle que pour deux sélections nationales, jamais pour un club.
+  assert.match(route, /avisDuMarche \?\?\s*(avisEloSelections \?\?\s*)?\(occasionsDuMatch/, 'Le marché ne passe plus avant la mémoire des clubs.');
   const selection = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');
   assert.match(selection, /\(await avisDuMarchePour\(f\?\.fixture\?\.id, f\?\.fixture\?\.date, ligue\)\) \?\?/,
     'La sélection du jour ne lit plus l’avis du marché : sa carte contredirait l’analyse.');

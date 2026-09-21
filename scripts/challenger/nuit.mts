@@ -409,6 +409,24 @@ async function principal(): Promise<any> {
   } catch (e: any) {
     journal(`rafraîchissement manqué : ${e?.message ?? String(e)} — on travaille sur les fichiers existants`);
   }
+  // ── LA FORCE DES SÉLECTIONS NATIONALES, PUBLIÉE CHAQUE JOUR ─────────────
+  //
+  // Pendant une fenêtre internationale, les notes d'après la première journée
+  // de qualifications doivent être en ligne avant la deuxième. Le script relève
+  // les derniers matchs de sélections, recalcule le classement Elo et le range
+  // dans la réserve lue par l'analyse (`src/lib/forces-selections.ts`). Un
+  // échec ne coûte rien : l'analyse garde les notes de la veille.
+  {
+    const r = spawnSync(process.execPath, [TSX, path.join('scripts', 'challenger', 'elo-selections-publier.mts')], {
+      cwd: RACINE,
+      env: process.env as NodeJS.ProcessEnv,
+      encoding: 'utf8',
+      timeout: 15 * 60_000,
+    });
+    const derniere = String(r.stdout ?? '').trim().split(/\r?\n/).filter((l) => l.includes('[ELO SÉLECTIONS]')).pop();
+    ligne(r.status === 0 && derniere ? `- ${derniere.replace('[ELO SÉLECTIONS] ', 'Sélections nationales : ')}` : '- ⚠️ Notes des sélections NON republiées aujourd’hui : l’analyse garde celles de la veille.');
+    if (r.status !== 0) journal(`notes des sélections non publiées (code ${r.status ?? r.signal})`);
+  }
   if (d)
     ligne(`- ${d.rencontres} rencontres terminées, dont ${d.tirs} avec leurs tirs ; ${d.fichesLues} fiche(s) de tirs lue(s) cette nuit.`);
   else
