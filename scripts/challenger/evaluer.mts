@@ -39,7 +39,7 @@ type Couche =
   | { type: 'erreurs-clubs'; retrecissement: number; poids: number }
   | { type: 'marche'; poids: number }
   | { type: 'marche-historique'; poids: number; parLesProbabilites?: boolean }
-  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number; boostButeurs?: number; marcheSerreSeuil?: number; marcheSerrePart?: number; partPromu?: number; avisPoissonSerre?: number; marcheTresSerreSeuil?: number; marcheTresSerrePart?: number; coachEnSaison?: boolean; parClub?: boolean; avecCalibrage?: boolean; partIncertain?: number; partGrille?: number; repliSaisonAvant?: boolean; ecartCoucheFort?: number; partMarcheInformee?: number; partCoupeApres?: number; marcheAsiatique?: boolean; partAsiatique?: number }
+  | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number; boostButeurs?: number; marcheSerreSeuil?: number; marcheSerrePart?: number; partPromu?: number; avisPoissonSerre?: number; marcheTresSerreSeuil?: number; marcheTresSerrePart?: number; coachEnSaison?: boolean; parClub?: boolean; avecCalibrage?: boolean; partIncertain?: number; partGrille?: number; repliSaisonAvant?: boolean; ecartCoucheFort?: number; partMarcheInformee?: number; partCoupeApres?: number; marcheAsiatique?: boolean; partAsiatique?: number; boostGardien?: number; boostDefenseurs?: number; boostNote?: number; amplification?: number }
   | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean; avecLeMarche?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
@@ -794,7 +794,54 @@ function avecAbsences(
   marcheAsiatique = false,
   // Part du handicap asiatique dans la lecture du marché : 1 = lui seul,
   // 0,5 = moitié-moitié avec le 1N2.
-  partAsiatique = 1
+  partAsiatique = 1,
+  // ── UN GARDIEN ABSENT N'EST PAS UN ONZIÈME D'ÉQUIPE ───────────────────
+  //
+  // La couche des absents pèse chacun par ses minutes, et divise par onze :
+  // un titulaire à temps plein vaut un onzième, qu'il soit gardien, arrière
+  // droit ou avant-centre. Or perdre son gardien numéro un ne se remplace pas
+  // comme perdre un milieu : le doublure d'un grand club est, presque
+  // partout, le poste où l'écart de niveau est le plus large.
+  //
+  // Le poste est déjà relevé par le ramasseur de joueurs (`poste`), saison
+  // par saison : aucune donnée nouvelle à aller chercher.
+  //
+  // MESURÉ LE 21 SEPTEMBRE 2026, ET REFUSÉ. Sur 3 433 rencontres des cinq
+  // grands championnats, contre le moteur tel qu'il tourne :
+  //
+  //     gardien x1,5   -1 / +0        défenseurs x1,3   -6 / -3
+  //     gardien x2     +3 / +0        défenseurs x1,6   -9 / -1
+  //     gardien x3     +4 / -2
+  //
+  // Aucune dose ne passe les deux moitiés. Le marché a déjà digéré l'absence
+  // d'un gardien : le poids par les minutes suffit. Piste fermée.
+  boostGardien = 0,
+  // Et le même geste pour la charnière centrale, à mesurer séparément : un
+  // défenseur central absent pèse-t-il plus qu'un onzième ?
+  boostDefenseurs = 0,
+  // ── LA NOTE PLUTÔT QUE LES MINUTES ────────────────────────────────────
+  //
+  // Les minutes disent qu'un joueur joue, pas qu'il est bon. Deux titulaires à
+  // temps plein du même club n'ont pas la même valeur, et le fournisseur note
+  // chaque joueur sur sa saison (6,0 à 7,5 en pratique). On pèse l'absent par
+  // ce que sa note dépasse la moyenne.
+  //
+  // MESURÉ LE 21 SEPTEMBRE 2026, ET REFUSÉ : -5 / -1, -5 / -3, -11 / -4 aux
+  // doses 0,3, 0,6 et 1. La note du fournisseur juge la SAISON, pas le poste
+  // dans l'équipe : un remplaçant qui brille quand il entre y est mieux noté
+  // qu'un titulaire régulier. Piste fermée.
+  boostNote = 0,
+  // ── UNE ÉQUIPE AMPUTÉE DE SIX JOUEURS N'EST PAS SIX FOIS AMPUTÉE ──────
+  //
+  // Le total des absents s'additionne tout droit : six titulaires absents
+  // valent six fois un titulaire absent. Or une équipe qui perd la moitié de
+  // son onze perd aussi ses automatismes — l'effet devrait s'accélérer. On
+  // ajoute donc un terme au carré : manque × (1 + amplification × manque).
+  //
+  // MESURÉ LE 21 SEPTEMBRE 2026, ET REFUSÉ : -5 / -4, -4 / -4, -4 / -8 aux
+  // doses 0,5, 1 et 2. Les deux moitiés perdent à chaque dose. L'addition
+  // toute droite des absents est la bonne. Piste fermée.
+  amplification = 0
 ): { pronostics: Pronostic[]; actifs: number[] } {
   const asiatiques: Record<string, { ligne: number; dom: number; ext: number }> =
     marcheAsiatique && fs.existsSync('.challenger/cotes-asiatiques.json')
@@ -1010,6 +1057,15 @@ function avecAbsences(
     }
     // Un buteur absent ne vaut pas un remplaçant absent : on peut peser sa
     // contribution offensive de la saison précédente (buts + demi-passes).
+    // Le poste, quand le ramasseur l'a relevé : « Goalkeeper », « Defender »,
+    // « Midfielder », « Attacker ».
+    const poste = String(j.poste ?? '');
+    if (boostGardien && /^g/i.test(poste)) base *= 1 + boostGardien;
+    else if (boostDefenseurs && /^d/i.test(poste)) base *= 1 + boostDefenseurs;
+    if (boostNote) {
+      const note = Number(j.note ?? 0);
+      if (note > 0) base *= 1 + boostNote * Math.max(-0.5, Math.min(1, note - 6.6));
+    }
     if (!boostButeurs) return base;
     const offensif = Math.min(1, (Number(j.buts ?? 0) + 0.5 * Number(j.passes ?? 0)) / 15);
     return base * (1 + boostButeurs * offensif);
@@ -1037,6 +1093,10 @@ function avecAbsences(
     const coachExt =
       partDuCoach(Number(m.ext), String(m.date), Number(m.ligue), Number(m.saison)) +
       (partPromu && estPromu(Number(m.ligue), Number(m.saison), Number(m.ext)) ? partPromu : 0);
+    if (amplification) {
+      manqueDom *= 1 + amplification * manqueDom;
+      manqueExt *= 1 + amplification * manqueExt;
+    }
     let totalDom = manqueDom * poids + coachDom;
     let totalExt = manqueExt * poids + coachExt;
     if (partCoupeApres) {
@@ -4766,7 +4826,7 @@ for (const vBrute of tache.variantes) {
     }, v.couche.partPromu ?? 0, v.couche.avisPoissonSerre ?? 0, v.couche.coachEnSaison === true, v.couche.parClub === true, v.couche.avecCalibrage === true, v.couche.partIncertain ?? 1, v.couche.partGrille ?? 0.5, v.couche.repliSaisonAvant === true, {
       ecart: v.couche.ecartCoucheFort ?? 0,
       part: v.couche.partMarcheInformee ?? 1,
-    }, v.couche.partCoupeApres ?? 0, v.couche.marcheAsiatique === true, v.couche.partAsiatique ?? 1);
+    }, v.couche.partCoupeApres ?? 0, v.couche.marcheAsiatique === true, v.couche.partAsiatique ?? 1, v.couche.boostGardien ?? 0, v.couche.boostDefenseurs ?? 0, v.couche.boostNote ?? 0, v.couche.amplification ?? 0);
     sortie[v.nom] = r.pronostics;
     actifs[v.nom] = r.actifs;
     return;
