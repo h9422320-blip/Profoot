@@ -37,9 +37,37 @@ test('★ ACQUIS — le moteur de référence du banc inclut la mémoire des clu
   assert.match(s, /const avisDeLaProduction = /, 'Le banc ne connaît plus l’avis de la production.');
   assert.match(
     s,
-    /calculerScoreProbable\(s1, s2, true, false, classementsDe\(m\), forcesDe\(m\), undefined, croisePour\(m\), rapportPour\(m\), occ, null, avisDeLaProduction\(m\)\)/,
+    /calculerScoreProbable\(s1, s2, true, false, classementsDe\(m\), forcesDe\(m\), undefined, croisePour\(m\), rapportPour\(m\), occ, corrEnLigne\(m\), avisDeLaProduction\(m\)\)/,
     'Le moteur de référence doit recevoir l’avis de la mémoire, comme la production depuis le 12 septembre 2026.'
   );
+});
+
+test('★ ACQUIS — le moteur de référence porte l’élan, le terrain et le repos', () => {
+  // ── CE QUI EST ARRIVÉ, ET QUI A DURÉ CINQ NUITS ─────────────────────────
+  //
+  // Le 16 septembre 2026, l'élan, le terrain par championnat et le repos sont
+  // passés en production, au onzième point d'entrée du moteur. Le moteur de
+  // référence du banc, lui, y passait `null` : il était AMPUTÉ de sa première
+  // couche.
+  //
+  // Mesuré le 21 septembre sur 3 548 rencontres des cinq grands championnats :
+  // le vrai moteur trouve 1 827 vainqueurs justes, l'amputé 1 817. Dix matchs
+  // d'avance offerts à n'importe quelle couche — et le challenger a proposé
+  // trois nuits de suite une couche qui, pour l'essentiel, ne faisait que
+  // remettre ce que le banc avait enlevé.
+  //
+  // Une couche qui écrivait la correction DE ZÉRO effaçait au passage l'élan,
+  // le terrain et le repos. Elle n'était donc pas mesurée « en plus » mais
+  // « à la place » — exactement la famille d'erreurs que `corrEnLigne` avait
+  // été écrit pour clore.
+  const s = source();
+  assert.match(s, /function corrEnLigne\(/, 'La correction de production a disparu du banc.');
+  assert.doesNotMatch(
+    s,
+    /rapportPour\(m\), occ, null,/,
+    'Une variante repasse `null` au onzième point d’entrée : elle efface l’élan, le terrain et le repos de la production.'
+  );
+  assert.match(s, /function sommerCorrections\(/, 'Les couches ne savent plus s’ajouter à la correction de production.');
 });
 
 test('★ ACQUIS — le banc applique les mêmes conditions que la production', () => {
