@@ -369,7 +369,21 @@ export function composerApercu(
   forme1?: FormeEquipe,
   forme2?: FormeEquipe,
   /** Compétition et stade, quand ils sont connus : ils plantent le décor. */
-  contexte?: { competition?: string | null; stade?: string | null }
+  contexte?: {
+    competition?: string | null;
+    stade?: string | null;
+    /**
+     * Vrai quand le texte est lu par quelqu'un qui a DÉJÀ payé.
+     *
+     * Ce rédacteur sert deux fois : l'avant-goût du visiteur gratuit, et le
+     * secours de l'abonné quand le modèle de langage ne répond pas ou répond
+     * trop court. Constaté le 21 septembre 2026 sur Côte d'Ivoire–Ghana : un
+     * compte VIP lisait « Débloquez l'analyse complète pour tout voir. » Dire
+     * à quelqu'un qui a payé qu'il lui reste quelque chose à débloquer, c'est
+     * lui apprendre qu'il n'a pas tout — alors qu'il a tout.
+     */
+    pourUnAbonne?: boolean;
+  }
 ): string {
   // ── LE NOM VIENT D'OÙ IL EXISTE ─────────────────────────────────────────
   //
@@ -422,7 +436,8 @@ export function composerApercu(
     ? `${e1} reçoit ${e2}${stade ? ` au ${stade}` : ''} pour un match de ${comp}.`
     : '';
 
-  return [ouverture, majuscule(phrase1), majuscule(phrase2), tension, "Débloquez l'analyse complète pour tout voir."]
+  const appel = contexte?.pourUnAbonne ? '' : "Débloquez l'analyse complète pour tout voir.";
+  return [ouverture, majuscule(phrase1), majuscule(phrase2), tension, appel]
     .filter(Boolean)
     .join(' ');
 }

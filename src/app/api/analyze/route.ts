@@ -2547,6 +2547,8 @@ ${estApercu ? `{
         {
           competition: (targetFutureMatch || nextH2H)?.league?.name ?? null,
           stade: (targetFutureMatch || nextH2H)?.fixture?.venue?.name ?? null,
+          // Lu par un abonné : pas d'invitation à « débloquer » ce qu'il a déjà.
+          pourUnAbonne: true,
         }
       );
     }
@@ -2668,6 +2670,8 @@ ${estApercu ? `{
       quickSummary: composerApercuVendeur(team1.name, team2.name, formeRepli1, formeRepli2, {
         competition: (targetFutureMatch || nextH2H)?.league?.name ?? null,
         stade: (targetFutureMatch || nextH2H)?.fixture?.venue?.name ?? null,
+        // Le repli de l'analyse complète : celui qui le lit a payé.
+        pourUnAbonne: true,
       }),
       comparison: {
         attack: { team1: 60, team2: 50 }, defense: { team1: 60, team2: 50 },
