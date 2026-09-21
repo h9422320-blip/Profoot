@@ -176,7 +176,24 @@ export async function rattraperAccesManquants(reparer = true): Promise<BilanAcce
     echecs: [],
   };
 
-  const orphelines = payees.filter((v) => !servies.has(v.id));
+  // ── CE QUI A ÉTÉ RÉGLÉ AUTREMENT NE S'ALERTE PLUS ─────────────────────
+  //
+  // Une vente peut avoir servi son acheteur sans jamais porter d'abonnement à
+  // son nom : un mois ajouté sur l'abonnement qu'il avait déjà, par exemple.
+  // Sans cette liste, elle ressort chaque jour comme « payé, jamais servi » —
+  // et une alerte qui se répète pour une raison connue cesse d'être lue, ce
+  // qui finit par cacher le vrai cas au milieu des faux. Voir
+  // `ventes-reglees.ts` : chaque entrée dit ce qui a été fait, et quand.
+  const { venteReglee } = await import('./ventes-reglees');
+  const orphelines = payees.filter((v) => {
+    if (servies.has(v.id)) return false;
+    const reglee = venteReglee(v.id);
+    if (reglee) {
+      bilan.dejaServies++;
+      return false;
+    }
+    return true;
+  });
   if (!orphelines.length) return bilan;
 
   // L'adresse saisie au moment du paiement est la plus fiable : c'est celle

@@ -24,6 +24,7 @@ for (const l of fs.readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
 const { createAdminClient } = await import('../src/lib/supabase-admin.js');
 const { adresseJoignable, DOMAINES_DE_TEST } = await import('../src/lib/livraison-sans-compte.js');
 const { jumelleProbable } = await import('../src/lib/adresses-jumelles.js');
+const { venteReglee } = await import('../src/lib/ventes-reglees.js');
 const sb = createAdminClient();
 const MAINTENANT = Date.now();
 
@@ -77,7 +78,7 @@ const ventes = (await toutes('payment_intents')).filter(
 );
 
 const cases: Record<string, any[]> = {
-  'SERVI': [], 'SERVI AUTREMENT': [], 'COMPTE SANS ACCÈS': [], 'JUMELLE': [], 'SANS COMPTE': [],
+  'SERVI': [], 'RÉGLÉ AUTREMENT': [], 'SERVI AUTREMENT': [], 'COMPTE SANS ACCÈS': [], 'JUMELLE': [], 'SANS COMPTE': [],
 };
 const jamaisConnectes: any[] = [];
 
@@ -85,6 +86,12 @@ for (const v of ventes) {
   const email = String(v.email ?? '').trim().toLowerCase();
   const sale = String(v.sale_id);
   const ligne = { quand: String(v.created_at).slice(0, 16), montant: v.amount, plan: v.plan, email, sale };
+  // Réglée hors abonnement, et par une décision écrite : voir ventes-reglees.ts.
+  const reglee = venteReglee(sale);
+  if (reglee) {
+    cases['RÉGLÉ AUTREMENT'].push({ ...ligne, note: reglee.raison, le: reglee.le });
+    continue;
+  }
   const abo = aboParVente.get(sale);
   if (abo && actif(abo)) {
     cases['SERVI'].push(ligne);
