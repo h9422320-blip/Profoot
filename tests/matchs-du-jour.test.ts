@@ -112,7 +112,7 @@ test('★ ACQUIS — jamais de section vide', () => {
   assert.match(s, /if \(matchs\.length === 0\)/, 'Le cas « aucun match » n’est plus traité.');
   assert.match(s, /Pas de grand match/, 'Le message du cas vide a disparu.');
   // Et avant d'en arriver là, on propose la suite du calendrier.
-  assert.match(sansCommentaires(lire(SOURCE)), /getUpcomingFixtures\(5\)/, 'Le repli sur les prochains matchs a sauté.');
+  assert.match(sansCommentaires(lire(SOURCE)), /getUpcomingFixtures\(5[,)]/, 'Le repli sur les prochains matchs a sauté.');
 });
 
 test('★ ACQUIS — la trêve ne vide ni le carrousel ni la sélection', () => {

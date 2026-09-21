@@ -47,6 +47,7 @@ import { getTodayFixtures, getUpcomingFixtures, LEAGUE_IDS } from './api-footbal
 import { lireReserve, ecrireReserve } from './api-football';
 import { getLiveTeams } from './teams-live';
 import { rangDeCompetition } from './precalcul-selection';
+import { COMPETITIONS_AFRICAINES, nomAffiche, selectionParApiId } from './selections-africaines';
 
 /**
  * Les coupes d'Europe, puis l'Angleterre, l'Espagne, l'Italie, l'Allemagne,
@@ -72,6 +73,15 @@ export const GRANDS_CHAMPIONNATS: number[] = [
   LEAGUE_IDS.seriea,
   LEAGUE_IDS.bundesliga,
   LEAGUE_IDS.ligue1,
+  // ── LES SÉLECTIONS AFRICAINES ─────────────────────────────────────────
+  //
+  // Coupe d'Afrique des nations et ses qualifications. Ajoutées le
+  // 21 septembre 2026 : pendant la trêve des championnats d'Europe, ce sont
+  // CES matchs que suit le public de ProFoot — Côte d'Ivoire–Ghana, Sénégal,
+  // Mali, Burkina, Cameroun, Guinée — et l'écran d'analyse n'en montrait
+  // aucun. Voir `selections-africaines.ts`.
+  6,
+  36,
 ];
 
 /** Combien de cartes au maximum : au-delà, le carrousel ne se parcourt plus. */
@@ -124,6 +134,17 @@ export interface MatchDuJour {
    * `null` quand la rencontre n'a jamais été analysée — on ne devine pas.
    */
   fiabilite: number | null;
+  /**
+   * Une affiche que le public de ProFoot suit de près — aujourd'hui, une
+   * rencontre de sélection où joue une nation « vedette » de
+   * `selections-africaines.ts`. À date égale, elle passe devant : un
+   * Côte d'Ivoire–Ghana ne doit pas se retrouver derrière un Namibie–Congo
+   * parce qu'il commence six heures plus tard.
+   *
+   * Le NOMBRE de nations suivies sur la feuille de match : 2 pour Côte
+   * d'Ivoire–Ghana, 1 pour Namibie–Congo, absent pour un match de clubs.
+   */
+  vedette?: number;
 }
 
 export interface ListeMatchs {
@@ -162,12 +183,53 @@ async function enCartes(brutes: any[]): Promise<MatchDuJour[]> {
     const ligue = Number(f?.league?.id);
     if (!GRANDS_CHAMPIONNATS.includes(ligue)) continue;
 
+    const kickoff = String(f?.fixture?.date ?? '');
+    if (!kickoff) continue;
+
+    // ── UNE RENCONTRE DE SÉLECTIONS SE CONSTRUIT DEPUIS LE CALENDRIER ────
+    //
+    // Le référentiel ne contient que des clubs : sans ce chemin, toute
+    // rencontre de sélection était écartée ici, en silence. La carte porte le
+    // logo du fournisseur — l'analyse en tire l'identifiant EXACT de
+    // l'équipe, sans recherche par nom — et le nom français quand on le
+    // connaît.
+    if (COMPETITIONS_AFRICAINES.has(ligue)) {
+      const equipe = (t: any) => {
+        const nom = nomAffiche(t?.id, String(t?.name ?? ''));
+        return {
+          id: `nat-${t?.id}`,
+          name: nom,
+          logo: String(t?.logo ?? ''),
+          // Même nom que l'équipe : c'est ainsi que l'analyse reconnaît une
+          // sélection nationale.
+          country: nom,
+          league: 'can',
+          stadium: String(f?.fixture?.venue?.name ?? ''),
+        };
+      };
+      if (!f?.teams?.home?.id || !f?.teams?.away?.id) continue;
+      const vedette =
+        (selectionParApiId(f.teams.home.id)?.interet ?? 0) + (selectionParApiId(f.teams.away.id)?.interet ?? 0);
+      // Un Libye–Botswana reste analysable depuis le sélecteur, mais il n'a
+      // rien à faire parmi les « grands matchs » : aucune nation que le public
+      // de ProFoot suit n'y joue.
+      if (vedette === 0) continue;
+      cartes.push({
+        id: `md-${f?.fixture?.id}`,
+        kickoffISO: kickoff,
+        championnat: String(f?.league?.name ?? ''),
+        paysDuChampionnat: f?.league?.country ?? null,
+        fiabilite: null,
+        vedette,
+        dom: equipe(f.teams.home),
+        ext: equipe(f.teams.away),
+      });
+      continue;
+    }
+
     const dom = parApiId.get(Number(f?.teams?.home?.id));
     const ext = parApiId.get(Number(f?.teams?.away?.id));
     if (!dom || !ext) continue;
-
-    const kickoff = String(f?.fixture?.date ?? '');
-    if (!kickoff) continue;
 
     cartes.push({
       id: `md-${f?.fixture?.id}`,
@@ -280,6 +342,7 @@ function aVenir(cartes: MatchDuJour[]): MatchDuJour[] {
     .sort(
       (a, b) =>
         rangDeCompetition(a.championnat) - rangDeCompetition(b.championnat) ||
+        (b.vedette ?? 0) - (a.vedette ?? 0) ||
         (b.fiabilite ?? -1) - (a.fiabilite ?? -1) ||
         a.kickoffISO.localeCompare(b.kickoffISO)
     )
@@ -298,7 +361,7 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
 
   try {
     // ── AUJOURD'HUI ────────────────────────────────────────────────────────
-    const cleJour = `matchs-du-jour:v1:${jour}`;
+    const cleJour = `matchs-du-jour:v2:${jour}`;
     let cartes: MatchDuJour[] | null = null;
 
     const enReserve = await lireReserve<MatchDuJour[]>(cleJour).catch(() => null);
@@ -322,7 +385,7 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
     // Une trêve internationale, un lundi de janvier, ou simplement 23 h passées
     // et tout est joué. Une section vide n'apprendrait rien : on montre la
     // suite du calendrier.
-    const cleSuite = `prochains-grands-matchs:v2:${jour}`;
+    const cleSuite = `prochains-grands-matchs:v3:${jour}`;
     let suite: MatchDuJour[] | null = null;
 
     const suiteEnReserve = await lireReserve<MatchDuJour[]>(cleSuite).catch(() => null);
@@ -332,7 +395,7 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
       // Les CINQ prochaines rencontres de chaque grande compétition, sans
       // borne de date : en pleine trêve, la fenêtre de sept jours ne rendait
       // rien et le carrousel restait vide pendant trois semaines.
-      suite = await enCartes((await getUpcomingFixtures(5)) ?? []);
+      suite = await enCartes((await getUpcomingFixtures(5, { selectionsAfricaines: 24 })) ?? []);
       await ecrireReserve(cleSuite, suite, dureeJusquAMinuit()).catch(() => {});
     }
 
@@ -354,6 +417,7 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
         (a, b) =>
           a.kickoffISO.slice(0, 10).localeCompare(b.kickoffISO.slice(0, 10)) ||
           rangDeCompetition(a.championnat) - rangDeCompetition(b.championnat) ||
+          (b.vedette ?? 0) - (a.vedette ?? 0) ||
           a.kickoffISO.localeCompare(b.kickoffISO)
       )
       .slice(0, MAX_CARTES);

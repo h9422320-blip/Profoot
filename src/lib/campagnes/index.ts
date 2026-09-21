@@ -147,39 +147,156 @@ function messageDuSoir(d: Destinataire) {
 }
 
 /**
- * ② LE MATIN — ce qui se joue aujourd'hui.
+ * ② LE MATIN — le verdict d'hier, puis le rendez-vous du jour.
  *
- * Fabriqué UNE FOIS pour tout le monde : la liste des matchs du jour est la
- * même pour les huit cents destinataires, et la recalculer par personne
- * appellerait huit cents fois le fournisseur de données.
+ * ── UN SEUL MESSAGE PAR JOUR, ET IL DOIT DONNER UNE RAISON D'OUVRIR ─────
+ *
+ * Mesuré le 21 septembre 2026 : un abonné qui ouvre l'application 7 jours
+ * dans son premier mois reprend à 78,6 % ; celui qui l'ouvre 1 ou 2 jours, à
+ * 0 %. Ce message existe pour faire gagner des JOURS, un par un.
+ *
+ * Deux raisons d'ouvrir, dans cet ordre :
+ *
+ *   1. LE VERDICT D'HIER, personnel et honnête — « 2 sur 3 » avec les deux
+ *      justes et celui qui a raté. On revient pour savoir si on avait raison.
+ *      Le message du soir ne montrait que les justes, et il ne partait plus
+ *      depuis le 2 septembre : le matin consommait tout le budget de courriel
+ *      avant lui. Le verdict voyage donc désormais avec le rendez-vous du
+ *      matin — une seule place de budget pour deux raisons d'ouvrir.
+ *
+ *   2. LE RENDEZ-VOUS DU JOUR : les rencontres que l'IA lit le mieux, avec la
+ *      fiabilité mesurée sur les rencontres comparables — jamais le vainqueur,
+ *      qui reste derrière l'analyse. Puis les autres affiches du jour.
+ *      Un jour sans affiche (trêve), le prochain rendez-vous daté.
+ *
+ * Le programme est fabriqué une fois pour tout le monde ; seul le verdict est
+ * propre à chacun.
  */
-function fabriqueMessageDuMatin(matchs: { dom: string; ext: string; heure: string }[]) {
+export interface ProgrammeDuMatin {
+  /** Les mieux cernés du jour, fiabilité mesurée en pour-cent. */
+  surs: { dom: string; ext: string; heure: string; fiabilite: number }[];
+  /** Les autres affiches du jour. */
+  matchs: { dom: string; ext: string; heure: string }[];
+  /** Quand rien ne se joue aujourd'hui : la prochaine journée qui compte. */
+  prochains: {
+    jour: string;
+    matchs: { dom: string; ext: string; heure: string }[];
+    affiche?: { dom: string; ext: string; heure: string } | null;
+  } | null;
+}
+
+interface VerdictLu {
+  equipe1: string;
+  equipe2: string;
+  predit: string | null;
+  reel: string | null;
+  juste: boolean;
+  scoreExact: boolean;
+}
+
+export function fabriqueMessageDuMatin(programme: ProgrammeDuMatin) {
   return (d: Destinataire) => {
-    if (!matchs.length) return null;
+    const verdict = (d.contexte?.verdict ?? []) as VerdictLu[];
+    const { surs, matchs, prochains } = programme;
+    if (!verdict.length && !surs.length && !matchs.length && !prochains) return null;
     const abonne = !!d.contexte?.abonne;
 
-    const lignes = matchs.slice(0, 8).map((m) => `  • ${m.heure}  ${m.dom} – ${m.ext}`);
+    const lignes: string[] = ['Bonjour,', ''];
 
-    return {
-      sujet:
-        matchs.length > 1
-          ? `${matchs.length} matchs à analyser aujourd'hui`
-          : `${matchs[0].dom} – ${matchs[0].ext} aujourd'hui`,
-      texte: [
-        'Bonjour,',
-        '',
-        "Voici ce qui se joue aujourd'hui dans les grands championnats :",
-        '',
-        ...lignes,
-        '',
-        abonne
-          ? "Votre accès est ouvert : lancez l'analyse avant le coup d'envoi."
-          : "Chaque analyse est publiée avant le coup d'envoi, puis confrontée au résultat réel.",
-        '',
-        `${siteUrl()}/analyze`,
-        ...SIGNATURE,
-      ].join('\n'),
-    };
+    // ── 1. LE VERDICT D'HIER ────────────────────────────────────────────
+    const justes = verdict.filter((v) => v.juste).length;
+    const exact = verdict.find((v) => v.scoreExact);
+    if (verdict.length === 1) {
+      const v = verdict[0];
+      lignes.push(
+        `Hier, vous avez analysé ${v.equipe1} – ${v.equipe2}` +
+          (v.reel ? ` (${v.reel})` : '') +
+          (v.juste ? ' : il s’est terminé comme annoncé.' : ' : il ne s’est pas terminé comme annoncé.'),
+        ''
+      );
+    } else if (verdict.length > 1) {
+      lignes.push(
+        `Hier, vous avez analysé ${verdict.length} matchs. ` +
+          `${justes} ${justes > 1 ? 'se sont terminés' : 's’est terminé'} comme annoncé :`,
+        ''
+      );
+      for (const v of verdict.slice(0, 6)) {
+        const reel = v.reel ? `  ${v.reel}` : '';
+        const annonce = v.predit ? `  (annoncé ${v.predit})` : '';
+        lignes.push(`  ${v.juste ? '✓' : '✗'} ${v.equipe1} – ${v.equipe2}${reel}${annonce}`);
+      }
+      if (verdict.length > 6) lignes.push(`  … et ${verdict.length - 6} autre${verdict.length - 6 > 1 ? 's' : ''}`);
+      lignes.push('');
+    }
+    if (exact) {
+      lignes.push(`Et le score exact de ${exact.equipe1} – ${exact.equipe2} est tombé pile : c’est le résultat le plus rare.`, '');
+    } else if (verdict.length && justes * 2 < verdict.length) {
+      // ── UN MAUVAIS JOUR DOIT DÉBOUCHER SUR QUELQUE CHOSE ──────────────────
+      //
+      // Afficher « 2 sur 7 » et s'arrêter là, c'est donner une raison de
+      // partir. Les rencontres serrées ratent le plus souvent — 35 % de
+      // réussite quand deux issues se tiennent, contre 68 % sur un favori
+      // écrasant —, et c'est exactement ce que la sélection du jour écarte.
+      lignes.push(
+        'Le football garde sa part d’imprévu, et ce sont les matchs serrés qui ratent le plus souvent. ' +
+          'C’est pour ça que l’application met en avant, chaque jour, les rencontres qu’elle lit le mieux — ' +
+          'commencez par celles-là.',
+        ''
+      );
+    }
+
+    // ── 2. LE RENDEZ-VOUS DU JOUR ───────────────────────────────────────
+    if (surs.length) {
+      lignes.push('LES MATCHS LES MIEUX CERNÉS AUJOURD’HUI', '');
+      for (const m of surs.slice(0, 3)) lignes.push(`  • ${m.heure}  ${m.dom} – ${m.ext}   · fiabilité ${m.fiabilite} %`);
+      lignes.push('', 'La fiabilité, c’est la part de bons résultats de l’IA sur les rencontres de ce type déjà jouées.', '');
+    }
+    if (matchs.length) {
+      lignes.push(surs.length ? 'AUSSI AUJOURD’HUI' : 'CE QUI SE JOUE AUJOURD’HUI', '');
+      for (const m of matchs.slice(0, 6)) lignes.push(`  • ${m.heure}  ${m.dom} – ${m.ext}`);
+      lignes.push('');
+    }
+    if (!surs.length && !matchs.length && prochains) {
+      lignes.push(`PROCHAIN RENDEZ-VOUS — ${prochains.jour.toUpperCase()}`, '');
+      for (const m of prochains.matchs.slice(0, 6)) lignes.push(`  • ${m.heure}  ${m.dom} – ${m.ext}`);
+      lignes.push('', 'Les analyses sont déjà ouvertes.', '');
+    }
+
+    lignes.push(
+      abonne
+        ? 'Votre accès est ouvert : lancez l’analyse avant le coup d’envoi.'
+        : 'Chaque analyse est publiée avant le coup d’envoi, puis confrontée au résultat réel.',
+      '',
+      `${siteUrl()}/analyze`,
+      ...SIGNATURE
+    );
+
+    // ── LE SUJET PORTE LE FAIT LE PLUS PERSONNEL ────────────────────────
+    //
+    // Le verdict d'abord : c'est la seule ligne de la boîte de réception qui
+    // parle de LUI. Puis le programme.
+    const affiche = surs[0] ?? matchs[0] ?? null;
+    let sujet: string;
+    if (exact) {
+      sujet = `Score exact hier : ${exact.equipe1} – ${exact.equipe2} ${exact.reel ?? ''}`.trim();
+    } else if (verdict.length > 1) {
+      sujet = `Hier : ${justes} sur ${verdict.length}` + (affiche ? ` — et aujourd’hui, ${affiche.dom} – ${affiche.ext}` : '');
+    } else if (verdict.length === 1) {
+      sujet = `Hier : ${verdict[0].equipe1} – ${verdict[0].equipe2}` + (justes ? ', comme annoncé' : '');
+    } else if (surs.length > 1) {
+      sujet = `${surs.length} matchs bien cernés aujourd’hui`;
+    } else if (surs.length === 1) {
+      sujet = `Le match le mieux cerné aujourd’hui : ${surs[0].dom} – ${surs[0].ext}`;
+    } else if (matchs.length > 1) {
+      sujet = `${matchs.length} matchs à analyser aujourd’hui`;
+    } else if (matchs.length === 1) {
+      sujet = `${matchs[0].dom} – ${matchs[0].ext} aujourd’hui`;
+    } else {
+      const m = prochains!.affiche ?? prochains!.matchs[0];
+      sujet = `Prochain rendez-vous ${prochains!.jour}` + (m ? ` : ${m.dom} – ${m.ext}` : '');
+    }
+
+    return { sujet, texte: lignes.join('\n') };
   };
 }
 
@@ -320,6 +437,64 @@ export const CAMPAGNES: NomCampagne[] = [
   'jamais-essaye',
 ];
 
+const heureUTC = (iso: string) =>
+  new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+
+/**
+ * Le programme du matin : les mieux cernés, les affiches, ou le prochain
+ * rendez-vous. Chaque source peut manquer sans empêcher les autres : un
+ * programme vide ne fait partir que les verdicts.
+ */
+export async function programmeDuMatin(): Promise<ProgrammeDuMatin> {
+  const programme: ProgrammeDuMatin = { surs: [], matchs: [], prochains: null };
+  try {
+    const { lireSelectionDuJour } = await import('../selection-du-jour');
+    const sel = await lireSelectionDuJour();
+    if (sel.aujourdhui) {
+      programme.surs = sel.matchs.slice(0, 3).map((m) => ({
+        dom: m.dom.name,
+        ext: m.ext.name,
+        heure: heureUTC(m.kickoffISO),
+        fiabilite: m.fiabilite,
+      }));
+    }
+  } catch (e: any) {
+    console.warn('[MATIN] Sélection illisible :', e?.message);
+  }
+  try {
+    const { matchsDuJour } = await import('../grands-matchs-du-jour');
+    const liste = await matchsDuJour();
+    const deja = new Set(programme.surs.map((m) => `${m.dom}|${m.ext}`));
+    const carte = (m: any) => ({ dom: String(m.dom.name), ext: String(m.ext.name), heure: heureUTC(m.kickoffISO) });
+    // Un agenda se lit dans l'ordre des heures. La liste arrive rangée par
+    // intérêt : on garde les six plus attendus, PUIS on les remet à l'heure.
+    const agenda = (l: any[]) =>
+      l.slice(0, 6).sort((a, b) => String(a.kickoffISO).localeCompare(String(b.kickoffISO)));
+    if (liste.aujourdhui) {
+      programme.matchs = agenda(liste.matchs).map(carte).filter((m) => !deja.has(`${m.dom}|${m.ext}`));
+    } else if (liste.matchs.length) {
+      const premierJour = liste.matchs[0].kickoffISO.slice(0, 10);
+      programme.prochains = {
+        jour: new Date(`${premierJour}T12:00:00Z`).toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          timeZone: 'UTC',
+        }),
+        matchs: agenda(liste.matchs.filter((m) => m.kickoffISO.slice(0, 10) === premierJour)).map(carte),
+        // L'affiche du jour, pour le sujet : la plus attendue, pas la plus matinale.
+        affiche: (() => {
+          const m = liste.matchs.find((x) => x.kickoffISO.slice(0, 10) === premierJour);
+          return m ? carte(m) : null;
+        })(),
+      };
+    }
+  } catch (e: any) {
+    console.warn('[MATIN] Matchs du jour illisibles :', e?.message);
+  }
+  return programme;
+}
+
 /**
  * Exécute une campagne.
  *
@@ -333,7 +508,8 @@ export async function lancerCampagne(
 ): Promise<BilanDiffusion> {
   // Les campagnes du jour n'ont besoin que d'une fenêtre courte ; celles de
   // rattrapage doivent voir tout l'historique pour savoir qui a déjà essayé.
-  const fenetre = nom === 'non-payeurs' || nom === 'jamais-essaye' ? 120 : 10;
+  // Le matin compte les jours d'usage du premier mois : il lui faut trente et un jours.
+  const fenetre = nom === 'non-payeurs' || nom === 'jamais-essaye' ? 120 : nom === 'matin' ? 31 : 10;
   const terrain: Terrain = await lireTerrain(fenetre);
 
   switch (nom) {
@@ -347,23 +523,12 @@ export async function lancerCampagne(
       });
 
     case 'matin': {
-      // La liste du jour est lue UNE fois, pas une par destinataire.
-      const { matchsDuJour } = await import('../grands-matchs-du-jour');
-      const liste = await matchsDuJour().catch(() => ({ matchs: [], aujourdhui: false }));
-      const matchs = (liste.aujourdhui ? liste.matchs : []).map((m) => ({
-        dom: m.dom.name,
-        ext: m.ext.name,
-        heure: new Date(m.kickoffISO).toLocaleTimeString('fr-FR', {
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'UTC',
-        }),
-      }));
-
+      // Le programme est lu UNE fois, pas une par destinataire.
+      const programme = await programmeDuMatin();
       return diffuser({
         campagne: `matin-${jour()}`,
         destinataires: publicDuMatin(terrain),
-        message: fabriqueMessageDuMatin(matchs),
+        message: fabriqueMessageDuMatin(programme),
         limite: options.limite ?? 400,
         simulation: options.simulation,
       });

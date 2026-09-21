@@ -386,16 +386,39 @@ export async function getTodayFixtures() {
  * mois. C'est aussi un appel de moins, puisqu'il n'y a plus de saison à
  * deviner.
  */
-export async function getUpcomingFixtures(parCompetition: number = 5) {
+export async function getUpcomingFixtures(
+  parCompetition: number = 5,
+  /**
+   * Ajouter la Coupe d'Afrique des nations et ses qualifications, avec ce
+   * nombre de rencontres chacune.
+   *
+   * RÉSERVÉ AU CARROUSEL, et c'est délibéré. Cette fonction sert aussi à la
+   * sélection du jour et à la préparation du moteur pendant la trêve : elles y
+   * cherchent « la prochaine journée des grands championnats ». Avec la CAN
+   * dedans, cette journée devenait le 24 septembre, et la préparation des
+   * affiches d'octobre s'arrêtait.
+   *
+   * Une journée de qualifications compte vingt-quatre rencontres : avec cinq,
+   * Côte d'Ivoire–Ghana, qui commence à 19 h, ne serait jamais chargée.
+   */
+  options: { selectionsAfricaines?: number } = {}
+) {
   // Ligue des champions, Europa, Conférence, puis les cinq grands.
   const grandesCompetitions = [2, 3, 848, 39, 140, 135, 78, 61];
+  const combien = new Map<number, number>(grandesCompetitions.map((l) => [l, parCompetition]));
+  if (options.selectionsAfricaines) {
+    for (const l of [6, 36]) {
+      grandesCompetitions.push(l);
+      combien.set(l, options.selectionsAfricaines);
+    }
+  }
   const allFixtures: any[] = [];
 
   for (let i = 0; i < grandesCompetitions.length; i += 3) {
     const lot = grandesCompetitions.slice(i, i + 3);
     const resultats = await Promise.all(
       lot.map((ligue) =>
-        apiFootballFetch<any>(`/fixtures?league=${ligue}&next=${parCompetition}`, TTL.FIXTURES_UPCOMING)
+        apiFootballFetch<any>(`/fixtures?league=${ligue}&next=${combien.get(ligue) ?? parCompetition}`, TTL.FIXTURES_UPCOMING)
       )
     );
     for (const r of resultats) if (r?.response) allFixtures.push(...r.response);

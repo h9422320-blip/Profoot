@@ -194,6 +194,18 @@ async function getTeamApiId(team: any) {
     if (match) return match[1];
   }
   
+  // ── UNE SÉLECTION AFRICAINE SE RECONNAÎT À SON IDENTIFIANT, PAS À SON NOM ──
+  //
+  // La recherche par nom confond le Congo et la RD Congo, la Guinée et la
+  // Guinée-Bissau, et ne connaît pas « Bénin » ni « Comores » : le fournisseur
+  // nomme en anglais. Pour les sélections relevées dans
+  // `selections-africaines.ts`, on donne l'identifiant exact.
+  if (team.league === 'can' || team.league === 'wc' || team.country === team.name) {
+    const { selectionParNom } = await import('@/lib/selections-africaines');
+    const selection = selectionParNom(team.name);
+    if (selection) return String(selection.apiId);
+  }
+
   let searchName = team.name;
   const translations: Record<string, string> = {
     // French -> English

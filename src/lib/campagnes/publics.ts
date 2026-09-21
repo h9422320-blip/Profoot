@@ -369,6 +369,47 @@ export function abonnesDormants(t: Terrain, silenceJours = 5): Destinataire[] {
 }
 
 /**
+ * Le verdict de la veille, pour une personne : ses analyses vérifiées depuis
+ * le dernier message, justes ET fausses.
+ *
+ * Le message du soir ne montrait que les justes. C'est agréable, mais ce
+ * n'est pas ce qui fait revenir : on revient pour SAVOIR si on avait raison,
+ * et une personne dont les deux matchs ont raté ne recevait rien — donc
+ * n'apprenait rien, donc ne revenait pas. Le verdict honnête est aussi ce qui
+ * rend crédible le jour où tout est juste.
+ */
+export interface VerdictDeLaVeille {
+  equipe1: string;
+  equipe2: string;
+  predit: string | null;
+  reel: string | null;
+  juste: boolean;
+  scoreExact: boolean;
+}
+
+export function verdictsDeLaVeille(t: Terrain, fenetreHeures = 30): Map<string, VerdictDeLaVeille[]> {
+  const borne = Date.now() - fenetreHeures * 3_600_000;
+  const parPersonne = new Map<string, VerdictDeLaVeille[]>();
+  for (const a of t.analyses) {
+    if (!a.verifieeLe || new Date(a.verifieeLe).getTime() < borne) continue;
+    if (a.issueCorrecte === null || !a.equipe1 || !a.equipe2) continue;
+    const liste = parPersonne.get(a.userId) ?? [];
+    // La même rencontre analysée deux fois ne compte qu'une fois.
+    if (liste.some((v) => v.equipe1 === a.equipe1 && v.equipe2 === a.equipe2)) continue;
+    liste.push({
+      equipe1: a.equipe1,
+      equipe2: a.equipe2,
+      predit: a.scorePredit,
+      reel: a.scoreReel,
+      juste: !!a.issueCorrecte,
+      scoreExact: !!a.scoreCorrect,
+    });
+    parPersonne.set(a.userId, liste);
+  }
+  return parPersonne;
+}
+
+/**
  * ⑤ LE MESSAGE DU MATIN — ce qui fait ouvrir l'application tous les jours.
  *
  * ── POURQUOI PAS À TOUT LE MONDE ────────────────────────────────────────
@@ -381,28 +422,92 @@ export function abonnesDormants(t: Terrain, silenceJours = 5): Destinataire[] {
  * Le message du matin va donc à ceux qui ont montré qu'ils voulaient venir :
  * les abonnés en cours, et ceux qui ont analysé quelque chose cette semaine.
  * Environ huit cents personnes, et ce sont les bonnes.
+ *
+ * ── ET DANS QUEL ORDRE : CELUI QUI DÉCIDE S'ILS REVIENDRONT ─────────────
+ *
+ * Mesuré le 21 septembre 2026 sur les abonnés dont le premier mois est
+ * terminé : ceux qui ont utilisé l'application 7 jours ou plus ont repris à
+ * 78,6 % ; ceux qui l'ont utilisée 1 à 2 jours, à 0 %. Le réachat se joue
+ * pendant le premier mois, sur le nombre de JOURS où l'on ouvre.
+ *
+ * Et le service de courriel n'accorde aujourd'hui que cinquante messages de
+ * campagne par jour. La liste est donc rangée pour que les cinquante premiers
+ * soient ceux pour qui un message change le plus :
+ *
+ *   1. l'abonné sous sept jours d'usage qui a un verdict hier — il vient de
+ *      revenir, on lui répond, et sa série continue ;
+ *   2. l'abonné sous sept jours sans verdict, le moins avancé d'abord ;
+ *   3. puis les abonnés déjà installés, verdict d'abord — ils reprennent à
+ *      78,6 % sans qu'on les pousse ;
+ *   4. enfin ceux qui ont analysé cette semaine sans être abonnés.
  */
 export function publicDuMatin(t: Terrain, fenetreJours = 7): Destinataire[] {
-  const limite = Date.now() - fenetreJours * JOUR_MS;
-  const retenus = new Set<string>();
+  const maintenant = Date.now();
+  const limite = maintenant - fenetreJours * JOUR_MS;
+  const verdicts = verdictsDeLaVeille(t);
 
+  // Les jours où chacun a ouvert l'application — une analyse lancée vaut un jour.
+  const joursActifs = new Map<string, Set<string>>();
+  for (const a of t.analyses) {
+    if (!joursActifs.has(a.userId)) joursActifs.set(a.userId, new Set());
+    joursActifs.get(a.userId)!.add(String(a.creeLe).slice(0, 10));
+  }
+
+  // Le premier abonnement de chacun : on est « dans son premier mois » tant
+  // qu'il a moins de trente jours.
+  const premierAbonnement = new Map<string, number>();
+  for (const a of t.abonnements) {
+    const d = new Date(a.creeLe).getTime();
+    if (!Number.isFinite(d)) continue;
+    if (d < (premierAbonnement.get(a.userId) ?? Infinity)) premierAbonnement.set(a.userId, d);
+  }
+
+  const retenus = new Set<string>();
   for (const userId of t.abonnesActifs) retenus.add(userId);
   for (const [userId, quand] of t.derniereAnalyse) {
     if (quand >= limite) retenus.add(userId);
   }
 
-  const sortie: Destinataire[] = [];
+  const candidats: { d: Destinataire; rang: number; jours: number }[] = [];
   for (const userId of retenus) {
     const compte = t.parId.get(userId);
     if (!compte?.email) continue;
     // Jamais connecté : le message du matin lui parlerait de matchs alors
     // qu'il n'a même pas de mot de passe. Sa relance à lui existe ailleurs.
     if (!compte.derniereEntree) continue;
-    sortie.push({
-      email: compte.email,
-      userId,
-      contexte: { abonne: t.abonnesActifs.has(userId) },
+
+    const abonne = t.abonnesActifs.has(userId);
+    const verdict = verdicts.get(userId) ?? [];
+    const debut = premierAbonnement.get(userId);
+    const jours = [...(joursActifs.get(userId) ?? [])].filter(
+      (j) => debut === undefined || j >= new Date(debut).toISOString().slice(0, 10)
+    ).length;
+
+    // Sous sept jours d'usage, l'abonné est EN DANGER de ne pas reprendre
+    // (0 % à 1-2 jours, 5,6 % de 3 à 6) ; au-dessus, il reprend à 78,6 % sans
+    // qu'on l'y pousse. Les cinquante places vont donc d'abord aux premiers.
+    const enDanger = abonne && jours < 7;
+    const rang = enDanger
+      ? verdict.length
+        ? 1
+        : 2
+      : abonne
+        ? verdict.length
+          ? 3
+          : 4
+        : verdict.length
+          ? 5
+          : 6;
+
+    candidats.push({
+      d: { email: compte.email, userId, contexte: { abonne, verdict, joursActifs: jours } },
+      rang,
+      jours,
     });
   }
-  return sortie;
+
+  // Chez les abonnés en danger, le moins avancé d'abord : c'est lui qui a le
+  // plus à gagner.
+  candidats.sort((a, b) => a.rang - b.rang || (a.rang <= 2 ? a.jours - b.jours : 0));
+  return candidats.map((c) => c.d);
 }
