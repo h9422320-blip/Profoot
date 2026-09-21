@@ -52,7 +52,7 @@
  * partagée : relire dix mille matchs n'est pas possible en soixante secondes.
  */
 
-import { lireReserve } from './api-football';
+import { lireReservePatiemment } from './api-football';
 
 export const CLE_ELO_SELECTIONS = 'selections:elo:v1';
 
@@ -91,10 +91,11 @@ let memoire: { quand: number; contenu: ReserveEloSelections | null } | null = nu
 export async function lireEloSelections(): Promise<ReserveEloSelections | null> {
   if (memoire && Date.now() - memoire.quand < 10 * 60 * 1000) return memoire.contenu;
   try {
-    const r = await lireReserve<ReserveEloSelections>(CLE_ELO_SELECTIONS);
     // Une réserve périmée reste utile : les notes bougent lentement.
-    const contenu = r?.contenu && r.contenu.notes ? r.contenu : null;
-    memoire = { quand: Date.now(), contenu };
+    const lu = await lireReservePatiemment<ReserveEloSelections>(CLE_ELO_SELECTIONS);
+    const contenu = lu && lu.notes ? lu : null;
+    // Un échec n'est pas gardé : on retentera à la prochaine analyse.
+    if (contenu) memoire = { quand: Date.now(), contenu };
     return contenu;
   } catch {
     return null;

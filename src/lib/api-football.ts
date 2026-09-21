@@ -94,6 +94,38 @@ export async function lireReserve<T>(cle: string): Promise<{ contenu: T; expiree
   }
 }
 
+/**
+ * La même lecture, mais qui INSISTE quand la première renonce.
+ *
+ * `lireReserve` abandonne au bout d'une seconde et demie et rend `null` sans
+ * bruit — c'est voulu pour une page qui doit s'afficher. Mais une COUCHE du
+ * moteur qui se tait ainsi fait un pronostic différent de celui qui a été
+ * mesuré, sans que personne le voie : une mesure entière a été faussée de
+ * cette façon le 12 septembre 2026, et le 21 septembre la mémoire des clubs
+ * (1 173 clubs) ne se lisait plus dans ce délai.
+ *
+ * Ici, la lecture rapide d'abord ; si elle renonce, une lecture directe
+ * accordée huit secondes. Un échec rend `null`, jamais une exception.
+ */
+export async function lireReservePatiemment<T>(cle: string, delaiMs = 8_000): Promise<T | null> {
+  try {
+    const r = await lireReserve<T>(cle);
+    if (r?.contenu) return r.contenu;
+  } catch {
+    /* la lecture rapide a renoncé : on insiste ci-dessous */
+  }
+  try {
+    const { createAdminClient } = await import('./supabase-admin');
+    const lecture = createAdminClient().from('cache_api').select('contenu').eq('cle', cle).maybeSingle();
+    const limite = new Promise<'delai'>((r) => setTimeout(() => r('delai'), delaiMs));
+    const r: any = await Promise.race([lecture, limite]);
+    if (r === 'delai' || r?.error) return null;
+    return (r?.data?.contenu as T) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function ecrireReserve(cle: string, contenu: unknown, ttlMs: number): Promise<void> {
   try {
     const { createAdminClient } = await import('./supabase-admin');

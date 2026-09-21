@@ -1,4 +1,4 @@
-import { lireReserve, ecrireReserve } from './api-football';
+import { lireReserve, lireReservePatiemment, ecrireReserve } from './api-football';
 
 /**
  * ── LA MÉMOIRE DE TOUS LES CLUBS ───────────────────────────────────────────
@@ -327,10 +327,18 @@ export function avisDeLaMemoire(
 }
 
 /** La mémoire rangée en réserve, ou `null` — jamais une exception. */
+let memoireLue: { quand: number; contenu: MemoireClubs } | null = null;
+
 export async function lireMemoireClubs(): Promise<MemoireClubs | null> {
+  // Dix minutes de mémoire : elle est recalculée une fois par jour.
+  if (memoireLue && Date.now() - memoireLue.quand < 10 * 60 * 1000) return memoireLue.contenu;
   try {
-    const r = await lireReserve<MemoireClubs>(CLE);
-    return r?.contenu ?? null;
+    // Patiemment : 1 173 clubs ne se lisent pas toujours en une seconde et
+    // demie, et une mémoire qui se tait fait un autre pronostic que celui qui
+    // a été mesuré. Voir `lireReservePatiemment`.
+    const contenu = await lireReservePatiemment<MemoireClubs>(CLE);
+    if (contenu) memoireLue = { quand: Date.now(), contenu };
+    return contenu;
   } catch (e: any) {
     console.warn('[MEMOIRE] Lecture impossible :', e?.message);
     return null;

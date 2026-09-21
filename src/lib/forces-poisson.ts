@@ -1,4 +1,4 @@
-import { lireReserve, ecrireReserve } from './api-football';
+import { lireReserve, lireReservePatiemment, ecrireReserve } from './api-football';
 
 /**
  * ATTAQUE ET DÉFENSE DE CHAQUE CLUB, AJUSTÉES PAR MAXIMUM DE VRAISEMBLANCE.
@@ -239,13 +239,18 @@ const DUREE = 8 * 24 * 60 * 60 * 1000;
 /** Au-delà, le relevé est trop vieux pour parler. */
 export const FRAICHEUR_MAX_MS = 10 * 24 * 60 * 60 * 1000;
 
+let forcesLues: { quand: number; contenu: ForcesPoisson } | null = null;
+
 export async function lireForcesPoisson(): Promise<ForcesPoisson | null> {
+  if (forcesLues && Date.now() - forcesLues.quand < 10 * 60 * 1000) return forcesLues.contenu;
   try {
-    const r = await lireReserve<ForcesPoisson>(CLE);
-    const contenu = r?.contenu ?? null;
+    // Patiemment : 2 623 clubs sur 62 compétitions ne se lisent pas toujours en
+    // une seconde et demie. Voir `lireReservePatiemment`.
+    const contenu = await lireReservePatiemment<ForcesPoisson>(CLE);
     if (!contenu?.ligues) return null;
     const age = Date.now() - Date.parse(contenu.calculeLe);
     if (!Number.isFinite(age) || age > FRAICHEUR_MAX_MS) return null;
+    forcesLues = { quand: Date.now(), contenu };
     return contenu;
   } catch {
     return null;

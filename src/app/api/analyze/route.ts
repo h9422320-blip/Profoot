@@ -1491,11 +1491,18 @@ async function analyser(req: Request, billet: BilletQuota) {
     try {
       const ligue = (targetFutureMatch || targetPastMatch || nextH2H)?.league?.id;
       // Le modèle du championnat, ou le modèle global en coupe d'Europe.
+      // ── LES IDENTIFIANTS DU FOURNISSEUR, PAS CEUX DU CATALOGUE ──────────
+      //
+      // Défaut trouvé le 21 septembre 2026 : on passait `team1.id` — « arsenal »,
+      // l'identifiant du catalogue — à une grille rangée par numéro du
+      // fournisseur (42). Elle ne trouvait jamais personne : la seconde grille
+      // n'a JAMAIS relu un score dans une analyse d'abonné, seulement dans les
+      // pronostics préparés à l'avance, qui passent les numéros.
       const buts = butsAttendusPourLeMatch(
         forcesPoisson,
         ligue,
-        equipe1AJoueADomicile === true ? team1.id : team2.id,
-        equipe1AJoueADomicile === true ? team2.id : team1.id
+        equipe1AJoueADomicile === true ? id1 : id2,
+        equipe1AJoueADomicile === true ? id2 : id1
       );
       return buts ? { ...buts, poids: PART_GRILLE_SCORE } : null;
     } catch {
@@ -1718,8 +1725,11 @@ async function analyser(req: Request, billet: BilletQuota) {
       ? null
       : avisDeLaMemoire(
           await lireMemoireClubs(),
-          equipe1AJoueADomicile === true ? team1.id : team2.id,
-          equipe1AJoueADomicile === true ? team2.id : team1.id,
+          // Les numéros du fournisseur : la mémoire est rangée ainsi. Avec
+          // l'identifiant du catalogue (« arsenal »), elle n'a jamais parlé dans une analyse
+          // d'abonné depuis sa mise en ligne le 12 septembre 2026.
+          equipe1AJoueADomicile === true ? id1 : id2,
+          equipe1AJoueADomicile === true ? id2 : id1,
           // La part monte quand le moteur sait moins : pleine sous cinq matchs
           // connus dans la compétition. Voir `partDeLaMemoire`.
           partDeLaMemoire(Math.min(Number(brutes1?.matchsJoues ?? 0), Number(brutes2?.matchsJoues ?? 0)))
