@@ -2151,6 +2151,30 @@ async function analyser(req: Request, billet: BilletQuota) {
     // par construction, sans qu'il faille y penser.
     if (effectif) donnees.effectif = effectif;
 
+    // ── LA BARRE « BUTS » VIENT DU MOTEUR, PAS DU MODÈLE DE LANGAGE ──────────
+    //
+    // Constaté le 21 septembre 2026 sur Arsenal–Lille : la comparaison
+    // affichait « Buts 8 % contre 8 % », juste au-dessus d'un encadré qui
+    // annonçait 4 buts attendus contre 0,4. Le gabarit demande au modèle un
+    // nombre entre 0 et 100 sans dire ce qu'il mesure, et il répond ce qu'il
+    // imagine — ici, visiblement, un nombre de buts.
+    //
+    // Deux chiffres contradictoires sur le même écran, c'est l'abonné qui les
+    // voit, et c'est la confiance dans TOUT le reste qui en souffre. La barre
+    // montre donc la part de chaque équipe dans les buts attendus du moteur :
+    // le même calcul que le score et que l'encadré juste en dessous.
+    {
+      const b1 = Number(scoreCalcule.butsAttendus1);
+      const b2 = Number(scoreCalcule.butsAttendus2);
+      if (Number.isFinite(b1) && Number.isFinite(b2) && b1 + b2 > 0) {
+        const part1 = Math.round((100 * b1) / (b1 + b2));
+        donnees.comparison = {
+          ...(donnees.comparison ?? {}),
+          goals: { team1: part1, team2: 100 - part1 },
+        };
+      }
+    }
+
     donnees.predictions = {
       ...(donnees.predictions ?? {}),
       expectedGoals: {
