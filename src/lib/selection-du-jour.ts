@@ -426,6 +426,41 @@ async function calculer(): Promise<SelectionDuJour> {
     // Le seuil descend par paliers plutôt que de vider la section : une
     // journée creuse montre moins de matchs, et des matchs moins sûrs, mais
     // jamais rien du tout — le repli final est exactement l'ancien tri.
+    //
+    // ── LE NUL, MESURÉ LE 21 SEPTEMBRE 2026, ET ÉCARTÉ ────────────────────
+    //
+    // Le constat de départ est vrai et il est gros : sur 3 548 rencontres des
+    // cinq grands championnats, **54,6 % des pronostics ratés finissent par un
+    // nul**. C'est la première cause d'erreur du moteur, loin devant la
+    // victoire de l'autre camp.
+    //
+    // Et le danger se lit AVANT le match, par la part que le nul prend dans ce
+    // qui reste une fois le favori retiré — `nul / (1 − favori)`, qui ne dépend
+    // pas mécaniquement du niveau de certitude :
+    //
+    //                          le nul domine le reste   l'autre a sa chance
+    //     certitude 60 %+           73,6 % justes            66,7 %
+    //     certitude 65 %+           75,6 %                   71,9 %
+    //
+    // Jamais inversé sur trois tranches. Deux façons de s'en servir ont été
+    // essayées, et toutes deux REJETÉES sur la sélection telle qu'elle sort :
+    //
+    //   • COMPLÉTER la sélection avec les rencontres à 60 % où le nul domine.
+    //     La bande réellement ajoutée — 60 à 65 % — n'est juste qu'à 64,0 %
+    //     (56,8 puis 71,1 % sur les deux moitiés), sous les 70 % promis.
+    //     Simulé sur 320 journées : 72,8 → 71,9 % de justesse, journées
+    //     parfaites 50,3 → 46,9 %. La mesure à « 60 %+ » incluait les 65 %+,
+    //     et c'est ce mélange qui donnait l'illusion.
+    //
+    //   • N'AFFICHER que les rencontres où le nul domine. À plafond égal, la
+    //     justesse gagne 0,2 à 0,6 point et les journées parfaites montent —
+    //     mais un tiers des cartes disparaît, et le gain de « journées
+    //     parfaites » vient surtout de là. Payer trente pour cent de la
+    //     section pour un demi-point n'est pas un échange raisonnable.
+    //
+    // Le classement, lui, prend déjà les plus certaines, et les plus certaines
+    // sont déjà celles où le nul domine : le signal est réel, il est
+    // simplement DÉJÀ consommé par le seuil de certitude.
     const PALIERS_DE_CERTITUDE = [0.65, 0.55];
     for (const seuil of PALIERS_DE_CERTITUDE) {
       const surs = retenus.filter((r) => (noteDe.get(r.fixtureId) ?? 0) >= seuil);
