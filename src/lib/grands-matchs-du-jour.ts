@@ -336,7 +336,28 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
       await ecrireReserve(cleSuite, suite, dureeJusquAMinuit()).catch(() => {});
     }
 
-    return { matchs: aVenir(suite ?? []), aujourdhui: false };
+    // ── LA SUITE DU CALENDRIER SE LIT DANS L'ORDRE DU CALENDRIER ──────────
+    //
+    // `aVenir` range la Ligue des champions devant tout le reste, et c'est le
+    // bon ordre pour UNE soirée : un soir de Ligue des champions, c'est elle
+    // qu'on vient chercher. Mais appliqué à trois semaines de calendrier, il
+    // plaçait les quinze cartes sur les coupes d'Europe du 13 au 15 octobre —
+    // et cachait Dortmund–Werder, Arsenal–Leeds ou Napoli–Frosinone, qui se
+    // jouent QUATRE jours plus tôt. Constaté à l'écran le 21 septembre 2026.
+    //
+    // La suite se trie donc d'abord par date ; à date égale, le rang des
+    // compétitions reprend la main.
+    const seuil = Date.now() - BATTEMENT_MS;
+    const suiteTriee = (suite ?? [])
+      .filter((c) => new Date(c.kickoffISO).getTime() >= seuil)
+      .sort(
+        (a, b) =>
+          a.kickoffISO.slice(0, 10).localeCompare(b.kickoffISO.slice(0, 10)) ||
+          rangDeCompetition(a.championnat) - rangDeCompetition(b.championnat) ||
+          a.kickoffISO.localeCompare(b.kickoffISO)
+      )
+      .slice(0, MAX_CARTES);
+    return { matchs: suiteTriee, aujourdhui: false };
   } catch (e: any) {
     console.warn('[MATCHS DU JOUR] Liste indisponible :', e?.message);
     return { matchs: [], aujourdhui: true };
