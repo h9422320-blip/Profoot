@@ -1016,6 +1016,13 @@ export default function AnalyzePage({
           window.location.href = "/login";
           return;
         }
+        // ── UNE ÉQUIPE QUE LE SERVEUR NE CONNAÎT PAS N'EST PAS UNE PANNE DE L'IA ──
+        //
+        // Constaté le 21 septembre 2026 : une page ouverte AVANT une mise à
+        // jour garde les cartes d'avant ; en toucher une renvoie « Équipe
+        // inconnue » (404), et l'abonné lisait « erreur de connexion au modèle
+        // d'intelligence artificielle ». Il croyait l'application en panne.
+        if (res.status === 404) throw new Error("Équipes introuvables");
         throw new Error("Erreur serveur API");
       }
 
@@ -1672,11 +1679,26 @@ export default function AnalyzePage({
                 </h4>
                 <p className="text-xs text-white/50 font-medium leading-relaxed max-w-[280px] mx-auto">
                   {analyzeError.includes("introuvables")
-                    ? "Les équipes sélectionnées ne sont pas reconnues dans notre base de données. Veuillez choisir une équipe valide."
+                    ? "Ce match n'a pas pu être ouvert. Rechargez la page, puis choisissez-le de nouveau."
                     : analyzeError.includes("statistiques")
                     ? "Le serveur de statistiques est temporairement surchargé. Réessayez dans un instant."
-                    : "Une erreur de connexion au modèle d'intelligence artificielle est survenue."}
+                    : "L'analyse n'a pas pu aboutir. Réessayez dans un instant : une analyse qui échoue ne vous est pas décomptée."}
                 </p>
+                {/* ── ET SI LE QUOTA EST ÉPUISÉ, ON LE DIT AUSSI ─────────────────
+                    Constaté le 21 septembre 2026 : un abonné à 60 analyses sur 60
+                    lisait « erreur de connexion au modèle » et croyait à une
+                    panne, alors que ses analyses du mois étaient simplement
+                    toutes utilisées. On ne bloque pas l'analyse pour autant —
+                    rouvrir un match déjà analysé dans la période reste permis —,
+                    mais on dit clairement où il en est, et quand ça repart. */}
+                {quota && !quota.unlimited && quota.limit !== null && quota.remaining !== null && quota.remaining <= 0 && (
+                  <p className="text-xs text-warning font-semibold leading-relaxed max-w-[300px] mx-auto">
+                    Vous avez aussi utilisé vos {quota.limit} analyses de la période
+                    {quota.periodEnd
+                      ? ` : elles se renouvellent le ${new Date(quota.periodEnd).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}.`
+                      : "."}
+                  </p>
+                )}
               </div>
 
               <button
