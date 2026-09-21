@@ -65,6 +65,28 @@ function tonDe(taux: number) {
   return { texte: 'text-amber-400', anneau: 'ring-amber-400/25', fond: 'bg-amber-400/[0.05]' };
 }
 
+/**
+ * « D'aujourd'hui », « de demain »… ou la date, en toutes lettres.
+ *
+ * Le titre disait « de demain » dès que la sélection ne portait pas sur le
+ * jour même. Pendant la trêve de septembre 2026, elle portait sur le
+ * 9 octobre : le titre annonçait donc « demain » des rencontres situées à
+ * trois semaines. Une promesse fausse dans un titre coûte plus cher qu'une
+ * section vide.
+ *
+ * Le calcul se fait dans le navigateur, à l'heure du lecteur — c'est aussi
+ * pour cela que le rendu porte `suppressHydrationWarning`.
+ */
+function quandDit(premierISO: string | undefined, aujourdhui: boolean): string {
+  if (aujourdhui) return "d'aujourd'hui";
+  const t = Date.parse(String(premierISO ?? ''));
+  if (!Number.isFinite(t)) return 'à venir';
+  const jourDe = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const ecart = Math.round((jourDe(new Date(t)) - jourDe(new Date())) / 86_400_000);
+  if (ecart <= 1) return 'de demain';
+  return 'du ' + new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive }: Props) {
   // Le serveur n'envoie rien en dessous de trois rencontres : deux cartes
   // présentées comme une sélection diraient surtout qu'il n'y a rien à voir.
@@ -84,7 +106,10 @@ export default function SelectionSure({ matchs, aujourdhui, onChoisir, desactive
             style={{ fontFamily: 'var(--police-titre), sans-serif' }}
           >
             Les matchs les mieux cernés
-            <span className="text-[#10B981]"> {aujourdhui ? "d'aujourd'hui" : 'de demain'}</span>
+            <span className="text-[#10B981]" suppressHydrationWarning>
+              {' '}
+              {quandDit(matchs[0]?.kickoffISO, aujourdhui)}
+            </span>
           </h3>
           <p className="text-[11.5px] leading-[1.45] text-white/45 mt-1.5">
             Pour aller plus loin dans la lecture d&apos;un match. Notre IA classe ici

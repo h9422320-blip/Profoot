@@ -398,8 +398,7 @@ export async function precalculerGrandsMatchs(
       const ecart = Math.max(Math.abs(fige.dom - 100 * c.proba.dom), Math.abs(fige.ext - 100 * c.proba.ext));
       return ecart > ECART_SANS_MARCHE;
     };
-    for (let d = 0; d < JOURS_A_PREPARER + (options.joursEnPlus ?? 0); d++) {
-      const jour = new Date(Date.now() + d * 86_400_000).toISOString().slice(0, 10);
+    const examinerLeJour = async (jour: string) => {
       for (const f of await api(`fixtures?date=${jour}`)) {
         if (!A_VENIR.includes(String(f?.fixture?.status?.short))) continue;
         // Un pronostic déjà figé par une analyse d'abonné, dans un championnat
@@ -432,6 +431,41 @@ export async function precalculerGrandsMatchs(
           continue;
         }
         aPreparer.push(f);
+      }
+    };
+
+    for (let d = 0; d < JOURS_A_PREPARER + (options.joursEnPlus ?? 0); d++) {
+      await examinerLeJour(new Date(Date.now() + d * 86_400_000).toISOString().slice(0, 10));
+    }
+
+    // ── ET QUAND LE CALENDRIER EST EN TRÊVE ───────────────────────────────
+    //
+    // Le 20 septembre 2026, les cinq grands championnats ne rejouaient que le
+    // 9 octobre et la Ligue des champions le 13. Pendant trois semaines, la
+    // fenêtre de deux jours ne contenait RIEN : aucune probabilité n'était
+    // figée, et la section « les matchs les mieux cernés » restait vide — ce
+    // qu'un abonné lit comme une panne.
+    //
+    // On va donc chercher la PREMIÈRE journée qui contient des rencontres, et
+    // on la prépare comme si c'était demain. Deux journées au plus : au-delà,
+    // le coup d'envoi est si loin que les effectifs n'ont aucun sens.
+    if (aPreparer.length === 0) {
+      try {
+        const { getUpcomingFixtures } = await import('./api-football');
+        const prochaines = (await getUpcomingFixtures(5)) ?? [];
+        const limite = new Date(Date.now() + (JOURS_A_PREPARER + (options.joursEnPlus ?? 0)) * 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+        const joursAVenir = [
+          ...new Set(prochaines.map((f: any) => String(f?.fixture?.date ?? '').slice(0, 10)).filter(Boolean)),
+        ]
+          .sort()
+          .filter((j) => j >= limite)
+          .slice(0, 2);
+        for (const jour of joursAVenir) await examinerLeJour(jour);
+        if (joursAVenir.length) console.log(`[PRECALCUL] Trêve : préparation avancée sur ${joursAVenir.join(', ')}`);
+      } catch (e: any) {
+        console.warn('[PRECALCUL] Prochaines journées illisibles :', e?.message);
       }
     }
 

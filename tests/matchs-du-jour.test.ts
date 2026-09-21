@@ -112,7 +112,42 @@ test('★ ACQUIS — jamais de section vide', () => {
   assert.match(s, /if \(matchs\.length === 0\)/, 'Le cas « aucun match » n’est plus traité.');
   assert.match(s, /Pas de grand match/, 'Le message du cas vide a disparu.');
   // Et avant d'en arriver là, on propose la suite du calendrier.
-  assert.match(sansCommentaires(lire(SOURCE)), /getUpcomingFixtures\(7\)/, 'Le repli sur les prochains matchs a sauté.');
+  assert.match(sansCommentaires(lire(SOURCE)), /getUpcomingFixtures\(5\)/, 'Le repli sur les prochains matchs a sauté.');
+});
+
+test('★ ACQUIS — la trêve ne vide ni le carrousel ni la sélection', () => {
+  // ── CE QUI EST ARRIVÉ LE 20 SEPTEMBRE 2026 ──────────────────────────────
+  //
+  // Les cinq grands championnats ne rejouaient que le 9 octobre, la Ligue des
+  // champions le 13. Pendant trois semaines, la page d'analyse annonçait
+  // « Pas de grand match aujourd'hui » et « aucun match » sous « les matchs
+  // les mieux cernés ». Le propriétaire : « je veux pas le laisser vide ».
+  //
+  // Trois choses doivent tenir ensemble, et chacune casse silencieusement :
+  //
+  //  1. le fournisseur est interrogé par `next=`, pas par une fenêtre de
+  //     dates — une fenêtre de sept jours en pleine trêve ne rend que des
+  //     rencontres déjà jouées, que le filtre « à venir » ramène à zéro ;
+  //  2. la sélection va chercher la première journée qui contient vraiment
+  //     des rencontres, au lieu de s'arrêter à demain ;
+  //  3. la préparation fige les probabilités de cette journée-là — sans
+  //     elles, la sélection n'a rien à classer et reste vide quand même.
+  const fournisseur = sansCommentaires(lire('src/lib/api-football.ts'));
+  assert.match(
+    fournisseur,
+    /getUpcomingFixtures[\s\S]{0,900}&next=/,
+    'Les prochains grands matchs sont revenus à une fenêtre de dates.'
+  );
+
+  const selection = sansCommentaires(lire('src/lib/selection-du-jour.ts'));
+  assert.match(selection, /getUpcomingFixtures/, 'La sélection ne cherche plus au-delà de demain.');
+
+  const precalcul = sansCommentaires(lire('src/lib/precalcul-selection.ts'));
+  assert.match(
+    precalcul,
+    /aPreparer\.length === 0[\s\S]{0,800}getUpcomingFixtures/,
+    'La préparation ne va plus chercher la première journée disponible.'
+  );
 });
 
 test('★ ACQUIS — une rencontre déjà jouée ne reste pas proposée', () => {

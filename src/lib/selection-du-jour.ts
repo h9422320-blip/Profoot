@@ -452,6 +452,33 @@ async function calculer(): Promise<SelectionDuJour> {
     return { matchs: deDemain, aujourdhui: false, calculeeLe: new Date().toISOString() };
   }
 
+  // ── ET SI LE CALENDRIER EST EN TRÊVE, ON VA CHERCHER PLUS LOIN ──────────
+  //
+  // Le 20 septembre 2026, le programme des grands championnats reprenait le
+  // 9 octobre : ni aujourd'hui ni demain n'avaient la moindre rencontre, et la
+  // section restait vide trois semaines durant. Un bloc vide sur la page la
+  // plus consultée se lit comme une panne — et un abonné qui trouve une page
+  // en panne ne revient pas.
+  //
+  // On demande donc au fournisseur les prochaines rencontres des grandes
+  // compétitions, et on compose la sélection du PREMIER jour qui en contient.
+  try {
+    const { getUpcomingFixtures } = await import('./api-football');
+    const prochaines = (await getUpcomingFixtures(5)) ?? [];
+    const joursAVenir = [
+      ...new Set(prochaines.map((f: any) => String(f?.fixture?.date ?? '').slice(0, 10)).filter(Boolean)),
+    ].sort();
+    for (const jour of joursAVenir.slice(0, 3)) {
+      if (jour <= demain) continue;
+      const liste = await pourLeJour(jour);
+      if (liste.length >= MINIMUM_POUR_AFFICHER) {
+        return { matchs: liste, aujourdhui: false, calculeeLe: new Date().toISOString() };
+      }
+    }
+  } catch (e: any) {
+    console.warn('[SÉLECTION] Prochaines journées illisibles :', e?.message);
+  }
+
   return VIDE;
 }
 

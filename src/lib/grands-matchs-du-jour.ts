@@ -322,14 +322,17 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
     // Une trêve internationale, un lundi de janvier, ou simplement 23 h passées
     // et tout est joué. Une section vide n'apprendrait rien : on montre la
     // suite du calendrier.
-    const cleSuite = `prochains-grands-matchs:v1:${jour}`;
+    const cleSuite = `prochains-grands-matchs:v2:${jour}`;
     let suite: MatchDuJour[] | null = null;
 
     const suiteEnReserve = await lireReserve<MatchDuJour[]>(cleSuite).catch(() => null);
     if (suiteEnReserve?.contenu && !suiteEnReserve.expiree) {
       suite = suiteEnReserve.contenu;
     } else {
-      suite = await enCartes((await getUpcomingFixtures(7)) ?? []);
+      // Les CINQ prochaines rencontres de chaque grande compétition, sans
+      // borne de date : en pleine trêve, la fenêtre de sept jours ne rendait
+      // rien et le carrousel restait vide pendant trois semaines.
+      suite = await enCartes((await getUpcomingFixtures(5)) ?? []);
       await ecrireReserve(cleSuite, suite, dureeJusquAMinuit()).catch(() => {});
     }
 

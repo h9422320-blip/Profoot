@@ -369,32 +369,43 @@ export async function getTodayFixtures() {
 /**
  * Get upcoming fixtures for a date range (next N days)
  */
-export async function getUpcomingFixtures(days: number = 7) {
-  const today = new Date();
-  const from = today.toISOString().split("T")[0];
-  const to = new Date(today.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-  
-  // Fetch from major leagues to avoid too many results
-  const majorLeagues = [39, 140, 135, 78, 61, 2, 3, 1, 6]; // EPL, Liga, SerieA, Bund, L1, UCL, UEL, WC, CAN
-  
+/**
+ * LES PROCHAINES RENCONTRES DES GRANDES COMPÉTITIONS.
+ *
+ * ── POURQUOI ELLE NE DEMANDE PLUS UNE FENÊTRE DE DATES ──────────────────
+ *
+ * Elle demandait « du jour J au jour J+7 ». Le 20 septembre 2026, en pleine
+ * trêve internationale, cette fenêtre ne contenait RIEN : le carrousel de la
+ * page d'analyse affichait « Pas de grand match aujourd'hui » et restait vide
+ * pendant trois semaines, alors que la Ligue des champions revenait le
+ * 13 octobre. Un bloc vide sur la page la plus consultée se lit comme une
+ * panne — et un abonné qui trouve une page en panne ne revient pas.
+ *
+ * On demande donc au fournisseur « les N PROCHAINES rencontres » de chaque
+ * compétition, sans borne de date : il y a toujours une réponse, même à un
+ * mois. C'est aussi un appel de moins, puisqu'il n'y a plus de saison à
+ * deviner.
+ */
+export async function getUpcomingFixtures(parCompetition: number = 5) {
+  // Ligue des champions, Europa, Conférence, puis les cinq grands.
+  const grandesCompetitions = [2, 3, 848, 39, 140, 135, 78, 61];
   const allFixtures: any[] = [];
-  
-  // Batch requests — max 3 parallel to respect rate limits
-  for (let i = 0; i < majorLeagues.length; i += 3) {
-    const batch = majorLeagues.slice(i, i + 3);
-    const results = await Promise.all(
-      batch.map(leagueId => 
-        apiFootballFetch<any>(`/fixtures?league=${leagueId}&season=${getSeasonForLeague(leagueId)}&from=${from}&to=${to}`, TTL.FIXTURES_UPCOMING)
+
+  for (let i = 0; i < grandesCompetitions.length; i += 3) {
+    const lot = grandesCompetitions.slice(i, i + 3);
+    const resultats = await Promise.all(
+      lot.map((ligue) =>
+        apiFootballFetch<any>(`/fixtures?league=${ligue}&next=${parCompetition}`, TTL.FIXTURES_UPCOMING)
       )
     );
-    results.forEach(r => {
-      if (r?.response) allFixtures.push(...r.response);
-    });
+    for (const r of resultats) if (r?.response) allFixtures.push(...r.response);
   }
 
-  // Sort by date
-  allFixtures.sort((a, b) => new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime());
-  return allFixtures;
+  // Une rencontre déjà commencée n'a rien à faire dans « les prochaines ».
+  const maintenant = Date.now();
+  return allFixtures
+    .filter((f) => Date.parse(String(f?.fixture?.date ?? '')) > maintenant)
+    .sort((a, b) => new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime());
 }
 
 /**
