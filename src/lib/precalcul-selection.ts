@@ -230,6 +230,17 @@ const MAX_PAR_PASSAGE = 60;
 /** Combien de journées à venir on prépare. */
 const JOURS_A_PREPARER = 2;
 
+/**
+ * Les compétitions dont l'absence signe une trêve.
+ *
+ * Ligue des champions, Europa, Conference, puis Angleterre, Espagne, Italie,
+ * Allemagne, France. Les mêmes que le carrousel des grands matchs — et pour la
+ * même raison : ce sont celles que l'abonné vient chercher. Quand aucune ne
+ * joue dans les deux jours, l'écran d'analyse n'a rien à montrer, quel que
+ * soit le nombre de rencontres de deuxième division à préparer.
+ */
+const GRANDES_COMPETITIONS: ReadonlySet<number> = new Set([2, 3, 848, 39, 140, 135, 78, 61]);
+
 /** Les statuts d'une rencontre pas encore jouée. */
 const A_VENIR = ['NS', 'TBD'];
 
@@ -398,9 +409,20 @@ export async function precalculerGrandsMatchs(
       const ecart = Math.max(Math.abs(fige.dom - 100 * c.proba.dom), Math.abs(fige.ext - 100 * c.proba.ext));
       return ecart > ECART_SANS_MARCHE;
     };
+    /**
+     * Combien de rencontres des GRANDES compétitions la fenêtre a trouvées.
+     *
+     * C'est ce compte — et non le nombre total de rencontres à préparer — qui
+     * dit si le calendrier est en trêve. En septembre 2026, la fenêtre de deux
+     * jours contenait la Serie B, la Czech Liga et l'Allsvenskan pendant que
+     * les cinq grands championnats et la Ligue des champions ne jouaient pas :
+     * « il y a du travail » n'est pas « il y a des grands matchs ».
+     */
+    let grandesDansLaFenetre = 0;
     const examinerLeJour = async (jour: string) => {
       for (const f of await api(`fixtures?date=${jour}`)) {
         if (!A_VENIR.includes(String(f?.fixture?.status?.short))) continue;
+        if (GRANDES_COMPETITIONS.has(Number(f?.league?.id))) grandesDansLaFenetre++;
         // Un pronostic déjà figé par une analyse d'abonné, dans un championnat
         // que l'on rafraîchit, se refige lui aussi — même si la préparation
         // ne couvre pas ce championnat. Sans cela, Cottbus–St. Pauli
@@ -449,7 +471,19 @@ export async function precalculerGrandsMatchs(
     // On va donc chercher la PREMIÈRE journée qui contient des rencontres, et
     // on la prépare comme si c'était demain. Deux journées au plus : au-delà,
     // le coup d'envoi est si loin que les effectifs n'ont aucun sens.
-    if (aPreparer.length === 0) {
+    //
+    // ── ET LE DÉCLENCHEUR REGARDE LES GRANDES COMPÉTITIONS, PAS LE TRAVAIL ─
+    //
+    // La première version partait de « rien à préparer ». C'était trop étroit :
+    // pendant la trêve des grands championnats, la fenêtre de deux jours
+    // contient quand même la Serie B, la Czech Liga et l'Allsvenskan. Il
+    // suffisait qu'une seule de leurs rencontres soit nouvelle pour que le
+    // repli ne parte pas — et les affiches d'octobre gardaient, ce jour-là, un
+    // pronostic figé avant que les cotes existent.
+    //
+    // Le repli part donc dès qu'AUCUNE grande compétition ne joue dans la
+    // fenêtre. C'est exactement ce que la section promet de montrer.
+    if (grandesDansLaFenetre === 0) {
       try {
         const { getUpcomingFixtures } = await import('./api-football');
         const prochaines = (await getUpcomingFixtures(5)) ?? [];

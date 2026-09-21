@@ -145,8 +145,19 @@ test('★ ACQUIS — la trêve ne vide ni le carrousel ni la sélection', () => 
   const precalcul = sansCommentaires(lire('src/lib/precalcul-selection.ts'));
   assert.match(
     precalcul,
-    /aPreparer\.length === 0[\s\S]{0,800}getUpcomingFixtures/,
+    /grandesDansLaFenetre === 0[\s\S]{0,400}getUpcomingFixtures/,
     'La préparation ne va plus chercher la première journée disponible.'
+  );
+  // Et le déclencheur regarde les GRANDES compétitions, pas le volume de
+  // travail. Pendant la trêve, la fenêtre de deux jours contient quand même la
+  // Serie B, la Czech Liga et l'Allsvenskan : partir de « rien à préparer »
+  // empêchait le repli dès qu'une seule de leurs rencontres était nouvelle, et
+  // les affiches d'octobre gardaient ce jour-là un pronostic figé avant que
+  // les cotes existent.
+  assert.match(
+    precalcul,
+    /if \(GRANDES_COMPETITIONS\.has\(Number\(f\?\.league\?\.id\)\)\) grandesDansLaFenetre\+\+/,
+    'Le compteur des grandes compétitions n’est plus alimenté : le repli de trêve ne partira jamais.'
   );
 });
 

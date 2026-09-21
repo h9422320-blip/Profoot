@@ -65,7 +65,36 @@ export const LONG = 10;
 /** La part de l'élan dans la correction. Valeur jugée gagnante sur le banc. */
 export const PART_ELAN = 0.2;
 
-/** La part du terrain par championnat. Valeur jugée gagnante sur le banc. */
+/**
+ * La part du terrain par championnat. Valeur jugée gagnante sur le banc.
+ *
+ * ── LA MONTER ? MESURÉ LE 21 SEPTEMBRE 2026, ET NON ───────────────────────
+ *
+ * Le challenger a proposé trois nuits de suite « la couche du terrain par
+ * championnat » à une dose plus forte. Deux mesures, dans cet ordre, disent
+ * pourquoi il ne faut pas la suivre.
+ *
+ * D'ABORD, LE BANC SE TROMPAIT DE MOTEUR. Son moteur de référence passait
+ * `null` au onzième point d'entrée : il n'avait ni élan, ni terrain, ni repos.
+ * La couche proposée ne faisait donc, pour l'essentiel, que remettre ce que le
+ * banc avait enlevé. Instrument corrigé, le gain tombe de +18 à +12 vainqueurs
+ * sur 3 548 rencontres des cinq grands.
+ *
+ * ENSUITE, ET C'EST CE QUI TRANCHE : ces +12 sont mesurés contre le moteur NU.
+ * Remesuré sur le moteur tel qu'il tourne — absents, entraîneur, marché, grille
+ * de Poisson — en faisant varier CE réglage, sur 3 433 rencontres :
+ *
+ *     0,35   +0 / +0        0,7   +3 / +1
+ *     0,5    +1 / +0        1,0   +1 / +3
+ *
+ * Brier identique à la quatrième décimale, matchs sûrs identiques. Autrement
+ * dit : le marché connaît déjà l'avantage du terrain de chaque championnat, et
+ * il le connaît mieux que nous. Ce que cette couche apportait au moteur nu, la
+ * couche du marché l'apporte déjà.
+ *
+ * Le réglage reste donc à 0,2 — non par prudence, mais parce que le monter ne
+ * rapporte rien.
+ */
 export const PART_TERRAIN = 0.2;
 
 /** Le rétrécissement du terrain : un championnat peu fourni tend vers la moyenne. */
