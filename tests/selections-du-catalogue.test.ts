@@ -44,3 +44,10 @@ test('★ ACQUIS — la sélection du jour et l’analyse lisent la même table'
   const i = route.indexOf('numeroDeSelection(team.id)');
   assert.ok(i > 0 && i < route.indexOf('selectionParNom(team.name)'), 'L’analyse ne passe plus d’abord par la table vérifiée.');
 });
+
+test('★ ACQUIS — pendant la trêve, la sélection regarde d’abord les jours proches', () => {
+  // Sans cela, le 22 septembre 2026, elle proposait le 9 octobre et sautait
+  // les Ligues des nations et la CAN du 24, pourtant préparées.
+  const sel = fs.readFileSync('src/lib/selection-du-jour.ts', 'utf8');
+  assert.match(sel, /\[2, 3, 4, 5\]\.map\(\(d\) => new Date\(Date\.now\(\) \+ d \* 86_400_000\)/);
+});

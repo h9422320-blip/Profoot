@@ -516,10 +516,21 @@ async function calculer(): Promise<SelectionDuJour> {
   try {
     const { getUpcomingFixtures } = await import('./api-football');
     const prochaines = (await getUpcomingFixtures(5)) ?? [];
+    // ── LES QUATRE JOURS QUI SUIVENT, AUSSI ──────────────────────────────
+    //
+    // Le 22 septembre 2026, les grands championnats reprenaient le 9 octobre,
+    // mais les Ligues des nations et la CAN se jouaient dès le 24. La liste
+    // ci-dessus ne connaît que les grands championnats : la section montrait
+    // donc des matchs à dix-sept jours et sautait les sélections du
+    // surlendemain, déjà préparées. Les jours proches passent en premier.
+    const prochainsJours = [2, 3, 4, 5].map((d) => new Date(Date.now() + d * 86_400_000).toISOString().slice(0, 10));
     const joursAVenir = [
-      ...new Set(prochaines.map((f: any) => String(f?.fixture?.date ?? '').slice(0, 10)).filter(Boolean)),
+      ...new Set([
+        ...prochainsJours,
+        ...prochaines.map((f: any) => String(f?.fixture?.date ?? '').slice(0, 10)).filter(Boolean),
+      ]),
     ].sort();
-    for (const jour of joursAVenir.slice(0, 3)) {
+    for (const jour of joursAVenir.slice(0, 7)) {
       if (jour <= demain) continue;
       const liste = await pourLeJour(jour);
       if (liste.length >= MINIMUM_POUR_AFFICHER) {
