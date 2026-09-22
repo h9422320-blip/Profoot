@@ -112,9 +112,13 @@ test('★ ACQUIS — on ne prépare que ce que le moteur a appris', () => {
   // seule exception assumée : la Liga I roumaine, nommée de longue date.
   const apprises = new Set<number>(APPRISES.map((c) => c.id as number));
   const LIGA_I = 283;
+  // Depuis le 22 septembre 2026, la CAN et ses qualifications : apprises non
+  // par les tirs mais par la force Elo des sélections, mesurée sur 9 819 matchs
+  // internationaux (voir `couche-elo-selections.test.ts`).
+  const APPRISES_PAR_ELO = new Set([36, 6]);
   for (const id of IDS_PREPARES) {
     assert.ok(
-      apprises.has(id) || id === LIGA_I,
+      apprises.has(id) || id === LIGA_I || APPRISES_PAR_ELO.has(id),
       `La compétition ${id} est préparée alors que le moteur ne l’a jamais apprise.`
     );
   }

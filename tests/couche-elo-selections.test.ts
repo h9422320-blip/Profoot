@@ -54,3 +54,21 @@ test('★ ACQUIS — l’analyse passe l’avis Elo après le marché et avant l
     'L’avis Elo n’est plus vu de l’équipe qui reçoit : il favoriserait la mauvaise sélection.'
   );
 });
+
+test('★ ACQUIS — la préparation des pronostics lit la CAN comme l’analyse', async () => {
+  // Constaté le 22 septembre 2026 : sans cela, aucune rencontre de CAN
+  // n'entrait dans « les matchs les mieux cernés » ni dans le message du matin,
+  // et la carte figée aurait contredit l'analyse de la même rencontre.
+  const s = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');
+  assert.match(
+    s,
+    /avisDuMarchePour\([^)]*\)\) \?\?\s*(\/\/[^\n]*\n\s*)*\(await coucheEloSelections\(domId, extId, ligue\)\) \?\?\s*\(occasionsDuMatch/,
+    'La préparation ne passe plus l’avis Elo entre le marché et la mémoire des clubs.'
+  );
+  const { competitionRetenue } = await import('../src/lib/precalcul-selection');
+  assert.ok(competitionRetenue({ id: 36 }), 'Les qualifications de la CAN ne sont plus préparées.');
+  assert.ok(competitionRetenue({ id: 6 }), 'La phase finale de la CAN n’est plus préparée.');
+  // Une sélection qui n'a encore rien joué dans la campagne s'appuie sur ses
+  // derniers matchs, comme dans l'analyse — et seulement pour les sélections.
+  assert.match(s, /COMPETITIONS_AFRICAINES\.has\(ligue\) &&\s*statistiquesDepuisMatchs\(recentsDom/);
+});

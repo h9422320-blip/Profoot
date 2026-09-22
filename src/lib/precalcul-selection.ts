@@ -52,6 +52,8 @@ import { lireForcesLigue } from './forces-equipes';
 import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-championnats';
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from './forces-poisson';
 import { avisDuMarchePour, avisDuMarcheBranche, totalDuMarchePour } from './couche-marche';
+import { coucheEloSelections } from './forces-selections';
+import { COMPETITIONS_AFRICAINES } from './selections-africaines';
 import { lireCotesDuJourPatiemment } from './cotes-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
 import { coucheDesAbsences, LIGUES_DES_ABSENCES, CINQ_GRANDS } from './forces-absences';
@@ -177,6 +179,15 @@ export const COUPES_EUROPE_IDS: ReadonlySet<number> = new Set<number>(
 export const IDS_PREPARES: ReadonlySet<number> = new Set<number>([
   ...COMPETITIONS_APPRISES.map((c) => c.id),
   LIGA_I_ROUMAINE,
+  // ── LA COUPE D'AFRIQUE ET SES QUALIFICATIONS, DEPUIS LE 22 SEPTEMBRE 2026 ──
+  //
+  // Ce sont les matchs que suit le public de ProFoot, et l'analyse les lit
+  // désormais avec la force Elo des sélections (voir `forces-selections.ts` :
+  // 53,2 → 57,2 % sur 4 626 matchs). Sans pronostic préparé, ils ne pouvaient
+  // entrer ni dans « les matchs les mieux cernés », ni dans le message du
+  // matin — alors que les 24 et 25 septembre, ce sont les seuls grands matchs.
+  36,
+  6,
 ]);
 
 /**
@@ -608,7 +619,23 @@ export async function precalculerGrandsMatchs(
         // Une équipe qui n'a joué aucun match ne donne rien d'exploitable :
         // le calcul sortirait des probabilités inventées, et la sélection les
         // servirait comme les autres.
-        if (brut(sDom).matchsJoues < 1 || brut(sExt).matchsJoues < 1) {
+        //
+        // ── SAUF POUR UNE SÉLECTION EN DÉBUT DE CAMPAGNE ─────────────────
+        //
+        // Constaté le 22 septembre 2026 : les qualifications de la CAN 2027
+        // s'ouvraient le 24, et le fournisseur rendait « 0 match joué » pour
+        // les 48 sélections. Les 24 rencontres étaient toutes refusées ici,
+        // alors que l'analyse, elle, s'appuie sur les douze derniers matchs de
+        // chaque sélection (`melangerStatistiques` avec l'ancre) — et que la
+        // force Elo des sélections décide ensuite du pronostic. On fait donc
+        // exactement comme l'analyse, pour les seules compétitions de
+        // sélections africaines : ailleurs, rien ne change.
+        const sansMatchCetteSaison = brut(sDom).matchsJoues < 1 || brut(sExt).matchsJoues < 1;
+        const selectionAvecSesDerniersMatchs =
+          COMPETITIONS_AFRICAINES.has(ligue) &&
+          statistiquesDepuisMatchs(recentsDom, String(domId)).matchsJoues > 0 &&
+          statistiquesDepuisMatchs(recentsExt, String(extId)).matchsJoues > 0;
+        if (sansMatchCetteSaison && !selectionAvecSesDerniersMatchs) {
           bilan.echecs++;
           continue;
         }
@@ -716,6 +743,10 @@ export async function precalculerGrandsMatchs(
           // L'avis du marché d'abord, sur les sept grands championnats — le
           // même que l'analyse, voir `couche-marche.ts`.
           (await avisDuMarchePour(f?.fixture?.id, f?.fixture?.date, ligue)) ??
+          // La force des sélections, exactement comme l'analyse : sans elle, la
+          // carte de la sélection et l'analyse d'une rencontre de CAN
+          // annonceraient deux choses différentes.
+          (await coucheEloSelections(domId, extId, ligue)) ??
           (occasionsDuMatch
             ? null
             : avisDeLaMemoire(
