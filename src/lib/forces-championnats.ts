@@ -228,6 +228,51 @@ interface Rencontre {
  * effectifs ont trop changé pour que le championnat d'alors décrive celui
  * d'aujourd'hui.
  */
+/**
+ * ÉTEND une hiérarchie publiée aux divisions inférieures, SANS la modifier.
+ *
+ * Les championnats de `base` sont FIGÉS à leur valeur : seuls les nouveaux
+ * apprennent, par les matchs de coupe nationale qui les opposent aux clubs
+ * d'en haut. Mesuré le 21 septembre 2026, avec la mémoire des clubs élargie :
+ * +14 / +2 vainqueurs justes sur 1 560 matchs de coupe nationale (+5, +7, +4
+ * sur trois tranches), +12 / +10 sur les 22 674 matchs des compétitions déjà
+ * servies, Brier égal.
+ *
+ * La date de calcul reste celle de la BASE : c'est elle que
+ * `recalculerForcesChampionnats` lit pour décider s'il faut la refaire.
+ * Publier l'extension sous une date neuve aurait figé la base pour toujours.
+ */
+export function etendreHierarchie(
+  base: ForcesChampionnats,
+  rencontres: Rencontre[],
+  coupesNationales: readonly number[]
+): ForcesChampionnats & { etendueLe: string; championnatsAjoutes: number; championnatsDeBase: string[] } {
+  // Une base DÉJÀ étendue — celle de la veille — porte la liste de ses
+  // championnats d'origine. On ne fige qu'eux : sans cela, les divisions
+  // ajoutées la veille seraient figées à leur tour et n'apprendraient plus.
+  const deBase: string[] = (base as any).championnatsDeBase ?? Object.keys(base.coefficients ?? {});
+  const figes = Object.fromEntries(deBase.filter((l) => l in (base.coefficients ?? {})).map((l) => [l, base.coefficients[l]]));
+  const confrontationsDeBase = Object.fromEntries(
+    deBase.filter((l) => base.confrontationsParLigue?.[l] !== undefined).map((l) => [l, base.confrontationsParLigue![l]])
+  );
+  const etendue = apprendre(rencontres, coupesNationales, figes);
+  const ajoutes = Object.keys(etendue.coefficients).filter((l) => !(l in figes));
+  return {
+    ...base,
+    coefficients: { ...etendue.coefficients, ...figes },
+    confrontationsParLigue: { ...(etendue.confrontationsParLigue ?? {}), ...confrontationsDeBase },
+    calculeLe: base.calculeLe,
+    etendueLe: new Date().toISOString(),
+    championnatsAjoutes: ajoutes.length,
+    championnatsDeBase: deBase,
+  };
+}
+
+/** Range une hiérarchie (étendue) sous la clé lue par la production. */
+export async function rangerForcesChampionnats(forces: ForcesChampionnats): Promise<void> {
+  await ecrireReserve(CLE, forces, DUREE);
+}
+
 export async function recalculerForcesChampionnats(
   saisons: number[] = saisonsRecentes(),
   options: { forcer?: boolean } = {}

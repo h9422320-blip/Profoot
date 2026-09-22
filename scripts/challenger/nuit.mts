@@ -340,7 +340,9 @@ function evaluer(
   const tache = path.join(DOSSIER_TRAVAIL, `tache-${nomFichier}.json`);
   const sortie = path.join(DOSSIER_TRAVAIL, `resultat-${nomFichier}.json`);
   if (fs.existsSync(sortie)) fs.rmSync(sortie);
-  fs.writeFileSync(tache, JSON.stringify({ debut: DEBUT_EVALUATION, fin: NUIT, variantes, univers, sortie }));
+  // `avecInferieures` : depuis le 21 septembre 2026, la production connaît les
+  // divisions inférieures ; le moteur de référence du banc aussi.
+  fs.writeFileSync(tache, JSON.stringify({ debut: DEBUT_EVALUATION, fin: NUIT, variantes, univers, avecInferieures: true, sortie }));
   journal(`évaluation « ${etiquette} » : ${variantes.length} variante(s)`);
   const r = spawnSync(process.execPath, [TSX, path.join('scripts', 'challenger', 'evaluer.mts'), tache], {
     cwd: RACINE,
@@ -472,6 +474,23 @@ async function principal(): Promise<any> {
     }
   } catch (e: any) {
     ligne(`- Recalcul impossible aujourd’hui : ${e?.message ?? String(e)}`);
+  }
+  ligne('');
+
+  // ── LES DIVISIONS INFÉRIEURES, CHAQUE NUIT, APRÈS LA HIÉRARCHIE ─────────
+  //
+  // En ligne depuis le 21 septembre 2026 (voir `elargissement.mts`). Placé
+  // APRÈS la hiérarchie : on étend celle de la nuit, et la mémoire des clubs
+  // — déjà rangée plus haut sans les divisions inférieures — est refaite avec
+  // elles, ancrée sur la hiérarchie étendue. Un échec laisse en ligne ce qui y
+  // était.
+  ligne('## 2 bis bis. Les divisions inférieures');
+  ligne('');
+  try {
+    const { elargir } = await import('./elargissement.mjs');
+    for (const l of await elargir()) ligne(`- ${l}`);
+  } catch (e: any) {
+    ligne(`- ⚠️ Élargissement impossible aujourd’hui : ${e?.message ?? String(e)} — la hiérarchie et la mémoire en ligne sont conservées.`);
   }
   ligne('');
 

@@ -177,8 +177,20 @@ export interface RencontreJouee {
  */
 export function calculerMemoireClubs(
   rencontres: RencontreJouee[],
-  options: { k?: number; echelle?: number; coefficients?: Record<string, number> | null } = {}
+  options: {
+    k?: number;
+    echelle?: number;
+    coefficients?: Record<string, number> | null;
+    /**
+     * Des coupes NATIONALES à ne jamais prendre pour le championnat d'un club
+     * (FA Cup, Coppa Italia…). Ajouté le 21 septembre 2026 avec l'entrée des
+     * divisions inférieures : leurs matchs contre les grands clubs passent
+     * surtout par ces coupes. Vide par défaut.
+     */
+    coupesEnPlus?: readonly number[];
+  } = {}
 ): MemoireClubs {
+  const coupesExclues = new Set<number>([...COUPES, ...(options.coupesEnPlus ?? [])]);
   const k = options.k ?? K_MEMOIRE;
   const echelle = options.echelle ?? ECHELLE_HIERARCHIE;
   const coefficients = options.coefficients ?? null;
@@ -208,7 +220,7 @@ export function calculerMemoireClubs(
     if (!dom || !ext || dom === ext || !Number.isFinite(bd) || !Number.isFinite(be)) continue;
 
     const ligue = m.ligue === null || m.ligue === undefined ? null : String(m.ligue);
-    if (ligue && !COUPES.has(Number(ligue))) {
+    if (ligue && !coupesExclues.has(Number(ligue))) {
       noter(dom, ligue);
       noter(ext, ligue);
     }

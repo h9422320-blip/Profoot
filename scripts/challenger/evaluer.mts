@@ -118,6 +118,12 @@ const tache: {
    * TOUTES les variantes, c'est l'univers de mesure, pas une couche.
    */
   avecInferieures?: boolean;
+  /**
+   * Vrai : la mémoire de RÉFÉRENCE ignore les divisions inférieures, comme la
+   * production AVANT le 21 septembre 2026. Sert à rejouer la mesure qui a
+   * décidé leur entrée ; par défaut, la référence est la production d'aujourd'hui.
+   */
+  referenceSansInferieures?: boolean;
   sortie: string;
 } = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 
@@ -144,7 +150,9 @@ if (tache.avecInferieures) {
   const { FICHIER_INFERIEURES } = await import('./rencontres-inferieures.mjs');
   const connues = new Set(rencontres.map((m) => Number(m.id)));
   const enPlus = Object.values(JSON.parse(fs.readFileSync(FICHIER_INFERIEURES, 'utf8')).rencontres) as any[];
-  for (const m of enPlus) if (!connues.has(Number(m.id))) rencontres.push(m);
+  // Marquées : la mémoire de RÉFÉRENCE les écarte, comme la production, qui
+  // ne les a jamais vues.
+  for (const m of enPlus) if (!connues.has(Number(m.id))) rencontres.push({ ...m, inferieure: true });
   console.log(`  + ${enPlus.length} rencontres des divisions inférieures et des coupes nationales`);
 }
 rencontres.sort((a, b) => a.date.localeCompare(b.date));
@@ -1252,6 +1260,7 @@ function avecMarche(poids: number): { pronostics: Pronostic[]; actifs: number[] 
 const AVANTAGE_TERRAIN_ELO = 65;
 const NUL_ELO = 0.26;
 const toutesLesRencontres = [...rencontres].sort((a, b) => a.date.localeCompare(b.date));
+const toutesLesRencontresBrutes = toutesLesRencontres;
 function avecElo(k: number, poids: number): Pronostic[] {
   const note = new Map<number, number>();
   const lire = (id: number) => note.get(id) ?? 1500;
@@ -1789,7 +1798,7 @@ function avecDemiVue(): { pronostics: Pronostic[]; actifs: number[] } {
 //
 // Le championnat d'un club est celui où on l'a le plus vu, coupes exclues :
 // une coupe d'Europe n'est le championnat de personne.
-const COUPES_POUR_ANCRAGE = new Set([2, 3, 848]);
+const COUPES_POUR_ANCRAGE = new Set([2, 3, 848, 45, 48, 143, 137, 81, 66, 96, 97, 90, 147, 181, 185, 206]);
 const ligueDuClub = new Map<number, number>();
 {
   const vus = new Map<number, Map<number, number>>();
@@ -1928,12 +1937,26 @@ const K_PRODUCTION = 30;
 const PART_PRODUCTION = 0.6;
 const ECHELLE_PRODUCTION = 400;
 const SEUIL_PRODUCTION = 5;
-const avisProduction = new Map<number, { dom: number; nul: number; ext: number; poids: number }>();
 
 // Le MEME avis, mais calcule pour TOUTES les rencontres — y compris celles ou
 // le moteur voit clair. La production, elle, ne le consulte que sur les matchs
 // aveugles ; une couche a l essai peut vouloir le lui faire relire ailleurs.
-const avisPartout = new Map<number, { dom: number; nul: number; ext: number; poids: number }>();
+// ── LA MÉMOIRE, SELON LA HIÉRARCHIE ET LES CLUBS QU'ELLE CONNAÎT ──────────
+//
+// Ajouté le 21 septembre 2026 pour mesurer l'entrée des divisions inférieures.
+// La RÉFÉRENCE reste exactement la production : sans les rencontres marquées
+// `inferieure` — la production ne les a jamais vues — et ancrée sur la
+// hiérarchie en ligne. Une variante qui pose `BANC_MEMOIRE_ELARGIE=oui` et
+// `BANC_HIERARCHIE_FICHIER` reçoit une mémoire qui les connaît, ancrée sur
+// l'autre hiérarchie. Chaque combinaison n'est calculée qu'une fois.
+const memoiresParReglage = new Map<string, { production: Map<number, any>; partout: Map<number, any> }>();
+function construireMemoire(hier: any, avecInferieures: boolean) {
+  const avisProduction = new Map<number, { dom: number; nul: number; ext: number; poids: number }>();
+  const avisPartout = new Map<number, { dom: number; nul: number; ext: number; poids: number }>();
+  const hierarchie = hier;
+  const toutesLesRencontres = avecInferieures
+    ? toutesLesRencontresBrutes
+    : toutesLesRencontresBrutes.filter((x: any) => !x.inferieure);
 if (hierarchie) {
   const note = new Map<number, number>();
   const joues = new Map<number, number>();
@@ -1998,10 +2021,26 @@ if (hierarchie) {
     if (!occ) avisProduction.set(Number(m.id), avis);
   }
 }
+  return { production: avisProduction, partout: avisPartout };
+}
+const memoireEnCours = () => {
+  const elargie = process.env.BANC_MEMOIRE_ELARGIE === 'oui';
+  const cle = `${elargie ? 'elargie' : 'reference'}|${elargie ? process.env.BANC_HIERARCHIE_FICHIER ?? '' : ''}`;
+  if (!memoiresParReglage.has(cle))
+    memoiresParReglage.set(cle, construireMemoire(elargie ? hierarchieEnCours() : hierarchie, elargie || !tache.referenceSansInferieures));
+  return memoiresParReglage.get(cle)!;
+};
+// La référence, calculée d'emblée : les tables historiques `avisProduction`
+// et `avisPartout` SONT les siennes, sans copie.
+const memoireDeReference = memoireEnCours();
+const avisProduction = memoireDeReference.production;
+const avisPartout = memoireDeReference.partout;
 // `BANC_SANS_MEMOIRE=oui` éteint la mémoire des clubs : sert à rejouer le moteur
 // tel qu'il était AVANT elle, pour mesurer le chemin parcouru.
 const avisDeLaProduction = (m: any) =>
-  process.env.BANC_SANS_MEMOIRE === 'oui' ? null : avisProduction.get(Number(m.id)) ?? null;
+  process.env.BANC_SANS_MEMOIRE === 'oui'
+    ? null
+    : (process.env.BANC_MEMOIRE_ELARGIE === 'oui' ? memoireEnCours().production : avisProduction).get(Number(m.id)) ?? null;
 
 // ── LA CORRECTION EN BUTS DE LA PRODUCTION, CALCULÉE UNE SEULE FOIS ───
 //

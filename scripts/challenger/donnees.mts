@@ -163,7 +163,18 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
     // devant Manchester United (constaté le 12 septembre 2026).
     const { lireForcesChampionnats } = await import('../../src/lib/forces-championnats.js');
     const hierarchie = await lireForcesChampionnats();
-    const memoire = calculerMemoireClubs(pourLaMemoire as any, { coefficients: hierarchie?.coefficients ?? null });
+    // Depuis le 21 septembre 2026, la mémoire connaît aussi les divisions
+    // inférieures et les coupes nationales (voir `elargissement.mts`). Le
+    // calcul de début de nuit les inclut, pour qu'un élargissement manqué plus
+    // tard ne ramène pas la production en arrière.
+    const { FICHIER_INFERIEURES, COUPES_NATIONALES } = await import('./rencontres-inferieures.mjs');
+    const inferieures = fs.existsSync(FICHIER_INFERIEURES)
+      ? (Object.values(JSON.parse(fs.readFileSync(FICHIER_INFERIEURES, 'utf8')).rencontres) as any[])
+      : [];
+    const memoire = calculerMemoireClubs([...pourLaMemoire, ...inferieures] as any, {
+      coefficients: hierarchie?.coefficients ?? null,
+      coupesEnPlus: COUPES_NATIONALES.map((c: any) => c.id),
+    });
     await rangerMemoireClubs(memoire);
     journal(`mémoire des clubs rangée : ${memoire.clubs} clubs sur ${memoire.rencontres} rencontres`);
   } catch (e: any) {
