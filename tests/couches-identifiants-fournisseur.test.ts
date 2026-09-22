@@ -58,3 +58,21 @@ test('★ ACQUIS — les occasions et l’élan reçoivent les noms du fournisse
   assert.doesNotMatch(s.slice(j, j + 350), /team1\.name|team2\.name/, 'L’élan reçoit de nouveau le nom du catalogue.');
   assert.match(s, /f\.teams\.home\.name/, 'Le nom n’est plus pris dans la fiche du match.');
 });
+
+test('★ ACQUIS — absents et compositions reconnus par le numéro du fournisseur', () => {
+  // Le 22 septembre 2026 : on cherchait « Arsenal FC » (catalogue) dans une
+  // réponse qui écrit « Arsenal » — rien ne s'affichait.
+  const s = fs.readFileSync('src/app/api/analyze/route.ts', 'utf8');
+  assert.match(s, /absentsDe\(team1\.name, id1\)/);
+  assert.match(s, /absentsDe\(team2\.name, id2\)/);
+  assert.match(s, /composDe\(team1\.name, id1\)/);
+  assert.match(s, /composDe\(team2\.name, id2\)/);
+  assert.match(s, /String\(t\?\.id\) === String\(apiId\)/);
+});
+
+test('★ ACQUIS — la préparation dose la mémoire comme le banc et l’analyse', () => {
+  // Nombre de matchs APRÈS le mélange aux douze derniers, comme `evaluer.mts`.
+  const s = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');
+  assert.match(s, /partDeLaMemoire\(Math\.min\(statsDom\.matchsJoues, statsExt\.matchsJoues\)\)/);
+  assert.doesNotMatch(s, /partDeLaMemoire\(Math\.min\(brut\(/);
+});

@@ -1928,12 +1928,22 @@ async function analyser(req: Request, billet: BilletQuota) {
      * a. Sur une donnée que l'abonné peut vérifier en trois secondes ailleurs,
      * c'est le genre d'erreur qui fait douter de tout le reste.
      */
-    const absentsDe = (nomEquipe: string) => {
+    // ── LE NUMÉRO DU FOURNISSEUR, PAS LE NOM DU CATALOGUE ──────────────
+    //
+    // Constaté le 22 septembre 2026 : on reconnaissait l'équipe à son NOM, et
+    // l'on passait celui du catalogue (« Arsenal FC ») alors que le
+    // fournisseur écrit « Arsenal ». Les absents et les compositions ne
+    // s'affichaient donc pas pour ces clubs — la même famille de défaut que les
+    // couches muettes du 21 septembre. On reconnaît désormais l'équipe à son
+    // numéro, le nom ne servant qu'en secours.
+    const estLEquipe = (t: any, nomEquipe: string, apiId: unknown) =>
+      (apiId != null && String(apiId) !== '' && String(t?.id) === String(apiId)) || nomDe(t?.name) === nomEquipe;
+    const absentsDe = (nomEquipe: string, apiId?: unknown) => {
       const vus = new Set<string>();
       return ((brutAbsents?.response ?? []) as any[])
         .filter(
           (a) =>
-            nomDe(a?.team?.name) === nomEquipe &&
+            estLEquipe(a?.team, nomEquipe, apiId) &&
             String(a?.player?.type ?? '').toLowerCase().includes('missing')
         )
         .map((a) => ({ nom: nomDe(a?.player?.name), motif: nomDe(a?.player?.reason) }))
@@ -1947,8 +1957,8 @@ async function analyser(req: Request, billet: BilletQuota) {
         .slice(0, 12);
     };
 
-    const composDe = (nomEquipe: string): Composition | null => {
-      const c = ((brutCompos?.response ?? []) as any[]).find((x) => nomDe(x?.team?.name) === nomEquipe);
+    const composDe = (nomEquipe: string, apiId?: unknown): Composition | null => {
+      const c = ((brutCompos?.response ?? []) as any[]).find((x) => estLEquipe(x?.team, nomEquipe, apiId));
       if (!c || !Array.isArray(c.startXI) || !c.startXI.length) return null;
       return {
         schema: nomDe(c.formation) || null,
@@ -1958,10 +1968,10 @@ async function analyser(req: Request, billet: BilletQuota) {
       };
     };
 
-    const a1 = absentsDe(team1.name);
-    const a2 = absentsDe(team2.name);
-    const c1 = composDe(team1.name);
-    const c2 = composDe(team2.name);
+    const a1 = absentsDe(team1.name, id1);
+    const a2 = absentsDe(team2.name, id2);
+    const c1 = composDe(team1.name, id1);
+    const c2 = composDe(team2.name, id2);
     if (a1.length || a2.length || c1 || c2) {
       effectif = { absents: { equipe1: a1, equipe2: a2 }, compositions: { equipe1: c1, equipe2: c2 } };
     }

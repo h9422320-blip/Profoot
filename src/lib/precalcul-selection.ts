@@ -711,9 +711,11 @@ export async function precalculerGrandsMatchs(
           )
         );
 
+        const statsDom = melangerStatistiques(brut(sDom), ancreDom);
+        const statsExt = melangerStatistiques(brut(sExt), ancreExt);
         const r = calculerScoreProbable(
-          melangerStatistiques(brut(sDom), ancreDom),
-          melangerStatistiques(brut(sExt), ancreExt),
+          statsDom,
+          statsExt,
           // L'équipe 1 est celle qui reçoit : c'est l'orientation de la table,
           // et s'en écarter inverserait tous les pronostics enregistrés.
           true,
@@ -768,7 +770,15 @@ export async function precalculerGrandsMatchs(
                 domId,
                 extId,
                 // Pleine part sous cinq matchs connus dans la compétition.
-                partDeLaMemoire(Math.min(brut(sDom).matchsJoues, brut(sExt).matchsJoues))
+                // ── LE NOMBRE DE MATCHS APRÈS LE MÉLANGE, COMME AU BANC ──────
+                //
+                // Constaté le 22 septembre 2026 : la part de la mémoire se
+                // calculait ici sur les seuls matchs de la compétition, alors
+                // que le banc qui l'a mesurée (`evaluer.mts`) et l'analyse
+                // d'abonné la calculent sur les statistiques mélangées aux
+                // douze derniers matchs. En début de saison, la préparation
+                // donnait donc à la mémoire toute la place, l'analyse 0,6.
+                partDeLaMemoire(Math.min(statsDom.matchsJoues, statsExt.matchsJoues))
               )),
           // Le match retour et la seconde conviction restent éteints.
           null,
