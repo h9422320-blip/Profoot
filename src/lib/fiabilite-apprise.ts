@@ -347,9 +347,43 @@ function fusionner(
 }
 
 /** Le relevé, depuis la réserve quand il est frais. */
+/**
+ * ── QUAND LA RÉSERVE RENONCE, ON RELIT DIRECTEMENT ───────────────────────
+ *
+ * `lireReserve` abandonne au bout d'une seconde et demie. Sur une base lente,
+ * ce relevé passait alors pour ABSENT, et chaque visite le reconstruisait en
+ * relisant des milliers d'analyses jugées — pendant que l'abonné attendait.
+ *
+ * Même remède que pour le relevé des tirs (`forme-occasions.ts`) : une
+ * relecture directe de cinq secondes, qui rend AUSSI la date de péremption.
+ * Un relevé périmé se recalcule comme avant : le cron `apprendre` retire la
+ * ligne dès qu'il a jugé de nouvelles rencontres, et ce retrait doit rester
+ * suivi d'effet.
+ */
+const RELECTURE_MS = 5_000;
+
+async function relireDirectement(): Promise<{ contenu: Releve; expiree: boolean } | null> {
+  try {
+    const { createAdminClient } = await import('./supabase-admin');
+    const lecture = createAdminClient()
+      .from('cache_api')
+      .select('contenu, expire_le')
+      .eq('cle', CLE)
+      .maybeSingle();
+    const limite = new Promise<null>((r) => setTimeout(() => r(null), RELECTURE_MS));
+    const resultat: any = await Promise.race([lecture, limite]);
+    const contenu = resultat?.data?.contenu;
+    if (!contenu?.global) return null;
+    console.warn('[FIABILITÉ] Relevé obtenu par relecture directe — la réserve avait renoncé.');
+    return { contenu: contenu as Releve, expiree: new Date(resultat.data.expire_le).getTime() < Date.now() };
+  } catch {
+    return null;
+  }
+}
+
 export async function lireReleve(): Promise<Releve | null> {
   try {
-    const cache = await lireReserve<Releve>(CLE);
+    const cache = (await lireReserve<Releve>(CLE).catch(() => null)) ?? (await relireDirectement());
     if (cache && !cache.expiree) return cache.contenu;
 
     const releve = await calculer();

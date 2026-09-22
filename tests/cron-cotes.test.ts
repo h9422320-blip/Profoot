@@ -27,3 +27,12 @@ test('★ ACQUIS — la tâche de minuit garde son relevé', () => {
   const s = fs.readFileSync('src/app/api/cron/refresh/route.ts', 'utf8');
   assert.match(s, /await releverCotes\(\)/);
 });
+
+test('★ ACQUIS — le relevé de fiabilité se relit directement plutôt que de se reconstruire', () => {
+  // Sur une base lente, la réserve renonce en 1,5 s : le relevé passait pour
+  // absent et chaque visite le rebâtissait en relisant des milliers
+  // d'analyses, pendant que l'abonné attendait.
+  const s = fs.readFileSync('src/lib/fiabilite-apprise.ts', 'utf8');
+  assert.match(s, /\(await lireReserve<Releve>\(CLE\)\.catch\(\(\) => null\)\) \?\? \(await relireDirectement\(\)\)/);
+  assert.match(s, /expiree: new Date\(resultat\.data\.expire_le\)\.getTime\(\) < Date\.now\(\)/, 'Un relevé périmé doit rester recalculé.');
+});
