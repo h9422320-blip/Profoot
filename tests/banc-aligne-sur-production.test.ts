@@ -210,7 +210,9 @@ test('★ ACQUIS — le banc connaît les rencontres entre championnats', () => 
   );
   assert.match(
     s,
-    /rapportEntreChampionnats\(hierarchie as any, ligueDuClubPour\(m, Number\(m\.dom\)\), ligueDuClubPour\(m, Number\(m\.ext\)\)\)/,
+    // `hierarchieEnCours()` (21 septembre 2026) rend celle de la production,
+    // sauf pour une variante qui en mesure une autre.
+    /rapportEntreChampionnats\((hierarchie|hierarchieEnCours\(\)) as any, ligueDuClubPour\(m, Number\(m\.dom\)\), ligueDuClubPour\(m, Number\(m\.ext\)\)\)/,
     'Le rapport doit se lire entre les championnats des deux CLUBS, comme `t1League` et `t2League` en production.'
   );
 });

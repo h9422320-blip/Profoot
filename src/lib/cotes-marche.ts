@@ -166,7 +166,21 @@ export function probabilitesDepuisCotes(cote: { dom: number; nul: number; ext: n
 // 18 septembre 2026 : la préparation les figeait chaque jour, mais aucune cote
 // n'y était jamais relevée — le moteur y restait donc seul, alors que l'avis
 // du marché bat le moteur dans toutes les autres compétitions mesurées.
-const NOS_LIGUES = new Set<number>([...Object.values(LEAGUE_IDS), 2, 3, 848, 531, 253, 71, 128]);
+//
+// ── LES COUPES NATIONALES, AJOUTÉES LE 21 SEPTEMBRE 2026 ──────────────────
+//
+// Plus de 1 100 analyses par mois en coupe nationale — League Cup, Coppa
+// Italia, DFB Pokal, Copa del Rey, FA Cup, Coupe de France… — et AUCUNE cote
+// relevée : le moteur y restait seul. Rejoué sur 1 560 matchs de ces coupes,
+// il trouve 52,6 % des vainqueurs (52 % mesuré sur les analyses réelles), et
+// quand il se dit sûr de lui, il n'a raison que 56 fois sur 100.
+//
+// La couche du marché s'applique déjà partout où une cote est relevée
+// (`avisDuMarcheBranche`) ; il ne lui manquait que les cotes. Sur les coupes
+// d'Europe, mesuré : 42 bons vainqueurs pour le marché contre 32 pour le
+// moteur seul, sur 68 matchs. Aucun réglage ne change : on ajoute la donnée.
+export const COUPES_NATIONALES_COTEES: readonly number[] = [45, 48, 143, 137, 81, 66, 96, 97, 90, 147, 181, 185, 206];
+const NOS_LIGUES = new Set<number>([...Object.values(LEAGUE_IDS), 2, 3, 848, 531, 253, 71, 128, ...COUPES_NATIONALES_COTEES]);
 
 /**
  * Extrait ce qui compte d'une réponse du fournisseur.

@@ -331,7 +331,30 @@ export function saisonsRecentes(maintenant = new Date()): number[] {
  * compare ce qui était attendu — d'après les forces internes de chacun — à ce
  * qui est arrivé, et pousse les deux championnats en conséquence.
  */
-export function apprendre(rencontres: Rencontre[]): ForcesChampionnats {
+export function apprendre(
+  rencontres: Rencontre[],
+  /**
+   * D'autres coupes à ne jamais prendre pour le championnat d'un club — les
+   * coupes NATIONALES, quand on les fournit (FA Cup, Coppa Italia…). Vide par
+   * défaut : la hiérarchie en ligne se calcule exactement comme avant.
+   */
+  coupesEnPlus: readonly number[] = [],
+  /**
+   * Des coefficients FIGÉS : ces championnats gardent la valeur donnée et ne
+   * bougent jamais ; seuls les autres apprennent, et prennent alors la totalité
+   * de chaque mise à jour.
+   *
+   * Sert à AJOUTER des championnats (les divisions inférieures) sans toucher à
+   * ceux qui sont en ligne. Sans ce verrou, les milliers de matchs de coupe
+   * nationale écartaient chaque pyramide autour de son centre — mesuré le
+   * 21 septembre 2026 : la Premiership écossaise passait de 0,97 à 1,36,
+   * au-dessus de l'Eredivisie, et toute la pyramide allemande montait, ce qui
+   * aurait faussé les matchs de coupe d'Europe. Vide par défaut.
+   */
+  figes: Record<string, number> = {}
+): ForcesChampionnats {
+  const coupesExclues = new Set<number>([...COUPES, ...coupesEnPlus]);
+  const estFige = (l: number) => Object.prototype.hasOwnProperty.call(figes, String(l));
   const parDate = [...rencontres].sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 
   const equipes = new Map<number, { marques: number; encaisses: number; matchs: number; ligues: Map<number, number> }>();
@@ -350,7 +373,7 @@ export function apprendre(rencontres: Rencontre[]): ForcesChampionnats {
     if (!f) { f = { butsDom: 0, butsExt: 0, matchs: 0 }; ligues.set(id, f); }
     return f;
   };
-  const coef = (l: number) => coefficients.get(l) ?? 1;
+  const coef = (l: number) => (estFige(l) ? Number(figes[String(l)]) : coefficients.get(l) ?? 1);
 
   /** Le championnat d'une équipe : celui où elle joue le plus, hors coupe. */
   const ligueDe = (id: number): number | null => {
@@ -358,7 +381,7 @@ export function apprendre(rencontres: Rencontre[]): ForcesChampionnats {
     if (!f) return null;
     let meilleure: number | null = null;
     let max = 0;
-    for (const [l, n] of f.ligues) if (!COUPES.includes(l) && n > max) { max = n; meilleure = l; }
+    for (const [l, n] of f.ligues) if (!coupesExclues.has(l) && n > max) { max = n; meilleure = l; }
     return meilleure;
   };
 
@@ -403,8 +426,19 @@ export function apprendre(rencontres: Rencontre[]): ForcesChampionnats {
       const rapportExt = (m.butsExt + 0.5) / (attenduExt + 0.5);
       const pas = Math.exp((VITESSE * (Math.log(rapportDom) - Math.log(rapportExt))) / 2);
       const borner = (v: number) => Math.min(COEF_MAX, Math.max(COEF_MIN, v));
-      coefficients.set(lDom, borner(cD * pas));
-      coefficients.set(lExt, borner(cE / pas));
+      // Un championnat figé ne bouge pas ; l'autre prend alors toute la mise à
+      // jour. Sans championnat figé — la hiérarchie en ligne —, le partage à
+      // parts égales est exactement celui d'avant.
+      const figeDom = estFige(lDom);
+      const figeExt = estFige(lExt);
+      if (!figeDom && !figeExt) {
+        coefficients.set(lDom, borner(cD * pas));
+        coefficients.set(lExt, borner(cE / pas));
+      } else if (figeDom && !figeExt) {
+        coefficients.set(lExt, borner(cE / (pas * pas)));
+      } else if (!figeDom && figeExt) {
+        coefficients.set(lDom, borner(cD * pas * pas));
+      }
       confrontations++;
       confrontationsParLigue.set(lDom, (confrontationsParLigue.get(lDom) ?? 0) + 1);
       confrontationsParLigue.set(lExt, (confrontationsParLigue.get(lExt) ?? 0) + 1);
@@ -430,7 +464,12 @@ export function apprendre(rencontres: Rencontre[]): ForcesChampionnats {
   }
 
   return {
-    coefficients: Object.fromEntries([...coefficients].map(([l, c]) => [String(l), Math.round(c * 10000) / 10000])),
+    coefficients: Object.fromEntries(
+      [...new Set([...coefficients.keys(), ...Object.keys(figes).map(Number)])].map((l) => [
+        String(l),
+        Math.round(coef(l) * 10000) / 10000,
+      ])
+    ),
     calculeLe: new Date().toISOString(),
     matchsUtilises: parDate.length,
     confrontations,

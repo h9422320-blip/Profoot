@@ -111,7 +111,13 @@ const tache: {
    * assez de matchs pour être jugées : dans le périmètre du produit, la
    * demi-vue n'en concerne que 132.
    */
-  univers?: 'suivies' | 'cotes' | 'tout' | 'cinq' | 'autres';
+  univers?: 'suivies' | 'cotes' | 'tout' | 'cinq' | 'autres' | 'coupes-nationales';
+  /**
+   * Vrai : les divisions inférieures et les coupes nationales de
+   * `rencontres-inferieures.mts` rejoignent les rencontres du banc — pour
+   * TOUTES les variantes, c'est l'univers de mesure, pas une couche.
+   */
+  avecInferieures?: boolean;
   sortie: string;
 } = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 
@@ -134,6 +140,13 @@ if (!hierarchie)
   console.warn('[EVALUER] hiérarchie des championnats ILLISIBLE : toute couche ancrée serait sans ancrage.');
 
 const rencontres: any[] = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
+if (tache.avecInferieures) {
+  const { FICHIER_INFERIEURES } = await import('./rencontres-inferieures.mjs');
+  const connues = new Set(rencontres.map((m) => Number(m.id)));
+  const enPlus = Object.values(JSON.parse(fs.readFileSync(FICHIER_INFERIEURES, 'utf8')).rencontres) as any[];
+  for (const m of enPlus) if (!connues.has(Number(m.id))) rencontres.push(m);
+  console.log(`  + ${enPlus.length} rencontres des divisions inférieures et des coupes nationales`);
+}
 rencontres.sort((a, b) => a.date.localeCompare(b.date));
 const tirs: any[] = JSON.parse(fs.readFileSync(FICHIER_TIRS, 'utf8'));
 const cotes: Record<string, { dom: number; nul: number; ext: number }> = fs.existsSync(FICHIER_COTES)
@@ -488,8 +501,18 @@ const croisePour = (m: any) => {
   const b = ligueDuClubPour(m, Number(m.ext));
   return a !== null && b !== null && Number(a) !== Number(b);
 };
+// Une variante peut porter une AUTRE hiérarchie, lue dans un fichier
+// (`BANC_HIERARCHIE_FICHIER`) — lue à l'appel, pour que chaque variante ait la
+// sienne. Sans elle, celle de la production.
+const hierarchiesLues = new Map<string, any>();
+const hierarchieEnCours = () => {
+  const f = process.env.BANC_HIERARCHIE_FICHIER;
+  if (!f) return hierarchie;
+  if (!hierarchiesLues.has(f)) hierarchiesLues.set(f, JSON.parse(fs.readFileSync(f, 'utf8')));
+  return hierarchiesLues.get(f);
+};
 const rapportPour = (m: any) =>
-  rapportEntreChampionnats(hierarchie as any, ligueDuClubPour(m, Number(m.dom)), ligueDuClubPour(m, Number(m.ext)));
+  rapportEntreChampionnats(hierarchieEnCours() as any, ligueDuClubPour(m, Number(m.dom)), ligueDuClubPour(m, Number(m.ext)));
 
 const suivies = new Set([...Object.keys(GRANDS), ...Object.keys(COUPES_SUIVIES)].map(Number));
 const entrees: { m: any; s1: any; s2: any; occ: any; jour: string }[] = [];
@@ -507,8 +530,12 @@ const CINQ_GRANDS = new Set([39, 140, 135, 78, 61]);
 const AUTRES_DU_MARCHE = new Set([40, 179, 79, 136, 141, 62, 144, 203, 197, 88, 94]);
 const cinqGrands = tache.univers === 'cinq';
 const autresDuMarche = tache.univers === 'autres';
+const coupesNationales = tache.univers === 'coupes-nationales';
+const COUPES_NATIONALES_BANC = new Set([45, 48, 143, 137, 81, 66, 96, 97, 90, 147, 181, 185, 206]);
 for (const m of rencontres) {
-  const retenue = cinqGrands
+  const retenue = coupesNationales
+    ? COUPES_NATIONALES_BANC.has(Number(m.ligue))
+    : cinqGrands
     ? CINQ_GRANDS.has(Number(m.ligue))
     : autresDuMarche
     ? AUTRES_DU_MARCHE.has(Number(m.ligue))
