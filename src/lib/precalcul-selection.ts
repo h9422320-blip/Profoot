@@ -53,7 +53,6 @@ import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-champ
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from './forces-poisson';
 import { avisDuMarchePour, avisDuMarcheBranche, totalDuMarchePour } from './couche-marche';
 import { coucheEloSelections } from './forces-selections';
-import { COMPETITIONS_AFRICAINES } from './selections-africaines';
 import { lireCotesDuJourPatiemment } from './cotes-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
 import { coucheDesAbsences, LIGUES_DES_ABSENCES, CINQ_GRANDS } from './forces-absences';
@@ -176,6 +175,22 @@ export const COUPES_EUROPE_IDS: ReadonlySet<number> = new Set<number>(
   )
 );
 
+/**
+ * ── LES COMPÉTITIONS DE SÉLECTIONS QUE L'ON PRÉPARE ─────────────────────
+ *
+ * Mesuré le 22 septembre 2026 en marche avant sur 2022-2026, quand la note Elo
+ * des sélections est sûre à 70 % ou plus (`scripts/challenger/elo-selections.mts`) :
+ *
+ *     Qualifications de la CAN (36)       84 matchs   72,6 % de vainqueurs justes
+ *     Ligue des nations UEFA (5)          85 matchs   75,3 %
+ *     Ligue des nations CONCACAF (536)    55 matchs   87,3 %
+ *
+ * La phase finale de la CAN (6) suit ses qualifications. Les matchs amicaux
+ * (75,7 %) n'y sont PAS : la moitié des « amicaux » du fournisseur opposent des
+ * équipes de jeunes, que la note Elo ne connaît pas.
+ */
+export const COMPETITIONS_DE_SELECTIONS_PREPAREES: ReadonlySet<number> = new Set([36, 6, 5, 536]);
+
 export const IDS_PREPARES: ReadonlySet<number> = new Set<number>([
   ...COMPETITIONS_APPRISES.map((c) => c.id),
   LIGA_I_ROUMAINE,
@@ -186,8 +201,7 @@ export const IDS_PREPARES: ReadonlySet<number> = new Set<number>([
   // 53,2 → 57,2 % sur 4 626 matchs). Sans pronostic préparé, ils ne pouvaient
   // entrer ni dans « les matchs les mieux cernés », ni dans le message du
   // matin — alors que les 24 et 25 septembre, ce sont les seuls grands matchs.
-  36,
-  6,
+  ...COMPETITIONS_DE_SELECTIONS_PREPAREES,
 ]);
 
 /**
@@ -629,10 +643,10 @@ export async function precalculerGrandsMatchs(
         // chaque sélection (`melangerStatistiques` avec l'ancre) — et que la
         // force Elo des sélections décide ensuite du pronostic. On fait donc
         // exactement comme l'analyse, pour les seules compétitions de
-        // sélections africaines : ailleurs, rien ne change.
+        // sélections : pour les clubs, rien ne change.
         const sansMatchCetteSaison = brut(sDom).matchsJoues < 1 || brut(sExt).matchsJoues < 1;
         const selectionAvecSesDerniersMatchs =
-          COMPETITIONS_AFRICAINES.has(ligue) &&
+          COMPETITIONS_DE_SELECTIONS_PREPAREES.has(ligue) &&
           statistiquesDepuisMatchs(recentsDom, String(domId)).matchsJoues > 0 &&
           statistiquesDepuisMatchs(recentsExt, String(extId)).matchsJoues > 0;
         if (sansMatchCetteSaison && !selectionAvecSesDerniersMatchs) {

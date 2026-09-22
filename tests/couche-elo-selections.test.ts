@@ -70,5 +70,5 @@ test('★ ACQUIS — la préparation des pronostics lit la CAN comme l’analyse
   assert.ok(competitionRetenue({ id: 6 }), 'La phase finale de la CAN n’est plus préparée.');
   // Une sélection qui n'a encore rien joué dans la campagne s'appuie sur ses
   // derniers matchs, comme dans l'analyse — et seulement pour les sélections.
-  assert.match(s, /COMPETITIONS_AFRICAINES\.has\(ligue\) &&\s*statistiquesDepuisMatchs\(recentsDom/);
+  assert.match(s, /COMPETITIONS_DE_SELECTIONS_PREPAREES.has\(ligue\) &&\s*statistiquesDepuisMatchs\(recentsDom/);
 });

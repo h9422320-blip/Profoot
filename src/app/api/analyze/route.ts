@@ -195,6 +195,18 @@ async function getTeamApiId(team: any) {
     if (match) return match[1];
   }
   
+  // ── UNE SÉLECTION DU CATALOGUE A SON NUMÉRO, VÉRIFIÉ ─────────────────────
+  //
+  // Depuis le 22 septembre 2026 : les 52 sélections hors d'Afrique et les
+  // sélections africaines du catalogue sont retrouvées par une table fixe
+  // (`selections-du-catalogue.ts`), et non plus par une recherche de nom qui
+  // devait deviner « Angleterre » ou « Czech Republic ».
+  {
+    const { numeroDeSelection } = await import('@/lib/selections-du-catalogue');
+    const numero = numeroDeSelection(team.id);
+    if (numero) return String(numero);
+  }
+
   // ── UNE SÉLECTION AFRICAINE SE RECONNAÎT À SON IDENTIFIANT, PAS À SON NOM ──
   //
   // La recherche par nom confond le Congo et la RD Congo, la Guinée et la

@@ -49,7 +49,14 @@ import { createAdminClient } from './supabase-admin';
 import { lireReserve, ecrireReserve } from './api-football';
 import { lireReleve, fiabilitePour, trancheDe, TRANCHES } from './fiabilite-apprise';
 import { getLiveTeams } from './teams-live';
-import { CHAMPIONNATS, competitionRetenue, rangDeCompetition } from './precalcul-selection';
+import {
+  CHAMPIONNATS,
+  COMPETITIONS_DE_SELECTIONS_PREPAREES,
+  competitionRetenue,
+  rangDeCompetition,
+} from './precalcul-selection';
+import { catalogueDeSelection } from './selections-du-catalogue';
+import { clubs } from './data';
 import type { EquipeDuJour } from './grands-matchs-du-jour';
 import { lireForcesPoisson, avisPourLeMatch } from './forces-poisson';
 import { avisDuMarcheBranche } from './couche-marche';
@@ -300,8 +307,17 @@ async function calculer(): Promise<SelectionDuJour> {
       const p = pronostics.get(Number(f?.fixture?.id));
       if (!p || p.proba_domicile == null) continue;
 
-      const dom: any = parApiId.get(Number(f?.teams?.home?.id));
-      const ext: any = parApiId.get(Number(f?.teams?.away?.id));
+      // ── LES SÉLECTIONS NE SONT PAS DANS LE RÉFÉRENTIEL DES CLUBS ───────
+      //
+      // Constaté le 22 septembre 2026 : les rencontres de CAN, préparées avec
+      // la note Elo des sélections, n'avaient ici aucune équipe et ne
+      // pouvaient jamais être proposées. Dans une compétition de sélections,
+      // on prend la sélection du catalogue, par son numéro vérifié.
+      const enSelections = COMPETITIONS_DE_SELECTIONS_PREPAREES.has(Number(f?.league?.id));
+      const equipeDe = (apiId: unknown): any =>
+        enSelections ? clubs[catalogueDeSelection(apiId as number) ?? ''] : parApiId.get(Number(apiId));
+      const dom: any = equipeDe(f?.teams?.home?.id);
+      const ext: any = equipeDe(f?.teams?.away?.id);
       if (!dom || !ext) continue;
 
       const kickoff = String(f?.fixture?.date ?? '');
