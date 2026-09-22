@@ -45,6 +45,10 @@
     {
       "path": "/api/cron/courriels",
       "schedule": "40 21 * * *"
+    },
+    {
+      "path": "/api/cron/cotes",
+      "schedule": "15 13 * * *"
     }
   ]
 }
