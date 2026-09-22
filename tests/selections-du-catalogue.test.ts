@@ -51,3 +51,24 @@ test('★ ACQUIS — pendant la trêve, la sélection regarde d’abord les jour
   const sel = fs.readFileSync('src/lib/selection-du-jour.ts', 'utf8');
   assert.match(sel, /\[2, 3, 4, 5\]\.map\(\(d\) => new Date\(Date\.now\(\) \+ d \* 86_400_000\)/);
 });
+
+test('★ ACQUIS — les 68 sélections ajoutées le 22 septembre sont au catalogue, avec leur numéro', () => {
+  for (const [n, id] of [[773, 'slovakia_nat'], [1099, 'finland_nat'], [18, 'iceland_nat'], [1117, 'greece_nat'], [769, 'hungary_nat'], [30, 'peru_nat'], [4672, 'honduras_nat'], [771, 'northern_ireland_nat']] as [number, string][]) {
+    assert.ok(clubs[id], `${id} absente du catalogue.`);
+    assert.equal((clubs[id] as any).league, 'selections');
+    assert.equal(catalogueDeSelection(n), id);
+    assert.equal(numeroDeSelection(id), n);
+  }
+});
+
+test('★ ACQUIS — le sélecteur montre une rubrique « Sélections nationales », Coupe du monde comprise', () => {
+  const s = fs.readFileSync('src/app/(dashboard)/analyze/AnalyzeClient.tsx', 'utf8');
+  assert.match(s, /"selections",\s*\n\s*"can",/);
+  assert.match(s, /c\.league === "selections" \|\| c\.league === "wc"/);
+});
+
+test('★ ACQUIS — le prochain adversaire d’une sélection se trouve par la table', () => {
+  const s = fs.readFileSync('src/app/api/next-match/route.ts', 'utf8');
+  assert.match(s, /if \(!apiId\) apiId = numeroDeSelection\(teamId\);/);
+  assert.match(s, /nextTeamId: catalogueDeSelection\(opponent\.id\) \|\|/);
+});

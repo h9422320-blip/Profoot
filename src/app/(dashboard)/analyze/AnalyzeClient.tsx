@@ -88,6 +88,10 @@ const leagueOrder = [
   "luxembourg", "irlandedunord", "paysdegalles", "feroe", "gibraltar",
   "andorre", "sanmarin",
   "championship", "ligue2", "segunda", "serieb", "bundesliga2",
+  // Toutes les sélections hors CAN, en une rubrique — depuis le 22 septembre
+  // 2026. Les nations de la Coupe du monde n'étaient trouvables qu'en tapant
+  // leur nom.
+  "selections",
   "can",
 ];
 const leagueLabels: Record<string, string> = {
@@ -150,17 +154,27 @@ const leagueLabels: Record<string, string> = {
   serieb: "Serie B",
   bundesliga2: "2. Bundesliga",
   ucl: "Autres Europe",
+  selections: "Sélections nationales",
   can: "CAN",
   caf: "Clubs Africains",
 };
 
 // Use real competition logos from data.ts
 function getLeagueLogo(leagueId: string): string {
+  // La rubrique des sélections n'est pas une compétition : le logo de la
+  // Ligue des nations la représente.
+  if (leagueId === "selections") return "https://media.api-sports.io/football/leagues/5.png";
   const comp = competitions.find(c => c.id === leagueId);
   return comp?.logo || "";
 }
 
 function getClubsByLeague(leagueId: string) {
+  // Les sélections : celles de la Coupe du monde (rangées par groupe sous
+  // « wc ») et toutes les autres, par ordre alphabétique.
+  if (leagueId === "selections")
+    return Object.values(clubs)
+      .filter((c: any) => c.league === "selections" || c.league === "wc")
+      .sort((a: any, b: any) => a.name.localeCompare(b.name, "fr"));
   return Object.values(clubs).filter((c: any) => c.league === leagueId);
 }
 

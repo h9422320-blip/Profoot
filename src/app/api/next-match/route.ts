@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { clubs } from '@/lib/data';
+import { catalogueDeSelection, numeroDeSelection } from '@/lib/selections-du-catalogue';
 import { requireUser } from '@/lib/subscription';
 import { findLiveTeam, getLiveTeams, slugify } from '@/lib/teams-live';
 
@@ -38,6 +39,9 @@ export async function GET(request: Request) {
       const match = String(legacy.logo || '').match(/teams\/(\d+)\.png/);
       if (match) apiId = Number(match[1]);
     }
+    // Une sélection a un drapeau pour logo, sans numéro : son numéro vient de
+    // la table vérifiée (`selections-du-catalogue.ts`, 22 septembre 2026).
+    if (!apiId) apiId = numeroDeSelection(teamId);
     if (!apiId) return NextResponse.json({ nextTeamId: null });
 
     const controller = new AbortController();
@@ -75,7 +79,7 @@ export async function GET(request: Request) {
     );
 
     return NextResponse.json({
-      nextTeamId: liveOpponent?.id || legacyId || slugify(opponent.name),
+      nextTeamId: catalogueDeSelection(opponent.id) || liveOpponent?.id || legacyId || slugify(opponent.name),
       opponentName: opponent.name,
       opponentApiId: opponent.id,
       competition: fixture.league?.name || null,
