@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import { COUPES_NATIONALES_COTEES } from '../src/lib/cotes-marche';
 
 test('★ ACQUIS — les coupes nationales font partie du relevé des cotes', () => {
-  for (const [id, nom] of [[45, 'FA Cup'], [48, 'League Cup'], [143, 'Copa del Rey'], [137, 'Coppa Italia'], [81, 'DFB Pokal'], [66, 'Coupe de France']] as [number, string][]) {
+  for (const [id, nom] of [[45, 'FA Cup'], [48, 'League Cup'], [143, 'Copa del Rey'], [137, 'Coppa Italia'], [81, 'DFB Pokal'], [66, 'Coupe de France'], [237, 'Coupe de Russie'], [199, 'Coupe de Grèce'], [121, 'DBU Pokalen'], [220, 'Coupe d’Autriche']] as [number, string][]) {
     assert.ok(COUPES_NATIONALES_COTEES.includes(id), `${nom} n’est plus relevée : le moteur y redevient seul.`);
   }
   const s = fs.readFileSync('src/lib/cotes-marche.ts', 'utf8');

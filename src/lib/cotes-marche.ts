@@ -179,7 +179,13 @@ export function probabilitesDepuisCotes(cote: { dom: number; nul: number; ext: n
 // (`avisDuMarcheBranche`) ; il ne lui manquait que les cotes. Sur les coupes
 // d'Europe, mesuré : 42 bons vainqueurs pour le marché contre 32 pour le
 // moteur seul, sur 68 matchs. Aucun réglage ne change : on ajoute la donnée.
-export const COUPES_NATIONALES_COTEES: readonly number[] = [45, 48, 143, 137, 81, 66, 96, 97, 90, 147, 181, 185, 206];
+//
+// Le 22 septembre 2026, quatre coupes de plus, relevées sur les analyses
+// réelles des trente derniers jours : la Coupe de Russie (237) — 97 analyses
+// lues avec la seule mémoire des clubs, 36 % de vainqueurs justes, et
+// 8 rencontres à venir déjà cotées —, celles de Grèce (199), du Danemark (121)
+// et d'Autriche (220).
+export const COUPES_NATIONALES_COTEES: readonly number[] = [45, 48, 143, 137, 81, 66, 96, 97, 90, 147, 181, 185, 206, 237, 199, 121, 220];
 /**
  * ── LES COMPÉTITIONS DE SÉLECTIONS, RELEVÉES EN OBSERVATION ─────────────
  *
