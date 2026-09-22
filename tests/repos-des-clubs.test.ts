@@ -110,7 +110,9 @@ test('★ ACQUIS — les corrections en buts sont rangées dans le sens de CELUI
 
   assert.match(
     s,
-    /correctionElanTerrain\(\s*await lireElanEtTerrain\(\),\s*equipe1AJoueADomicile === true \? team1\.name : team2\.name,\s*equipe1AJoueADomicile === true \? team2\.name : team1\.name,/,
+    // Depuis le 22 septembre 2026, les NOMS DU FOURNISSEUR (voir
+    // `couches-identifiants-fournisseur.test.ts`) — le sens, lui, ne change pas.
+    /correctionElanTerrain\(\s*await lireElanEtTerrain\(\),\s*(\/\/[^\n]*\n\s*)?equipe1AJoueADomicile === true \? nomFournisseur1 : nomFournisseur2,\s*equipe1AJoueADomicile === true \? nomFournisseur2 : nomFournisseur1,/,
     'L’élan et le terrain ne sont plus rangés selon qui reçoit : la correction ' +
       'repartira à l’envers une analyse sur deux.'
   );

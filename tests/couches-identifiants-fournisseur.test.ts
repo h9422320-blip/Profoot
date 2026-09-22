@@ -44,3 +44,17 @@ test('★ ACQUIS — ces couches se lisent patiemment', () => {
     assert.match(fs.readFileSync(f, 'utf8'), /lireReservePatiemment</, `${nom} abandonne de nouveau au bout d’une seconde et demie.`);
   }
 });
+
+test('★ ACQUIS — les occasions et l’élan reçoivent les noms du fournisseur', () => {
+  // Défaut trouvé le 22 septembre 2026 : l'analyse passait « Arsenal FC »,
+  // « FC Barcelone » à des relevés rangés sous « Arsenal », « Barcelona ». Sur
+  // les 50 prochaines affiches des cinq grands, les occasions — le socle du
+  // moteur — n'étaient trouvées que pour 9 ; avec les noms du fournisseur, 47.
+  const s = route();
+  const i = s.indexOf('butsAttendusOccasions(');
+  assert.doesNotMatch(s.slice(i, i + 250), /team1\.name|team2\.name/, 'Les occasions reçoivent de nouveau le nom du catalogue.');
+  assert.match(s.slice(i, i + 250), /nomFournisseur1|nomFournisseur2/, 'Les occasions ne reçoivent plus le nom du fournisseur.');
+  const j = s.indexOf('correctionElanTerrain(');
+  assert.doesNotMatch(s.slice(j, j + 350), /team1\.name|team2\.name/, 'L’élan reçoit de nouveau le nom du catalogue.');
+  assert.match(s, /f\.teams\.home\.name/, 'Le nom n’est plus pris dans la fiche du match.');
+});

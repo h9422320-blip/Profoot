@@ -15,7 +15,7 @@ import { lireReleve, fiabilitePour } from "@/lib/fiabilite-apprise";
 import { composerApercu as composerApercuVendeur } from "@/lib/apercu-vendeur";
 import { scenarioGabarit } from "@/lib/apercu-ia";
 import { clubs } from "@/lib/data";
-import { findLiveTeam } from "@/lib/teams-live";
+import { findLiveTeam, getLiveTeams } from "@/lib/teams-live";
 import { calculerScoreProbable, bornerConfiance, predireIssueFinale, competitionPeuFiable, melangerStatistiques, estMatchDePreparation, RHO_CINQ_GRANDS, type ForcesDuMatch } from "@/lib/score-probable";
 import { lireForcesLigue } from "@/lib/forces-equipes";
 import { lireForcesChampionnats, rapportEntreChampionnats } from "@/lib/forces-championnats";
@@ -1443,10 +1443,38 @@ async function analyser(req: Request, billet: BilletQuota) {
   // La rencontre vue par les occasions, ou `null` si un des deux clubs est
   // inconnu du relevé des tirs. On garde le résultat pour savoir si le moteur
   // voit cette rencontre — c'est ce qui décide si la mémoire des clubs parle.
+  // ── LES NOMS DU FOURNISSEUR, PAS CEUX DU CATALOGUE ────────────────────
+  //
+  // Défaut trouvé le 22 septembre 2026. Le relevé des occasions et celui de
+  // l'élan sont rangés sous les noms que le FOURNISSEUR écrit — « Arsenal »,
+  // « Barcelona », « Chelsea ». L'analyse leur passait le nom du CATALOGUE —
+  // « Arsenal FC », « FC Barcelone », « Chelsea FC » : pour 68 des 96 clubs des
+  // cinq grands championnats, rien n'était trouvé.
+  //
+  // Les occasions sont le socle du moteur (part 0,6). Dans la plupart des
+  // analyses d'abonnés sur les grands clubs, elles ne s'appliquaient pas, et
+  // l'élan non plus — alors que les pronostics préparés à l'avance et le banc
+  // d'essai, qui passent les noms du fournisseur, les utilisaient. C'est la
+  // même famille de défaut que la mémoire des clubs, corrigée la veille.
+  //
+  // Le nom se prend dans la fiche du match (il est alors EXACT) ; à défaut dans
+  // le référentiel vivant, par numéro ; en dernier recours, le nom affiché.
+  const referentielVivant = await getLiveTeams().catch(() => [] as any[]);
+  const nomChezLeFournisseur = (apiId: any, repli: string): string => {
+    for (const f of [targetFutureMatch, targetPastMatch, nextH2H]) {
+      if (!f?.teams) continue;
+      if (apiId && String(f.teams.home?.id) === String(apiId)) return String(f.teams.home.name);
+      if (apiId && String(f.teams.away?.id) === String(apiId)) return String(f.teams.away.name);
+    }
+    const vivant = (referentielVivant as any[]).find((t: any) => apiId && String(t.apiId) === String(apiId));
+    return vivant?.name ? String(vivant.name) : repli;
+  };
+  const nomFournisseur1 = nomChezLeFournisseur(id1, team1.name);
+  const nomFournisseur2 = nomChezLeFournisseur(id2, team2.name);
   const occasionsDuMatch = butsAttendusOccasions(
     await lireForces(),
-    equipe1AJoueADomicile === true ? team1.name : team2.name,
-    equipe1AJoueADomicile === true ? team2.name : team1.name
+    equipe1AJoueADomicile === true ? nomFournisseur1 : nomFournisseur2,
+    equipe1AJoueADomicile === true ? nomFournisseur2 : nomFournisseur1
   );
   // ── LA SECONDE GRILLE, POUR LE SEUL CHOIX DU SCORE ─────────────────────
   //
@@ -1658,8 +1686,9 @@ async function analyser(req: Request, billet: BilletQuota) {
     sommeDesCorrections(
       correctionElanTerrain(
         await lireElanEtTerrain(),
-        equipe1AJoueADomicile === true ? team1.name : team2.name,
-        equipe1AJoueADomicile === true ? team2.name : team1.name,
+        // Les noms du fournisseur : l'élan est rangé ainsi (voir plus haut).
+        equipe1AJoueADomicile === true ? nomFournisseur1 : nomFournisseur2,
+        equipe1AJoueADomicile === true ? nomFournisseur2 : nomFournisseur1,
         (targetFutureMatch || nextH2H)?.league?.id ?? null
       ),
       // ── ET LE REPOS ENTRE DEUX MATCHS, NOUVEAU ────────────────────────
