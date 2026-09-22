@@ -48,6 +48,8 @@ import { lireReserve, ecrireReserve } from './api-football';
 import { getLiveTeams } from './teams-live';
 import { rangDeCompetition } from './precalcul-selection';
 import { COMPETITIONS_AFRICAINES, nomAffiche, selectionParApiId } from './selections-africaines';
+import { catalogueDeSelection } from './selections-du-catalogue';
+import { clubs } from './data';
 
 /**
  * Les coupes d'Europe, puis l'Angleterre, l'Espagne, l'Italie, l'Allemagne,
@@ -82,6 +84,12 @@ export const GRANDS_CHAMPIONNATS: number[] = [
   // aucun. Voir `selections-africaines.ts`.
   6,
   36,
+  // ── LA LIGUE DES NATIONS UEFA, DEPUIS LE 22 SEPTEMBRE 2026 ─────────────
+  //
+  // Seulement les affiches entre deux nations de la Coupe du monde (voir
+  // `enCartes`) : Angleterre–Espagne, Pays-Bas–Allemagne, Turquie–France.
+  // Andorre–Malte reste analysable depuis le sélecteur.
+  5,
 ];
 
 /** Combien de cartes au maximum : au-delà, le carrousel ne se parcourt plus. */
@@ -235,6 +243,36 @@ async function enCartes(brutes: any[]): Promise<MatchDuJour[]> {
       continue;
     }
 
+    if (ligue === 5) {
+      const nation = (t: any) => {
+        const c = catalogueDeSelection(t?.id);
+        const club: any = c ? (clubs as any)[c] : null;
+        return club?.league === 'wc' ? club : null;
+      };
+      const d = nation(f?.teams?.home);
+      const e = nation(f?.teams?.away);
+      if (!d || !e) continue;
+      const equipe = (club: any, t: any) => ({
+        id: club.id,
+        name: club.name,
+        logo: String(t?.logo ?? '') || club.logo,
+        country: club.country,
+        league: club.league,
+        stadium: String(f?.fixture?.venue?.name ?? ''),
+      });
+      cartes.push({
+        id: `md-${f?.fixture?.id}`,
+        kickoffISO: kickoff,
+        championnat: 'Ligue des nations',
+        paysDuChampionnat: f?.league?.country ?? null,
+        fiabilite: null,
+        vedette: 2,
+        dom: equipe(d, f.teams.home),
+        ext: equipe(e, f.teams.away),
+      });
+      continue;
+    }
+
     const dom = parApiId.get(Number(f?.teams?.home?.id));
     const ext = parApiId.get(Number(f?.teams?.away?.id));
     if (!dom || !ext) continue;
@@ -369,7 +407,7 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
 
   try {
     // ── AUJOURD'HUI ────────────────────────────────────────────────────────
-    const cleJour = `matchs-du-jour:v3:${jour}`;
+    const cleJour = `matchs-du-jour:v4:${jour}`;
     let cartes: MatchDuJour[] | null = null;
 
     const enReserve = await lireReserve<MatchDuJour[]>(cleJour).catch(() => null);
@@ -393,7 +431,7 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
     // Une trêve internationale, un lundi de janvier, ou simplement 23 h passées
     // et tout est joué. Une section vide n'apprendrait rien : on montre la
     // suite du calendrier.
-    const cleSuite = `prochains-grands-matchs:v4:${jour}`;
+    const cleSuite = `prochains-grands-matchs:v5:${jour}`;
     let suite: MatchDuJour[] | null = null;
 
     const suiteEnReserve = await lireReserve<MatchDuJour[]>(cleSuite).catch(() => null);
@@ -403,7 +441,7 @@ export async function matchsDuJour(): Promise<ListeMatchs> {
       // Les CINQ prochaines rencontres de chaque grande compétition, sans
       // borne de date : en pleine trêve, la fenêtre de sept jours ne rendait
       // rien et le carrousel restait vide pendant trois semaines.
-      suite = await enCartes((await getUpcomingFixtures(5, { selectionsAfricaines: 24 })) ?? []);
+      suite = await enCartes((await getUpcomingFixtures(5, { selectionsAfricaines: 24, ligueDesNations: 30 })) ?? []);
       await ecrireReserve(cleSuite, suite, dureeJusquAMinuit()).catch(() => {});
     }
 

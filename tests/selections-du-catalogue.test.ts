@@ -76,3 +76,10 @@ test('★ ACQUIS — le prochain adversaire d’une sélection se trouve par la 
   assert.match(s, /if \(!apiId\) apiId = numeroDeSelection\(teamId\);/);
   assert.match(s, /nextTeamId: catalogueDeSelection\(opponent\.id\) \|\|/);
 });
+
+test('★ ACQUIS — le carrousel montre les affiches de Ligue des nations entre nations de la Coupe du monde', () => {
+  const s = fs.readFileSync('src/lib/grands-matchs-du-jour.ts', 'utf8');
+  assert.match(s, /\n  5,\n\];/, 'La Ligue des nations a quitté les grandes compétitions du carrousel.');
+  assert.match(s, /return club\?\.league === 'wc' \? club : null;/, 'Le filtre des nations de la Coupe du monde a sauté.');
+  assert.match(s, /ligueDesNations: 30/);
+});

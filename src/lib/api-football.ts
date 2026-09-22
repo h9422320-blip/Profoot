@@ -433,7 +433,7 @@ export async function getUpcomingFixtures(
    * Une journée de qualifications compte vingt-quatre rencontres : avec cinq,
    * Côte d'Ivoire–Ghana, qui commence à 19 h, ne serait jamais chargée.
    */
-  options: { selectionsAfricaines?: number } = {}
+  options: { selectionsAfricaines?: number; ligueDesNations?: number } = {}
 ) {
   // Ligue des champions, Europa, Conférence, puis les cinq grands.
   const grandesCompetitions = [2, 3, 848, 39, 140, 135, 78, 61];
@@ -443,6 +443,12 @@ export async function getUpcomingFixtures(
       grandesCompetitions.push(l);
       combien.set(l, options.selectionsAfricaines);
     }
+  }
+  // La Ligue des nations UEFA, depuis le 22 septembre 2026 : Angleterre–Espagne
+  // ou Pays-Bas–Allemagne pendant la trêve des championnats.
+  if (options.ligueDesNations) {
+    grandesCompetitions.push(5);
+    combien.set(5, options.ligueDesNations);
   }
   const allFixtures: any[] = [];
 
