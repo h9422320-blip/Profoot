@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { catalogueDeSelection, numeroDeSelection } from '../src/lib/selections-du-catalogue';
 import { clubs } from '../src/lib/data';
-import { COMPETITIONS_DE_SELECTIONS_PREPAREES, competitionRetenue } from '../src/lib/precalcul-selection';
+import { COMPETITIONS_DE_SELECTIONS_PREPAREES, competitionRetenue, rencontreRetenue } from '../src/lib/precalcul-selection';
 
 test('★ ACQUIS — chaque sélection de la table existe dans le catalogue', () => {
   for (const n of [2, 10, 9, 25, 26, 6, 768, 27, 770, 2384, 16, 1501, 13, 31]) {
@@ -29,12 +29,16 @@ test('★ ACQUIS — les sélections africaines gardent leurs identifiants de CA
   assert.equal(catalogueDeSelection(13), 'senegal_can');
 });
 
-test('★ ACQUIS — les Ligues des nations sont préparées, pas les amicaux', () => {
+test('★ ACQUIS — les Ligues des nations sont préparées, les amicaux seulement entre sélections A', () => {
   for (const id of [36, 6, 5, 536]) {
     assert.ok(COMPETITIONS_DE_SELECTIONS_PREPAREES.has(id));
     assert.ok(competitionRetenue({ id }), `La compétition ${id} n’est plus préparée.`);
   }
-  assert.ok(!competitionRetenue({ id: 10 }), 'Les matchs amicaux, pleins d’équipes de jeunes, sont entrés.');
+  // Les amicaux : seulement entre deux sélections A du catalogue.
+  const amical = (a: number, b: number) => ({ league: { id: 10 }, teams: { home: { id: a }, away: { id: b } } });
+  assert.ok(rencontreRetenue(amical(30, 2384)), 'Pérou–USA, deux sélections A, doit entrer.');
+  assert.ok(!rencontreRetenue(amical(99999, 2384)), 'Un amical avec une équipe inconnue (jeunes) est entré.');
+  assert.ok(!competitionRetenue({ id: 34 }), 'Les éliminatoires sud-américains (66,7 %) sont entrés.');
 });
 
 test('★ ACQUIS — la sélection du jour et l’analyse lisent la même table', () => {

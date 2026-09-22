@@ -53,6 +53,7 @@ import {
   CHAMPIONNATS,
   COMPETITIONS_DE_SELECTIONS_PREPAREES,
   competitionRetenue,
+  rencontreRetenue,
   rangDeCompetition,
 } from './precalcul-selection';
 import { catalogueDeSelection } from './selections-du-catalogue';
@@ -302,7 +303,7 @@ async function calculer(): Promise<SelectionDuJour> {
       // Mesuré le 10 septembre 2026 : 108 rencontres sur 366 entraient par
       // cette porte, et la sélection annonçait un vainqueur dans des
       // championnats dont le moteur n'a jamais lu une rencontre.
-      if (!competitionRetenue(f?.league)) continue;
+      if (!rencontreRetenue(f)) continue;
 
       const p = pronostics.get(Number(f?.fixture?.id));
       if (!p || p.proba_domicile == null) continue;

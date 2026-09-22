@@ -115,7 +115,7 @@ test('★ ACQUIS — on ne prépare que ce que le moteur a appris', () => {
   // Depuis le 22 septembre 2026, la CAN et les Ligues des nations UEFA et
   // CONCACAF : apprises non par les tirs mais par la force Elo des sélections,
   // mesurée sur 9 819 matchs internationaux (voir `couche-elo-selections.test.ts`).
-  const APPRISES_PAR_ELO = new Set([36, 6, 5, 536]);
+  const APPRISES_PAR_ELO = new Set([36, 6, 5, 536, 32, 29, 30, 31, 960, 10]);
   for (const id of IDS_PREPARES) {
     assert.ok(
       apprises.has(id) || id === LIGA_I || APPRISES_PAR_ELO.has(id),
@@ -144,7 +144,9 @@ test('★ ACQUIS — plus aucun filtrage par nom dans les deux passages', () => 
     );
     assert.match(
       s,
-      /competitionRetenue\(f\?\.league\)/,
+      // `rencontreRetenue` (22 septembre 2026) passe elle-même par
+      // `competitionRetenue`, et ajoute le filtre des amicaux.
+      /competitionRetenue\(f\?\.league\)|rencontreRetenue\(f\)/,
       `${f} : le filtrage par numéro a disparu.`
     );
   }

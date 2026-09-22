@@ -53,6 +53,7 @@ import { lireForcesChampionnats, rapportEntreChampionnats } from './forces-champ
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from './forces-poisson';
 import { avisDuMarchePour, avisDuMarcheBranche, totalDuMarchePour } from './couche-marche';
 import { coucheEloSelections } from './forces-selections';
+import { catalogueDeSelection } from './selections-du-catalogue';
 import { lireCotesDuJourPatiemment } from './cotes-marche';
 import { figerPrediction, remplacerPredictionFigee } from './prediction-figee';
 import { coucheDesAbsences, LIGUES_DES_ABSENCES, CINQ_GRANDS } from './forces-absences';
@@ -185,11 +186,27 @@ export const COUPES_EUROPE_IDS: ReadonlySet<number> = new Set<number>(
  *     Ligue des nations UEFA (5)          85 matchs   75,3 %
  *     Ligue des nations CONCACAF (536)    55 matchs   87,3 %
  *
- * La phase finale de la CAN (6) suit ses qualifications. Les matchs amicaux
- * (75,7 %) n'y sont PAS : la moitié des « amicaux » du fournisseur opposent des
- * équipes de jeunes, que la note Elo ne connaît pas.
+ * La phase finale de la CAN (6) suit ses qualifications.
+ *
+ * ── ET DEPUIS LE MÊME JOUR, AVEC LE CATALOGUE DES SÉLECTIONS ─────────────
+ *
+ *     Éliminatoires Coupe du monde Europe (32)     124 matchs   86,3 %
+ *     Éliminatoires Afrique (29)                    88 matchs   88,6 %
+ *     Éliminatoires Asie (30)                       81 matchs   85,2 %
+ *     Éliminatoires CONCACAF (31)                   41 matchs   87,8 %
+ *     Éliminatoires de l'Euro (960)                135 matchs   80,7 %
+ *     Matchs amicaux (10)                          378 matchs   75,7 %
+ *
+ * Les amicaux n'entrent que si les DEUX équipes sont des sélections du
+ * catalogue (`rencontreRetenue`) : la moitié des « amicaux » du fournisseur
+ * opposent des équipes de jeunes, que la note Elo ne connaît pas. Les
+ * éliminatoires sud-américains (34) restent dehors : 66,7 % sur 39 matchs,
+ * trop loin de ce que la carte promettrait.
  */
-export const COMPETITIONS_DE_SELECTIONS_PREPAREES: ReadonlySet<number> = new Set([36, 6, 5, 536]);
+export const COMPETITIONS_DE_SELECTIONS_PREPAREES: ReadonlySet<number> = new Set([36, 6, 5, 536, 32, 29, 30, 31, 960, 10]);
+
+/** Les amicaux : seulement entre deux sélections A du catalogue. */
+export const AMICAUX_INTERNATIONAUX = 10;
 
 export const IDS_PREPARES: ReadonlySet<number> = new Set<number>([
   ...COMPETITIONS_APPRISES.map((c) => c.id),
@@ -210,6 +227,16 @@ export const IDS_PREPARES: ReadonlySet<number> = new Set<number>([
  * On juge sur le NUMÉRO de la compétition, jamais sur son nom : c'est le seul
  * identifiant qui ne se confond pas d'un pays à l'autre.
  */
+/**
+ * Une rencontre précise : sa compétition, et pour les amicaux, deux
+ * sélections A connues du catalogue — jamais des équipes de jeunes.
+ */
+export function rencontreRetenue(f: any): boolean {
+  if (!competitionRetenue(f?.league)) return false;
+  if (Number(f?.league?.id) !== AMICAUX_INTERNATIONAUX) return true;
+  return !!catalogueDeSelection(f?.teams?.home?.id) && !!catalogueDeSelection(f?.teams?.away?.id);
+}
+
 export function competitionRetenue(ligue: unknown): boolean {
   const id = Number((ligue as { id?: unknown } | null | undefined)?.id);
   return Number.isFinite(id) && IDS_PREPARES.has(id);
@@ -456,7 +483,7 @@ export async function precalculerGrandsMatchs(
         const dejaFigeARafraichir =
           connus.has(Number(f?.fixture?.id)) &&
           (options.rafraichirLigues?.has(Number(f?.league?.id)) === true || avisDuMarcheBranche(f?.league?.id));
-        if (!competitionRetenue(f?.league) && !dejaFigeARafraichir) continue;
+        if (!rencontreRetenue(f) && !dejaFigeARafraichir) continue;
         bilan.examinees++;
         if (connus.has(Number(f?.fixture?.id))) {
           const loin = Date.parse(String(f?.fixture?.date ?? '')) - Date.now() > GEL_DEFINITIF_MS;
