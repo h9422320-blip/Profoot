@@ -206,6 +206,18 @@ export const CHAMPIONNATS_DU_MARCHE: ReadonlySet<number> = new Set([
 export const COUPES_DU_MARCHE: ReadonlySet<number> = new Set([2, 3, 848]);
 
 /**
+ * ── RELEVÉES, PAS ENCORE BRANCHÉES ───────────────────────────────────────
+ *
+ * Les cotes des qualifications de la CAN et des Ligues des nations sont
+ * relevées depuis le 22 septembre 2026 (`cotes-marche.ts`), mais la note Elo
+ * des sélections y reste seule juge — elle, mesurée : 72,6 à 87,3 % quand
+ * elle est sûre d'elle. Le marché ne passera devant qu'après une mesure en
+ * avant sur les matchs joués (`scripts/_marche-selections.mts`), comme toute
+ * couche nouvelle.
+ */
+export const MARCHE_EN_OBSERVATION: ReadonlySet<number> = new Set([36, 5, 536]);
+
+/**
  * ── ET PARTOUT OÙ UNE COTE EST RELEVÉE, DEPUIS LE 18 SEPTEMBRE 2026 ──────
  *
  * Mesuré sur les cotes relevées par la production dans les 37 autres
@@ -226,6 +238,7 @@ export const COUPES_DU_MARCHE: ReadonlySet<number> = new Set([2, 3, 848]);
 export function avisDuMarcheBranche(ligue: number | string | null | undefined): boolean {
   if (ligue === null || ligue === undefined || ligue === '') return false;
   const id = Number(ligue);
+  if (MARCHE_EN_OBSERVATION.has(id)) return false;
   return Number.isInteger(id) && id > 0;
 }
 

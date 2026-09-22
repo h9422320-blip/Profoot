@@ -17,7 +17,7 @@ test('★ ACQUIS — les coupes nationales font partie du relevé des cotes', ()
     assert.ok(COUPES_NATIONALES_COTEES.includes(id), `${nom} n’est plus relevée : le moteur y redevient seul.`);
   }
   const s = fs.readFileSync('src/lib/cotes-marche.ts', 'utf8');
-  assert.match(s, /const NOS_LIGUES = new Set<number>\(\[[^\]]*\.\.\.COUPES_NATIONALES_COTEES\]\)/, 'Les coupes nationales ne sont plus dans la liste du relevé.');
+  assert.match(s, /const NOS_LIGUES = new Set<number>\(\[[^\]]*\.\.\.COUPES_NATIONALES_COTEES,?[^\]]*\]\)/, 'Les coupes nationales ne sont plus dans la liste du relevé.');
 });
 
 test('★ ACQUIS — la hiérarchie en ligne se calcule exactement comme avant', async () => {

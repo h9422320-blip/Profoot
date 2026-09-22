@@ -180,7 +180,29 @@ export function probabilitesDepuisCotes(cote: { dom: number; nul: number; ext: n
 // d'Europe, mesuré : 42 bons vainqueurs pour le marché contre 32 pour le
 // moteur seul, sur 68 matchs. Aucun réglage ne change : on ajoute la donnée.
 export const COUPES_NATIONALES_COTEES: readonly number[] = [45, 48, 143, 137, 81, 66, 96, 97, 90, 147, 181, 185, 206];
-const NOS_LIGUES = new Set<number>([...Object.values(LEAGUE_IDS), 2, 3, 848, 531, 253, 71, 128, ...COUPES_NATIONALES_COTEES]);
+/**
+ * ── LES COMPÉTITIONS DE SÉLECTIONS, RELEVÉES EN OBSERVATION ─────────────
+ *
+ * Depuis le 22 septembre 2026 : qualifications de la CAN (36), Ligue des
+ * nations UEFA (5) et CONCACAF (536). Leurs cotes sont relevées pour être
+ * MESURÉES contre la note Elo des sélections, pas pour décider : voir
+ * `MARCHE_EN_OBSERVATION` dans `couche-marche.ts`. Le fournisseur efface les
+ * cotes quelques jours après le match (vérifié le même jour sur des matchs
+ * de CAN, de qualifications de Coupe du monde et d'amicaux) : sans ce relevé,
+ * la mesure serait impossible.
+ *
+ * Chacune a SA saison chez le fournisseur — 2026 pour l'UEFA, 2027 pour la
+ * CAN, 2025 pour la CONCACAF au même moment. On essaie donc les saisons
+ * voisines tant que la première ne rend rien.
+ */
+export const SELECTIONS_COTEES_EN_OBSERVATION: readonly number[] = [36, 5, 536];
+
+const NOS_LIGUES = new Set<number>([
+  ...Object.values(LEAGUE_IDS),
+  2, 3, 848, 531, 253, 71, 128,
+  ...COUPES_NATIONALES_COTEES,
+  ...SELECTIONS_COTEES_EN_OBSERVATION,
+]);
 
 /**
  * Extrait ce qui compte d'une réponse du fournisseur.
@@ -283,6 +305,16 @@ export function extraireCotes(reponse: any[]): CoteMatch[] {
 function saisonCourante(maintenant = new Date()): number {
   const an = maintenant.getUTCFullYear();
   return maintenant.getUTCMonth() >= 6 ? an : an - 1;
+}
+
+/** Une compétition de sélections : sa saison propre, cherchée parmi les voisines. */
+async function coterAvecSaSaison(ligue: number, saison: number): Promise<CoteMatch[]> {
+  if (!SELECTIONS_COTEES_EN_OBSERVATION.includes(ligue)) return coterUnChampionnat(ligue, saison);
+  for (const s of [saison, saison + 1, saison - 1]) {
+    const trouves = await coterUnChampionnat(ligue, s);
+    if (trouves.length) return trouves;
+  }
+  return [];
 }
 
 /** Toutes les cotes à venir d'un championnat, page après page. */
@@ -417,7 +449,7 @@ export async function releverCotes(
       break;
     }
     const paquet = ligues.slice(i, i + deFront);
-    const resultats = await Promise.all(paquet.map((l) => coterUnChampionnat(l, saison)));
+    const resultats = await Promise.all(paquet.map((l) => coterAvecSaSaison(l, saison)));
     for (const r of resultats) tous.push(...r);
     interroges += paquet.length;
   }
