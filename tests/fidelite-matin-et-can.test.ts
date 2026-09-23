@@ -21,7 +21,7 @@ import { publicDuMatin, type Terrain } from '../src/lib/campagnes/publics';
 import { selectionParNom, selectionParApiId, nomAffiche } from '../src/lib/selections-africaines';
 
 const JOUR = 86_400_000;
-const PROGRAMME_VIDE: ProgrammeDuMatin = { surs: [], matchs: [], prochains: null };
+const PROGRAMME_VIDE: ProgrammeDuMatin = { surs: [], matchs: [], prochains: null, jourDesSurs: null };
 
 const verdict = (juste: boolean, e1 = 'A', e2 = 'B') => ({
   equipe1: e1,
@@ -55,6 +55,7 @@ test('★ ACQUIS — un jour sans affiche annonce le prochain rendez-vous, avec 
   const programme: ProgrammeDuMatin = {
     surs: [],
     matchs: [],
+    jourDesSurs: null,
     prochains: {
       jour: 'jeudi 24 septembre',
       matchs: [
@@ -154,4 +155,35 @@ test('★ ACQUIS — chaque carte de sélection porte un identifiant que le serv
   }
   const source = (await import('node:fs')).readFileSync('src/lib/grands-matchs-du-jour.ts', 'utf8');
   assert.doesNotMatch(source, /id: `nat-/, 'Les cartes de sélection reprennent un identifiant inventé.');
+});
+
+test('★ ACQUIS — en trêve, les mieux cernés sont montrés et DATÉS', () => {
+  // Le 23 septembre 2026 : la sélection proposait six rencontres des 24 et 25,
+  // et le message du matin n'en montrait aucune — elles n'étaient pas
+  // « d'aujourd'hui ». Trois semaines de trêve sans le seul chiffre qui
+  // distingue ProFoot d'un calendrier.
+  const programme: ProgrammeDuMatin = {
+    surs: [{ dom: 'Portugal', ext: 'Pays de Galles', heure: '18:45', fiabilite: 78 }],
+    matchs: [],
+    jourDesSurs: 'jeudi 24 septembre',
+    prochains: {
+      jour: 'jeudi 24 septembre',
+      matchs: [
+        { dom: 'Portugal', ext: 'Pays de Galles', heure: '18:45' },
+        { dom: "Côte d'Ivoire", ext: 'Ghana', heure: '19:00' },
+      ],
+      affiche: { dom: "Côte d'Ivoire", ext: 'Ghana', heure: '19:00' },
+    },
+  };
+  const m = fabriqueMessageDuMatin(programme)({
+    email: 'x@y.z',
+    contexte: { abonne: true, verdict: [] },
+  } as any);
+  assert.ok(m, 'Le message ne doit pas être vide.');
+  assert.match(m!.texte, /LES MATCHS LES MIEUX CERNÉS — JEUDI 24 SEPTEMBRE/, 'Les mieux cernés ne sont plus datés.');
+  assert.match(m!.texte, /fiabilité 78 %/);
+  assert.match(m!.sujet, /jeudi 24 septembre/, 'Le sujet annonce « aujourd’hui » un jour où rien ne se joue.');
+  // L'agenda de la journée ne répète pas la rencontre déjà citée.
+  assert.doesNotMatch(m!.texte, /AUSSI JEUDI 24 SEPTEMBRE\n\n {2}• 18:45 {2}Portugal/);
+  assert.match(m!.texte, /AUSSI JEUDI 24 SEPTEMBRE/);
 });

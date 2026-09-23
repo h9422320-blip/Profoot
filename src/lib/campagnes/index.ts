@@ -175,6 +175,15 @@ function messageDuSoir(d: Destinataire) {
 export interface ProgrammeDuMatin {
   /** Les mieux cernés du jour, fiabilité mesurée en pour-cent. */
   surs: { dom: string; ext: string; heure: string; fiabilite: number }[];
+  /**
+   * Le jour des mieux cernés, quand ce n'est PAS aujourd'hui.
+   *
+   * Pendant une trêve, la sélection porte sur les prochaines journées. Le
+   * 23 septembre 2026, le message du matin ne montrait donc aucun match
+   * « bien cerné » pendant trois semaines, alors que la section en proposait
+   * six — dont Maroc–Gabon et Sénégal–Mozambique à 78 %. On les montre, datés.
+   */
+  jourDesSurs: string | null;
   /** Les autres affiches du jour. */
   matchs: { dom: string; ext: string; heure: string }[];
   /** Quand rien ne se joue aujourd'hui : la prochaine journée qui compte. */
@@ -197,7 +206,7 @@ interface VerdictLu {
 export function fabriqueMessageDuMatin(programme: ProgrammeDuMatin) {
   return (d: Destinataire) => {
     const verdict = (d.contexte?.verdict ?? []) as VerdictLu[];
-    const { surs, matchs, prochains } = programme;
+    const { surs, matchs, prochains, jourDesSurs } = programme;
     if (!verdict.length && !surs.length && !matchs.length && !prochains) return null;
     const abonne = !!d.contexte?.abonne;
 
@@ -247,7 +256,12 @@ export function fabriqueMessageDuMatin(programme: ProgrammeDuMatin) {
 
     // ── 2. LE RENDEZ-VOUS DU JOUR ───────────────────────────────────────
     if (surs.length) {
-      lignes.push('LES MATCHS LES MIEUX CERNÉS AUJOURD’HUI', '');
+      lignes.push(
+        jourDesSurs
+          ? `LES MATCHS LES MIEUX CERNÉS — ${jourDesSurs.toUpperCase()}`
+          : 'LES MATCHS LES MIEUX CERNÉS AUJOURD’HUI',
+        ''
+      );
       for (const m of surs.slice(0, 3)) lignes.push(`  • ${m.heure}  ${m.dom} – ${m.ext}   · fiabilité ${m.fiabilite} %`);
       lignes.push('', 'La fiabilité, c’est la part de bons résultats de l’IA sur les rencontres de ce type déjà jouées.', '');
     }
@@ -255,6 +269,18 @@ export function fabriqueMessageDuMatin(programme: ProgrammeDuMatin) {
       lignes.push(surs.length ? 'AUSSI AUJOURD’HUI' : 'CE QUI SE JOUE AUJOURD’HUI', '');
       for (const m of matchs.slice(0, 6)) lignes.push(`  • ${m.heure}  ${m.dom} – ${m.ext}`);
       lignes.push('');
+    }
+    // Le prochain rendez-vous reste affiché même quand les mieux cernés le
+    // sont déjà : c'est l'agenda complet de cette journée-là, moins les
+    // rencontres déjà citées juste au-dessus.
+    if (!matchs.length && prochains) {
+      const dejaCitees = new Set(surs.map((m) => `${m.dom}|${m.ext}`));
+      const reste = prochains.matchs.filter((m) => !dejaCitees.has(`${m.dom}|${m.ext}`));
+      if (surs.length && reste.length) {
+        lignes.push(`AUSSI ${prochains.jour.toUpperCase()}`, '');
+        for (const m of reste.slice(0, 6)) lignes.push(`  • ${m.heure}  ${m.dom} – ${m.ext}`);
+        lignes.push('', 'Les analyses sont déjà ouvertes.', '');
+      }
     }
     if (!surs.length && !matchs.length && prochains) {
       lignes.push(`PROCHAIN RENDEZ-VOUS — ${prochains.jour.toUpperCase()}`, '');
@@ -284,9 +310,9 @@ export function fabriqueMessageDuMatin(programme: ProgrammeDuMatin) {
     } else if (verdict.length === 1) {
       sujet = `Hier : ${verdict[0].equipe1} – ${verdict[0].equipe2}` + (justes ? ', comme annoncé' : '');
     } else if (surs.length > 1) {
-      sujet = `${surs.length} matchs bien cernés aujourd’hui`;
+      sujet = `${surs.length} matchs bien cernés ${jourDesSurs ?? 'aujourd’hui'}`;
     } else if (surs.length === 1) {
-      sujet = `Le match le mieux cerné aujourd’hui : ${surs[0].dom} – ${surs[0].ext}`;
+      sujet = `Le match le mieux cerné ${jourDesSurs ?? 'aujourd’hui'} : ${surs[0].dom} – ${surs[0].ext}`;
     } else if (matchs.length > 1) {
       sujet = `${matchs.length} matchs à analyser aujourd’hui`;
     } else if (matchs.length === 1) {
@@ -446,17 +472,31 @@ const heureUTC = (iso: string) =>
  * programme vide ne fait partir que les verdicts.
  */
 export async function programmeDuMatin(): Promise<ProgrammeDuMatin> {
-  const programme: ProgrammeDuMatin = { surs: [], matchs: [], prochains: null };
+  const programme: ProgrammeDuMatin = { surs: [], matchs: [], prochains: null, jourDesSurs: null };
   try {
     const { lireSelectionDuJour } = await import('../selection-du-jour');
     const sel = await lireSelectionDuJour();
-    if (sel.aujourdhui) {
-      programme.surs = sel.matchs.slice(0, 3).map((m) => ({
+    // Hors journée de championnat, on ne garde que la PREMIÈRE journée de la
+    // sélection : un agenda mélangeant deux dates ne se lit pas.
+    const premier = sel.matchs[0]?.kickoffISO?.slice(0, 10) ?? '';
+    const retenus = sel.aujourdhui
+      ? sel.matchs
+      : sel.matchs.filter((m) => String(m.kickoffISO).slice(0, 10) === premier);
+    if (retenus.length) {
+      programme.surs = retenus.slice(0, 3).map((m) => ({
         dom: m.dom.name,
         ext: m.ext.name,
         heure: heureUTC(m.kickoffISO),
         fiabilite: m.fiabilite,
       }));
+      if (!sel.aujourdhui && premier) {
+        programme.jourDesSurs = new Date(`${premier}T12:00:00Z`).toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          timeZone: 'UTC',
+        });
+      }
     }
   } catch (e: any) {
     console.warn('[MATIN] Sélection illisible :', e?.message);
