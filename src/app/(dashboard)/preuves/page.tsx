@@ -63,7 +63,25 @@ export const metadata: Metadata = {
  * Les données sont lues UNE fois ici et passées au mur : les interroger à
  * nouveau pour bâtir les données structurées doublerait la requête.
  */
-export default async function PagePreuves() {
+/**
+ * ── COMBIEN DE PREUVES PAR PAGE, ET POURQUOI ─────────────────────────────
+ *
+ * Mesuré au contrôle du 23 septembre 2026 : la page servait les 748 preuves
+ * d'un coup — 6 méga-octets de HTML, vingt-sept secondes de téléchargement,
+ * pour un serveur qui répondait pourtant en une seconde. Sur le téléphone d'un
+ * abonné à Abidjan ou à Ouagadougou, la page qui porte toute la confiance du
+ * produit était tout simplement inutilisable.
+ *
+ * Cent vingt cartes pèsent environ un méga-octet, et les suivantes s'ouvrent
+ * par un lien : aucune preuve n'est retirée, le compteur reste exact.
+ */
+const PAR_PAGE = 120;
+
+export default async function PagePreuves({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   // ── LE RÉVEIL PARESSEUX ───────────────────────────────────────────────────
   //
   // La planification quotidienne n'est pas fiable : une seule exécution
@@ -135,7 +153,11 @@ export default async function PagePreuves() {
   // Elle montre donc désormais toutes les réussites : les issues justes comme
   // les scores exacts, dans l'ordre du mur. La page d'analyse ouvre avec les
   // quarante scores exacts ; celle-ci répond à « et tout le reste ? ».
-  const { preuves, bilan, total } = await getPreuvesPubliques(1000);
+  const { preuves: toutes, bilan, total } = await getPreuvesPubliques(1000);
+  const demandee = Number((await searchParams)?.page ?? 1);
+  const pages = Math.max(1, Math.ceil(toutes.length / PAR_PAGE));
+  const page = Number.isFinite(demandee) ? Math.min(Math.max(1, Math.trunc(demandee)), pages) : 1;
+  const preuves = toutes.slice((page - 1) * PAR_PAGE, page * PAR_PAGE);
 
   /**
    * Ce que Google lit, et ce qu'il n'y trouvera pas.
@@ -214,6 +236,38 @@ export default async function PagePreuves() {
       </header>
 
       <MurPreuves preuves={preuves} bilan={bilan} total={total} avecEntete={false} />
+
+      {pages > 1 && (
+        <nav className="flex items-center justify-between gap-3 px-1 pt-2">
+          {page > 1 ? (
+            <Link
+              href={page === 2 ? '/preuves' : `/preuves?page=${page - 1}`}
+              className="inline-flex items-center gap-1.5 rounded-[14px] border border-white/10 px-4 py-3 text-[11px] font-black uppercase tracking-wider text-white/70 hover:text-white transition-colors min-h-[44px]"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Preuves précédentes
+            </Link>
+          ) : (
+            <span />
+          )}
+
+          <span className="text-[11px] font-black uppercase tracking-wider text-white/35">
+            Page {page} sur {pages}
+          </span>
+
+          {page < pages ? (
+            <Link
+              href={`/preuves?page=${page + 1}`}
+              className="inline-flex items-center gap-1.5 rounded-[14px] border border-white/10 px-4 py-3 text-[11px] font-black uppercase tracking-wider text-white/70 hover:text-white transition-colors min-h-[44px]"
+            >
+              Preuves suivantes
+              <ChevronLeft className="w-4 h-4 rotate-180" />
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
+      )}
     </div>
   );
 }
