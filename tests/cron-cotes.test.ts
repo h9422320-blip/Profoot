@@ -36,3 +36,16 @@ test('★ ACQUIS — le relevé de fiabilité se relit directement plutôt que d
   assert.match(s, /\(await lireReserve<Releve>\(CLE\)\.catch\(\(\) => null\)\) \?\? \(await relireDirectement\(\)\)/);
   assert.match(s, /expiree: new Date\(resultat\.data\.expire_le\)\.getTime\(\) < Date\.now\(\)/, 'Un relevé périmé doit rester recalculé.');
 });
+
+test('★ ACQUIS — la préparation des pronostics a son propre passage, deux fois par jour', () => {
+  // Elle recevait 20 s et 60 rencontres dans l'entretien quotidien, coupé à
+  // 60 s. Depuis l'entrée des sélections, un jour de trêve compte à lui seul
+  // une centaine de rencontres. Quota relevé le 23 septembre 2026 : 5 452
+  // requêtes sur 150 000 PAR JOUR.
+  const v = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+  const taches = (v.crons ?? []).filter((c: any) => c.path === '/api/cron/preparer');
+  assert.equal(taches.length, 2, 'Les deux passages de préparation ne sont plus planifiés.');
+  const s = fs.readFileSync('src/app/api/cron/preparer/route.ts', 'utf8');
+  assert.match(s, /autoriserCron\(request, 'preparer'\)/);
+  assert.match(s, /precalculerGrandsMatchs\(240_000, \{ maxParPassage: 200 \}\)/);
+});

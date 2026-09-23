@@ -49,6 +49,14 @@
     {
       "path": "/api/cron/cotes",
       "schedule": "15 13 * * *"
+    },
+    {
+      "path": "/api/cron/preparer",
+      "schedule": "20 6 * * *"
+    },
+    {
+      "path": "/api/cron/preparer",
+      "schedule": "40 15 * * *"
     }
   ]
 }
