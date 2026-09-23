@@ -36,3 +36,18 @@ test('★ ACQUIS — hors journée de championnat, la sélection complète avec 
   // qui le franchissent déjà.
   assert.match(s, /export const FIABILITE_MINIMUM = 70;/);
 });
+
+test('★ ACQUIS — une carte que le marché contredit n’est pas montrée', () => {
+  // Mesuré le 23 septembre 2026 sur 283 cartes figées et jouées depuis trois
+  // mois : 70,3 % de bons vainqueurs, mais 25,0 % sur les 12 rencontres où le
+  // marché désignait l'autre camp. Les deux moitiés chronologiques gagnent :
+  // 59,5 → 62,8 % et 78,4 → 79,1 %.
+  const s = fs.readFileSync('src/lib/selection-du-jour.ts', 'utf8');
+  assert.match(s, /const marcheContredit = async \(/);
+  assert.match(s, /if \(\s*await marcheContredit\(/, 'Le filtre du marché n’est plus appliqué à la sélection.');
+  assert.match(
+    s,
+    /return \(probaDom >= probaExt \? 'dom' : 'ext'\) !== \(c\.dom >= c\.ext \? 'dom' : 'ext'\);/,
+    'La comparaison des deux favoris a changé.'
+  );
+});

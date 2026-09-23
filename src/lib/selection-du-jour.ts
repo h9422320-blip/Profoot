@@ -263,15 +263,55 @@ async function calculer(): Promise<SelectionDuJour> {
 
   // Les rencontres cotées avant le match, par jour : le marché est alors DÉJÀ
   // dans le pronostic du moteur (voir `couche-marche.ts`).
-  const cotesParJour = new Map<string, Set<number>>();
-  const estCotee = async (fixtureId: number, coupDEnvoi: string, ligue: number): Promise<boolean> => {
-    if (!avisDuMarcheBranche(ligue)) return false;
+  const cotesParJour = new Map<string, Map<number, { dom: number; nul: number; ext: number } | null>>();
+  const coteDe = async (
+    fixtureId: number,
+    coupDEnvoi: string,
+    ligue: number
+  ): Promise<{ dom: number; nul: number; ext: number } | null> => {
+    if (!avisDuMarcheBranche(ligue)) return null;
     const jour = String(coupDEnvoi).slice(0, 10);
     if (!cotesParJour.has(jour)) {
       const r = await lireCotesDuJour(jour).catch(() => null);
-      cotesParJour.set(jour, new Set((r?.matchs ?? []).map((m) => Number(m.id))));
+      cotesParJour.set(jour, new Map((r?.matchs ?? []).map((m) => [Number(m.id), m.proba ?? null])));
     }
-    return cotesParJour.get(jour)!.has(Number(fixtureId));
+    return cotesParJour.get(jour)!.get(Number(fixtureId)) ?? null;
+  };
+  const estCotee = async (fixtureId: number, coupDEnvoi: string, ligue: number): Promise<boolean> =>
+    (await coteDe(fixtureId, coupDEnvoi, ligue)) !== null;
+
+  /**
+   * ── UNE CARTE QUE LE MARCHÉ CONTREDIT N'EST PAS MONTRÉE ─────────────────
+   *
+   * Mesuré le 23 septembre 2026 sur les 283 rencontres de tranche « tendance
+   * forte » ou plus, figées et jouées depuis trois mois :
+   *
+   *     cartes montrées .................... 283 → 70,3 % de bons vainqueurs
+   *     celles où le marché dit AUTRE CHOSE .. 12 → 25,0 %
+   *     les autres .......................... 271 → 72,3 %
+   *
+   * Et dans les deux moitiés chronologiques : 59,5 → 62,8 % puis 78,4 →
+   * 79,1 %. Sur ces douze désaccords, le moteur avait raison 3 fois, le marché
+   * 6, et 3 se sont terminés par un nul.
+   *
+   * Ce sont des pronostics figés AVANT que la cote n'existe : le moteur prend
+   * déjà le marché à part pleine quand il est là. Ils se rattrapent au
+   * rafraîchissement, mais pas dans les vingt-quatre heures qui précèdent le
+   * coup d'envoi — où le pronostic ne bouge plus, et où l'abonné regarde.
+   *
+   * On perd quatre cartes sur cent, on gagne deux points de justesse sur ce
+   * que la page la plus consultée met en avant.
+   */
+  const marcheContredit = async (
+    fixtureId: number,
+    coupDEnvoi: string,
+    ligue: number,
+    probaDom: number,
+    probaExt: number
+  ): Promise<boolean> => {
+    const c = await coteDe(fixtureId, coupDEnvoi, ligue);
+    if (!c || !(c.dom > 0) || !(c.ext > 0)) return false;
+    return (probaDom >= probaExt ? 'dom' : 'ext') !== (c.dom >= c.ext ? 'dom' : 'ext');
   };
 
   /** Compose la sélection d'une journée donnée. */
@@ -353,6 +393,20 @@ async function calculer(): Promise<SelectionDuJour> {
         f?.league?.country ?? null
       );
       if (!fiab || fiab.taux < FIABILITE_MINIMUM) continue;
+
+      // Le marché dit autre chose ? On ne met pas cette rencontre en avant.
+      // Voir `marcheContredit` : 25 % de justesse sur ces cartes, contre
+      // 72,3 % sur les autres.
+      if (
+        await marcheContredit(
+          Number(f.fixture.id),
+          kickoff,
+          Number(f?.league?.id),
+          Number(p.proba_domicile),
+          Number(p.proba_exterieur)
+        )
+      )
+        continue;
 
       // ── LA NOTE DE CLASSEMENT : LA MOYENNE DES DEUX LECTURES ───────────
       //
