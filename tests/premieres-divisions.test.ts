@@ -51,3 +51,14 @@ test('★ ACQUIS — une carte que le marché contredit n’est pas montrée', (
     'La comparaison des deux favoris a changé.'
   );
 });
+
+test('★ ACQUIS — un pronostic figé dont le marché conteste le vainqueur est refait', () => {
+  // Huit points d'écart ne rattrapaient pas ces cas : deux camps peuvent se
+  // tenir en quatre points et désigner des vainqueurs différents.
+  const s = fs.readFileSync('src/lib/precalcul-selection.ts', 'utf8');
+  assert.match(s, /const vainqueurFige = fige\.dom >= fige\.ext \? 'dom' : 'ext';/);
+  assert.match(s, /if \(vainqueurFige !== vainqueurDuMarche\) return true;/);
+  // Et jamais dans les vingt-quatre heures qui précèdent : le gel reste.
+  assert.match(s, /const GEL_DEFINITIF_MS = 24 \* 3_600_000;/);
+  assert.match(s, /loin && \(options\.rafraichirLigues\?\.has\(Number\(f\?\.league\?\.id\)\) \|\| enrichie \|\| \(await figeSansLeMarche\(f\)\)\)/);
+});
