@@ -47,3 +47,12 @@ test('★ ACQUIS — l’analyse sert les prévisions de buts CALIBRÉES', () =>
   // Et le vainqueur annoncé ne passe PAS par là.
   assert.doesNotMatch(s, /probaVictoire1: calibrerMarcheDeButs/);
 });
+
+test('★ ACQUIS — la cage inviolée est calibrée elle aussi', () => {
+  // Annoncée à 64 %, elle n'arrivait que 39 fois sur 100.
+  assert.ok(calibrerMarcheDeButs('cageInviolee', 64) < 64);
+  assert.ok(calibrerMarcheDeButs('cageInviolee', 6) > 6);
+  const s = fs.readFileSync('src/app/api/analyze/route.ts', 'utf8');
+  assert.match(s, /team1: calibrerMarcheDeButs\('cageInviolee', scoreCalcule\.probaCageInviolee1\)/);
+  assert.match(s, /team2: calibrerMarcheDeButs\('cageInviolee', scoreCalcule\.probaCageInviolee2\)/);
+});

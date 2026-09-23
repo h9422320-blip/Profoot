@@ -46,6 +46,19 @@ export const COEFFICIENTS: Readonly<Record<string, { a: number; b: number }>> = 
   plus25: { a: 0.2, b: 0.75 },
   plus35: { a: 0.15, b: 0.85 },
   lesDeuxMarquent: { a: 0, b: 0.75 },
+  /**
+   * ── LA CAGE INVIOLÉE, AJOUTÉE LE MÊME JOUR ──────────────────────────────
+   *
+   * Même mesure, mêmes rencontres :
+   *
+   *     annoncé 44 %  →  arrivé 35 %   (204 observations)
+   *     annoncé 54 %  →  arrivé 45 %   (84)
+   *     annoncé 64 %  →  arrivé 39 %   (31)
+   *
+   * Ajusté sur la première moitié, jugé sur la seconde (966 observations) :
+   * Brier 0,1849 → 0,1815. La première moitié gagne aussi (0,1849 → 0,1837).
+   */
+  cageInviolee: { a: -0.35, b: 0.7 },
 };
 
 export type MarcheDeButs = keyof typeof COEFFICIENTS;

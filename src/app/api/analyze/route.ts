@@ -2293,8 +2293,8 @@ async function analyser(req: Request, billet: BilletQuota) {
       // fournisseur. « Les deux marquent : non » regroupait 1-0, 0-1 et 0-0
       // sans jamais dire quelle défense tenait : cette mention le dit.
       cleanSheet: {
-        team1: scoreCalcule.probaCageInviolee1,
-        team2: scoreCalcule.probaCageInviolee2,
+        team1: calibrerMarcheDeButs('cageInviolee', scoreCalcule.probaCageInviolee1),
+        team2: calibrerMarcheDeButs('cageInviolee', scoreCalcule.probaCageInviolee2),
       },
     };
 
