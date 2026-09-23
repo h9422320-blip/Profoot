@@ -213,6 +213,30 @@ export const CHAMPIONNATS = [
   { id: 383, nom: "Ligat Ha'al" },
   { id: 271, nom: 'NB I' },
 
+  // ── LA QUATRIÈME VAGUE : LES COUPES NATIONALES, 23 SEPTEMBRE 2026 ──────
+  //
+  // Mesuré sur les 366 rencontres à venir des coupes que nous relevons
+  // (coupes nationales et coupes d'Europe) : 127 seulement sont éclairées par
+  // ce relevé, soit 35 %. Ailleurs, `butsAttendusOccasions` rend `null` et le
+  // moteur perd son socle — c'est exactement le cas mesuré sur les analyses
+  // réelles : en Coupe de Russie, 97 analyses lues avec la seule mémoire des
+  // clubs, 36 % de bons vainqueurs.
+  //
+  // La plupart des clubs manquants viennent de championnats amateurs, que le
+  // fournisseur ne détaille pas. Quatre championnats réguliers ressortent :
+  //
+  //     Premier League (Russie) .......... 48 rencontres de coupe, 16 clubs
+  //     2. Bundesliga .................... 10 rencontres, 10 clubs
+  //     Challenger Pro League (Belgique) . 10 rencontres, 10 clubs
+  //     First League (Russie) ............  9 rencontres,  9 clubs
+  //
+  // La Premier League russe porte en plus 159 analyses d'abonnés par mois,
+  // dont aucune n'était éclairée.
+  { id: 235, nom: 'Premier League russe' },
+  { id: 79, nom: '2. Bundesliga' },
+  { id: 145, nom: 'Challenger Pro League' },
+  { id: 236, nom: 'First League russe' },
+
   // ── LA QUATRIÈME VAGUE, MESURÉE LE 12 SEPTEMBRE 2026 ───────────────────
   //
   // Parmi les pays qui privent le plus de matchs de coupe d'Europe de leurs

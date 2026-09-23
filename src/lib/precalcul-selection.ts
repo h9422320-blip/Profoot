@@ -237,6 +237,33 @@ export function rencontreRetenue(f: any): boolean {
   return !!catalogueDeSelection(f?.teams?.home?.id) && !!catalogueDeSelection(f?.teams?.away?.id);
 }
 
+/**
+ * ── LES DEUXIÈMES DIVISIONS SE PRÉPARENT, MAIS NE SE PROPOSENT PAS ───────
+ *
+ * Décision du propriétaire, le 5 septembre 2026 : « les matchs les mieux
+ * cernés » ne montrent que des premières divisions. Ce n'est pas une question
+ * de mesure — le Championship ressortait à 80,8 %, mieux que la Serie A —,
+ * c'est une question de produit.
+ *
+ * La règle avait disparu le 10 septembre sans que personne ne le voie : en
+ * passant du filtrage par NOM au filtrage par NUMÉRO, la liste des
+ * compétitions préparées est devenue celle du relevé des tirs, qui contient
+ * ces championnats. La sélection pouvait donc les proposer de nouveau.
+ *
+ * On sépare les deux usages : on continue de PRÉPARER ces rencontres — un
+ * abonné qui analyse la Serie B reçoit le même moteur que les autres —, mais
+ * la sélection du jour ne les met pas en avant.
+ */
+export const DEUXIEMES_DIVISIONS: ReadonlySet<number> = new Set([
+  40,  // Championship (Angleterre)
+  136, // Serie B (Italie)
+  62,  // Ligue 2 (France)
+  141, // Segunda División (Espagne)
+  79,  // 2. Bundesliga (Allemagne)
+  145, // Challenger Pro League (Belgique)
+  236, // First League (Russie)
+]);
+
 export function competitionRetenue(ligue: unknown): boolean {
   const id = Number((ligue as { id?: unknown } | null | undefined)?.id);
   return Number.isFinite(id) && IDS_PREPARES.has(id);

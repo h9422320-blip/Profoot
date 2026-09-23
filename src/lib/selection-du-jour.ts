@@ -52,6 +52,7 @@ import { getLiveTeams } from './teams-live';
 import {
   CHAMPIONNATS,
   COMPETITIONS_DE_SELECTIONS_PREPAREES,
+  DEUXIEMES_DIVISIONS,
   competitionRetenue,
   rencontreRetenue,
   rangDeCompetition,
@@ -304,6 +305,9 @@ async function calculer(): Promise<SelectionDuJour> {
       // cette porte, et la sélection annonçait un vainqueur dans des
       // championnats dont le moteur n'a jamais lu une rencontre.
       if (!rencontreRetenue(f)) continue;
+      // Décision du propriétaire du 5 septembre 2026 : la sélection ne montre
+      // que des premières divisions. Voir `DEUXIEMES_DIVISIONS`.
+      if (DEUXIEMES_DIVISIONS.has(Number(f?.league?.id))) continue;
 
       const p = pronostics.get(Number(f?.fixture?.id));
       if (!p || p.proba_domicile == null) continue;
