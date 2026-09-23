@@ -416,7 +416,7 @@ test('★ ACQUIS — les compétitions couvertes restent celles qui sont analys�
  * un relevé périmé à dessein. L'application aurait servi des forces de plus en
  * plus vieilles pendant des semaines.
  */
-test('★ ACQUIS — la construction tient sous la coupure de soixante secondes', () => {
+test('★ ACQUIS — la construction tient sous la coupure de l’hébergeur', () => {
   const src = fs.readFileSync('src/lib/forme-occasions.ts', 'utf8');
 
   // ── C'EST LA VALEUR PAR DÉFAUT QUI EST L'ACQUIS ───────────────────────
@@ -430,7 +430,9 @@ test('★ ACQUIS — la construction tient sous la coupure de soixante secondes'
   // Ce qui doit rester garanti, c'est que le SERVEUR, lui, tienne sous la
   // coupure. La variable n'existe pas en production : le défaut s'applique.
   const budget = Number(
-    (src.match(/const BUDGET_MS = Number\(process\.env\.\w+\) \|\| ([\d_]+)/) ?? [])[1]?.replace(
+    // Depuis le 23 septembre 2026, la tâche planifiée passe son propre budget
+    // en argument ; le défaut, lui, reste celui du réveil par une visite.
+    (src.match(/const BUDGET_MS = .*\|\| ([\d_]+);/) ?? [])[1]?.replace(
       /_/g,
       ''
     )
@@ -444,10 +446,27 @@ test('★ ACQUIS — la construction tient sous la coupure de soixante secondes'
 
   const route = fs.readFileSync('src/app/api/cron/occasions/route.ts', 'utf8');
   const max = Number((route.match(/maxDuration = (\d+)/) ?? [])[1]);
+  // ── ET LA TÂCHE PLANIFIÉE, ELLE, A TROIS CENTS SECONDES ──────────────
+  //
+  // Corrigé le 23 septembre 2026. La borne de soixante secondes venait d'une
+  // lecture erronée : la tâche de minuit déclare `maxDuration = 300` et va au
+  // bout de son travail depuis des semaines. À trente-cinq secondes, la tâche
+  // des tirs ne lisait AUCUN championnat — la première consommait le budget —
+  // et le relevé n'avançait plus que par les visites, soit deux jours et demi
+  // pour un tour complet.
+  //
+  // Ce qui doit rester garanti : le budget demandé laisse de la marge avant la
+  // coupure annoncée, pour que le relevé soit ÉCRIT.
   assert.ok(
-    max <= 60,
-    `La route déclare maxDuration = ${max}. L'hébergeur coupe à 60 : annoncer ` +
-      'plus donne une fausse impression de sécurité.'
+    max <= 300,
+    `La route déclare maxDuration = ${max}, au-delà de ce que la plateforme accorde.`
+  );
+  const demande = Number(
+    ((route.match(/construireForces\((\d[\d_]*)\)/) ?? [])[1] ?? '35000').replace(/_/g, '')
+  );
+  assert.ok(
+    demande <= max * 1000 - 50_000,
+    `Le passage demande ${demande} ms alors que la coupure est à ${max} s : le relevé ne serait pas écrit.`
   );
 });
 

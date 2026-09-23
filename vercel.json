@@ -8,11 +8,7 @@
     },
     {
       "path": "/api/cron/occasions",
-      "schedule": "20 4 * * *"
-    },
-    {
-      "path": "/api/cron/occasions",
-      "schedule": "20 16 * * *"
+      "schedule": "20 */2 * * *"
     },
     {
       "path": "/api/cron/audit",

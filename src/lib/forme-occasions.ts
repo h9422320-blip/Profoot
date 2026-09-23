@@ -488,7 +488,15 @@ export type RencontreTirs = {
  * quelques centaines d'appels au fournisseur, ce qu'un abonné qui attend son
  * analyse ne doit jamais payer.
  */
-export async function construireForces(): Promise<ReleveOccasions | null> {
+export async function construireForces(
+  /**
+   * Temps accordé à ce passage. Sans argument : les trente-cinq secondes du
+   * réveil paresseux, déclenché par une visite — un visiteur ne doit pas
+   * attendre. La tâche planifiée, elle, passe son propre budget : elle a trois
+   * cents secondes pour elle seule (voir `api/cron/occasions`).
+   */
+  budgetMsDemande?: number
+): Promise<ReleveOccasions | null> {
   const depuis = Date.now() - JOURS_RELUS * 86_400_000;
   const saisonsAVoir = [new Date().getUTCFullYear() - 1, new Date().getUTCFullYear()];
 
@@ -555,7 +563,7 @@ export async function construireForces(): Promise<ReleveOccasions | null> {
    * Avec cette surcharge, le propriétaire amorce depuis un poste en une fois,
    * sans coupure d'hébergeur, et la production trouve la réserve déjà chaude.
    */
-  const BUDGET_MS = Number(process.env.OCCASIONS_BUDGET_MS) || 35_000;
+  const BUDGET_MS = Number(budgetMsDemande) || Number(process.env.OCCASIONS_BUDGET_MS) || 35_000;
   const couvertes: string[] = [];
   const laissees: string[] = [];
 

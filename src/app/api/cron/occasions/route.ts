@@ -7,7 +7,14 @@ import { construireForces } from '@/lib/forme-occasions';
 // était tuée en pleine lecture, toujours avant d'écrire, et cette tâche n'a
 // donc jamais rien produit. La construction tient désormais en trente-cinq
 // secondes et avance d'une compétition par passage. Voir `forme-occasions.ts`.
-export const maxDuration = 60;
+// ── TROIS CENTS SECONDES, ET NON SOIXANTE ────────────────────────────────
+//
+// Mesuré le 23 septembre 2026 : un passage de 250 s lit TROIS championnats sur
+// les quarante-deux du tour d'anneau. À trente-cinq secondes, il n'en lisait
+// aucun — la première compétition consommait le budget — et le relevé
+// n'avançait que par les visites. Le tour complet demandait deux jours et demi,
+// pendant lesquels le socle du moteur travaille sur des forces vieillies.
+export const maxDuration = 300;
 // Jamais de mise en cache : la tâche doit réellement s'exécuter à chaque appel.
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +50,8 @@ export async function GET(request: Request) {
 
   const debut = Date.now();
   try {
-    const releve = await construireForces();
+    // 240 s sur les 300 : la lecture des réserves et l'écriture prennent le reste.
+    const releve = await construireForces(240_000);
 
     if (!releve) {
       // Matière insuffisante : on ne remplace surtout pas le relevé précédent,
