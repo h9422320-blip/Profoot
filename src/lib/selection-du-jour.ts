@@ -106,6 +106,14 @@ export const FIABILITE_MINIMUM = 70;
 export const MAX_MATCHS = 6;
 
 /**
+ * En dehors d'une journée de championnat, on ne s'arrête pas à une carte : on
+ * avance dans le calendrier jusqu'à en réunir au moins autant. Le seuil de
+ * fiabilité ne bouge pas — on ajoute des rencontres qui le franchissent déjà,
+ * on n'en repêche aucune —, et chaque carte porte sa date.
+ */
+export const COMPLEMENT_MINIMUM = 4;
+
+/**
  * ── COMBIEN DE RENCONTRES FAUT-IL POUR AFFICHER LA SECTION ────────────────
  *
  * ── CE QUI A ÉTÉ CONSTATÉ LE 6 SEPTEMBRE 2026 ───────────────────────────
@@ -503,10 +511,15 @@ async function calculer(): Promise<SelectionDuJour> {
   // Un abonné qui ouvre l'application le soir doit y trouver le programme du
   // lendemain, pas un blanc — c'est précisément l'heure où il prépare sa
   // journée.
-  const deDemain = await pourLeJour(demain);
-  if (deDemain.length >= MINIMUM_POUR_AFFICHER) {
-    return { matchs: deDemain, aujourdhui: false, calculeeLe: new Date().toISOString() };
-  }
+  // ── DEMAIN, PUIS LES JOURS D'APRÈS SI DEMAIN EST MAIGRE ───────────────
+  //
+  // La journée de demain était rendue telle quelle dès qu'elle contenait UNE
+  // rencontre. Le 23 septembre 2026, elle en contenait exactement une —
+  // Portugal–Pays de Galles — alors que le lendemain en portait cinq déjà
+  // calculées : Maroc–Gabon, Sénégal–Mozambique, Nigeria–Madagascar,
+  // Algérie–Zambie, Gambie–Somalie. Une carte unique sur la page la plus
+  // consultée, trois semaines durant, ne donne aucune raison de revenir.
+  const cumul: MatchSelectionne[] = await pourLeJour(demain);
 
   // ── ET SI LE CALENDRIER EST EN TRÊVE, ON VA CHERCHER PLUS LOIN ──────────
   //
@@ -518,6 +531,10 @@ async function calculer(): Promise<SelectionDuJour> {
   //
   // On demande donc au fournisseur les prochaines rencontres des grandes
   // compétitions, et on compose la sélection du PREMIER jour qui en contient.
+  if (cumul.length >= COMPLEMENT_MINIMUM) {
+    return { matchs: cumul.slice(0, MAX_MATCHS), aujourdhui: false, calculeeLe: new Date().toISOString() };
+  }
+
   try {
     const { getUpcomingFixtures } = await import('./api-football');
     const prochaines = (await getUpcomingFixtures(5)) ?? [];
@@ -535,12 +552,29 @@ async function calculer(): Promise<SelectionDuJour> {
         ...prochaines.map((f: any) => String(f?.fixture?.date ?? '').slice(0, 10)).filter(Boolean),
       ]),
     ].sort();
+    // ── ET ON COMPLÈTE AVEC LES JOURNÉES SUIVANTES ──────────────────────
+    //
+    // Le 23 septembre 2026, la première journée trouvée — le 24 — ne contenait
+    // qu'UNE rencontre au-dessus du seuil : Portugal–Pays de Galles. Une seule
+    // carte sur la page la plus consultée, pendant trois semaines de trêve, ne
+    // donne aucune raison de revenir demain, alors que Slovaquie–Moldavie,
+    // Maroc–Gabon ou Nigeria–Madagascar se jouent le lendemain et sont déjà
+    // calculés.
+    //
+    // On complète donc jusqu'à `COMPLEMENT_TREVE` rencontres, en avançant dans
+    // le calendrier. Chaque carte porte sa date, et le seuil de fiabilité ne
+    // bouge pas : on ajoute des rencontres qui le franchissent déjà, on n'en
+    // repêche aucune. Les jours de championnat, rien ne change : la journée du
+    // jour se suffit et ce chemin n'est même pas emprunté.
+
     for (const jour of joursAVenir.slice(0, 7)) {
       if (jour <= demain) continue;
       const liste = await pourLeJour(jour);
-      if (liste.length >= MINIMUM_POUR_AFFICHER) {
-        return { matchs: liste, aujourdhui: false, calculeeLe: new Date().toISOString() };
-      }
+      for (const m of liste) if (!cumul.some((x) => x.fixtureId === m.fixtureId)) cumul.push(m);
+      if (cumul.length >= COMPLEMENT_MINIMUM) break;
+    }
+    if (cumul.length >= MINIMUM_POUR_AFFICHER) {
+      return { matchs: cumul.slice(0, MAX_MATCHS), aujourdhui: false, calculeeLe: new Date().toISOString() };
     }
   } catch (e: any) {
     console.warn('[SÉLECTION] Prochaines journées illisibles :', e?.message);

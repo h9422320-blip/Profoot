@@ -23,3 +23,16 @@ test('★ ACQUIS — les deuxièmes divisions restent préparées mais jamais pr
   const s = fs.readFileSync('src/lib/selection-du-jour.ts', 'utf8');
   assert.match(s, /if \(DEUXIEMES_DIVISIONS\.has\(Number\(f\?\.league\?\.id\)\)\) continue;/);
 });
+
+test('★ ACQUIS — hors journée de championnat, la sélection complète avec les jours suivants', () => {
+  // Le 23 septembre 2026 : la journée du lendemain ne portait qu'une carte,
+  // Portugal–Pays de Galles, alors que le surlendemain en avait cinq déjà
+  // calculées. La section s'arrêtait à la première journée trouvée.
+  const s = fs.readFileSync('src/lib/selection-du-jour.ts', 'utf8');
+  assert.match(s, /export const COMPLEMENT_MINIMUM = 4;/);
+  assert.match(s, /const cumul: MatchSelectionne\[\] = await pourLeJour\(demain\);/);
+  assert.match(s, /if \(cumul\.length >= COMPLEMENT_MINIMUM\) break;/);
+  // Le seuil de fiabilité, lui, ne bouge pas : on n'ajoute que des rencontres
+  // qui le franchissent déjà.
+  assert.match(s, /export const FIABILITE_MINIMUM = 70;/);
+});
