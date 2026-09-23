@@ -866,6 +866,10 @@ async function analyser(req: Request, billet: BilletQuota) {
   // Derniers matchs joués, indépendamment de la saison — voir plus bas.
   let t1Recent: any = { response: [] }, t2Recent: any = { response: [] };
   let matchDirect: MatchDirect | null = null;
+  // La fiche brute de la rencontre en cours, quand il y en a une : date, stade
+  // et compétition à afficher viennent de là (voir « LE MATCH EN COURS PASSE
+  // DEVANT TOUT »).
+  let fixtureEnCours: any = null;
   const season = getCurrentSeason();
 
   if (id1 && id2) {
@@ -913,7 +917,12 @@ async function analyser(req: Request, billet: BilletQuota) {
     nextH2H = nextH2Hr?.response?.[0] || null;
 
     const rencontreEnDirect = trouverRencontreEnDirect(enDirect, id1, id2);
-    if (rencontreEnDirect) matchDirect = normaliserMatchDirect(rencontreEnDirect, id1);
+    if (rencontreEnDirect) {
+      matchDirect = normaliserMatchDirect(rencontreEnDirect, id1);
+      // La FICHE de la rencontre en cours, et pas seulement son score : c'est
+      // elle qui porte la date, le stade et la compétition à afficher.
+      if (matchDirect) fixtureEnCours = rencontreEnDirect;
+    }
   } else {
     console.warn(`[BACKEND_ANALYZE] API-Football IDs missing (Rate Limit or Unmapped). Bypassing API-Football for PURE AI analysis.`);
     t1Data = { data: { response: [] }, season };
@@ -935,9 +944,25 @@ async function analyser(req: Request, billet: BilletQuota) {
   // Dans l'ordre où l'analyse s'y intéresse : la rencontre à venir est celle
   // qu'on pronostique, le direct vient ensuite, le passé en dernier. C'est ce
   // numéro qui permettra d'aller chercher le résultat et de juger le pronostic.
+  // ── LE MATCH EN COURS PASSE DEVANT TOUT ────────────────────────────────
+  //
+  // Défaut trouvé le 23 septembre 2026, le plus coûteux de la journée. L'ordre
+  // plaçait la rencontre À VENIR en tête. Un abonné qui analysait
+  // Atlético–Real PENDANT le derby du 20 septembre recevait donc l'analyse du
+  // match RETOUR — « 4 avril 2027 » écrit noir sur blanc comme date de la
+  // rencontre — et son analyse portait le numéro de ce match d'avril.
+  //
+  // Conséquence invisible et pire encore : ces analyses ne peuvent JAMAIS être
+  // confrontées à leur résultat, puisqu'on attend un match qui n'a pas eu
+  // lieu. Mesuré ce jour-là : sur 1 000 analyses de plus de trois jours encore
+  // non jugées, 889 pointaient vers une rencontre à venir. Le mur des preuves
+  // et la fiabilité affichée perdaient toute cette matière.
+  //
+  // Quand une rencontre entre ces deux équipes est EN COURS, c'est elle que
+  // l'abonné regarde : elle passe devant.
   fixtureIdResolu =
-    targetFutureMatch?.fixture?.id ??
     matchDirect?.fixtureId ??
+    targetFutureMatch?.fixture?.id ??
     targetPastMatch?.fixture?.id ??
     null;
 
@@ -967,13 +992,13 @@ async function analyser(req: Request, billet: BilletQuota) {
       normaliserMatchDirect(rencontreEnDirectH2H, id1);
 
     if (matchDirect) {
+      fixtureEnCours = fiche?.response?.[0] ?? rencontreEnDirectH2H;
       console.log(
         `[BACKEND_ANALYZE] Direct récupéré par l'historique (${matchDirect.buts1}-${matchDirect.buts2}, ${matchDirect.statut}).`
       );
       // Le direct a été retrouvé par la seconde source, après le premier
-      // relevé : sans cette ligne, l'analyse d'un match en cours repartirait
-      // sans identifiant et ne serait jamais vérifiable.
-      fixtureIdResolu ??= matchDirect.fixtureId;
+      // relevé : il reprend la première place, comme ci-dessus.
+      fixtureIdResolu = matchDirect.fixtureId;
     }
   }
 
@@ -1373,7 +1398,9 @@ async function analyser(req: Request, billet: BilletQuota) {
   // Il est donc calculé ici, à partir des buts marqués et encaissés des deux
   // équipes et de l'avantage du terrain. Le modèle garde la rédaction ; il ne
   // décide plus des chiffres.
-  const lieuConnu = targetFutureMatch || targetPastMatch || nextH2H;
+  // La rencontre en cours d'abord : sans cela, l'écran annonçait la date et le
+  // stade du match retour pendant que le match se jouait.
+  const lieuConnu = fixtureEnCours || targetFutureMatch || targetPastMatch || nextH2H;
   const equipe1AJoueADomicile: boolean | null = lieuConnu
     ? String(lieuConnu.teams?.home?.id) === String(id1)
     : null;
