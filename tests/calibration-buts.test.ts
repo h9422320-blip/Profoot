@@ -56,3 +56,28 @@ test('★ ACQUIS — la cage inviolée est calibrée elle aussi', () => {
   assert.match(s, /team1: calibrerMarcheDeButs\('cageInviolee', scoreCalcule\.probaCageInviolee1\)/);
   assert.match(s, /team2: calibrerMarcheDeButs\('cageInviolee', scoreCalcule\.probaCageInviolee2\)/);
 });
+
+test('★ ACQUIS — après correction, les seuils restent dans l’ordre', () => {
+  // Chaque seuil a ses propres coefficients : rien n'empêcherait, en théorie,
+  // « plus de 1,5 but » de dépasser « plus de 0,5 but » et de rendre l'écran
+  // absurde. Vérifié sur toute la plage réaliste de buts attendus.
+  for (let xg = 0.5; xg <= 5.001; xg += 0.05) {
+    const p = (k: number) => (Math.exp(-xg) * Math.pow(xg, k)) / [1, 1, 2, 6][k];
+    const o05 = 1 - p(0);
+    const brut = [o05, o05 - p(1), o05 - p(1) - p(2), o05 - p(1) - p(2) - p(3)].map((x) =>
+      Math.round(x * 100)
+    );
+    const c = [
+      calibrerMarcheDeButs('plus05', brut[0]),
+      calibrerMarcheDeButs('plus15', brut[1]),
+      calibrerMarcheDeButs('plus25', brut[2]),
+      calibrerMarcheDeButs('plus35', brut[3]),
+    ];
+    for (let i = 1; i < 4; i++) {
+      assert.ok(
+        c[i] <= c[i - 1],
+        `Pour ${xg.toFixed(2)} but(s) attendu(s) : ${brut.join('/')} devient ${c.join('/')}.`
+      );
+    }
+  }
+});
