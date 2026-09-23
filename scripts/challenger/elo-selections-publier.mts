@@ -39,7 +39,30 @@ const contenu = {
 };
 // Trente jours de conservation : une réserve un peu ancienne vaut mieux que rien.
 await ecrireReserve(CLE_ELO_SELECTIONS, contenu, 30 * 24 * 3600 * 1000);
+
+// ── ON RELIT CE QU'ON VIENT D'ÉCRIRE ─────────────────────────────────────
+//
+// Constaté au contrôle du 23 septembre 2026 : le rapport du matin annonçait
+// « publié sous selections:elo:v1 » alors que la réserve datait de la veille.
+// `ecrireReserve` avale ses erreurs par construction — c'est voulu, un cache
+// qui ne s'écrit pas ne doit jamais faire échouer l'appel qui a réussi — mais
+// ici l'écriture EST le travail. On relit donc, et on le dit franchement.
+const { createAdminClient } = await import('../../src/lib/supabase-admin.js');
+const { data: relu } = await createAdminClient()
+  .from('cache_api')
+  .select('contenu')
+  .eq('cle', CLE_ELO_SELECTIONS)
+  .maybeSingle();
+const enLigne = (relu as any)?.contenu?.calculeLe;
+if (enLigne !== contenu.calculeLe) {
+  console.error(
+    `[ELO SÉLECTIONS] ÉCRITURE PERDUE : la réserve porte ${enLigne ?? 'rien'} et non ${contenu.calculeLe}. ` +
+      `L'analyse garde les notes précédentes.`
+  );
+  process.exit(1);
+}
+
 console.log(
   `[ELO SÉLECTIONS] ${collecte.matchs} matchs en réserve (${collecte.appels} appels) · ` +
-    `${matchs.length} retenus · ${note.size} sélections notées · publié sous ${CLE_ELO_SELECTIONS}.`
+    `${matchs.length} retenus · ${note.size} sélections notées · publié sous ${CLE_ELO_SELECTIONS} (relu).`
 );
