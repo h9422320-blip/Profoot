@@ -26,6 +26,7 @@ import { enregistrerEchecAnalyse } from "@/lib/echecs-analyse";
 import { correctionElanTerrain, lireElanEtTerrain } from "@/lib/elan-et-terrain";
 import { correctionRepos, derniereRencontreAvant, sommeDesCorrections } from "@/lib/repos-des-clubs";
 import { statistiquesDepuisMatchs } from "@/lib/statistiques-recentes";
+import { calibrerMarcheDeButs } from "@/lib/calibration-buts";
 import { lireForcesPoisson, butsAttendusPourLeMatch, PART_GRILLE_SCORE } from "@/lib/forces-poisson";
 import { avisDuMarchePour, totalDuMarchePour } from "@/lib/couche-marche";
 import { coucheEloSelections } from "@/lib/forces-selections";
@@ -2269,15 +2270,22 @@ async function analyser(req: Request, billet: BilletQuota) {
         team2: scoreCalcule.butsAttendus2,
         total: Math.round((scoreCalcule.butsAttendus1 + scoreCalcule.butsAttendus2) * 100) / 100,
       },
+      // ── LES PRÉVISIONS DE BUTS PASSENT PAR LEUR CALIBRATION ────────────
+      //
+      // Mesuré le 23 septembre 2026 sur 1 422 rencontres réellement affichées
+      // puis jugées : « plus de 2,5 buts » annoncé à 83 % n'arrivait que
+      // 67 fois sur 100, et annoncé à 26 %, il arrivait une fois sur deux.
+      // Voir `calibration-buts.ts` : les cinq marchés gagnent, sur la moitié
+      // ajustée comme sur celle jamais vue. Le vainqueur annoncé ne bouge pas.
       btts: {
-        yes: scoreCalcule.probaLesDeuxMarquent,
-        no: 100 - scoreCalcule.probaLesDeuxMarquent,
+        yes: calibrerMarcheDeButs('lesDeuxMarquent', scoreCalcule.probaLesDeuxMarquent),
+        no: 100 - calibrerMarcheDeButs('lesDeuxMarquent', scoreCalcule.probaLesDeuxMarquent),
       },
       overUnder: {
-        over05: scoreCalcule.probaPlusDe.zeroCinq,
-        over15: scoreCalcule.probaPlusDe.unCinq,
-        over25: scoreCalcule.probaPlusDe.deuxCinq,
-        over35: scoreCalcule.probaPlusDe.troisCinq,
+        over05: calibrerMarcheDeButs('plus05', scoreCalcule.probaPlusDe.zeroCinq),
+        over15: calibrerMarcheDeButs('plus15', scoreCalcule.probaPlusDe.unCinq),
+        over25: calibrerMarcheDeButs('plus25', scoreCalcule.probaPlusDe.deuxCinq),
+        over35: calibrerMarcheDeButs('plus35', scoreCalcule.probaPlusDe.troisCinq),
       },
       // ── LA CAGE INVIOLÉE ────────────────────────────────────────────────
       //
