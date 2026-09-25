@@ -58,6 +58,18 @@ export const VENTES_REGLEES: ReadonlyMap<string, VenteReglee> = new Map([
       le: '2026-09-21',
     },
   ],
+  [
+    'd86672fc-c40a-4c3a-a60f-5a9f6509bf74',
+    {
+      raison:
+        'p13057177 a payé 2 500 F le 9 septembre 2026 à 10 h 53. Son accès a été ouvert ' +
+        'À LA MAIN le même jour, deux fois (12 h 01 et 12 h 10), sous des identifiants ' +
+        '« manuel-… » : la vente de la boutique ne porte donc aucun abonnement à son ' +
+        'numéro, et le rattrapage la voit comme jamais servie. Elle l’est : son accès ' +
+        'court jusqu’au 9 octobre 2026. Constaté au contrôle du 25 septembre.',
+      le: '2026-09-25',
+    },
+  ],
 ]);
 
 /** Cette vente a-t-elle été réglée autrement qu'en la rattachant ? */
