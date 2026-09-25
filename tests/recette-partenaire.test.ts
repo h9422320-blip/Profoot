@@ -254,11 +254,26 @@ test('CONTRAT — un match acheté à l unité ne passe pas pour un accès manqu
       "six lors du premier relevé."
   );
 
+  // ── LA FONCTION DE PRODUCTION A CHANGÉ DE NOM, PAS DE RÔLE ────────────
+  //
+  // Jusqu'au 25 septembre 2026, le rattrapage rejouait
+  // `activateSubscriptionFromSale`, l'activation du webhook Chariow. Chariow
+  // est fermé depuis le 27 août : la source est `payment_intents` et
+  // l'ouverture passe par `ouvrirAccesPayeSiBesoin`, la fonction que
+  // l'application utilise à chaque connexion.
+  //
+  // Ce qui doit rester vrai : le rattrapage APPELLE le chemin de production,
+  // il ne recopie pas ses règles de plan et de durée.
   assert.ok(
-    /activateSubscriptionFromSale/.test(src),
-    "La réparation n'utilise plus la fonction d'activation de production. Une " +
+    /activateSubscriptionFromSale|ouvrirAccesPayeSiBesoin/.test(src),
+    "La réparation n'utilise plus la fonction d'ouverture de production. Une " +
       "copie appliquerait ses propres règles de plan et de durée, qui " +
       "divergeraient au premier changement de tarif."
+  );
+  assert.ok(
+    !/durationDays|expires_at:/.test(src),
+    "Le rattrapage calcule lui-même une durée ou une date d'expiration : c'est " +
+      "exactement la copie qu'on refuse."
   );
 });
 

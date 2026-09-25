@@ -22,11 +22,11 @@
  *
  * ── POURQUOI IL REJOUE, AU LIEU DE RECRÉER ────────────────────────────────
  *
- * L'activation passe par `activateSubscriptionFromSale`, la fonction que le
- * webhook utilise. Pas une copie : une copie appliquerait ses propres règles
- * de plan et de durée, qui divergeraient au premier changement de tarif. Le
- * client rattrapé reçoit donc exactement ce qu'il aurait reçu si le webhook
- * avait fonctionné — ni plus, ni moins.
+ * L'activation passe par `ouvrirAccesPayeSiBesoin`, la fonction que
+ * l'application utilise à chaque connexion. Pas une copie : une copie
+ * appliquerait ses propres règles de plan et de durée, qui divergeraient au
+ * premier changement de tarif. Le client rattrapé reçoit donc exactement ce
+ * qu'il aurait reçu tout seul — ni plus, ni moins.
  *
  * ── DEUX FAÇONS D'AVOIR ÉTÉ SERVI ─────────────────────────────────────────
  *
@@ -38,8 +38,8 @@
  */
 
 import { createAdminClient } from './supabase-admin';
-import { listRecentSales, STATUTS_ENCAISSES, type ChariowSale } from './chariow';
-import { activateSubscriptionFromSale } from './subscription-activation';
+// La boutique Chariow est fermée depuis le 27 août 2026 : la source est
+// désormais `payment_intents`, alimentée par le pulse MakeTou.
 
 export interface AccesManquant {
   saleId: string;
@@ -62,18 +62,6 @@ export interface BilanAcces {
   enAttenteInscription: AccesManquant[];
   /** Tentatives de réparation qui ont échoué — celles-là méritent un regard. */
   echecs: { email: string; raison: string }[];
-}
-
-/** L'adresse d'un acheteur, cherchée là où elle peut se trouver. */
-function emailDe(vente: ChariowSale, parIntention: Map<string, string>): string {
-  return String(
-    parIntention.get(vente.id) ??
-      vente.customer?.email ??
-      (vente as any).buyer?.email ??
-      ''
-  )
-    .toLowerCase()
-    .trim();
 }
 
 /**
@@ -131,7 +119,6 @@ async function prevenir(
   return envoyerCourriel({ a: email, ...messageAccesRouvert((data as any)?.expires_at ?? null) });
 }
 
-/** Lit une table entière, mille lignes à la fois. */
 async function lireTout<T>(
   requete: (de: number, a: number) => any,
   plafond = 20000
@@ -151,15 +138,59 @@ async function lireTout<T>(
  *
  * @param reparer  Faux pour un simple relevé, sans rien écrire.
  */
+/**
+ * ── DEPUIS MAKETOU, LA SOURCE N'EST PLUS LA BOUTIQUE ──────────────────────
+ *
+ * Défaut trouvé le 25 septembre 2026. Cette fonction interrogeait Chariow, et
+ * Chariow est fermé depuis le 27 août : `listRecentSales` rend une liste vide
+ * sans rien dire. L'étape « Rouvrir les accès payés mais non reçus » de
+ * l'entretien quotidien annonçait donc « 0 accès rouvert sur 0 vente » chaque
+ * jour depuis un mois — un filet de sécurité qui se signalait vert alors qu'il
+ * ne regardait plus rien. C'est le pire des états : personne ne le vérifie,
+ * puisqu'il dit que tout va bien.
+ *
+ * La source est désormais `payment_intents`, où le pulse MakeTou inscrit chaque
+ * vente encaissée (voir `maketou.ts`). Une vente est SERVIE si elle porte un
+ * abonnement ou un match débloqué à son numéro.
+ *
+ * L'ouverture passe par `ouvrirAccesPayeSiBesoin`, la fonction que l'application
+ * utilise à chaque connexion : le client rattrapé reçoit exactement ce qu'il
+ * aurait reçu tout seul, ni plus, ni moins.
+ *
+ * Sans compte à son adresse, il n'y a rien à ouvrir : la vente est signalée en
+ * attente d'inscription, et la livraison (`livraison-sans-compte.ts`) s'occupe
+ * de l'inviter.
+ */
 export async function rattraperAccesManquants(reparer = true): Promise<BilanAcces> {
   const sb = createAdminClient();
+  const bilan: BilanAcces = {
+    ventesEncaissees: 0,
+    dejaServies: 0,
+    repares: 0,
+    prevenus: 0,
+    enAttenteInscription: [],
+    echecs: [],
+  };
 
-  const ventes = await listRecentSales();
-  const payees = ventes.filter((v) => STATUTS_ENCAISSES.includes(String(v.status)));
+  const FENETRE_JOURS = 60;
+  const depuis = new Date(Date.now() - FENETRE_JOURS * 86_400_000).toISOString();
+  const ENCAISSES = ['completed', 'succeeded', 'paid', 'success'];
 
-  // Ce qui a déjà été servi, des DEUX façons possibles.
+  const paiements = await lireTout<any>((de, a) =>
+    sb
+      .from('payment_intents')
+      .select('sale_id, email, plan, amount, created_at, consumed_at, statut_boutique')
+      .gte('created_at', depuis)
+      .range(de, a)
+  );
+  const encaissees = paiements.filter((p) =>
+    ENCAISSES.includes(String(p.statut_boutique ?? '').toLowerCase())
+  );
+  bilan.ventesEncaissees = encaissees.length;
+  if (!encaissees.length) return bilan;
+
   const abos = await lireTout<any>((de, a) =>
-    sb.from('subscriptions').select('chariow_sale_id, user_id').range(de, a)
+    sb.from('subscriptions').select('chariow_sale_id').range(de, a)
   );
   const { data: matchs } = await sb.from('matchs_debloques').select('sale_id');
   const servies = new Set<string>([
@@ -167,74 +198,44 @@ export async function rattraperAccesManquants(reparer = true): Promise<BilanAcce
     ...(matchs ?? []).map((m: any) => m.sale_id).filter(Boolean),
   ]);
 
-  const bilan: BilanAcces = {
-    ventesEncaissees: payees.length,
-    dejaServies: servies.size,
-    repares: 0,
-    prevenus: 0,
-    enAttenteInscription: [],
-    echecs: [],
-  };
-
-  // ── CE QUI A ÉTÉ RÉGLÉ AUTREMENT NE S'ALERTE PLUS ─────────────────────
-  //
-  // Une vente peut avoir servi son acheteur sans jamais porter d'abonnement à
-  // son nom : un mois ajouté sur l'abonnement qu'il avait déjà, par exemple.
-  // Sans cette liste, elle ressort chaque jour comme « payé, jamais servi » —
-  // et une alerte qui se répète pour une raison connue cesse d'être lue, ce
-  // qui finit par cacher le vrai cas au milieu des faux. Voir
-  // `ventes-reglees.ts` : chaque entrée dit ce qui a été fait, et quand.
   const { venteReglee } = await import('./ventes-reglees');
-  const orphelines = payees.filter((v) => {
-    if (servies.has(v.id)) return false;
-    const reglee = venteReglee(v.id);
-    if (reglee) {
-      bilan.dejaServies++;
-      return false;
-    }
+  const orphelines = encaissees.filter((p) => {
+    if (servies.has(p.sale_id)) return false;
+    if (venteReglee(p.sale_id)) return false;
     return true;
   });
+  bilan.dejaServies = encaissees.length - orphelines.length;
   if (!orphelines.length) return bilan;
 
-  // L'adresse saisie au moment du paiement est la plus fiable : c'est celle
-  // que NOTRE serveur a écrite au checkout, avant que la boutique s'en mêle.
-  const intentions = await lireTout<any>((de, a) =>
-    sb.from('payment_intents').select('sale_id, email').range(de, a)
-  );
-  const parIntention = new Map<string, string>(
-    intentions.filter((i) => i.sale_id && i.email).map((i) => [i.sale_id, String(i.email)])
-  );
-
-  // Les comptes, pour relier une adresse à un identifiant.
-  const comptes: any[] = [];
+  // Les comptes, lus une fois : une vente sans compte à son adresse n'a rien à
+  // ouvrir, et c'est le cas le plus fréquent depuis que la boutique est
+  // publique.
+  const comptes: { id: string; email: string }[] = [];
   for (let page = 1; page <= 30; page++) {
     const { data } = await sb.auth.admin.listUsers({ page, perPage: 1000 });
-    if (!data?.users?.length) break;
-    comptes.push(...data.users);
-    if (data.users.length < 1000) break;
+    const lot = data?.users ?? [];
+    for (const u of lot) if (u.email) comptes.push({ id: u.id, email: u.email.toLowerCase() });
+    if (lot.length < 1000) break;
   }
-  const parEmail = new Map(
-    comptes.map((u) => [String(u.email ?? '').toLowerCase().trim(), u.id])
-  );
+  const parEmail = new Map(comptes.map((c) => [c.email, c]));
 
-  for (const vente of orphelines) {
-    const email = emailDe(vente, parIntention);
-    const userId = email ? parEmail.get(email) ?? null : null;
+  const { ouvrirAccesPayeSiBesoin } = await import('./acces-immediat');
+
+  for (const p of orphelines) {
+    const email = String(p.email ?? '').toLowerCase().trim();
     const manquant: AccesManquant = {
-      saleId: vente.id,
-      email: email || '(inconnu)',
-      montant: Number(vente.amount?.value ?? 0),
-      jour: String((vente as any).completed_at ?? vente.created_at ?? '').slice(0, 10),
-      userId,
+      saleId: String(p.sale_id),
+      email,
+      montant: Number(p.amount) || 0,
+      jour: String(p.created_at ?? '').slice(0, 10),
+      userId: parEmail.get(email)?.id ?? null,
     };
-
-    // Payé, mais aucun compte à ce nom. Rien à ouvrir : l'accès se rattachera
-    // à l'inscription. On le signale pour que personne ne soit oublié.
-    if (!userId) {
+    const compte = parEmail.get(email);
+    if (!compte) {
       bilan.enAttenteInscription.push(manquant);
       console.warn(
-        `[ACCÈS] ${manquant.email} a payé ${manquant.montant} FCFA le ${manquant.jour} ` +
-          `sans compte inscrit — en attente.`
+        `[ACCÈS] ${email} a payé ${manquant.montant} FCFA le ${manquant.jour} ` +
+          `sans compte à cette adresse — la livraison l'invitera.`
       );
       continue;
     }
@@ -245,18 +246,18 @@ export async function rattraperAccesManquants(reparer = true): Promise<BilanAcce
     }
 
     try {
-      const r = await activateSubscriptionFromSale(sb, vente, userId);
-      if (r.activated) {
+      const r = await ouvrirAccesPayeSiBesoin(sb, { id: compte.id, email: compte.email } as any);
+      if (r.ouvert) {
         bilan.repares++;
-        console.log(`[ACCÈS] ${email} : accès ${r.plan} rouvert (vente ${vente.id}).`);
-        if (await prevenir(sb, vente.id, email, userId)) bilan.prevenus++;
+        console.log(`[ACCÈS] Accès rouvert pour ${email} (vente ${manquant.saleId}).`);
+        // Un accès rendu que le client ignore ne vaut guère mieux qu'un accès
+        // manquant : il continue d'attendre. Une seule fois par vente.
+        if (await prevenir(sb, manquant.saleId, email, compte.id)) bilan.prevenus++;
       } else {
-        bilan.echecs.push({ email, raison: r.reason ?? 'raison inconnue' });
-        console.error(`[ACCÈS] ${email} : réparation refusée — ${r.reason}`);
+        bilan.echecs.push({ email, raison: 'ouverture refusée par le filet habituel' });
       }
     } catch (e: any) {
-      bilan.echecs.push({ email, raison: String(e?.message ?? e).slice(0, 150) });
-      console.error(`[ACCÈS] ${email} : réparation impossible — ${e?.message}`);
+      bilan.echecs.push({ email, raison: e?.message ?? 'inconnue' });
     }
   }
 
