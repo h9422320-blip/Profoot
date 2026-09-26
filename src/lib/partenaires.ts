@@ -26,6 +26,7 @@
  */
 
 import { createAdminClient } from './supabase-admin';
+import { depensesParMois, type LigneDepense, type MoisDeDepenses } from './depenses';
 import { niveauOffert, PLANS, normalizePlan, type PlanKey } from './subscription';
 import { recettesParJour, parMois as grouperParMois, tauxMaketou } from './recettes-boutique';
 import { DERNIER_JOUR_CHARIOW, TAUX_CHARIOW } from './recettes-histoire';
@@ -70,7 +71,16 @@ export interface MoisPartenaire {
   recettesXof: number;
   /** Ce que la boutique a prélevé — 15 % chez Chariow, autre taux chez MakeTou. */
   fraisBoutiqueXof: number;
-  /** Ce qui reste une fois la boutique payée. C'est là-dessus que porte la part. */
+  /**
+   * Ce que l'entreprise a dépensé ce mois-là pour tourner : hébergement, base
+   * de données, modèles d'analyse. Décision du propriétaire du 25 septembre
+   * 2026 : ces frais se retirent AVANT le partage, comme la commission de la
+   * boutique. Voir `depenses.ts`.
+   */
+  depensesXof: number;
+  /** Le détail, ligne par ligne : une retenue sans explication ne se comprend pas. */
+  depenses: LigneDepense[];
+  /** Ce qui reste une fois la boutique ET les frais payés. La part porte là-dessus. */
   netXof: number;
   /** Nombre d'abonnements encaissés dans le mois. */
   ventes: number;
@@ -109,6 +119,8 @@ export interface PartenaireEnrichi extends Partenaire {
    * multiplication et retomber sur son montant.
    */
   netMoisEnCoursXof: number;
+  /** Ce que l'entreprise a dépensé pour tourner, sur le mois en cours. */
+  depensesMoisEnCoursXof: number;
   /** Ce que la boutique a prélevé sur le mois en cours. */
   fraisMoisEnCoursXof: number;
   /** Ce qu'il touche pour le mois en cours, à ce jour. */
@@ -290,7 +302,8 @@ function libelleMois(mois: string): string {
 function construireMois(
   depuis: Date,
   recettes: Map<string, { xof: number; ventes: number; fraisXof?: number }>,
-  partPct: number
+  partPct: number,
+  depenses: Map<string, MoisDeDepenses>
 ): MoisPartenaire[] {
   const mois: MoisPartenaire[] = [];
   const maintenant = new Date();
@@ -303,12 +316,18 @@ function construireMois(
     const cle = `${curseur.getFullYear()}-${String(curseur.getMonth() + 1).padStart(2, '0')}`;
     const poste = recettes.get(cle) ?? { xof: 0, ventes: 0, fraisXof: 0 };
     const frais = poste.fraisXof ?? 0;
-    const net = Math.max(0, poste.xof - frais);
+    const sorties = depenses.get(cle);
+    const depensesXof = sorties?.totalXof ?? 0;
+    // Jamais en dessous de zéro : un mois qui coûte plus qu'il ne rapporte ne
+    // doit pas produire une part négative à réclamer au partenaire.
+    const net = Math.max(0, poste.xof - frais - depensesXof);
     mois.push({
       mois: cle,
       libelle: libelleMois(cle),
       recettesXof: poste.xof,
       fraisBoutiqueXof: frais,
+      depensesXof,
+      depenses: sorties?.lignes ?? [],
       netXof: net,
       ventes: poste.ventes,
       duXof: Math.round((net * partPct) / 100),
@@ -362,6 +381,8 @@ export async function getPartenaires(): Promise<PartenaireEnrichi[]> {
     .filter((d): d is Date => !!d && !isNaN(d.getTime()));
   const plusAncien = departs.length ? new Date(Math.min(...departs.map((d) => d.getTime()))) : new Date();
   const recettes = await recettesParMois(plusAncien);
+  // Les dépenses de fonctionnement, lues une fois pour tout le monde.
+  const depenses = await depensesParMois(plusAncien);
 
   const moisCourant = new Date().toISOString().slice(0, 7);
 
@@ -380,7 +401,7 @@ export async function getPartenaires(): Promise<PartenaireEnrichi[]> {
       }
     }
 
-    const mois = depart && !isNaN(depart.getTime()) ? construireMois(depart, siennes, partPct) : [];
+    const mois = depart && !isNaN(depart.getTime()) ? construireMois(depart, siennes, partPct, depenses) : [];
     const enCours = mois.find((m) => m.mois === moisCourant);
 
     return {
@@ -395,6 +416,7 @@ export async function getPartenaires(): Promise<PartenaireEnrichi[]> {
       recettesMoisEnCoursXof: enCours?.recettesXof ?? 0,
       netMoisEnCoursXof: enCours?.netXof ?? 0,
       fraisMoisEnCoursXof: enCours?.fraisBoutiqueXof ?? 0,
+      depensesMoisEnCoursXof: enCours?.depensesXof ?? 0,
       duMoisEnCoursXof: enCours?.duXof ?? 0,
       duCumuleXof: mois.reduce((t, m) => t + m.duXof, 0),
     };

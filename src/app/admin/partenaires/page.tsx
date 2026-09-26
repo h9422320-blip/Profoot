@@ -429,6 +429,15 @@ export default async function PartenairesPage() {
                         {fcfa(p.recettesMoisEnCoursXof)} &minus;{" "}
                         {fcfa(p.fraisMoisEnCoursXof)} de frais de boutique
                       </p>
+                      {/* Les frais de fonctionnement, retirés avant le partage
+                          depuis le 25 septembre 2026. Le détail est sur la
+                          fiche : ici, seul le total, pour garder la liste
+                          lisible. */}
+                      {p.depensesMoisEnCoursXof > 0 && (
+                        <p className="text-[12px] text-white/35 tabular-nums">
+                          &minus; {fcfa(p.depensesMoisEnCoursXof)} de frais de fonctionnement
+                        </p>
+                      )}
                       <p className="text-[12px] text-white/55 tabular-nums">
                         = {p.part_ca_pct} % de {fcfa(p.netMoisEnCoursXof)} nets
                       </p>

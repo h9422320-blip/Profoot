@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { libelleDepense } from "@/lib/depenses";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft, CalendarDays, Coins, Globe, Handshake, Mail, Percent, Wallet,
@@ -111,6 +112,7 @@ export default async function FichePartenaire({
                 consulte. */}
             <p className="text-[11px] text-white/30 mt-1 tabular-nums">
               {fcfa(p.recettesMoisEnCoursXof)} &minus; {fcfa(p.fraisMoisEnCoursXof)} de frais
+              {p.depensesMoisEnCoursXof > 0 && <> &minus; {fcfa(p.depensesMoisEnCoursXof)} de fonctionnement</>}
             </p>
             <p className="text-[11px] text-white/45 tabular-nums">
               = {p.part_ca_pct} % de {fcfa(p.netMoisEnCoursXof)} nets
@@ -205,6 +207,27 @@ export default async function FichePartenaire({
                   <p className="text-[11px] text-white/35 tabular-nums">
                     &minus; {fcfa(m.fraisBoutiqueXof)} de frais de boutique
                   </p>
+                  {/* ── LES FRAIS DE FONCTIONNEMENT, LIGNE PAR LIGNE ────────
+                      Décision du propriétaire du 25 septembre 2026 : ce que
+                      l'entreprise paie pour tourner — hébergement, base de
+                      données, modèles d'analyse — se retire avant le partage.
+                      Un « − 25 000 FCFA » sans explication se lit comme une
+                      retenue arbitraire ; c'est la page de la personne qu'on
+                      paie, elle doit pouvoir refaire l'addition. */}
+                  {m.depensesXof > 0 && (
+                    <>
+                      <p className="text-[11px] text-white/35 tabular-nums">
+                        &minus; {fcfa(m.depensesXof)} de frais de fonctionnement
+                      </p>
+                      <ul className="mt-1 mb-1 space-y-0.5 border-l border-white/10 pl-3">
+                        {m.depenses.map((d) => (
+                          <li key={d.cle} className="text-[10px] text-white/30 tabular-nums">
+                            {libelleDepense(d)} = {fcfa(d.montantXof)}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                   <p className="text-[11px] font-bold text-white/55 tabular-nums">
                     = {fcfa(m.netXof)} nets
                   </p>
