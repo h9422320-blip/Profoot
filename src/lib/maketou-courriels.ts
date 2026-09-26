@@ -30,8 +30,13 @@
 
 import type { Courriel } from './courriel';
 
-/** L'adresse qui reçoit les alertes de vente. */
-export const ALERTE_A = 'm09997818@gmail.com';
+/**
+ * L'adresse qui reçoit les alertes de vente.
+ *
+ * Celle de ProFoot, et d'elle seule, depuis le 26 septembre 2026 : voir la
+ * note dans `courriel.ts`.
+ */
+export const ALERTE_A = 'h9422320@gmail.com';
 
 const enDate = (iso: string | null | undefined): string | null =>
   iso

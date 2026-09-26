@@ -71,7 +71,7 @@ export async function GET() {
     variableAttendue: 'RESEND_API_KEY',
     presenteSurCeServeur: presente,
     expediteur: process.env.COURRIEL_EXPEDITEUR || 'ProFoot AI <noreply@profootai.com>',
-    repondreA: process.env.COURRIEL_REPONSE || 'm09997818@gmail.com',
+    repondreA: process.env.COURRIEL_REPONSE || 'h9422320@gmail.com',
     // Ces deux-là ont une valeur de repli : leur absence n'empêche rien.
     expediteurPersonnalise: !!process.env.COURRIEL_EXPEDITEUR,
     reponsePersonnalisee: !!process.env.COURRIEL_REPONSE,

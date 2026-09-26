@@ -54,7 +54,19 @@ const EXPEDITEUR_PAR_DEFAUT = 'ProFoot AI <noreply@profootai.com>';
  * L'expéditeur reste `noreply@`, parce que c'est le domaine vérifié ; c'est
  * l'en-tête de réponse qui ramène vers une vraie boîte.
  */
-const REPONSE_PAR_DEFAUT = 'm09997818@gmail.com';
+/*
+ * ── L'ADRESSE DE PROFOOT, ET D'ELLE SEULE — 26 SEPTEMBRE 2026 ────────────
+ *
+ * C'était `m09997818@gmail.com`, l'adresse personnelle du propriétaire, qui
+ * sert aussi à un SECOND projet sans aucun rapport (« SaaSWhatsApp AI »).
+ * Décision du propriétaire : chaque projet reste dans son coin, et ProFoot a
+ * la sienne — `h9422320@gmail.com`, celle du compte fondateur
+ * (`admins.ts`) et du compte GitHub du projet.
+ *
+ * Un client qui répond à une analyse écrit donc désormais à ProFoot, pas à une
+ * boîte partagée avec un autre commerce.
+ */
+const REPONSE_PAR_DEFAUT = 'h9422320@gmail.com';
 
 /**
  * Où partent les alertes destinées à l'administration.
