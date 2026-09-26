@@ -25,6 +25,28 @@
  * N'ajouter ici que des personnes à qui l'on confierait les clés de la caisse.
  */
 
+/**
+ * Le fondateur — celui qui décide des chiffres.
+ *
+ * ── POURQUOI CETTE DISTINCTION EXISTE, DEPUIS LE 26 SEPTEMBRE 2026 ────────
+ *
+ * L'administration est ouverte à deux personnes : le fondateur et le
+ * partenaire. Pour l'essentiel, ils voient la même chose — c'est voulu, la
+ * transparence est le principe du partenariat.
+ *
+ * Mais la comptabilité n'est pas symétrique : les dépenses se retirent du
+ * chiffre d'affaires AVANT le partage, donc chaque ligne ajoutée diminue la
+ * part du partenaire. Qui peut les écrire décide donc de ce que l'autre
+ * touche. Cette écriture appartient au seul fondateur ; le partenaire lit
+ * tout, et ne touche à rien.
+ */
+export const FONDATEUR = 'h9422320@gmail.com';
+
+/** Est-ce le fondateur ? Seul lui écrit la comptabilité. */
+export function estFondateur(email: string | null | undefined): boolean {
+  return String(email ?? '').trim().toLowerCase() === FONDATEUR;
+}
+
 /** Adresses autorisées, en minuscules. */
 export const ADMIN_EMAILS: readonly string[] = [
   'h9422320@gmail.com', // Fondateur

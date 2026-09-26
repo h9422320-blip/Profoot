@@ -25,6 +25,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { partagerLeMois } from '../src/lib/partage';
 import path from 'node:path';
 
 import {
@@ -105,11 +106,18 @@ test('★ ACQUIS — la part porte sur le NET, jamais sur le brut', () => {
   assert.equal(netApresFrais(journee), 896750);
   assert.equal(Math.round(netApresFrais(journee) * 0.35), 313863);
 
+  // Depuis le 26 septembre 2026, le calcul vit dans `partage.ts`, une seule
+  // fois : trois pages l'affichaient et chacune refaisait la soustraction.
+  // C'est la MÊME règle, vérifiée là où elle est désormais écrite.
+  const r = partagerLeMois({ recettesXof: 1055000, fraisBoutiqueXof: 158250, partPct: 35 });
+  assert.equal(r.beneficeXof, 896750);
+  assert.equal(r.duPartenaireXof, 313863);
+
   const source = lire('src/lib/partenaires.ts');
   assert.match(
     source,
-    /duXof: Math\.round\(\(net \* partPct\) \/ 100\)/,
-    'La part du partenaire ne se calcule plus sur le net.'
+    /duXof: p\.duPartenaireXof/,
+    'La fiche partenaire n’affiche plus le montant calculé par `partage.ts`.'
   );
 });
 

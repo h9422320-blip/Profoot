@@ -27,6 +27,7 @@
 
 import { createAdminClient } from './supabase-admin';
 import { depensesParMois, type LigneDepense, type MoisDeDepenses } from './depenses';
+import { partagerLeMois } from './partage';
 import { niveauOffert, PLANS, normalizePlan, type PlanKey } from './subscription';
 import { recettesParJour, parMois as grouperParMois, tauxMaketou } from './recettes-boutique';
 import { DERNIER_JOUR_CHARIOW, TAUX_CHARIOW } from './recettes-histoire';
@@ -317,20 +318,25 @@ function construireMois(
     const poste = recettes.get(cle) ?? { xof: 0, ventes: 0, fraisXof: 0 };
     const frais = poste.fraisXof ?? 0;
     const sorties = depenses.get(cle);
-    const depensesXof = sorties?.totalXof ?? 0;
-    // Jamais en dessous de zéro : un mois qui coûte plus qu'il ne rapporte ne
-    // doit pas produire une part négative à réclamer au partenaire.
-    const net = Math.max(0, poste.xof - frais - depensesXof);
+    // Le calcul du partage vit dans `partage.ts`, une seule fois : trois pages
+    // l'affichent, et elles refaisaient chacune la soustraction. Voir la note
+    // de ce fichier — 56 472 francs d'écart entre deux lignes d'une même page.
+    const p = partagerLeMois({
+      recettesXof: poste.xof,
+      fraisBoutiqueXof: frais,
+      depensesXof: sorties?.totalXof ?? 0,
+      partPct,
+    });
     mois.push({
       mois: cle,
       libelle: libelleMois(cle),
-      recettesXof: poste.xof,
-      fraisBoutiqueXof: frais,
-      depensesXof,
+      recettesXof: p.recettesXof,
+      fraisBoutiqueXof: p.fraisBoutiqueXof,
+      depensesXof: p.depensesXof,
       depenses: sorties?.lignes ?? [],
-      netXof: net,
+      netXof: p.beneficeXof,
       ventes: poste.ventes,
-      duXof: Math.round((net * partPct) / 100),
+      duXof: p.duPartenaireXof,
       clos: cle !== moisCourant,
     });
     curseur.setMonth(curseur.getMonth() + 1);

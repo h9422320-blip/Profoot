@@ -44,8 +44,15 @@ test('★ ACQUIS — le net retire la boutique ET les frais de fonctionnement', 
   const src = fs.readFileSync('src/lib/partenaires.ts', 'utf8');
   assert.match(
     src,
-    /const net = Math\.max\(0, poste\.xof - frais - depensesXof\);/,
+    /depensesXof: sorties\?\.totalXof \?\? 0,/,
     'Le partage ne retire plus les frais de fonctionnement : le propriétaire les paierait de nouveau seul.'
+  );
+  // Et la soustraction elle-même, là où elle vit depuis le 26 septembre 2026.
+  const partage = fs.readFileSync('src/lib/partage.ts', 'utf8');
+  assert.match(
+    partage,
+    /Math\.max\(0, recettesXof - fraisBoutiqueXof - depensesXof\)/,
+    'Le bénéfice ne retire plus les dépenses.'
   );
   assert.match(src, /depensesXof: number;/);
   assert.match(src, /depenses: LigneDepense\[\];/, 'Le détail doit voyager avec le total, sinon le partenaire ne peut pas vérifier.');

@@ -48,13 +48,61 @@ import { createAdminClient } from './supabase-admin';
  */
 export const TAUX_USD_XOF = 600;
 
+/**
+ * ── LE TAUX EST MODIFIABLE, SANS TOUCHER AU PASSÉ ────────────────────────
+ *
+ * Demande du propriétaire, le 26 septembre 2026 : lui seul peut changer le
+ * taux. Il est rangé dans la même table que les dépenses, sous le fournisseur
+ * `reglage`, et une nouvelle valeur ne réécrit RIEN : chaque dépense garde le
+ * taux qui lui a été appliqué le jour de son paiement. Changer le taux
+ * n'influence donc que les dépenses à venir — c'est la seule façon d'avoir une
+ * comptabilité qui ne bouge pas dans le dos du partenaire.
+ */
+const CLE_TAUX = 'reglage-taux-usd-xof';
+
+export async function lireTauxUsdXof(): Promise<number> {
+  try {
+    const { data } = await createAdminClient()
+      .from('webhook_events')
+      .select('payload, received_at')
+      .eq('provider', 'reglage')
+      .eq('event', 'taux-usd-xof')
+      .order('received_at', { ascending: false })
+      .limit(1);
+    const t = Number((data ?? [])[0]?.payload?.taux);
+    return Number.isFinite(t) && t > 0 ? t : TAUX_USD_XOF;
+  } catch {
+    return TAUX_USD_XOF;
+  }
+}
+
+/** Change le taux. Rend le taux réellement en place après l'opération. */
+export async function definirTauxUsdXof(taux: number, parQui: string): Promise<number> {
+  const t = Number(taux);
+  // Un taux absurde ferait entrer des sommes absurdes dans les comptes.
+  if (!Number.isFinite(t) || t < 100 || t > 2000) return lireTauxUsdXof();
+  try {
+    await createAdminClient().from('webhook_events').insert({
+      provider: 'reglage',
+      delivery_id: `${CLE_TAUX}-${Date.now()}`,
+      event: 'taux-usd-xof',
+      payload: { taux: Math.round(t), parQui, le: new Date().toISOString() },
+    });
+  } catch (e: any) {
+    console.error('[DÉPENSES] Taux non enregistré :', e?.message);
+  }
+  return lireTauxUsdXof();
+}
+
 /** Les fournisseurs connus, pour que l'affichage soit toujours nommé pareil. */
 export const FOURNISSEURS = {
   supabase: 'Supabase — base de données et comptes',
   vercel: 'Vercel — hébergement de l’application',
   openrouter: 'OpenRouter — modèles d’analyse',
   anthropic: 'Anthropic — Agent VIP',
+  apifootball: 'API-Football — données des matchs',
   meta: 'Meta — publicité',
+  maketou: 'MakeTou — frais de boutique',
   autre: 'Autre dépense',
 } as const;
 
@@ -137,6 +185,25 @@ export async function inscrireDepense(
   } catch (e: any) {
     console.error('[DÉPENSES] Inscription impossible :', e?.message);
     return 'refusee';
+  }
+}
+
+/**
+ * Retire une dépense — une facture notée par erreur, ou imputée au mauvais
+ * projet. Rien n'est effacé à l'aveugle : la clé est exigée entière.
+ */
+export async function retirerDepense(cle: string): Promise<boolean> {
+  const c = String(cle ?? '').trim();
+  if (!c.startsWith('depense-')) return false;
+  try {
+    const { error } = await createAdminClient()
+      .from('webhook_events')
+      .delete()
+      .eq('provider', 'depense')
+      .eq('delivery_id', c);
+    return !error;
+  } catch {
+    return false;
   }
 }
 
