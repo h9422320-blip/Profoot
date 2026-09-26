@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { libelleDepense, lireTauxUsdXof } from "@/lib/depenses";
-import { estFondateur } from "@/lib/admins";
-import { createClient as createServerClient } from "@/utils/supabase/server";
-import { ajouterDepense, supprimerDepense, reglerTauxDollar } from "../actions";
+import { libelleDepense } from "@/lib/depenses";
+import BlocDepenses from "../BlocDepenses";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft, CalendarDays, Coins, Globe, Handshake, Mail, Percent, Wallet,
@@ -35,20 +33,6 @@ export default async function FichePartenaire({
   const { id } = await params;
   const p = await getPartenaire(id);
   if (!p) notFound();
-
-  // ── QUI REGARDE CETTE PAGE ? ──────────────────────────────────────────
-  //
-  // Le partenaire est administrateur : il voit tout, c'est le principe du
-  // partenariat. Mais les dépenses se retirent avant le partage, donc écrire
-  // une ligne ici diminue SA part — cette écriture appartient au seul
-  // fondateur. La garde vit aussi dans les actions serveur, qui sont des
-  // adresses appelables directement (voir `actions.ts`).
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const fondateur = estFondateur(user?.email);
-  const taux = await lireTauxUsdXof();
 
   const moisCourant = new Date().toISOString().slice(0, 7);
 
@@ -271,130 +255,7 @@ export default async function FichePartenaire({
           chaque déduction — date, libellé, montant d'origine et conversion —
           et comprend « − 15 000 FCFA » sans qu'on lui explique. Lui LIT ;
           seul le fondateur écrit (voir `actions.ts`). */}
-      <Panneau
-        titre="Frais de fonctionnement"
-        sousTitre={`Retirés du chiffre d'affaires avant le partage · 1 $ = ${taux.toLocaleString("fr-FR")} FCFA`}
-      >
-        {!fondateur && (
-          <p className="text-[11px] text-white/40 mb-3">
-            Lecture seule : ces lignes sont inscrites par le fondateur, d'après les factures réelles.
-          </p>
-        )}
-
-        {fondateur && (
-          <form
-            action={ajouterDepense}
-            className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-6 rounded-[16px] border border-white/10 p-3"
-          >
-            <input
-              type="date"
-              name="jour"
-              defaultValue={new Date().toISOString().slice(0, 10)}
-              required
-              className="col-span-2 sm:col-span-1 rounded-[12px] border border-white/10 bg-[#0f1b23] px-3 py-2 text-[12px] text-white"
-            />
-            <select
-              name="fournisseur"
-              className="col-span-2 sm:col-span-1 rounded-[12px] border border-white/10 bg-[#0f1b23] px-3 py-2 text-[12px] text-white"
-            >
-              <option value="supabase">Supabase</option>
-              <option value="vercel">Vercel</option>
-              <option value="openrouter">OpenRouter</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="apifootball">API-Football</option>
-              <option value="meta">Meta (publicité)</option>
-              <option value="maketou">MakeTou</option>
-              <option value="autre">Autre</option>
-            </select>
-            <input
-              name="libelle"
-              placeholder="abonnement mensuel"
-              className="col-span-2 rounded-[12px] border border-white/10 bg-[#0f1b23] px-3 py-2 text-[12px] text-white placeholder:text-white/25"
-            />
-            <input
-              name="montant"
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder="25"
-              required
-              className="rounded-[12px] border border-white/10 bg-[#0f1b23] px-3 py-2 text-[12px] text-white placeholder:text-white/25"
-            />
-            <select
-              name="devise"
-              className="rounded-[12px] border border-white/10 bg-[#0f1b23] px-3 py-2 text-[12px] text-white"
-            >
-              <option value="USD">$</option>
-              <option value="XOF">FCFA</option>
-              <option value="EUR">€</option>
-            </select>
-            <button
-              type="submit"
-              className="col-span-2 sm:col-span-6 min-h-[44px] rounded-[12px] bg-[#8b5cf6] px-4 text-[12px] font-black text-white"
-            >
-              Inscrire la dépense
-            </button>
-          </form>
-        )}
-
-        {p.mois.filter((m) => m.depenses.length).length === 0 ? (
-          <p className="text-[12px] text-white/40">
-            Aucune dépense inscrite. Le suivi commence le 26 septembre 2026.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {p.mois
-              .filter((m) => m.depenses.length)
-              .map((m) => (
-                <div key={`dep-${m.mois}`} className="rounded-[16px] border border-[#2e4757] bg-[#1a2b36] p-3">
-                  <p className="text-[12px] font-black text-white capitalize mb-2">
-                    {m.libelle} · {fcfa(m.depensesXof)}
-                  </p>
-                  <ul className="space-y-1.5">
-                    {m.depenses.map((d) => (
-                      <li key={d.cle} className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-white/55 tabular-nums">
-                          {dateCourte(d.jour)} · {libelleDepense(d)} = {fcfa(d.montantXof)}
-                        </span>
-                        {fondateur && (
-                          <form action={supprimerDepense}>
-                            <input type="hidden" name="cle" value={d.cle} />
-                            <button
-                              type="submit"
-                              className="min-h-[32px] rounded-[10px] border border-white/10 px-2 text-[10px] font-bold text-white/40"
-                            >
-                              retirer
-                            </button>
-                          </form>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-          </div>
-        )}
-
-        {fondateur && (
-          <form action={reglerTauxDollar} className="mt-4 flex items-center gap-2">
-            <label className="text-[11px] text-white/40">Taux du dollar</label>
-            <input
-              name="taux"
-              type="number"
-              min="100"
-              max="2000"
-              defaultValue={taux}
-              className="w-24 rounded-[12px] border border-white/10 bg-[#0f1b23] px-3 py-2 text-[12px] text-white"
-            />
-            <button
-              type="submit"
-              className="min-h-[44px] rounded-[12px] border border-white/10 px-4 text-[12px] font-bold text-white/70"
-            >
-              Enregistrer
-            </button>
-          </form>
-        )}
-      </Panneau>
+      <BlocDepenses />
 
       {p.notes && (
         <Panneau titre="Notes" teinte="or">

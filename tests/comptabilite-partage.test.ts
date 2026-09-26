@@ -93,11 +93,14 @@ test('★ ACQUIS — le partenaire LIT, le fondateur seul ÉCRIT', () => {
   assert.match(actions, /async function verifierFondateur\(\)/);
   assert.match(actions, /return estFondateur\(user\?\.email\);/);
 
-  // Et la page ne montre les formulaires qu'au fondateur.
-  const page = fs.readFileSync('src/app/admin/partenaires/[id]/page.tsx', 'utf8');
-  assert.match(page, /const fondateur = estFondateur\(user\?\.email\);/);
-  assert.match(page, /\{fondateur && \(\s*<form\s+action=\{ajouterDepense\}/);
-  assert.match(page, /Lecture seule/, 'Le partenaire doit savoir pourquoi il ne peut rien modifier.');
+  // Et l'écran ne montre les formulaires qu'au fondateur. Depuis le 26
+  // septembre 2026, ce bloc est un composant partagé par la liste et la fiche :
+  // la lecture tranche qui regarde, la vue ne fait que dessiner.
+  const lecture = fs.readFileSync('src/app/admin/partenaires/BlocDepenses.tsx', 'utf8');
+  assert.match(lecture, /fondateur=\{estFondateur\(user\?\.email\)\}/);
+  const vue = fs.readFileSync('src/app/admin/partenaires/VueDepenses.tsx', 'utf8');
+  assert.match(vue, /\{fondateur && \(\s*<form\s+action=\{ajouterDepense\}/);
+  assert.match(vue, /Lecture seule/, 'Le partenaire doit savoir pourquoi il ne peut rien modifier.');
 });
 
 test('★ ACQUIS — le taux est modifiable, et le passé ne se réécrit pas', () => {

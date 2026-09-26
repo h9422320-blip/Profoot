@@ -64,3 +64,31 @@ test('★ ACQUIS — le partenaire voit le détail, pas seulement un total', () 
   assert.match(fiche, /m\.depenses\.map\(\(d\) => \(/, 'Les lignes de dépense ne sont plus affichées une par une.');
   assert.match(fiche, /libelleDepense\(d\)/);
 });
+
+/**
+ * ── L'ÉPREUVE NÉE D'UNE ERREUR ────────────────────────────────────────────
+ *
+ * Le 26 septembre 2026, le bloc des dépenses avait été écrit UNIQUEMENT sur la
+ * fiche d'un partenaire. Le propriétaire a ouvert « Partenaires », n'a rien vu,
+ * et a eu raison : c'est cette page-là qu'on ouvre en premier. Une
+ * fonctionnalité invisible là où on la cherche n'existe pas.
+ */
+test('★ ACQUIS — le bloc des dépenses est sur la page « Partenaires », pas seulement sur une fiche', () => {
+  const liste = fs.readFileSync('src/app/admin/partenaires/page.tsx', 'utf8');
+  assert.match(liste, /<BlocDepenses \/>/, 'La page qu’on ouvre en premier n’affiche plus les frais de fonctionnement.');
+  assert.match(liste, /import BlocDepenses from "\.\/BlocDepenses"/);
+
+  const fiche = fs.readFileSync('src/app/admin/partenaires/[id]/page.tsx', 'utf8');
+  assert.match(fiche, /<BlocDepenses \/>/, 'La fiche et la liste doivent montrer le même bloc.');
+
+  // Et le bloc s'affiche MÊME SANS UN SEUL CHIFFRE : « même si les chiffres ne
+  // sont pas là pour le moment, il faut qu'il y ait cette partie quand même ».
+  const bloc = fs.readFileSync('src/app/admin/partenaires/VueDepenses.tsx', 'utf8');
+  assert.match(bloc, /Aucune dépense inscrite pour l’instant/, 'L’état vide a disparu : le bloc redevient invisible quand il n’y a rien.');
+  assert.match(bloc, /titre="Frais de fonctionnement"/);
+  assert.match(bloc, /fondateur && \(/, 'Le formulaire d’écriture n’est plus réservé au fondateur.');
+
+  // La vue ne décide de rien : c'est la lecture qui tranche qui est le fondateur.
+  const lecture = fs.readFileSync('src/app/admin/partenaires/BlocDepenses.tsx', 'utf8');
+  assert.match(lecture, /fondateur=\{estFondateur\(user\?\.email\)\}/,'La garde du fondateur a sauté : le partenaire pourrait inscrire des dépenses.');
+});

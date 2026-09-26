@@ -15,6 +15,7 @@ import {
 } from "@/lib/recettes-boutique";
 import { DERNIER_JOUR_CHARIOW, TAUX_CHARIOW } from "@/lib/recettes-histoire";
 import Reconciliation from "./Reconciliation";
+import BlocDepenses from "./BlocDepenses";
 import PoulsBoutique from "./PoulsBoutique";
 import { Indicateur } from "../_components/Indicateur";
 import { Panneau } from "../_components/Panneaux";
@@ -191,6 +192,14 @@ export default async function PartenairesPage() {
           de la page à la caisse, dit sur quelle période, et explique l'écart
           normal avec la vue d'ensemble. */}
       <Reconciliation partenaire={partenaires[0]} />
+
+      {/* ── LES FRAIS DE FONCTIONNEMENT, ICI, TOUT EN HAUT ─────────────────
+          Ce bloc n'existait que sur la fiche d'un partenaire. Le
+          propriétaire a ouvert « Partenaires », n'a rien vu, et a eu raison :
+          c'est cette page-là qu'on ouvre. Il est donc posé avant la liste, et
+          il s'affiche même sans un seul chiffre — un bloc qui disparaît quand
+          il est vide ne se distingue pas d'un bloc qui n'a jamais été écrit. */}
+      <BlocDepenses />
 
       {partenaires.length === 0 ? (
         <Panneau titre="Aucun partenaire" sousTitre="La table est vide">
