@@ -77,30 +77,33 @@ test('★ ACQUIS — le partage se fait le dernier jour du mois, février compri
   assert.equal(moisClos('2026-08', new Date('2026-09-26T12:00:00Z')), true);
 });
 
-test('★ ACQUIS — le partenaire LIT, le fondateur seul ÉCRIT', () => {
+/**
+ * Décision du propriétaire, le 26 septembre 2026 : « je ne veux pas qu'il y ait
+ * "inscrire la dépense" ». Il dit à Claude ce qu'il a payé ; Claude l'inscrit
+ * par `scripts/depense.mts`. L'écran ne fait que lire — pour lui comme pour
+ * le partenaire. Il n'existe donc AUCUNE porte d'écriture depuis le navigateur,
+ * et la question « le partenaire peut-il réduire sa propre part ? » disparaît.
+ */
+test('★ ACQUIS — personne n’écrit les dépenses depuis l’écran : Claude les inscrit', () => {
   const actions = fs.readFileSync('src/app/admin/partenaires/actions.ts', 'utf8');
-  // Les trois écritures passent par la garde du fondateur, et non par la
-  // simple garde admin — le partenaire EST administrateur.
   for (const action of ['ajouterDepense', 'supprimerDepense', 'reglerTauxDollar']) {
-    const bloc = actions.slice(actions.indexOf(`export async function ${action}`));
-    const debut = bloc.slice(0, 220);
-    assert.match(
-      debut,
-      /if \(!\(await verifierFondateur\(\)\)\) return;/,
-      `${action} peut être appelée par le partenaire : il pourrait modifier sa propre part.`
+    assert.doesNotMatch(
+      actions,
+      new RegExp(`export async function ${action}\\b`),
+      `${action} est revenue : une action serveur reste une adresse appelable, même sans bouton.`
     );
   }
-  assert.match(actions, /async function verifierFondateur\(\)/);
-  assert.match(actions, /return estFondateur\(user\?\.email\);/);
+  assert.doesNotMatch(actions, /inscrireDepense|retirerDepense|definirTauxUsdXof/);
 
-  // Et l'écran ne montre les formulaires qu'au fondateur. Depuis le 26
-  // septembre 2026, ce bloc est un composant partagé par la liste et la fiche :
-  // la lecture tranche qui regarde, la vue ne fait que dessiner.
-  const lecture = fs.readFileSync('src/app/admin/partenaires/BlocDepenses.tsx', 'utf8');
-  assert.match(lecture, /fondateur=\{estFondateur\(user\?\.email\)\}/);
   const vue = fs.readFileSync('src/app/admin/partenaires/VueDepenses.tsx', 'utf8');
-  assert.match(vue, /\{fondateur && \(\s*<form\s+action=\{ajouterDepense\}/);
-  assert.match(vue, /Lecture seule/, 'Le partenaire doit savoir pourquoi il ne peut rien modifier.');
+  assert.doesNotMatch(vue, /<form|<input|<select|<button/, 'Un champ de saisie est revenu dans les frais de fonctionnement.');
+  assert.doesNotMatch(vue, /from "\.\/actions"/);
+  assert.doesNotMatch(vue, /Inscrire la dépense/);
+
+  // Le chemin d'écriture existe, et il relit ce qu'il écrit.
+  const script = fs.readFileSync('scripts/depense.mts', 'utf8');
+  assert.match(script, /await inscrireDepense\(d\)/);
+  assert.match(script, /Relecture : \$\{cle\} est ABSENTE de la base/, 'Le script annoncerait une inscription sans l’avoir relue.');
 });
 
 test('★ ACQUIS — le taux est modifiable, et le passé ne se réécrit pas', () => {

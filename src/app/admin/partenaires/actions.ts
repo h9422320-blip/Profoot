@@ -3,14 +3,7 @@
 import { refresh, revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient as createServerClient } from "@/utils/supabase/server";
-import { estAdmin, estFondateur } from "@/lib/admins";
-import {
-  inscrireDepense,
-  retirerDepense,
-  lireTauxUsdXof,
-  definirTauxUsdXof,
-  type Fournisseur,
-} from "@/lib/depenses";
+import { estAdmin } from "@/lib/admins";
 import { poulsMaketou } from "@/lib/recettes-boutique";
 
 
@@ -161,79 +154,11 @@ export async function verifierPoulsBoutique(signatureVue: string): Promise<strin
 }
 
 /**
- * ── LA COMPTABILITÉ DES DÉPENSES : LE FONDATEUR ÉCRIT, L'AUTRE LIT ────────
+ * ── LES DÉPENSES NE S'ÉCRIVENT PLUS DEPUIS CET ÉCRAN ──────────────────────
  *
- * Demande du propriétaire, le 26 septembre 2026. Les dépenses se retirent du
- * chiffre d'affaires AVANT le partage : chaque ligne ajoutée diminue donc la
- * part du partenaire. Qui écrit ici décide de ce que l'autre touche.
- *
- * Le contrôle `verifierAdmin` ne suffit pas : le partenaire EST administrateur
- * (c'est le principe de ce partenariat, il voit tout). La garde est donc
- * `estFondateur` — et elle vit dans l'action elle-même, jamais seulement dans
- * la page : une action serveur est une adresse appelable directement.
+ * Il y avait ici trois actions — inscrire, retirer, régler le taux. Le
+ * propriétaire les a refusées le 26 septembre 2026 : il ne veut rien saisir
+ * lui-même, il dit à Claude ce qu'il a payé et Claude l'inscrit par
+ * `scripts/depense.mts`. Une action serveur sans bouton reste une adresse
+ * appelable directement : on ne la garde pas « au cas où ».
  */
-async function verifierFondateur(): Promise<boolean> {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return estFondateur(user?.email);
-}
-
-/** Inscrit une dépense. Le montant est lu tel qu'il a été réglé, jamais estimé. */
-export async function ajouterDepense(formData: FormData) {
-  if (!(await verifierFondateur())) return;
-
-  const jour = String(formData.get("jour") ?? "").slice(0, 10);
-  const fournisseur = String(formData.get("fournisseur") ?? "autre") as Fournisseur;
-  const libelle = String(formData.get("libelle") ?? "").trim().slice(0, 120);
-  const montant = Number(formData.get("montant"));
-  const devise = String(formData.get("devise") ?? "USD") as "USD" | "EUR" | "XOF";
-
-  // Une date absente ou illisible imputerait la dépense au mauvais mois.
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(jour) || !Number.isFinite(montant) || montant <= 0) return;
-
-  await inscrireDepense({
-    jour,
-    fournisseur,
-    libelle: libelle || "dépense",
-    montant,
-    devise,
-    taux: await lireTauxUsdXof(),
-    recurrente: formData.get("recurrente") === "on",
-    source: "saisie administration",
-    reference: String(formData.get("reference") ?? "").trim() || null,
-  });
-
-  revalidatePath("/admin/partenaires");
-  revalidatePath("/admin/partenaires/[id]", "page");
-}
-
-/** Retire une dépense inscrite par erreur, ou imputée au mauvais projet. */
-export async function supprimerDepense(formData: FormData) {
-  if (!(await verifierFondateur())) return;
-
-  await retirerDepense(String(formData.get("cle") ?? ""));
-
-  revalidatePath("/admin/partenaires");
-  revalidatePath("/admin/partenaires/[id]", "page");
-}
-
-/**
- * Change le taux du dollar. Les dépenses déjà inscrites gardent le leur : une
- * comptabilité qui se réécrit quand le dollar bouge n'est pas une
- * comptabilité.
- */
-export async function reglerTauxDollar(formData: FormData) {
-  if (!(await verifierFondateur())) return;
-
-  const taux = Number(formData.get("taux"));
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  await definirTauxUsdXof(taux, String(user?.email ?? "fondateur"));
-
-  revalidatePath("/admin/partenaires");
-  revalidatePath("/admin/partenaires/[id]", "page");
-}

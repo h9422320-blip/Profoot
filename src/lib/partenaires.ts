@@ -460,7 +460,16 @@ export interface EconomiePartenaires {
    * nombres à la fois.
    */
   fraisBoutiqueMoisXof: number;
-  /** Ce qui reste une fois la boutique payée. La part porte là-dessus. */
+  /**
+   * Les frais de fonctionnement du mois (Claude, OpenRouter, Supabase…).
+   *
+   * Revue du 26 septembre 2026 : la part des partenaires les retirait déjà,
+   * mais ce bandeau non — il aurait affiché « 2 000 000 nets » et « 35 % du
+   * net » sous une part de 630 000, soit 35 % de 1 800 000. Une addition qui
+   * ne retombe pas juste sous les yeux du partenaire se soupçonne.
+   */
+  depensesMoisXof: number;
+  /** Ce qui reste une fois la boutique ET les frais de fonctionnement payés. La part porte là-dessus. */
   netMoisXof: number;
   /** Total reversé aux partenaires pour le mois en cours. */
   partPartenairesMoisXof: number;
@@ -493,7 +502,13 @@ export function calculerEconomie(partenaires: PartenaireEnrichi[]): EconomiePart
     0,
     ...partenaires.map((p) => p.mois.find((m) => m.mois === moisCourant)?.fraisBoutiqueXof ?? 0)
   );
-  const netMoisXof = Math.max(0, recettesMoisXof - fraisBoutiqueMoisXof);
+  // Les dépenses aussi : celles du projet, une seule fois, quel que soit le
+  // nombre de partenaires.
+  const depensesMoisXof = Math.max(
+    0,
+    ...partenaires.map((p) => p.mois.find((m) => m.mois === moisCourant)?.depensesXof ?? 0)
+  );
+  const netMoisXof = Math.max(0, recettesMoisXof - fraisBoutiqueMoisXof - depensesMoisXof);
 
   const partPartenairesMoisXof = partenaires.reduce((t, p) => t + p.duMoisEnCoursXof, 0);
   const partTotalePct = partenaires.reduce((t, p) => t + Number(p.part_ca_pct ?? 0), 0);
@@ -501,9 +516,12 @@ export function calculerEconomie(partenaires: PartenaireEnrichi[]): EconomiePart
   return {
     recettesMoisXof,
     fraisBoutiqueMoisXof,
+    depensesMoisXof,
     netMoisXof,
     partPartenairesMoisXof,
-    // Ce qui reste part du NET, jamais du brut : la boutique a déjà été payée.
+    // Ce qui reste part du NET, jamais du brut : la boutique et les frais de
+    // fonctionnement ont déjà été payés. C'est alors exactement le
+    // `restantFondateurXof` de partage.ts.
     resteAuProjetMoisXof: Math.max(0, netMoisXof - partPartenairesMoisXof),
     duCumuleXof: partenaires.reduce((t, p) => t + p.duCumuleXof, 0),
     partTotalePct,

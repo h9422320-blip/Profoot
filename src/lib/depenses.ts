@@ -49,6 +49,13 @@ import { createAdminClient } from './supabase-admin';
 export const TAUX_USD_XOF = 600;
 
 /**
+ * Le premier jour compté. Décision du propriétaire : le suivi des dépenses
+ * commence le 26 septembre 2026 — rien d'antérieur ne vient réduire un
+ * partage déjà annoncé.
+ */
+export const DEBUT_DU_SUIVI = '2026-09-26';
+
+/**
  * ── LE TAUX EST MODIFIABLE, SANS TOUCHER AU PASSÉ ────────────────────────
  *
  * Demande du propriétaire, le 26 septembre 2026 : lui seul peut changer le
@@ -94,17 +101,33 @@ export async function definirTauxUsdXof(taux: number, parQui: string): Promise<n
   return lireTauxUsdXof();
 }
 
-/** Les fournisseurs connus, pour que l'affichage soit toujours nommé pareil. */
+/**
+ * Les outils payés, dans L'ORDRE où le propriétaire veut les lire.
+ *
+ * Demande du 26 septembre 2026 : « tu commences par Claude, ensuite
+ * OpenRouter, Supabase, Vercel ». L'ordre de cet objet EST l'ordre d'affichage.
+ *
+ * MakeTou n'y figure PLUS : sa commission est déjà retirée automatiquement,
+ * vente par vente, sous le nom « frais de boutique ». L'inscrire aussi ici la
+ * retirerait deux fois — et c'est le partenaire qui paierait l'erreur.
+ */
 export const FOURNISSEURS = {
+  anthropic: 'Claude — Claude Code et Agent VIP',
+  openrouter: 'OpenRouter — modèles d’analyse',
   supabase: 'Supabase — base de données et comptes',
   vercel: 'Vercel — hébergement de l’application',
-  openrouter: 'OpenRouter — modèles d’analyse',
-  anthropic: 'Anthropic — Agent VIP',
   apifootball: 'API-Football — données des matchs',
+  resend: 'Resend — envoi des courriels',
   meta: 'Meta — publicité',
-  maketou: 'MakeTou — frais de boutique',
   autre: 'Autre dépense',
 } as const;
+
+/**
+ * Les lignes toujours affichées, même à zéro : les outils que l'application
+ * paie chaque mois. Les autres (courriels, publicité, divers) n'apparaissent
+ * que le mois où un paiement existe.
+ */
+export const OUTILS_TOUJOURS_AFFICHES = ['anthropic', 'openrouter', 'supabase', 'vercel', 'apifootball'] as const;
 
 export type Fournisseur = keyof typeof FOURNISSEURS;
 
@@ -151,9 +174,25 @@ export function enFrancs(montant: number, devise: Depense['devise'], taux = TAUX
  * facture notée deux fois — pas deux dépenses. Deux montants différents, en
  * revanche, sont deux dépenses (des crédits rechargés deux fois, par exemple).
  */
-export function cleDeDepense(d: Pick<Depense, 'jour' | 'fournisseur' | 'montant' | 'devise'>): string {
+export function cleDeDepense(
+  d: Pick<Depense, 'jour' | 'fournisseur' | 'montant' | 'devise'> & { reference?: string | null }
+): string {
   const mois = String(d.jour ?? '').slice(0, 7);
-  return `depense-${d.fournisseur}-${mois}-${d.devise}-${Math.round(Number(d.montant) * 100)}`;
+  // ── UN SECOND PAIEMENT RÉEL DU MÊME MONTANT ──────────────────────────────
+  //
+  // Revue du 26 septembre 2026 : deux recharges de 10 $ chez OpenRouter dans
+  // le même mois donnaient la même clé, et la seconde était refusée comme un
+  // doublon — 6 000 francs de dépense réelle manquaient au partage. Quand une
+  // référence existe (numéro de facture, ou date du paiement), elle entre dans
+  // la clé : deux factures distinctes ont deux clés, la même facture relue
+  // deux fois garde la sienne. Sans référence, la clé est celle d'avant.
+  const ref = String(d.reference ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
+  return `depense-${d.fournisseur}-${mois}-${d.devise}-${Math.round(Number(d.montant) * 100)}${ref ? `-${ref}` : ''}`;
 }
 
 /**
@@ -163,6 +202,14 @@ export function cleDeDepense(d: Pick<Depense, 'jour' | 'fournisseur' | 'montant'
 export async function inscrireDepense(
   d: Omit<Depense, 'montantXof' | 'taux'> & { taux?: number }
 ): Promise<'inscrite' | 'deja-connue' | 'refusee'> {
+  // Un jour illisible imputerait la dépense au mauvais mois ; un fournisseur
+  // inconnu (« maketou », par exemple, déjà retiré comme frais de boutique)
+  // retirerait deux fois la même somme ; une date antérieure au début du suivi
+  // modifierait un partage que personne n'a jamais vu bouger.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d.jour))) return 'refusee';
+  if (!Object.prototype.hasOwnProperty.call(FOURNISSEURS, d.fournisseur)) return 'refusee';
+  if (String(d.jour) < DEBUT_DU_SUIVI) return 'refusee';
+
   const taux = Number(d.taux) > 0 ? Number(d.taux) : TAUX_USD_XOF;
   const montantXof = enFrancs(d.montant, d.devise, taux);
   if (!montantXof) return 'refusee';
@@ -270,4 +317,103 @@ export function libelleDepense(d: Pick<Depense, 'fournisseur' | 'libelle' | 'mon
       ? `${Math.round(Number(d.montant)).toLocaleString('fr-FR')} FCFA`
       : `${Number(d.montant).toLocaleString('fr-FR')} ${d.devise === 'USD' ? '$' : '€'}`;
   return `${nom.split(' — ')[0]} — ${d.libelle} (${somme})`;
+}
+
+/**
+ * ── LE TABLEAU DU MOIS, TEL QU'IL S'AFFICHE ───────────────────────────────
+ *
+ * Demande du propriétaire, le 26 septembre 2026 : pas de formulaire, une liste
+ * ordonnée — un outil par ligne, du haut vers le bas, Claude d'abord, puis
+ * OpenRouter, Supabase, Vercel — avec en face ce qui a été payé. C'est Claude
+ * qui inscrit les paiements (voir `scripts/depense.mts`) ; la page ne fait que
+ * lire.
+ *
+ * Fonction pure, pour être vérifiable par une épreuve. Une règle la tient :
+ * le total du tableau est EXACTEMENT la somme de toutes les lignes du mois —
+ * celle que le partage retire. Une ligne d'un fournisseur inconnu n'est donc
+ * jamais perdue : elle tombe dans « Autre dépense ». Un tableau dont le total
+ * ne coïncide pas avec la déduction serait pire que pas de tableau.
+ */
+export interface RangeeOutil {
+  fournisseur: Fournisseur;
+  /** « Claude », « Supabase »… */
+  nom: string;
+  /** Ce que l'outil fait pour l'application : « hébergement de l'application ». */
+  role: string;
+  /** Les paiements du mois, du plus récent au plus ancien. */
+  paiements: LigneDepense[];
+  /** Ce qui a été payé, dans la devise d'origine : « 25 $ », « 25 $ + 5 000 FCFA », ou « — ». */
+  paye: string;
+  /** La somme en francs, celle qui sort du chiffre d'affaires. */
+  montantXof: number;
+}
+
+export interface TableauDuMois {
+  mois: string;
+  rangees: RangeeOutil[];
+  paye: string;
+  totalXof: number;
+}
+
+const DEVISES: Depense['devise'][] = ['USD', 'EUR', 'XOF'];
+
+/** « 25 $ + 5 000 FCFA » : ce qui a été réellement payé, sans conversion. */
+export function sommeParDevise(lignes: Pick<Depense, 'montant' | 'devise'>[]): string {
+  const par: Record<string, number> = { USD: 0, EUR: 0, XOF: 0 };
+  for (const l of lignes) {
+    const m = Number(l.montant);
+    if (DEVISES.includes(l.devise) && Number.isFinite(m) && m > 0) par[l.devise] += m;
+  }
+  const morceaux: string[] = [];
+  // Arrondi au centime : 0,1 + 0,2 ne doit jamais s'afficher 0,30000000000000004.
+  const cent = (n: number) => Math.round(n * 100) / 100;
+  const fr = (n: number) => cent(n).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+  if (par.USD > 0) morceaux.push(`${fr(par.USD)} $`);
+  if (par.EUR > 0) morceaux.push(`${fr(par.EUR)} €`);
+  if (par.XOF > 0) morceaux.push(`${Math.round(par.XOF).toLocaleString('fr-FR')} FCFA`);
+  return morceaux.length ? morceaux.join(' + ') : '—';
+}
+
+export function tableauDuMois(mois: string, lignes: LigneDepense[]): TableauDuMois {
+  const duMois = lignes.filter((l) => String(l.jour).slice(0, 7) === mois);
+
+  // Chaque ligne va dans la rangée de son fournisseur ; un fournisseur inconnu
+  // va dans « Autre dépense », jamais nulle part.
+  const cleDe = (l: LigneDepense): Fournisseur =>
+    (Object.prototype.hasOwnProperty.call(FOURNISSEURS, l.fournisseur) ? l.fournisseur : 'autre') as Fournisseur;
+
+  const parOutil = new Map<Fournisseur, LigneDepense[]>();
+  for (const l of duMois) {
+    const c = cleDe(l);
+    parOutil.set(c, [...(parOutil.get(c) ?? []), l]);
+  }
+
+  // L'ordre : les outils de tous les mois d'abord, dans l'ordre demandé ; puis
+  // les autres, dans l'ordre de FOURNISSEURS, seulement s'ils ont un paiement.
+  const ordre: Fournisseur[] = [
+    ...OUTILS_TOUJOURS_AFFICHES,
+    ...(Object.keys(FOURNISSEURS) as Fournisseur[]).filter(
+      (c) => !(OUTILS_TOUJOURS_AFFICHES as readonly string[]).includes(c) && parOutil.has(c)
+    ),
+  ];
+
+  const rangees = ordre.map((fournisseur): RangeeOutil => {
+    const paiements = [...(parOutil.get(fournisseur) ?? [])].sort((a, b) => String(b.jour).localeCompare(String(a.jour)));
+    const [nom, role = ''] = FOURNISSEURS[fournisseur].split(' — ');
+    return {
+      fournisseur,
+      nom,
+      role,
+      paiements,
+      paye: sommeParDevise(paiements),
+      montantXof: paiements.reduce((s, p) => s + (Number(p.montantXof) || 0), 0),
+    };
+  });
+
+  return {
+    mois,
+    rangees,
+    paye: sommeParDevise(duMois),
+    totalXof: duMois.reduce((s, p) => s + (Number(p.montantXof) || 0), 0),
+  };
 }

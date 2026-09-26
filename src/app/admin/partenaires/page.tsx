@@ -273,6 +273,14 @@ export default async function PartenairesPage() {
                     l'ont obligé à justifier un écart devant l'influenceur
                     qu'il rémunère — et ce doute-là coûte plus cher que la
                     vérifiabilité du calcul. */}
+                {/* Les frais de fonctionnement, entre la boutique et le net :
+                    sans cette ligne, « 35 % du net » ne retomberait pas sur la
+                    part affichée dès la première dépense inscrite. */}
+                {eco.depensesMoisXof > 0 && (
+                  <p className="text-[11px] text-white/30 mt-0.5 tabular-nums">
+                    −{fcfa(eco.depensesMoisXof)} de frais de fonctionnement
+                  </p>
+                )}
                 <p className="text-[11px] text-white/30 mt-0.5 leading-relaxed">
                   {fcfa(eco.netMoisXof)} nets
                 </p>
@@ -503,6 +511,14 @@ export default async function PartenairesPage() {
                           <p className="text-[12px] text-white/35 tabular-nums">
                             &minus; {fcfa(m.fraisBoutiqueXof)} de frais de boutique
                           </p>
+                          {/* Le net retire aussi les frais de fonctionnement :
+                              sans cette ligne, la soustraction affichée ne
+                              retomberait pas sur le net. */}
+                          {m.depensesXof > 0 && (
+                            <p className="text-[12px] text-white/35 tabular-nums">
+                              &minus; {fcfa(m.depensesXof)} de frais de fonctionnement
+                            </p>
+                          )}
                           <p className="text-[12px] font-bold text-white/60 tabular-nums">
                             = {fcfa(m.netXof)} nets, dont {partenaires[0].part_ca_pct} %
                           </p>

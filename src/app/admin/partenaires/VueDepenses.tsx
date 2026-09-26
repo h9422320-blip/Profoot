@@ -1,32 +1,48 @@
 /**
  * LES FRAIS DE FONCTIONNEMENT — LE DESSIN SEUL.
  *
+ * ── CE QUE LE PROPRIÉTAIRE A DEMANDÉ, LE 26 SEPTEMBRE 2026 ────────────────
+ *
+ * Pas de formulaire : « je ne veux pas qu'il y ait "inscrire la dépense" ».
+ * C'est Claude qui inscrit chaque paiement, sur sa parole, par
+ * `scripts/depense.mts`. La page ne fait que LIRE — pour lui comme pour le
+ * partenaire, qui voient exactement la même chose.
+ *
+ * Et une liste bien ordonnée : un outil par ligne, du haut vers le bas, Claude
+ * d'abord, puis OpenRouter, Supabase, Vercel — avec en face ce qui a été payé,
+ * en dollars et en francs. Les outils payés chaque mois restent affichés même
+ * à zéro : une ligne qui disparaît ne se distingue pas d'un outil oublié.
+ *
  * ── POURQUOI LE DESSIN EST SÉPARÉ DE LA LECTURE ───────────────────────────
  *
- * `BlocDepenses` lit la session et la base ; ce fichier-ci ne fait que
- * dessiner ce qu'on lui donne. La séparation n'est pas de l'élégance : elle
- * permet de REGARDER l'écran du fondateur au navigateur, avec des chiffres
- * d'exemple, sans jamais emprunter son compte ni ouvrir une porte dérobée dans
- * le contrôle d'accès. Le propriétaire demande une vérification vue, pas une
- * lecture de code — et cette vérification ne doit pas coûter une faille.
- *
- * Aucune décision d'autorisation ici : `fondateur` ARRIVE déjà tranché, et la
- * garde qui compte vit dans les actions serveur (voir `actions.ts`), parce
- * qu'une action est une adresse appelable directement.
+ * `BlocDepenses` lit la base ; ce fichier ne fait que dessiner ce qu'on lui
+ * donne. Cela permet de REGARDER l'écran au navigateur avec des chiffres
+ * d'exemple, sans emprunter le compte de personne.
  */
-import { FOURNISSEURS, libelleDepense, type LigneDepense, type MoisDeDepenses } from "@/lib/depenses";
+import type { LigneDepense, TableauDuMois } from "@/lib/depenses";
 import { Panneau } from "../_components/Panneaux";
-import { ajouterDepense, supprimerDepense, reglerTauxDollar } from "./actions";
 
 const fcfa = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} FCFA`;
 
-/** Le jour en court — « 26/09 » — parce que l'année est déjà dans le titre du mois. */
+/**
+ * « 25 $ × 600 = 15 000 FCFA » : chaque paiement porte SON taux, celui du jour
+ * où il a été payé. Revue du 26 septembre 2026 : sans lui, un mois inscrit à
+ * 600 puis relu sous un taux passé à 650 aurait semblé faux de 5 000 francs à
+ * qui refait la multiplication. L'euro est arrimé : 655,957, toujours.
+ */
+const conversion = (p: LigneDepense) => {
+  if (p.devise === "XOF") return fcfa(p.montantXof);
+  if (p.devise === "EUR") return `${Number(p.montant).toLocaleString("fr-FR")} € × 655,957 = ${fcfa(p.montantXof)}`;
+  return `${Number(p.montant).toLocaleString("fr-FR")} $ × ${Number(p.taux).toLocaleString("fr-FR")} = ${fcfa(p.montantXof)}`;
+};
+
+/** « 26/09 » : l'année est déjà dans le titre du mois. */
 const jourCourt = (iso: string) => {
   const [, m, j] = String(iso).split("-");
   return j && m ? `${j}/${m}` : String(iso);
 };
 
-/** Le mois en clair : « septembre 2026 », pas « 2026-09 ». */
+/** « septembre 2026 », pas « 2026-09 ». */
 const moisEnClair = (mois: string) => {
   const [an, m] = String(mois).split("-").map(Number);
   if (!an || !m) return String(mois);
@@ -37,143 +53,97 @@ const moisEnClair = (mois: string) => {
   });
 };
 
-const champ =
-  "min-h-[44px] rounded-[12px] border border-white/10 bg-[#0f1b23] px-3 text-[12px] text-white placeholder:text-white/25";
-
-export default function VueDepenses({
-  fondateur,
-  taux,
-  mois,
-}: {
-  /** Le fondateur écrit ; le partenaire lit. Tranché en amont. */
-  fondateur: boolean;
-  /** Francs CFA pour un dollar, tel qu'il s'appliquera aux prochaines dépenses. */
-  taux: number;
-  /** Les mois, du plus récent au plus ancien. */
-  mois: MoisDeDepenses[];
-}) {
-  const total = mois.reduce((s, m) => s + (Number(m.totalXof) || 0), 0);
-
+function Tableau({ t }: { t: TableauDuMois }) {
   return (
-    <Panneau
-      titre="Frais de fonctionnement"
-      sousTitre={`Retirés du chiffre d'affaires avant le partage · 1 $ = ${taux.toLocaleString("fr-FR")} FCFA`}
-      teinte="violet"
-    >
-      <p className="text-[11px] text-white/40 mb-3 leading-relaxed">
-        {fondateur
-          ? "Hébergement, base de données, modèles d’analyse, données des matchs, publicité : ce que l’application coûte pour tourner. Chaque ligne inscrite ici sort du chiffre d’affaires avant le calcul de la part du partenaire."
-          : "Lecture seule. Ces lignes sont inscrites par le fondateur d’après les factures réelles, et retirées du chiffre d’affaires avant le calcul de votre part."}
-      </p>
+    <div className="rounded-[16px] border border-[#2e4757] bg-[#1a2b36] overflow-hidden">
+      <p className="px-4 pt-3 pb-2 text-[12px] font-black text-white capitalize">{moisEnClair(t.mois)}</p>
 
-      {fondateur && (
-        <form
-          action={ajouterDepense}
-          className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-6 rounded-[16px] border border-white/10 p-3"
-        >
-          <input
-            type="date"
-            name="jour"
-            defaultValue={new Date().toISOString().slice(0, 10)}
-            required
-            aria-label="Jour du paiement"
-            className={`col-span-2 sm:col-span-1 ${champ}`}
-          />
-          <select name="fournisseur" aria-label="Fournisseur" className={`col-span-2 sm:col-span-1 ${champ}`}>
-            {Object.entries(FOURNISSEURS).map(([cle, nom]) => (
-              <option key={cle} value={cle}>
-                {nom.split(" — ")[0]}
-              </option>
-            ))}
-          </select>
-          <input name="libelle" placeholder="abonnement mensuel" aria-label="Libellé" className={`col-span-2 ${champ}`} />
-          <input
-            name="montant"
-            type="number"
-            step="0.01"
-            min="0.01"
-            placeholder="25"
-            required
-            aria-label="Montant"
-            className={champ}
-          />
-          <select name="devise" aria-label="Devise" className={champ}>
-            <option value="USD">$</option>
-            <option value="XOF">FCFA</option>
-            <option value="EUR">€</option>
-          </select>
-          <button
-            type="submit"
-            className="col-span-2 sm:col-span-6 min-h-[44px] rounded-[12px] bg-[#8b5cf6] px-4 text-[12px] font-black text-white"
-          >
-            Inscrire la dépense
-          </button>
-        </form>
-      )}
+      {/* En-tête des colonnes : l'outil, ce qui a été payé, et ce que cela
+          retire du chiffre d'affaires. */}
+      <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-4 pb-2 text-[10px] font-bold uppercase tracking-wider text-white/35">
+        <span>Outil</span>
+        <span className="text-right">Payé</span>
+        <span className="text-right min-w-[92px]">En francs</span>
+      </div>
 
-      {mois.length === 0 ? (
-        /* ── L'ÉTAT VIDE S'AFFICHE, IL NE DISPARAÎT PAS ──────────────────
-           « Même si les chiffres ne sont pas là pour le moment, il faut qu'il y
-           ait cette partie quand même. » Un bloc masqué quand il est vide ne se
-           distingue pas d'un bloc qui n'a jamais été écrit. */
-        <div className="rounded-[16px] border border-dashed border-white/15 p-4">
-          <p className="text-[12px] text-white/45 leading-relaxed">
-            Aucune dépense inscrite pour l’instant. Le suivi commence le 26 septembre 2026 : chaque
-            facture payée apparaîtra ici avec sa date, son montant d’origine et sa conversion en
-            francs, et sera retirée du chiffre d’affaires du mois avant le partage.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {mois.map((m) => (
-            <div key={m.mois} className="rounded-[16px] border border-[#2e4757] bg-[#1a2b36] p-3">
-              <div className="flex items-baseline justify-between gap-2 mb-2">
-                <p className="text-[12px] font-black text-white capitalize">{moisEnClair(m.mois)}</p>
-                <p className="text-[12px] font-black text-[#c4b5fd] tabular-nums">
-                  &minus; {fcfa(m.totalXof)}
-                </p>
-              </div>
-              <ul className="space-y-1.5">
-                {m.lignes.map((d: LigneDepense) => (
-                  <li key={d.cle} className="flex items-start justify-between gap-2">
-                    <span className="text-[11px] text-white/55 leading-relaxed">
-                      <span className="tabular-nums">{jourCourt(d.jour)}</span> · {libelleDepense(d)}{" "}
-                      <span className="tabular-nums text-white/70">= {fcfa(d.montantXof)}</span>
-                    </span>
-                    {fondateur && (
-                      <form action={supprimerDepense}>
-                        <input type="hidden" name="cle" value={d.cle} />
-                        <button
-                          type="submit"
-                          className="min-h-[32px] shrink-0 rounded-[10px] border border-white/10 px-2 text-[10px] font-bold text-white/40"
-                        >
-                          retirer
-                        </button>
-                      </form>
-                    )}
+      <ul>
+        {t.rangees.map((r) => (
+          <li key={r.fournisseur} className="border-t border-white/[0.06] px-4 py-2.5">
+            <div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-3">
+              {/* Sans min-w-0, volontairement : la colonne du nom garde au
+                  moins la largeur du nom, et c'est « Payé » qui passe à la
+                  ligne quand il est long, au lieu d'écrire par-dessus. */}
+              <span>
+                <span className="block whitespace-nowrap text-[13px] font-bold text-white">{r.nom}</span>
+                {r.role && <span className="block text-[10px] text-white/35 leading-tight">{r.role}</span>}
+              </span>
+              <span className={`text-right text-[12px] tabular-nums ${r.paiements.length ? "text-white/70" : "text-white/25"}`}>
+                {r.paye}
+              </span>
+              <span
+                className={`text-right text-[12px] font-bold tabular-nums min-w-[92px] ${
+                  r.paiements.length ? "text-[#c4b5fd]" : "text-white/25"
+                }`}
+              >
+                {r.paiements.length ? fcfa(r.montantXof) : "—"}
+              </span>
+            </div>
+            {/* Le détail de chaque paiement, pour que l'addition se refasse. */}
+            {r.paiements.length > 0 && (
+              <ul className="mt-1 space-y-0.5">
+                {r.paiements.map((p) => (
+                  <li key={p.cle} className="text-[10px] text-white/40 tabular-nums">
+                    {jourCourt(p.jour)} · {p.libelle} · {conversion(p)}
                   </li>
                 ))}
               </ul>
-            </div>
-          ))}
-          <p className="text-[11px] font-bold text-white/55 tabular-nums">Total inscrit : {fcfa(total)}</p>
-        </div>
-      )}
+            )}
+          </li>
+        ))}
+      </ul>
 
-      {fondateur && (
-        <form action={reglerTauxDollar} className="mt-4 flex flex-wrap items-center gap-2">
-          <label htmlFor="taux" className="text-[11px] text-white/40">
-            Taux du dollar (les dépenses déjà inscrites gardent le leur)
-          </label>
-          <input id="taux" name="taux" type="number" min="100" max="2000" defaultValue={taux} className={`w-24 ${champ}`} />
-          <button
-            type="submit"
-            className="min-h-[44px] rounded-[12px] border border-white/10 px-4 text-[12px] font-bold text-white/70"
-          >
-            Enregistrer
-          </button>
-        </form>
-      )}
+      <div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-3 border-t border-[#8b5cf6]/30 bg-[#8b5cf6]/[0.08] px-4 py-3">
+        <span className="text-[12px] font-black text-white">Total du mois</span>
+        <span className="text-right text-[12px] font-bold text-white/70 tabular-nums">{t.paye}</span>
+        <span className="text-right text-[13px] font-black text-[#c4b5fd] tabular-nums min-w-[92px]">
+          {t.totalXof > 0 ? `− ${fcfa(t.totalXof)}` : "0 FCFA"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export default function VueDepenses({
+  taux,
+  tableaux,
+}: {
+  /** Francs CFA pour un dollar, tel qu'il s'appliquera aux prochains paiements. */
+  taux: number;
+  /** Le mois en cours d'abord, puis les mois précédents qui ont des dépenses. */
+  tableaux: TableauDuMois[];
+}) {
+  return (
+    <Panneau
+      titre="Frais de fonctionnement"
+      sousTitre={`Retirés du chiffre d'affaires avant le partage · 1 $ = ${taux.toLocaleString("fr-FR")} FCFA pour les prochains paiements`}
+      teinte="violet"
+    >
+      <p className="text-[11px] text-white/40 mb-3 leading-relaxed">
+        Ce que l’application paie pour tourner, outil par outil. Chaque paiement est inscrit d’après la facture
+        réelle, puis retiré du chiffre d’affaires du mois avant le calcul de la part du partenaire. Suivi depuis le
+        26 septembre 2026.
+      </p>
+
+      <div className="space-y-3">
+        {tableaux.map((t) => (
+          <Tableau key={t.mois} t={t} />
+        ))}
+      </div>
+
+      <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
+        La commission de MakeTou n’apparaît pas ici : elle est déjà retirée automatiquement, vente par vente, sous
+        « frais de boutique ».
+      </p>
     </Panneau>
   );
 }
