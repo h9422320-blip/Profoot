@@ -149,8 +149,12 @@ export default function PartageDuMois({
             <p className="text-[26px] sm:text-[32px] leading-none font-black text-[#a78bfa] tabular-nums mt-2 tracking-tight">
               −{fcfa(eco.partPartenairesMoisXof)}
             </p>
-            <p className="text-[11px] text-white/30 mt-0.5">
-              {eco.partTotalePct} % du net
+            {/* « 35 % du net » ne disait pas de quel net. Le propriétaire a
+                inscrit 15 000 FCFA de frais et a cru qu'ils n'étaient pas
+                retirés de cette part — ils l'étaient, mais rien ne le montrait.
+                Le montant sur lequel porte le pourcentage est donc écrit. */}
+            <p className="text-[11px] text-white/30 mt-0.5 tabular-nums">
+              {eco.partTotalePct} % de {fcfa(eco.netMoisXof)} nets
             </p>
           </div>
           <div className="xl:border-l xl:border-[#10b981]/25 xl:pl-5">
@@ -160,8 +164,44 @@ export default function PartageDuMois({
             <p className="text-[26px] sm:text-[32px] leading-none font-black text-[#10b981] tabular-nums mt-2 tracking-tight">
               {fcfa(eco.resteAuProjetMoisXof)}
             </p>
+            {/* Ce qui reste ne se déduit pas d'un second pourcentage mais d'une
+                SOUSTRACTION (voir `partage.ts`) : l'écrire évite qu'on cherche
+                les 65 % et qu'on tombe à un franc près à côté. */}
+            <p className="text-[11px] text-white/30 mt-0.5 tabular-nums">
+              {fcfa(eco.netMoisXof)} &minus; {fcfa(eco.partPartenairesMoisXof)}
+            </p>
           </div>
         </div>
+
+        {/* ── QUI PAIE LES FRAIS, ET COMBIEN ────────────────────────────
+            Demande du propriétaire, le 27 septembre 2026 : « dès que
+            l'influenceur rentre là-bas, il voit ça automatiquement, il
+            comprend ». Les frais sont retirés AVANT le partage, donc supportés
+            par les deux — mais un partenaire qui lit « −15 000 » en haut et
+            « 35 % » plus loin ne fait pas le lien tout seul, et se demande si
+            la retenue ne tombe que sur lui.
+
+            Les deux montants viennent du même calcul que les parts, par
+            différence : ils totalisent exactement les frais, au franc près. */}
+        {eco.fraisBoutiqueMoisXof + eco.depensesMoisXof > 0 && (
+          <p className="text-[11.5px] text-white/45 mt-5 leading-relaxed">
+            Les{" "}
+            <strong className="font-black text-white/70 tabular-nums">
+              {fcfa(eco.fraisBoutiqueMoisXof + eco.depensesMoisXof)}
+            </strong>{" "}
+            de frais du mois ({fcfa(eco.fraisBoutiqueMoisXof)} de boutique et{" "}
+            {fcfa(eco.depensesMoisXof)} de fonctionnement) sont retirés avant le partage : ils
+            sont donc supportés par les deux, chacun à hauteur de sa part —{" "}
+            <span className="text-[#a78bfa] font-bold tabular-nums">
+              {fcfa(eco.fraisPortesParPartenairesXof)}
+            </span>{" "}
+            pour {eco.nombrePartenaires > 1 ? "les partenaires" : "le partenaire"} et{" "}
+            <span className="text-[#10b981] font-bold tabular-nums">
+              {fcfa(eco.fraisPortesParLeProjetXof)}
+            </span>{" "}
+            pour le projet.
+          </p>
+        )}
 
         {/* L'heure de lecture est ici pour être confrontée au tableau de
             bord Chariow. Le 22 août 2026, cette page annonçait 325 000 FCFA

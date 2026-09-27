@@ -475,6 +475,25 @@ export interface EconomiePartenaires {
   partPartenairesMoisXof: number;
   /** Ce qui reste au projet ce mois-ci, une fois la boutique ET les partenaires payés. */
   resteAuProjetMoisXof: number;
+  /**
+   * Ce que les frais du mois coûtent au partenaire, et ce qu'ils coûtent au
+   * projet.
+   *
+   * ── POURQUOI CES DEUX NOMBRES EXISTENT ──────────────────────────────────
+   *
+   * Le 27 septembre 2026, le propriétaire a inscrit 15 000 FCFA de frais et a
+   * conclu qu'ils n'étaient retirés que du chiffre d'affaires, pas des deux
+   * parts. Ils l'étaient — la part du partenaire passait de 536 821 à
+   * 531 571 — mais aucune ligne ne le disait, et un calcul qu'on ne peut pas
+   * suivre se soupçonne.
+   *
+   * Ils sont obtenus par DIFFÉRENCE entre le partage sans frais et le partage
+   * réel, jamais en appliquant le pourcentage aux frais : les deux arrondis ne
+   * tomberaient pas sur le même franc, et les deux nombres ne totaliseraient
+   * plus les frais.
+   */
+  fraisPortesParPartenairesXof: number;
+  fraisPortesParLeProjetXof: number;
   /** Somme due depuis le début des partenariats. */
   duCumuleXof: number;
   /** Part cumulée du chiffre d'affaires reversée, en pourcentage. */
@@ -513,6 +532,21 @@ export function calculerEconomie(partenaires: PartenaireEnrichi[]): EconomiePart
   const partPartenairesMoisXof = partenaires.reduce((t, p) => t + p.duMoisEnCoursXof, 0);
   const partTotalePct = partenaires.reduce((t, p) => t + Number(p.part_ca_pct ?? 0), 0);
 
+  // Ce que les frais coûtent à chacun. Le partage sans frais est refait par
+  // `partagerLeMois`, le seul endroit où cette règle vit : un second calcul
+  // écrit ici finirait par diverger du premier.
+  const partSansFraisXof = partenaires.reduce(
+    (t, p) =>
+      t +
+      partagerLeMois({
+        recettesXof: p.mois.find((m) => m.mois === moisCourant)?.recettesXof ?? 0,
+        partPct: Number(p.part_ca_pct ?? 0),
+      }).duPartenaireXof,
+    0
+  );
+  const fraisMoisXof = fraisBoutiqueMoisXof + depensesMoisXof;
+  const fraisPortesParPartenairesXof = Math.max(0, Math.min(fraisMoisXof, partSansFraisXof - partPartenairesMoisXof));
+
   return {
     recettesMoisXof,
     fraisBoutiqueMoisXof,
@@ -523,6 +557,9 @@ export function calculerEconomie(partenaires: PartenaireEnrichi[]): EconomiePart
     // fonctionnement ont déjà été payés. C'est alors exactement le
     // `restantFondateurXof` de partage.ts.
     resteAuProjetMoisXof: Math.max(0, netMoisXof - partPartenairesMoisXof),
+    fraisPortesParPartenairesXof,
+    // Par soustraction : les deux nombres totalisent EXACTEMENT les frais.
+    fraisPortesParLeProjetXof: fraisMoisXof - fraisPortesParPartenairesXof,
     duCumuleXof: partenaires.reduce((t, p) => t + p.duCumuleXof, 0),
     partTotalePct,
     verseXof: partenaires.reduce(

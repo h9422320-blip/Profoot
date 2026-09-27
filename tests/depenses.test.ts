@@ -312,7 +312,13 @@ test('★ ACQUIS — les frais de fonctionnement ont leur colonne dans le partag
   // finiraient par diverger, et c'est le partenaire qui le verrait.
   assert.match(bandeau, /−\{fcfa\(eco\.depensesMoisXof\)\}/);
   assert.match(bandeau, /\{fcfa\(eco\.netMoisXof\)\} nets/);
-  assert.doesNotMatch(bandeau, /eco\.depensesMoisXof > 0 &&/, 'La colonne doit rester visible même à zéro.');
+  // La COLONNE reste visible même à zéro (la phrase d'explication, elle, peut
+  // se taire quand le mois n'a rien coûté : il n'y a alors rien à expliquer).
+  assert.doesNotMatch(
+    bandeau,
+    /\{eco\.depensesMoisXof > 0 && \(/,
+    'La colonne des frais de fonctionnement disparaît quand le mois n’a rien coûté.'
+  );
 });
 
 test('★ ACQUIS — le partage se lit sur le net, dépenses retirées', () => {
@@ -328,4 +334,53 @@ test('★ ACQUIS — le partage se lit sur le net, dépenses retirées', () => {
   assert.equal(r.duPartenaireXof, 531_571);
   assert.equal(r.restantFondateurXof, 987_204);
   assert.equal(r.duPartenaireXof + r.restantFondateurXof, r.beneficeXof, 'Les deux parts doivent totaliser le net.');
+});
+
+/**
+ * ── LE PARTENAIRE DOIT VOIR QU'IL PORTE SA PART DES FRAIS ─────────────────
+ *
+ * Le 27 septembre 2026, le propriétaire a lu « −15 000 » en haut du bandeau,
+ * « 35 % » plus loin, et a conclu que les frais n'étaient retirés que du
+ * chiffre d'affaires — pas des deux parts. Ils l'étaient : la part passait de
+ * 536 821 à 531 571. Mais aucune ligne ne le disait, et un calcul qu'on ne
+ * peut pas suivre se soupçonne.
+ */
+test('★ ACQUIS — ce que les frais coûtent à chacun totalise exactement les frais', () => {
+  const partenaires: any[] = [
+    { part_ca_pct: 35, duMoisEnCoursXof: 531_571, duCumuleXof: 0, paid: false,
+      mois: [{ mois: new Date().toISOString().slice(0, 7), recettesXof: 1_614_500, fraisBoutiqueXof: 80_725, depensesXof: 15_000 }] },
+  ];
+  const eco = calculerEconomie(partenaires);
+
+  // Les deux nombres sont obtenus par différence, jamais par un pourcentage
+  // appliqué aux frais : ils doivent retomber au franc près sur le total.
+  assert.equal(
+    eco.fraisPortesParPartenairesXof + eco.fraisPortesParLeProjetXof,
+    eco.fraisBoutiqueMoisXof + eco.depensesMoisXof,
+    'Les deux montants ne totalisent plus les frais du mois.'
+  );
+  // 35 % de 1 614 500 = 565 075 sans frais ; 531 571 avec. L'écart est ce que
+  // le partenaire porte.
+  assert.equal(eco.fraisPortesParPartenairesXof, 33_504);
+  assert.equal(eco.fraisPortesParLeProjetXof, 62_221);
+
+  // Un mois sans le moindre frais ne fait porter la charge à personne.
+  const sansFrais = calculerEconomie([
+    { ...partenaires[0], duMoisEnCoursXof: 565_075,
+      mois: [{ mois: new Date().toISOString().slice(0, 7), recettesXof: 1_614_500, fraisBoutiqueXof: 0, depensesXof: 0 }] },
+  ] as any);
+  assert.equal(sansFrais.fraisPortesParPartenairesXof, 0);
+  assert.equal(sansFrais.fraisPortesParLeProjetXof, 0);
+});
+
+test('★ ACQUIS — le bandeau dit sur quoi porte le pourcentage, et qui paie les frais', () => {
+  const bandeau = fs.readFileSync('src/app/admin/partenaires/PartageDuMois.tsx', 'utf8');
+  // « 35 % du net » ne disait pas de quel net.
+  assert.match(bandeau, /\{eco\.partTotalePct\} % de \{fcfa\(eco\.netMoisXof\)\} nets/);
+  // Le reste se lit comme une soustraction, pas comme un second pourcentage.
+  assert.match(bandeau, /\{fcfa\(eco\.netMoisXof\)\} &minus; \{fcfa\(eco\.partPartenairesMoisXof\)\}/);
+  // Et la phrase qui nomme qui porte quoi.
+  assert.match(bandeau, /fraisPortesParPartenairesXof/);
+  assert.match(bandeau, /fraisPortesParLeProjetXof/);
+  assert.match(bandeau, /supportés par les deux/);
 });
