@@ -77,9 +77,30 @@ test('★ ACQUIS — le prochain adversaire d’une sélection se trouve par la 
   assert.match(s, /nextTeamId: catalogueDeSelection\(opponent\.id\) \|\|/);
 });
 
-test('★ ACQUIS — le carrousel montre les affiches de Ligue des nations entre nations de la Coupe du monde', () => {
+test('★ ACQUIS — le carrousel montre les affiches de Ligue des nations du catalogue', () => {
+  // ── CE QUI A CHANGÉ LE 27 SEPTEMBRE 2026 ────────────────────────────────
+  //
+  // Le filtre se limitait aux 52 nations de la Coupe du monde. Un jour où il
+  // ne se jouait presque que de la Ligue des nations, trois affiches sur huit
+  // étaient proposées : Allemagne — Grèce, Autriche — Kosovo, Israël —
+  // Irlande, Lituanie — Azerbaïdjan et Gibraltar — Andorre manquaient.
+  //
+  // Ce que ce test protège n'a pas changé : une carte ne se construit QUE sur
+  // des nations du catalogue, sans quoi le serveur la refuserait au clic.
   const s = fs.readFileSync('src/lib/grands-matchs-du-jour.ts', 'utf8');
-  assert.match(s, /\n  5,\n\];/, 'La Ligue des nations a quitté les grandes compétitions du carrousel.');
-  assert.match(s, /return club\?\.league === 'wc' \? club : null;/, 'Le filtre des nations de la Coupe du monde a sauté.');
+  // `\r?` : le fichier est en CRLF dans la copie de travail sous Windows, et
+  // en LF une fois validé. Une épreuve qui dépend de la fin de ligne échoue
+  // sur un poste et passe sur l'autre.
+  assert.match(s, /\r?\n  5,\r?\n\];/, 'La Ligue des nations a quitté les grandes compétitions du carrousel.');
+  assert.match(
+    s,
+    /const c = catalogueDeSelection\(t\?\.id\);/,
+    'Les nations ne sont plus retrouvées par le catalogue : une carte pourrait échouer au clic.'
+  );
+  assert.match(
+    s,
+    /club\?\.league === 'wc' \|\| club\?\.league === 'selections' \? club : null/,
+    'Le carrousel est retombé aux seules nations du Mondial.'
+  );
   assert.match(s, /ligueDesNations: 30/);
 });

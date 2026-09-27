@@ -86,9 +86,13 @@ export const GRANDS_CHAMPIONNATS: number[] = [
   36,
   // ── LA LIGUE DES NATIONS UEFA, DEPUIS LE 22 SEPTEMBRE 2026 ─────────────
   //
-  // Seulement les affiches entre deux nations de la Coupe du monde (voir
-  // `enCartes`) : Angleterre–Espagne, Pays-Bas–Allemagne, Turquie–France.
-  // Andorre–Malte reste analysable depuis le sélecteur.
+  // Toutes les affiches entre deux sélections du catalogue (voir `enCartes`).
+  //
+  // Elle s'est d'abord limitée aux nations de la Coupe du monde, ce qui
+  // écartait Allemagne–Grèce, Autriche–Kosovo et Israël–Irlande : le
+  // 27 septembre 2026, trois affiches proposées sur huit, un jour où il ne se
+  // jouait presque que ça. Les 68 sélections ajoutées au catalogue sont
+  // analysables ; il n'y a aucune raison de les cacher.
   5,
 ];
 
@@ -244,10 +248,26 @@ async function enCartes(brutes: any[]): Promise<MatchDuJour[]> {
     }
 
     if (ligue === 5) {
+      // ── TOUTE SÉLECTION DU CATALOGUE, PAS SEULEMENT CELLES DU MONDIAL ───
+      //
+      // Cette ligne n'acceptait que `league === 'wc'`, les 52 nations du
+      // Mondial. Les 68 sélections ajoutées au catalogue le 22 septembre 2026
+      // portent `league === 'selections'` : toute rencontre où l'une d'elles
+      // apparaît était écartée du carrousel, en silence.
+      //
+      // Relevé le 27 septembre 2026, en pleine journée de Ligue des nations :
+      // sur huit affiches, trois seulement étaient proposées. Allemagne —
+      // Grèce, Autriche — Kosovo, Israël — Irlande, Lituanie — Azerbaïdjan et
+      // Gibraltar — Andorre manquaient — alors que l'application les préparait
+      // le matin même et que des abonnés les analysaient à la main.
+      //
+      // Les deux familles sont analysables : c'est précisément pour cela que
+      // les 68 ont été mises au catalogue. Ce qui compte, c'est que la nation
+      // y figure — une nation absente serait refusée au clic.
       const nation = (t: any) => {
         const c = catalogueDeSelection(t?.id);
         const club: any = c ? (clubs as any)[c] : null;
-        return club?.league === 'wc' ? club : null;
+        return club?.league === 'wc' || club?.league === 'selections' ? club : null;
       };
       const d = nation(f?.teams?.home);
       const e = nation(f?.teams?.away);

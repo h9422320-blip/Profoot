@@ -111,3 +111,41 @@ test('★ ACQUIS — sans prédiction de référence, la fiche du match dit qui 
   // la reconstruction suivante défait la correction.
   assert.match(src, /const ordreDeLaCarteExistante = \(existante as any\)\?\.team1_name/);
 });
+
+/**
+ * ── LE CARROUSEL DOIT MONTRER LA JOURNÉE, PAS UN TIERS ────────────────────
+ *
+ * Le 27 septembre 2026, jour de Ligue des nations, le propriétaire a ouvert
+ * l'écran d'analyse : trois affiches proposées sur huit. Manquaient Allemagne —
+ * Grèce, Autriche — Kosovo, Israël — Irlande, Lituanie — Azerbaïdjan et
+ * Gibraltar — Andorre.
+ *
+ * La cause : le carrousel n'acceptait que les 52 sélections de la Coupe du
+ * monde (`league === 'wc'`). Les 68 ajoutées au catalogue le 22 septembre
+ * portent `league === 'selections'` — elles sont analysables, mais toute
+ * affiche où l'une d'elles apparaissait était écartée en silence.
+ */
+test('★ ACQUIS — le carrousel accepte toutes les sélections du catalogue', () => {
+  const src = fs.readFileSync('src/lib/grands-matchs-du-jour.ts', 'utf8');
+  assert.match(
+    src,
+    /club\?\.league === 'wc' \|\| club\?\.league === 'selections' \? club : null/,
+    'La Ligue des nations retombe aux seules nations du Mondial : cinq affiches sur huit disparaissent.'
+  );
+});
+
+test('★ ACQUIS — les sélections écartées du carrousel existent bel et bien au catalogue', async () => {
+  const { clubs } = await import('../src/lib/data');
+  const { numeroDeSelection } = await import('../src/lib/selections-du-catalogue');
+
+  // Les cinq affiches manquantes du 27 septembre 2026, par leurs nations.
+  for (const id of [
+    'greece_nat', 'kosovo_nat', 'israel_nat', 'ireland_nat',
+    'lithuania_nat', 'azerbaijan_nat', 'gibraltar_nat', 'andorra_nat',
+  ]) {
+    const club = (clubs as any)[id];
+    assert.ok(club, `La sélection « ${id} » a disparu du catalogue.`);
+    assert.equal(club.league, 'selections');
+    assert.ok(numeroDeSelection(id), `« ${id} » n’a pas de numéro chez le fournisseur : elle serait refusée au clic.`);
+  }
+});
