@@ -179,9 +179,14 @@ test('★ ACQUIS — le partage affiché tombe juste', () => {
     'Le reste au projet repart du brut : la commission de la boutique disparaît.'
   );
 
+  // Le bandeau du partage est un composant à part depuis le 27 septembre 2026 :
+  // il se regarde alors au navigateur avec les vrais montants, sans ouvrir la
+  // session de personne. Les colonnes, elles, n'ont pas bougé.
+  const bandeau = lire('src/app/admin/partenaires/PartageDuMois.tsx');
+  assert.match(bandeau, /Frais de boutique/, 'La commission n’a plus sa colonne à l’écran.');
+  assert.match(bandeau, /eco\.fraisBoutiqueMoisXof/);
   const page = lire('src/app/admin/partenaires/page.tsx');
-  assert.match(page, /Frais de boutique/, 'La commission n’a plus sa colonne à l’écran.');
-  assert.match(page, /eco\.fraisBoutiqueMoisXof/);
+  assert.match(page, /<PartageDuMois/, 'Le bandeau n’est plus posé sur la page.');
 });
 
 test('★ ACQUIS — le détail jour par jour reste affiché', () => {

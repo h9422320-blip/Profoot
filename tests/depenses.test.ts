@@ -21,6 +21,7 @@ import {
   type LigneDepense,
 } from '../src/lib/depenses';
 import { calculerEconomie } from '../src/lib/partenaires';
+import { partagerLeMois } from '../src/lib/partage';
 
 test('★ ACQUIS — la conversion en francs est exacte et sans décimale', () => {
   assert.equal(enFrancs(25, 'USD', 600), 15_000);
@@ -270,8 +271,61 @@ test('★ ACQUIS — le bandeau « Partage du mois » retire les frais de foncti
   const deux = calculerEconomie([p, { ...p, duMoisEnCoursXof: 0, part_ca_pct: 0 }]);
   assert.equal(deux.depensesMoisXof, 200_000);
 
-  // Et la page l'écrit, là où le partenaire refait la soustraction.
+  // Et l'écran l'écrit, là où le partenaire refait la soustraction. Depuis le
+  // 27 septembre 2026 le bandeau est un composant à part, pour qu'il puisse
+  // être regardé au navigateur sans ouvrir la session de personne.
+  const bandeau = fs.readFileSync('src/app/admin/partenaires/PartageDuMois.tsx', 'utf8');
+  assert.match(bandeau, /−\{fcfa\(eco\.depensesMoisXof\)\}/);
   const page = fs.readFileSync('src/app/admin/partenaires/page.tsx', 'utf8');
-  assert.match(page, /−\{fcfa\(eco\.depensesMoisXof\)\} de frais de fonctionnement/);
   assert.match(page, /&minus; \{fcfa\(m\.depensesXof\)\} de frais de fonctionnement/, 'L’historique mois par mois ne montre pas les dépenses.');
+});
+
+/**
+ * ── LA DÉDUCTION DOIT SE VOIR, PAS SEULEMENT SE FAIRE ─────────────────────
+ *
+ * Le 27 septembre 2026, le propriétaire a inscrit 25 $ de Supabase puis a
+ * demandé « que les 25 dollars soient déduits du chiffre d'affaires comme les
+ * frais de boutique ». Ils l'étaient déjà — mais écrits en petit sous la
+ * colonne de la boutique, donc invisibles. Une déduction qu'on ne voit pas est
+ * une déduction qu'on refait à la main en fin de mois.
+ */
+test('★ ACQUIS — les frais de fonctionnement ont leur colonne dans le partage du mois', () => {
+  const bandeau = fs.readFileSync('src/app/admin/partenaires/PartageDuMois.tsx', 'utf8');
+
+  // Les cinq colonnes, dans l'ordre de la soustraction.
+  const ordre = [
+    'Recettes encaissées',
+    'Frais de boutique',
+    'Frais de fonctionnement',
+    'Part des partenaires',
+    'Reste au projet',
+  ];
+  let curseur = -1;
+  for (const titre of ordre) {
+    const i = bandeau.indexOf(titre);
+    assert.ok(i > curseur, `« ${titre} » a disparu du bandeau, ou n’est plus à sa place dans la soustraction.`);
+    curseur = i;
+  }
+  assert.match(bandeau, /xl:grid-cols-5/, 'La grille ne porte plus cinq colonnes : une déduction serait écrasée.');
+
+  // Le montant est celui du calcul, jamais recalculé ici : deux calculs
+  // finiraient par diverger, et c'est le partenaire qui le verrait.
+  assert.match(bandeau, /−\{fcfa\(eco\.depensesMoisXof\)\}/);
+  assert.match(bandeau, /\{fcfa\(eco\.netMoisXof\)\} nets/);
+  assert.doesNotMatch(bandeau, /eco\.depensesMoisXof > 0 &&/, 'La colonne doit rester visible même à zéro.');
+});
+
+test('★ ACQUIS — le partage se lit sur le net, dépenses retirées', () => {
+  // L'enchaînement complet, tel qu'il s'affiche : 1 614 500 − 80 725 − 15 000
+  // = 1 518 775 nets, dont 35 % font 531 571, et il reste 987 204 au projet.
+  const r = partagerLeMois({
+    recettesXof: 1_614_500,
+    fraisBoutiqueXof: 80_725,
+    depensesXof: 15_000,
+    partPct: 35,
+  });
+  assert.equal(r.beneficeXof, 1_518_775);
+  assert.equal(r.duPartenaireXof, 531_571);
+  assert.equal(r.restantFondateurXof, 987_204);
+  assert.equal(r.duPartenaireXof + r.restantFondateurXof, r.beneficeXof, 'Les deux parts doivent totaliser le net.');
 });
