@@ -31,6 +31,7 @@ import { rangDeCompetition } from './precalcul-selection';
 import { createAdminClient } from './supabase-admin';
 import { lireReglages } from './app-settings';
 import { lirePredictionBrute } from './prediction-figee';
+import { identifiantEquipe } from './precision-reelle';
 
 /**
  * La compétition réelle d'une rencontre, lue sur sa fiche.
@@ -126,17 +127,23 @@ export const produiteParUneVersionDefectueuse = (creeeLe: string | null | undefi
  */
 async function ficheDuMatch(
   fixtureId: number | null
-): Promise<{ competition: string | null; date: string | null }> {
-  if (!fixtureId) return { competition: null, date: null };
+): Promise<{ competition: string | null; date: string | null; idDomicile: string | null }> {
+  if (!fixtureId) return { competition: null, date: null, idDomicile: null };
   try {
     const data = await apiFootball<any>(`/fixtures?id=${fixtureId}`, CACHE_TTL.STANDINGS);
     const f = data?.response?.[0];
     return {
       competition: nommerCompetition(f?.league?.name, f?.league?.country),
       date: f?.fixture?.date ?? null,
+      // L'équipe qui REÇOIT, par son numéro chez le fournisseur : c'est elle
+      // qui décide du sens de la carte quand aucune prédiction de référence
+      // n'existe (voir « LA CARTE MONTRE LE MATCH DANS LE SENS OÙ IL S'EST
+      // JOUÉ »). Un nom ne suffirait pas : le mur affiche « Angleterre » là où
+      // le fournisseur écrit « England ».
+      idDomicile: f?.teams?.home?.id ? String(f.teams.home.id) : null,
     };
   } catch {
-    return { competition: null, date: null };
+    return { competition: null, date: null, idDomicile: null };
   }
 }
 
@@ -407,6 +414,57 @@ export async function construirePreuves(): Promise<{
     // sert plus que de repli pour les matchs antérieurs à ce mécanisme.
     const figee = await lirePredictionBrute(l.fixture_id);
 
+    // La preuve existante peut avoir été dépubliée à la main : on ne réécrit
+    // jamais « publiee » sur une ligne déjà connue.
+    const { data: existante } = await sb
+      .from('preuves')
+      // Toutes les colonnes : la liste varie selon que le script SQL a été
+      // exécuté ou non, et une liste dynamique empêche le typage de suivre.
+      .select('*')
+      .eq('fixture_id', l.fixture_id ?? -1)
+      .maybeSingle();
+
+    // ── ON NE REDEMANDE PAS CE QU'ON SAIT DÉJÀ ────────────────────────────
+    //
+    // La compétition et la date d'une rencontre TERMINÉE ne changent plus.
+    // Les redemander à chaque reconstruction coûtait un appel par match :
+    // le 16 août 2026, quelques reconstructions successives ont porté le quota
+    // du fournisseur à 7 055 sur 7 500 — au-delà, plus aucune analyse ne
+    // fonctionne pour personne jusqu'au lendemain.
+    //
+    // La fiche n'est donc interrogée que si l'information manque.
+    // ── SAUF QUAND CE QU'ON SAIT EST TROMPEUR ─────────────────────────────
+    //
+    // Les cartes enregistrées avant le 31 août 2026 portent le nom brut du
+    // fournisseur : « Serie A » pour Flamengo — Botafogo, « Bundesliga » pour
+    // Rapid Vienne — Sturm Graz. Sans ce rattrapage, elles garderaient cette
+    // étiquette pour toujours, puisqu'on ne redemande jamais une fiche connue.
+    //
+    // On redemande donc la fiche des seules cartes concernées : un nom ambigu,
+    // et aucun pays entre parenthèses. Trois appels au fournisseur une fois,
+    // puis plus jamais — la carte réécrite porte désormais son pays.
+    const etiquette = String((existante as any)?.competition ?? '');
+    const aBesoinDuPays =
+      !!etiquette && !etiquette.includes('(') && !!PAYS_ATTENDU[etiquette.toLowerCase()];
+
+    const dejaConnue =
+      !!(existante as any)?.competition &&
+      !aBesoinDuPays &&
+      /^\d{4}-\d{2}-\d{2}T/.test(String((existante as any)?.date_match ?? ''));
+
+    const fiche: { competition: string | null; date: string | null; idDomicile: string | null } =
+      dejaConnue
+        ? {
+            competition: (existante as any).competition as string,
+            date: (existante as any).date_match as string,
+            // La fiche n'est pas relue pour une rencontre déjà connue : le
+            // sens de la carte est alors celui qu'elle porte déjà (voir
+            // « ET SI RIEN NE TRANCHE » plus bas).
+            idDomicile: null,
+          }
+        : await ficheDuMatch(l.fixture_id);
+
+
     // ── LA CARTE MONTRE LE MATCH DANS LE SENS OÙ IL S'EST JOUÉ ────────────
     //
     // La carte reprenait l'ordre de la première analyse enregistrée, qui est
@@ -421,9 +479,52 @@ export async function construirePreuves(): Promise<{
     //
     // Le sens officiel est déjà connu, sans un appel de plus au fournisseur :
     // la prédiction de référence est stockée avec l'équipe qui REÇOIT en
-    // premier. Quand elle manque — matchs antérieurs à ce mécanisme — on garde
-    // l'ordre enregistré plutôt que d'inventer.
-    const aRetourner = !!figee && !memeEquipe(l.team1_name, figee.domicileNom);
+    // premier.
+    //
+    // ── ET QUAND ELLE MANQUE, LA FICHE DU MATCH TRANCHE ───────────────────
+    //
+    // « On garde l'ordre enregistré plutôt que d'inventer » laissait passer
+    // les cartes des rencontres analysées avant ce mécanisme. Relevé le
+    // 27 septembre 2026 sur le mur en ligne : « Granada CF — CD Leganés » pour
+    // un match joué À LEGANÉS, et « West Brom — Wolverhampton » pour un match
+    // joué à Wolverhampton. Le verdict était juste dans les deux cas, mais le
+    // terrain était inversé — précisément le défaut décrit plus haut.
+    //
+    // La fiche du match, déjà lue ici pour la compétition et la date, nomme
+    // l'équipe qui reçoit. On la compare par NUMÉRO, jamais par nom : le mur
+    // affiche « Angleterre » là où le fournisseur écrit « England ».
+    //
+    // Rien n'est retourné au hasard : sans fiche (fournisseur muet) ou sans
+    // numéro lisible, l'ordre enregistré est conservé.
+    // `identifiantEquipe` et non une expression écrite ici : elle sait lire
+    // les DRAPEAUX des sélections autant que les logos des clubs, et deux
+    // lectures différentes du même logo finiraient par diverger.
+    const idEquipe1 = identifiantEquipe(l.team1_logo);
+    const idEquipe2 = identifiantEquipe(l.team2_logo);
+    const ficheUtilisable =
+      !!fiche.idDomicile &&
+      !!idEquipe1 &&
+      !!idEquipe2 &&
+      // Les deux équipes doivent être celles de la rencontre : sinon la fiche
+      // ne parle pas de ce match, et on ne retourne rien sur cette base.
+      (idEquipe1 === fiche.idDomicile || idEquipe2 === fiche.idDomicile);
+
+    // ── ET SI RIEN NE TRANCHE, ON NE TOUCHE PAS À LA CARTE ────────────────
+    //
+    // Une carte déjà écrite garde son ordre. Sans cette règle, la
+    // reconstruction la réécrirait à chaque passage dans l'ordre de l'analyse
+    // — et effacerait la correction d'une carte remise à l'endroit, quota du
+    // fournisseur oblige : la fiche n'est pas relue pour une rencontre dont on
+    // connaît déjà la compétition et la date.
+    const ordreDeLaCarteExistante = (existante as any)?.team1_name
+      ? !memeEquipe(l.team1_name, (existante as any).team1_name)
+      : false;
+
+    const aRetourner = figee
+      ? !memeEquipe(l.team1_name, figee.domicileNom)
+      : ficheUtilisable
+        ? idEquipe1 !== fiche.idDomicile
+        : ordreDeLaCarteExistante;
 
     const equipe1 = aRetourner ? l.team2_name : l.team1_name;
     const equipe2 = aRetourner ? l.team1_name : l.team2_name;
@@ -470,51 +571,6 @@ export async function construirePreuves(): Promise<{
     const scoreExact =
       issueCorrecte && !!buts && !!reels && buts[0] === reels[0] && buts[1] === reels[1];
     if (issueCorrecte) reussites++;
-
-    // La preuve existante peut avoir été dépubliée à la main : on ne réécrit
-    // jamais « publiee » sur une ligne déjà connue.
-    const { data: existante } = await sb
-      .from('preuves')
-      // Toutes les colonnes : la liste varie selon que le script SQL a été
-      // exécuté ou non, et une liste dynamique empêche le typage de suivre.
-      .select('*')
-      .eq('fixture_id', l.fixture_id ?? -1)
-      .maybeSingle();
-
-    // ── ON NE REDEMANDE PAS CE QU'ON SAIT DÉJÀ ────────────────────────────
-    //
-    // La compétition et la date d'une rencontre TERMINÉE ne changent plus.
-    // Les redemander à chaque reconstruction coûtait un appel par match :
-    // le 16 août 2026, quelques reconstructions successives ont porté le quota
-    // du fournisseur à 7 055 sur 7 500 — au-delà, plus aucune analyse ne
-    // fonctionne pour personne jusqu'au lendemain.
-    //
-    // La fiche n'est donc interrogée que si l'information manque.
-    // ── SAUF QUAND CE QU'ON SAIT EST TROMPEUR ─────────────────────────────
-    //
-    // Les cartes enregistrées avant le 31 août 2026 portent le nom brut du
-    // fournisseur : « Serie A » pour Flamengo — Botafogo, « Bundesliga » pour
-    // Rapid Vienne — Sturm Graz. Sans ce rattrapage, elles garderaient cette
-    // étiquette pour toujours, puisqu'on ne redemande jamais une fiche connue.
-    //
-    // On redemande donc la fiche des seules cartes concernées : un nom ambigu,
-    // et aucun pays entre parenthèses. Trois appels au fournisseur une fois,
-    // puis plus jamais — la carte réécrite porte désormais son pays.
-    const etiquette = String((existante as any)?.competition ?? '');
-    const aBesoinDuPays =
-      !!etiquette && !etiquette.includes('(') && !!PAYS_ATTENDU[etiquette.toLowerCase()];
-
-    const dejaConnue =
-      !!(existante as any)?.competition &&
-      !aBesoinDuPays &&
-      /^\d{4}-\d{2}-\d{2}T/.test(String((existante as any)?.date_match ?? ''));
-
-    const fiche = dejaConnue
-      ? {
-          competition: (existante as any).competition as string,
-          date: (existante as any).date_match as string,
-        }
-      : await ficheDuMatch(l.fixture_id);
 
     const valeurs: Record<string, any> = {
       fixture_id: l.fixture_id ?? null,

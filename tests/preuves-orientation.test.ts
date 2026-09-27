@@ -88,16 +88,35 @@ test('★ ACQUIS — une carte déjà dans le bon sens ne bouge pas', () => {
   assert.equal(pronoDansLeSensDeLaCarte(figee, 'Real Betis'), '2 - 1');
 });
 
-test("★ ACQUIS — sans prédiction figée, on garde l'ordre enregistré", () => {
-  // Les rencontres antérieures au mécanisme de prédiction figée n'ont aucun
-  // sens officiel connu. Inventer un domicile serait pire que de garder
-  // l'ordre tapé : on afficherait une information fausse au lieu d'une
-  // information incomplète.
+test("★ ACQUIS — sans prédiction figée, le sens vient de la fiche, jamais d'une supposition", () => {
+  // ── CE QUI A CHANGÉ LE 27 SEPTEMBRE 2026 ────────────────────────────────
+  //
+  // La règle était : « pas de prédiction figée → on garde l'ordre tapé ».
+  // Elle a laissé en ligne trente-huit cartes au terrain inversé, dont
+  // « Granada CF — CD Leganés » pour un match joué à Leganés et
+  // « West Brom — Wolverhampton » pour un match joué à Wolverhampton.
+  //
+  // L'intention du test ne change pas — ne JAMAIS inventer un domicile —
+  // mais la fiche du match, déjà lue ici pour la compétition et la date, est
+  // une information, pas une supposition. Elle passe donc avant l'ordre tapé.
   assert.match(
     source,
-    /const aRetourner = !!figee && !memeEquipe\(/,
-    "Le retournement ne dépend plus de l'existence d'une prédiction figée."
+    /const aRetourner = figee\s*\?\s*!memeEquipe\(l\.team1_name, figee\.domicileNom\)\s*:\s*ficheUtilisable/,
+    "Le sens de la carte ne suit plus la prédiction figée puis la fiche."
   );
+
+  // La fiche ne sert que si elle parle bien de CE match : les deux équipes de
+  // l'analyse doivent être les siennes.
+  assert.match(
+    source,
+    /\(idEquipe1 === fiche\.idDomicile \|\| idEquipe2 === fiche\.idDomicile\)/,
+    "Une fiche qui ne nomme pas les deux équipes pourrait retourner la carte à tort."
+  );
+
+  // Et quand rien ne tranche — fournisseur muet, logo illisible — la carte
+  // déjà écrite garde son ordre : sans cela, la reconstruction suivante
+  // défait la correction apportée à une carte remise à l'endroit.
+  assert.match(source, /: ordreDeLaCarteExistante;/);
 });
 
 // ── LE BRANCHEMENT — un correctif qui ne tourne nulle part ne corrige rien ──

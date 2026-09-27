@@ -15,6 +15,7 @@
 
 import { apiFootball, CACHE_TTL } from './api-football';
 import { createAdminClient } from './supabase-admin';
+import { numeroDeSelectionParDrapeau } from './selections-du-catalogue';
 
 /**
  * Nombre de matchs vérifiés en dessous duquel aucun pourcentage n'est publié.
@@ -71,7 +72,23 @@ function lirePrediction(score: string | null): { buts: [number, number]; issue: 
 export function identifiantEquipe(logo: string | null | undefined): string | null {
   // Les identifiants du fournisseur sont contenus dans l'URL des logos, seule
   // trace fiable : les identifiants stockés sont des slugs internes.
-  return String(logo ?? '').match(/teams\/(\d+)\.png/)?.[1] ?? null;
+  const parLogo = String(logo ?? '').match(/teams\/(\d+)\.png/)?.[1];
+  if (parLogo) return parLogo;
+
+  // ── LES SÉLECTIONS PORTENT UN DRAPEAU, PAS UN LOGO ──────────────────────
+  //
+  // Le catalogue donne aux sélections `https://flagcdn.com/w40/ma.png` : aucun
+  // numéro dedans. Cette fonction rendait donc `null`, et la vérification
+  // s'arrêtait à sa première ligne — pour TOUTES les rencontres entre pays.
+  //
+  // Constaté le 27 septembre 2026, pendant la trêve internationale : les
+  // 81 rencontres de sélections analysées depuis le 19 septembre étaient
+  // toutes « en attente », dont Maroc — Gabon (41 analyses, pronostic 2-0,
+  // résultat 2-0) et Italie — Belgique (21 analyses, 0-2 annoncé, 0-2 joué).
+  // Deux scores exacts que le mur public n'a jamais pu montrer.
+  //
+  // Le drapeau suffit : le catalogue le relie au numéro du fournisseur.
+  return numeroDeSelectionParDrapeau(logo)?.toString() ?? null;
 }
 
 async function trouverResultat(analyse: any): Promise<{
@@ -137,6 +154,8 @@ interface RencontreTerminee {
   butsDomicile: number;
   butsExterieur: number;
   idDomicile: string;
+  /** L'équipe qui se déplace — sert à refuser une rencontre qui n'est pas la bonne. */
+  idExterieur: string;
   competition: string | null;
   /** Quand la rencontre a été jouée — sert à refuser un match antérieur à l’analyse. */
   jouéeLe: string | null;
@@ -284,6 +303,7 @@ async function lireRencontresParIdentifiant(
         butsDomicile: f.goals?.home ?? 0,
         butsExterieur: f.goals?.away ?? 0,
         idDomicile: String(f.teams?.home?.id ?? ''),
+        idExterieur: String(f.teams?.away?.id ?? ''),
         // La compétition vient de la fiche du match, seule source qui ne
         // puisse pas se tromper — celle enregistrée à l'analyse retombait sur
         // le championnat de la première équipe quand la rencontre n'avait pas
@@ -440,6 +460,24 @@ export async function verifierPronostics(limite = 60): Promise<{
         connue.jouéeLe &&
         new Date(connue.jouéeLe).getTime() < new Date(analyse.created_at).getTime() - 6 * 3600 * 1000
       ) {
+        return null;
+      }
+
+      // ── LES DEUX ÉQUIPES DOIVENT ÊTRE CELLES DE LA RENCONTRE ────────
+      //
+      // L'orientation se déduisait d'une seule comparaison : « l'équipe 1
+      // n'est pas celle qui reçoit, donc c'est l'extérieur ». Une équipe qui
+      // n'appartient à NI l'une NI l'autre passait donc pour l'extérieur, et
+      // le score était retourné en silence — un pronostic juste publié à
+      // l'envers, ou l'inverse.
+      //
+      // Le cas n'était pas atteignable tant que les numéros venaient de l'URL
+      // du logo, qui ne peut pas se tromper. Ils viennent désormais aussi du
+      // DRAPEAU d'une sélection (voir `identifiantEquipe`), donc d'une table
+      // écrite à la main : une ligne fausse doit faire renoncer, jamais
+      // publier une carte inversée.
+      const paireAttendue = [String(connue.idDomicile), String(connue.idExterieur)].sort().join('-');
+      if (connue.idExterieur && [String(id1), String(id2)].sort().join('-') !== paireAttendue) {
         return null;
       }
 

@@ -18,6 +18,8 @@
  * et passent en premier : c'est lui qui porte leurs identifiants de CAN.
  */
 import { selectionParApiId, SELECTIONS_AFRICAINES } from './selections-africaines';
+// `data.ts` n'importe rien : aucun cycle possible.
+import { clubs } from './data';
 
 const TABLE: readonly (readonly [number, string])[] = [
   [16, 'mexico'], [1531, 'south_africa'], [17, 'south_korea'], [5529, 'canada'],
@@ -71,4 +73,53 @@ export function catalogueDeSelection(apiId: number | string | null | undefined):
 /** Le numéro chez le fournisseur d'une sélection du catalogue, ou `null`. */
 export function numeroDeSelection(catalogue: string | null | undefined): number | null {
   return PAR_CATALOGUE.get(String(catalogue ?? '')) ?? null;
+}
+
+/**
+ * ── LE NUMÉRO D'UNE SÉLECTION D'APRÈS SON DRAPEAU ─────────────────────────
+ *
+ * POURQUOI CETTE FONCTION EXISTE
+ *
+ * Une analyse enregistre le logo de chaque équipe, et c'est l'URL de ce logo
+ * qui porte le numéro du fournisseur — `…/teams/541.png`. Les sélections, elles,
+ * n'ont pas de logo : le catalogue leur donne un DRAPEAU
+ * (`https://flagcdn.com/w40/ma.png`), où aucun numéro ne figure.
+ *
+ * Conséquence, constatée le 27 septembre 2026 : la vérification des pronostics
+ * commence par lire ces deux numéros et s'arrête net quand ils manquent. Les
+ * 81 rencontres internationales analysées pendant la trêve — Maroc — Gabon,
+ * Angleterre — Espagne, Italie — Belgique — ne pouvaient donc JAMAIS être
+ * confrontées à leur résultat, ni apparaître sur le mur public, alors que le
+ * résultat était disponible et que l'analyse portait bien le numéro de la
+ * rencontre.
+ *
+ * Le code du drapeau suffit à retrouver la sélection : il est unique dans le
+ * catalogue. Les sept sélections qui y figurent deux fois (Maroc, Égypte,
+ * Sénégal, Tunisie, Côte d'Ivoire, Afrique du Sud, Cap-Vert — une fois pour le
+ * Mondial, une fois pour la CAN) portent le MÊME numéro chez le fournisseur :
+ * l'ambiguïté n'en est pas une. Une épreuve le vérifie, car un drapeau qui
+ * désignerait deux numéros ferait juger le mauvais match.
+ */
+const PAR_DRAPEAU = new Map<string, number>(
+  Object.values(clubs)
+    .map((c) => {
+      const code = String(c?.logo ?? '').match(/flagcdn\.com\/[^/]+\/([a-z-]+)\.png/)?.[1];
+      const numero = code ? numeroDeSelection(c.id) : null;
+      return code && numero ? ([code, numero] as const) : null;
+    })
+    .filter((v): v is readonly [string, number] => v !== null)
+);
+
+/**
+ * Le numéro du fournisseur d'après une URL de drapeau, ou `null`.
+ *
+ * On ne devine jamais : un numéro faux ferait confronter un pronostic au
+ * résultat d'un autre match, et c'est exactement ce qu'un mur public ne peut
+ * pas se permettre.
+ */
+export function numeroDeSelectionParDrapeau(logo: string | null | undefined): number | null {
+  const code = String(logo ?? '')
+    .toLowerCase()
+    .match(/flagcdn\.com\/[^/]+\/([a-z-]+)\.png/)?.[1];
+  return code ? (PAR_DRAPEAU.get(code) ?? null) : null;
 }
