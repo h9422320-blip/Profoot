@@ -1,37 +1,60 @@
 /**
- * JUGE UN RÉSULTAT DU BANC : la règle du projet, sur les deux moitiés.
+ * JUGE UN RÉSULTAT DU BANC — AVEC LA PORTE OFFICIELLE, PAS UNE AUTRE.
+ *
+ * `verdict` et `mesurer` viennent de `scripts/challenger/porte.ts`, celle que
+ * le challenger emploie chaque nuit : +1 vainqueur juste AU MOINS sur CHACUNE
+ * des deux moitiés, aucun Brier dégradé, et les matchs où le moteur est sûr de
+ * lui qui ne reculent pas. Rejuger avec une règle à soi, c'est se donner
+ * raison.
+ *
  *   npx tsx scripts/_juger-banc.mts <fichier-resultat.json>
  */
 import fs from 'node:fs';
+import { mesurer, moities, verdict, type Pronostic } from './challenger/porte.js';
+
 const r = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-type P = { id: number; reel: number; probas: [number, number, number]; date: string };
-const mesurer = (l: P[]) => {
-  let j = 0, b = 0;
-  for (const p of l) {
-    const max = Math.max(...p.probas);
-    if (p.probas.indexOf(max) === p.reel) j++;
-    for (let k = 0; k < 3; k++) b += (p.probas[k] - (p.reel === k ? 1 : 0)) ** 2;
-  }
-  return { n: l.length, justes: j, brier: l.length ? b / l.length : 0 };
-};
-const moities = (l: P[]): [P[], P[]] => {
-  const t = [...l].sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  const m = Math.floor(t.length / 2);
-  return [t.slice(0, m), t.slice(m)];
-};
-const champ = r.variantes['champion'] as P[];
-const [c1, c2] = moities(champ).map(mesurer);
-console.log(`champion : ${champ.length} matchs — 1re moitié ${c1.justes}/${c1.n}, Brier ${c1.brier.toFixed(4)} · 2e moitié ${c2.justes}/${c2.n}, Brier ${c2.brier.toFixed(4)}\n`);
+const champ = r.variantes['champion'] as Pronostic[];
+if (!champ) throw new Error('aucun champion dans ce résultat : rien à comparer.');
+const mc = moities(champ).map(mesurer) as [any, any];
+const pct = (m: any) => (m.surs >= 10 ? `${((100 * m.sursJustes) / m.surs).toFixed(1)} % sur ${m.surs}` : '—');
+console.log(
+  `champion : ${champ.length} matchs\n` +
+    `  1re moitié ${mc[0].justes}/${mc[0].n} justes, Brier ${mc[0].brier.toFixed(4)}, sûrs ${pct(mc[0])}\n` +
+    `  2e moitié ${mc[1].justes}/${mc[1].n} justes, Brier ${mc[1].brier.toFixed(4)}, sûrs ${pct(mc[1])}\n`
+);
 for (const nom of Object.keys(r.variantes)) {
   if (nom === 'champion') continue;
-  const [v1, v2] = moities(r.variantes[nom] as P[]).map(mesurer);
-  // La règle : gagner sur les DEUX moitiés, en vainqueurs justes comme en Brier.
-  const gagne =
-    v1.justes >= c1.justes && v2.justes >= c2.justes && v1.brier <= c1.brier && v2.brier <= c2.brier &&
-    (v1.justes > c1.justes || v2.justes > c2.justes);
-  const e = (a: number, b: number) => `${a - b >= 0 ? '+' : ''}${a - b}`;
-  console.log(
-    `${nom.padEnd(26)} 1re : ${e(v1.justes, c1.justes).padStart(3)}, Brier ${v1.brier.toFixed(4)} ` +
-      `| 2e : ${e(v2.justes, c2.justes).padStart(3)}, Brier ${v2.brier.toFixed(4)}  ${gagne ? '✅ GAGNE' : '—'}`
-  );
+
+  // ── UNE COUCHE QUI N'AGIT QUE SUR CERTAINS MATCHS SE JUGE SUR EUX ──────
+  //
+  // La couche du marché ne parle que des rencontres cotées. Comparée sur
+  // TOUTES, elle est identique au champion partout ailleurs : son effet est
+  // noyé, et le verdict ne dit plus rien. `nuit.mts` restreint donc les deux
+  // camps au même sous-ensemble ; ce juge fait pareil, sinon il conclurait
+  // autrement que la porte officielle.
+  const ids: number[] | undefined = r.actifs?.[nom];
+  let mcV = mc;
+  let mv: [any, any];
+  let etiquette = nom;
+  if (ids?.length) {
+    const ensemble = new Set(ids);
+    const sousChamp = champ.filter((p) => ensemble.has(p.id));
+    const [a1, a2] = moities(sousChamp);
+    const coupe = [new Set(a1.map((p) => p.id)), new Set(a2.map((p) => p.id))];
+    const sousMoities = (x: Pronostic[]): [any, any] => [
+      mesurer(x.filter((p) => coupe[0].has(p.id))),
+      mesurer(x.filter((p) => coupe[1].has(p.id))),
+    ];
+    mcV = sousMoities(sousChamp);
+    mv = sousMoities((r.variantes[nom] as Pronostic[]).filter((p) => ensemble.has(p.id)));
+    etiquette = `${nom} (${ids.length} cotés)`;
+  } else {
+    mv = moities(r.variantes[nom] as Pronostic[]).map(mesurer) as [any, any];
+  }
+  const v = verdict(mcV, mv);
+  const e = (k: 0 | 1) => {
+    const d = mv[k].justes - mcV[k].justes;
+    return `${d >= 0 ? '+' : ''}${d}, Brier ${mv[k].brier.toFixed(4)}`;
+  };
+  console.log(`${etiquette.padEnd(32)} 1re : ${e(0).padEnd(22)} | 2e : ${e(1).padEnd(22)} ${v.gagne ? '✅ GAGNE' : '— ' + v.raisons[0]}`);
 }

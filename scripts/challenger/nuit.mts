@@ -83,7 +83,28 @@ process.on('exit', () => {
 
 const NUIT = new Date().toISOString().slice(0, 10);
 /** Avant cette date, la réserve de tirs est trop maigre pour reconstruire un relevé. */
-const DEBUT_EVALUATION = '2026-02-15';
+// ── LA FENÊTRE DU REJEU ──────────────────────────────────────────────────
+//
+// Elle partait du 15 février 2026 : 1 325 rencontres, soit 662 par moitié. La
+// porte exige AU MOINS un vainqueur juste de plus sur CHACUNE des deux — un
+// écart de 1 sur 662, c'est-à-dire l'épaisseur du hasard.
+//
+// Mesuré le 28 septembre 2026, une fois le banc réparé : les couches qui
+// semblaient tenir sur cette fenêtre s'effondrent dès qu'on l'élargit.
+//
+//     Couche                    1 325 matchs        3 090 matchs
+//     confrontations directes   +1 et +1            -1 et -17
+//     erreurs apprises          -4 et -3            +4 et -11
+//     note Elo des clubs        -9 et -6            -4 et -24
+//
+// Le « +1 et +1 » des confrontations directes a failli passer pour un gain.
+// Sur 1 545 rencontres par moitié, il se lit pour ce qu'il est.
+//
+// La réserve porte quatre saisons (50 097 rencontres, depuis février 2023) et
+// le relevé des tirs remonte à novembre 2023 : la fenêtre pouvait être élargie
+// sans rien inventer. Elle coûte un rejeu plus long — huit minutes devenaient
+// une vingtaine — et c'est le prix d'un verdict qui veut dire quelque chose.
+const DEBUT_EVALUATION = '2025-08-01';
 const TSX = path.join(RACINE, 'node_modules', 'tsx', 'dist', 'cli.mjs');
 
 const rapport: string[] = [];

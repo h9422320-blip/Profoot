@@ -123,3 +123,22 @@ test('★ ACQUIS — la collecte complète les rencontres rangées, elle ne les 
   assert.match(src, /const nouvelles = rencontres\.length - dejaRangees;/);
   assert.match(src, /AUCUNE rencontre nouvelle/);
 });
+
+/**
+ * ── LA FENÊTRE DU REJEU DOIT ÊTRE PLUS LARGE QUE LE HASARD ────────────────
+ *
+ * La porte exige au moins un vainqueur juste de plus sur CHACUNE des deux
+ * moitiés. Sur 662 rencontres par moitié, un écart de 1 est l'épaisseur du
+ * hasard — et c'est ainsi que les confrontations directes ont failli passer
+ * pour un gain (+1 et +1). Élargie à 1 545 par moitié, la même couche donne
+ * −1 et −17.
+ */
+test('★ ACQUIS — le rejeu porte sur assez de rencontres pour conclure', () => {
+  const src = fs.readFileSync('scripts/challenger/nuit.mts', 'utf8');
+  const debut = src.match(/const DEBUT_EVALUATION = '(\d{4}-\d{2}-\d{2})';/)?.[1];
+  assert.ok(debut, 'La fenêtre du rejeu a disparu.');
+  // Au moins quatorze mois : c'est ce qui a porté le banc de 1 325 à 3 090
+  // rencontres le 28 septembre 2026.
+  const jours = (Date.parse('2026-09-28') - Date.parse(debut!)) / 86_400_000;
+  assert.ok(jours >= 400, `La fenêtre est retombée à ${Math.round(jours)} jours : la porte ne distinguerait plus un gain du hasard.`);
+});
