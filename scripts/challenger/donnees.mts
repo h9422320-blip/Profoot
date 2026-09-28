@@ -34,6 +34,37 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
   const saison = maintenant.getUTCMonth() >= 6 ? maintenant.getUTCFullYear() : maintenant.getUTCFullYear() - 1;
   const ligues = [...new Set<number>([...Object.values(LEAGUE_IDS as Record<string, number>).map(Number), 2, 3, 848])];
   const parId = new Map<number, any>();
+
+  // ── LA COLLECTE COMPLÈTE CE QUI EST RANGÉ, ELLE NE LE REMPLACE PAS ──────
+  //
+  // POURQUOI, ET CE QUE ÇA A COÛTÉ
+  //
+  // Le fichier porte QUATRE saisons : les trois que cette boucle demande, plus
+  // une quatrième fusionnée à la main le 16 septembre 2026
+  // (`scripts/_collecter-la-saison-manquante.mts`), parce que les forces
+  // ajustées ont besoin d'une saison antérieure à la plus ancienne évaluée.
+  //
+  // La collecte, elle, n'en demande que trois. Elle rendait donc 34 915
+  // rencontres face aux 49 598 rangées — 69 %, très en dessous des 90 % que le
+  // garde-fou exige. Le refus n'était pas un incident : il était GARANTI, nuit
+  // après nuit. Résultat, le banc a travaillé douze jours sur des rencontres
+  // arrêtées au 14 septembre sans que rien ne le dise, et chaque nuit le
+  // journal accusait « une coupure réseau » qui n'existait pas.
+  //
+  // Les rencontres déjà rangées entrent donc dans le lot AVANT la collecte du
+  // jour ; celle-ci les met à jour et en ajoute. Une rencontre TERMINÉE ne
+  // change plus de score : la garder ne peut rien fausser, et la perdre coûte
+  // une saison entière de mesure.
+  let dejaRangees = 0;
+  try {
+    const anciennes: any[] = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
+    if (Array.isArray(anciennes)) {
+      for (const m of anciennes) if (m?.id) parId.set(Number(m.id), m);
+      dejaRangees = parId.size;
+    }
+  } catch {
+    // Premier lancement, ou fichier illisible : la collecte repart de zéro.
+  }
   for (const ligue of ligues) {
     // ── TROIS SAISONS, ET NON DEUX ────────────────────────────────────────
     //
@@ -82,6 +113,15 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
     }
   }
   const rencontres: any[] = [...parId.values()].sort((a, b) => a.date.localeCompare(b.date));
+  // Ce que la nuit a réellement rapporté, par-delà ce qui était déjà là. Sans
+  // ce compte, une collecte qui ne rapporte RIEN s'annoncerait « 49 598
+  // rencontres rangées » et passerait pour une réussite.
+  const nouvelles = rencontres.length - dejaRangees;
+  journal(
+    nouvelles > 0
+      ? `  collecte du jour : ${nouvelles} rencontre(s) de plus (${dejaRangees} déjà rangées).`
+      : `  collecte du jour : AUCUNE rencontre nouvelle (${dejaRangees} déjà rangées). Réseau ou fournisseur muet ?`
+  );
 
   // ── UNE COLLECTE RATÉE NE DOIT JAMAIS DÉTRUIRE LA PRÉCÉDENTE ────────────
   //

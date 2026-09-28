@@ -90,3 +90,36 @@ test('★ ACQUIS — le marché reste en observation sur les sélections, mesure
     'Le marché a été branché sur les sélections alors qu’il y perd contre l’Elo.');
   assert.match(src, /Ensemble \(80\) \.+ marché 51 justes, Elo 55/, 'La mesure qui justifie cette décision a disparu du code.');
 });
+
+/**
+ * ── POURQUOI LA COLLECTE ÉTAIT REFUSÉE DEPUIS LE 16 SEPTEMBRE 2026 ────────
+ *
+ * Le fichier des rencontres porte QUATRE saisons : les trois que la collecte
+ * demande, plus une quatrième fusionnée à la main le 16 septembre, parce que
+ * les forces ajustées ont besoin d'une saison antérieure à la plus ancienne
+ * évaluée.
+ *
+ * La collecte, elle, n'en demande que trois. Elle rendait donc 34 915
+ * rencontres face aux 49 598 rangées — 69 %, très en dessous des 90 % exigés.
+ * Le refus n'était pas un incident : il était GARANTI, nuit après nuit. Le
+ * banc a travaillé douze jours sur des rencontres arrêtées au 14 septembre,
+ * pendant que le journal accusait chaque nuit « une coupure réseau » qui
+ * n'existait pas.
+ *
+ * Une collecte COMPLÈTE désormais ce qui est rangé au lieu de le remplacer :
+ * une rencontre terminée ne change plus de score, la garder ne peut rien
+ * fausser, et la perdre coûte une saison entière de mesure.
+ */
+test('★ ACQUIS — la collecte complète les rencontres rangées, elle ne les remplace pas', () => {
+  const src = fs.readFileSync('scripts/challenger/donnees.mts', 'utf8');
+  const avantLaBoucle = src.slice(0, src.indexOf('for (const ligue of ligues)'));
+  assert.match(
+    avantLaBoucle,
+    /for \(const m of anciennes\) if \(m\?\.id\) parId\.set\(Number\(m\.id\), m\);/,
+    'Les rencontres déjà rangées n’entrent plus dans le lot : la collecte les perdra de nouveau.'
+  );
+  // Et la nuit doit dire ce qu'elle a VRAIMENT rapporté : sans ce compte, une
+  // collecte muette s'annoncerait « 49 598 rencontres rangées ».
+  assert.match(src, /const nouvelles = rencontres\.length - dejaRangees;/);
+  assert.match(src, /AUCUNE rencontre nouvelle/);
+});
