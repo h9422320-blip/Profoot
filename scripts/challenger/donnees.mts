@@ -12,7 +12,7 @@
  * que dans la réserve des pages du fournisseur et dans `.challenger/`.
  */
 import fs from 'node:fs';
-import { chargerEnv, assurerDossiers, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, journal, TIRS_EN_PLUS } from './commun.mjs';
+import { chargerEnv, assurerDossiers, FICHIER_RENCONTRES, FICHIER_TIRS, FICHIER_COTES, journal, ecrireReleve, TIRS_EN_PLUS } from './commun.mjs';
 
 const nombre = (stats: any[] | undefined, type: string): number => {
   const s = (stats ?? []).find((x) => x?.type === type);
@@ -291,8 +291,11 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
     }
     if (!data || data.length < 1000) break;
   }
-  fs.writeFileSync(FICHIER_TIRS, JSON.stringify(tirs));
-  journal(`${tirs.length} rencontres avec leurs tirs exportées`);
+  // Même garde-fou que les rencontres : le 28 septembre 2026, une collecte
+  // vide a effacé 7 317 rencontres de tirs, et le banc a rejoué la nuit
+  // entière sur un moteur aveugle aux tirs sans que rien ne le signale.
+  if (ecrireReleve(FICHIER_TIRS, tirs, 'Relevé des tirs'))
+    journal(`${tirs.length} rencontres avec leurs tirs exportées`);
 
   // ── L'ÉLAN ET LE TERRAIN PAR CHAMPIONNAT, RANGÉS POUR LA PRODUCTION ─────
   //
@@ -410,7 +413,10 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
     }
     if (data.length < 200) break;
   }
-  fs.writeFileSync(FICHIER_COTES, JSON.stringify(cotes));
+  // Les cotes aussi : une collecte partielle ferait juger la couche du marché
+  // sur une poignée de matchs, et le rapport annoncerait « il en faut 150 »
+  // comme si le marché n'était pas couvert.
+  ecrireReleve(FICHIER_COTES, cotes, 'Relevé des cotes');
   journal(
     `${Object.keys(cotes).length} rencontres cotées exportées — ${journeesGardees} journée(s) relevée(s) avant les matchs, ` +
       `${journeesEcartees} écartée(s) parce que relevée(s) après (cote de clôture)`

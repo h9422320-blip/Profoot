@@ -42,6 +42,7 @@ type Couche =
   | { type: 'absences'; poids: number; avecLeMarche?: boolean; avecLaGrille?: boolean; coachJours?: number; coachPart?: number; coachJours2?: number; coachPart2?: number; boostButeurs?: number; marcheSerreSeuil?: number; marcheSerrePart?: number; partPromu?: number; avisPoissonSerre?: number; marcheTresSerreSeuil?: number; marcheTresSerrePart?: number; coachEnSaison?: boolean; parClub?: boolean; avecCalibrage?: boolean; partIncertain?: number; partGrille?: number; repliSaisonAvant?: boolean; ecartCoucheFort?: number; partMarcheInformee?: number; partCoupeApres?: number; marcheAsiatique?: boolean; partAsiatique?: number; boostGardien?: number; boostDefenseurs?: number; boostNote?: number; amplification?: number }
   | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean; avecLeMarche?: boolean }
   | { type: 'elo'; k: number; poids: number }
+  | { type: 'elo-complement'; k: number; poids: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
   | { type: 'duel'; retrecissement: number; poids: number }
   | { type: 'elan'; court: number; long: number; poids: number }
@@ -1285,6 +1286,50 @@ function avecElo(k: number, poids: number): Pronostic[] {
     }
     const we = attendu(m.dom, m.ext);
     const avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids };
+    const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), avis);
+    out.push(versPronostic(m, r));
+  }
+  return out;
+}
+
+// ── L'ELO DES CLUBS, LÀ OÙ LA PRODUCTION NE POSE RIEN ────────────────────
+//
+// `avecElo` ci-dessus REMPLACE l'avis de la production par celui d'Elo. Le
+// gain qu'il mesure mélange donc deux choses : ce qu'Elo apporte, et ce que
+// retirer la mémoire des clubs coûte ou rapporte.
+//
+// Cette variante-ci est celle qu'on peut réellement mettre en ligne : la
+// production garde tout ce qu'elle pose déjà — l'avis du marché, la force des
+// sélections, la mémoire des clubs quand les tirs manquent — et Elo ne parle
+// QUE lorsque ce créneau est vide. Sur les grands championnats, où le relevé
+// des tirs couvre les deux clubs, il l'est presque toujours.
+//
+// Mesurer autre chose que ce qu'on livre, c'est livrer autre chose que ce
+// qu'on a mesuré.
+function avecEloComplement(k: number, poids: number): Pronostic[] {
+  const note = new Map<number, number>();
+  const lire = (id: number) => note.get(id) ?? 1500;
+  const attendu = (dom: number, ext: number) => 1 / (1 + Math.pow(10, -(lire(dom) + AVANTAGE_TERRAIN_ELO - lire(ext)) / 400));
+  const apprendre = (x: any) => {
+    const we = attendu(x.dom, x.ext);
+    const w = x.bd > x.be ? 1 : x.bd === x.be ? 0.5 : 0;
+    const n = Math.abs(x.bd - x.be);
+    const g = n <= 1 ? 1 : n === 2 ? 1.5 : (11 + n) / 8;
+    const delta = k * g * (w - we);
+    note.set(x.dom, lire(x.dom) + delta);
+    note.set(x.ext, lire(x.ext) - delta);
+  };
+  const out: Pronostic[] = [];
+  let j = 0;
+  let jourCourant = '';
+  for (const { m, s1, s2, occ, jour } of entrees) {
+    if (jour !== jourCourant) {
+      while (j < toutesLesRencontres.length && toutesLesRencontres[j].date.slice(0, 10) < jour) apprendre(toutesLesRencontres[j++]);
+      jourCourant = jour;
+    }
+    const dejaLa = avisDeLaProduction(m);
+    const we = attendu(m.dom, m.ext);
+    const avis = dejaLa ?? { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids };
     const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), avis);
     out.push(versPronostic(m, r));
   }
@@ -4863,6 +4908,10 @@ for (const vBrute of tache.variantes) {
   }
   if (v.couche?.type === 'elo') {
     sortie[v.nom] = avecElo(v.couche.k, v.couche.poids);
+    return;
+  }
+  if (v.couche?.type === 'elo-complement') {
+    sortie[v.nom] = avecEloComplement(v.couche.k, v.couche.poids);
     return;
   }
   if (v.couche?.type === 'poisson') {

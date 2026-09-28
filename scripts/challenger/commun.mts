@@ -131,3 +131,57 @@ export async function lireHierarchieDirect(): Promise<{
     confrontations: contenu.confrontations ?? undefined,
   };
 }
+
+/**
+ * ÉCRIRE UN RELEVÉ — SAUF QUAND LA COLLECTE A MANIFESTEMENT RATÉ.
+ *
+ * ── CE QUI EST ARRIVÉ LE 28 SEPTEMBRE 2026 ────────────────────────────────
+ *
+ * La collecte du jour a rendu ZÉRO rencontre — une coupure, la treizième
+ * depuis le 16 septembre. Le fichier des rencontres, lui, était protégé par
+ * cette règle et a été conservé.
+ *
+ * Le relevé des TIRS ne l'était pas. Il a été réécrit avec un tableau vide,
+ * effaçant 7 317 rencontres. Le banc a donc rejoué la nuit entière sur un
+ * moteur AVEUGLE AUX TIRS — alors que la production leur accorde 60 % du
+ * calcul. Les 34 couches essayées cette nuit-là ont été jugées contre un
+ * champion qui n'est pas celui qui est en ligne, et une couche déclarée
+ * gagnante aurait pu être mise en ligne sur cette foi.
+ *
+ * Un relevé effacé ne se voit pas : le banc tourne, le rapport s'écrit, les
+ * chiffres semblent normaux. C'est précisément pour cela que la règle doit
+ * valoir pour TOUS les relevés, et pas seulement pour celui où on y a pensé.
+ *
+ * Rend `true` si l'écriture a eu lieu.
+ */
+export function ecrireReleve(fichier: string, valeur: unknown, etiquette: string): boolean {
+  // Un relevé est tantôt un tableau (les tirs), tantôt un objet indexé par
+  // rencontre (les cotes). Compter « 0 » pour le second désarmerait le
+  // garde-fou précisément là où on croit l'avoir posé.
+  const compter = (v: unknown): number =>
+    Array.isArray(v) ? v.length : v && typeof v === 'object' ? Object.keys(v as object).length : 0;
+
+  const combien = compter(valeur);
+  const ancien = (() => {
+    try {
+      return compter(JSON.parse(fs.readFileSync(fichier, 'utf8')));
+    } catch {
+      return 0;
+    }
+  })();
+
+  // Le même seuil que les rencontres : un dixième de marge, pas davantage. Un
+  // relevé qui maigrit d'un tiers du jour au lendemain n'est pas une collecte,
+  // c'est une panne.
+  if (ancien > 0 && combien < ancien * 0.9) {
+    journal(
+      `${etiquette} : ÉCRITURE REFUSÉE — ${combien} entrées contre ${ancien} déjà rangées. ` +
+        `Le relevé précédent est CONSERVÉ ; le rejeu portera sur lui. ` +
+        `Cause probable : coupure pendant la collecte.`
+    );
+    return false;
+  }
+
+  fs.writeFileSync(fichier, JSON.stringify(valeur));
+  return true;
+}
