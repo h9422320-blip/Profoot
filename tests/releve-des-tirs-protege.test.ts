@@ -59,3 +59,34 @@ test('★ ACQUIS — le banc peut essayer une couche SANS retirer ce que la prod
   assert.match(src, /type: 'elo-complement'/);
   assert.match(src, /const avis = dejaLa \?\? \{ dom: \(1 - NUL_ELO\) \* we/, 'Le complément écrase de nouveau l’avis de la production.');
 });
+
+/**
+ * ── UNE COLLECTE REFUSÉE NE DOIT PAS LAISSER LA NUIT À VIDE ───────────────
+ *
+ * Le fichier des rencontres était sauvé, mais la liste EN MÉMOIRE restait
+ * celle de la collecte ratée. Tout ce qui suit s'en sert — les fiches de tirs
+ * à compléter, puis leur export, qui retrouve chaque rencontre par son
+ * identifiant. Avec une liste vide, aucune fiche ne correspondait à rien.
+ */
+test('★ ACQUIS — après un refus, la nuit repart des rencontres conservées', () => {
+  const src = fs.readFileSync('scripts/challenger/donnees.mts', 'utf8');
+  const bloc = src.slice(src.indexOf('if (collecteSuspecte) {'), src.indexOf('} else {'));
+  assert.match(bloc, /JSON\.parse\(fs\.readFileSync\(FICHIER_RENCONTRES, 'utf8'\)\)/, 'La nuit continue avec la collecte ratée.');
+  assert.match(bloc, /parId\.clear\(\)/);
+  assert.match(bloc, /for \(const m of gardees\) parId\.set\(Number\(m\.id\), m\);/);
+});
+
+/**
+ * ── LE CLASSEMENT DES SÉLECTIONS BAT LE MARCHÉ ────────────────────────────
+ *
+ * Mesuré le 28 septembre 2026 sur 80 rencontres jouées, cotes relevées avant
+ * le coup d'envoi : Elo 55 vainqueurs justes contre 51 au marché, et un Brier
+ * meilleur sur les trois compétitions. Sur les dix désaccords, le marché n'a
+ * eu raison qu'une fois.
+ */
+test('★ ACQUIS — le marché reste en observation sur les sélections, mesure à l’appui', () => {
+  const src = fs.readFileSync('src/lib/couche-marche.ts', 'utf8');
+  assert.match(src, /export const MARCHE_EN_OBSERVATION: ReadonlySet<number> = new Set\(\[36, 5, 536\]\)/,
+    'Le marché a été branché sur les sélections alors qu’il y perd contre l’Elo.');
+  assert.match(src, /Ensemble \(80\) \.+ marché 51 justes, Elo 55/, 'La mesure qui justifie cette décision a disparu du code.');
+});

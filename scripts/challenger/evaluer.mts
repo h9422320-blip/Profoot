@@ -43,6 +43,7 @@ type Couche =
   | { type: 'poisson'; poids: number; demiVie?: number; parJour?: number; seuilConfiance?: number; pourLeScore?: boolean; avecLeMarche?: boolean }
   | { type: 'elo'; k: number; poids: number }
   | { type: 'elo-complement'; k: number; poids: number }
+  | { type: 'ecart-classement'; part: number; plafond?: number }
   | { type: 'terrain'; retrecissement: number; poids: number }
   | { type: 'duel'; retrecissement: number; poids: number }
   | { type: 'elan'; court: number; long: number; poids: number }
@@ -1287,6 +1288,42 @@ function avecElo(k: number, poids: number): Pronostic[] {
     const we = attendu(m.dom, m.ext);
     const avis = { dom: (1 - NUL_ELO) * we, nul: NUL_ELO, ext: (1 - NUL_ELO) * (1 - we), poids };
     const r: any = calculerScoreProbable(s1, s2, true, false, classementsDe(m), forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corrEnLigne(m), avis);
+    out.push(versPronostic(m, r));
+  }
+  return out;
+}
+
+// ── L'ÉCART DE CLASSEMENT, EN BUTS ───────────────────────────────────────
+//
+// Demande du propriétaire, le 28 septembre 2026 : « tu prends en compte le
+// fait qu'une équipe est mieux placée qu'une autre ».
+//
+// Le moteur connaît DÉJÀ le classement : il en tire un facteur multiplicatif
+// borné à ±15 % sur l'attaque et la défense (`forceDepuisClassement`). Cette
+// couche-ci l'emploie autrement — en BUTS, par le point d'entrée des
+// corrections additives, celui que l'élan et le terrain utilisent déjà.
+//
+// Pourquoi ce chemin plutôt qu'un avis en probabilités : l'avis rivalise avec
+// la vue des tirs, qui pèse 60 % du calcul, et la mesure du 28 septembre a
+// montré qu'il la dégrade (−15 vainqueurs justes sur 988 matchs). Une
+// correction en buts, elle, s'ajoute à ce que le moteur voit au lieu de s'y
+// substituer.
+//
+// L'écart est celui des points RAPPORTÉS À LA MOYENNE du championnat : deux
+// équipes à 1,4 et 0,6 fois la moyenne sont à 0,8 d'écart, quel que soit le
+// nombre de journées jouées. La correction se partage entre les deux camps,
+// et le moteur la plafonne lui-même à un demi-but.
+function avecEcartClassement(part: number, plafond = 0.6): Pronostic[] {
+  const out: Pronostic[] = [];
+  for (const { m, s1, s2, occ } of entrees) {
+    const c = classementsDe(m);
+    const rapport = (x: any) => (x && x.pointsMoyens > 0 ? x.points / x.pointsMoyens : null);
+    const r1 = rapport(c?.equipe1);
+    const r2 = rapport(c?.equipe2);
+    // Sans les deux classements, la couche se tait : on ne devine pas un rang.
+    const ecart = r1 !== null && r2 !== null ? Math.max(-plafond, Math.min(plafond, (r1 - r2) * part)) : 0;
+    const corr = sommerCorrections(corrEnLigne(m), ecart === 0 ? null : { domicile: ecart / 2, exterieur: -ecart / 2 });
+    const r: any = calculerScoreProbable(s1, s2, true, false, c, forcesDe(m), undefined, croisePour(m), rapportPour(m), occ, corr, avisDeLaProduction(m));
     out.push(versPronostic(m, r));
   }
   return out;
@@ -4912,6 +4949,10 @@ for (const vBrute of tache.variantes) {
   }
   if (v.couche?.type === 'elo-complement') {
     sortie[v.nom] = avecEloComplement(v.couche.k, v.couche.poids);
+    return;
+  }
+  if (v.couche?.type === 'ecart-classement') {
+    sortie[v.nom] = avecEcartClassement(v.couche.part, v.couche.plafond);
     return;
   }
   if (v.couche?.type === 'poisson') {

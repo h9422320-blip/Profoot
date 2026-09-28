@@ -211,9 +211,28 @@ export const COUPES_DU_MARCHE: ReadonlySet<number> = new Set([2, 3, 848]);
  * Les cotes des qualifications de la CAN et des Ligues des nations sont
  * relevées depuis le 22 septembre 2026 (`cotes-marche.ts`), mais la note Elo
  * des sélections y reste seule juge — elle, mesurée : 72,6 à 87,3 % quand
- * elle est sûre d'elle. Le marché ne passera devant qu'après une mesure en
- * avant sur les matchs joués (`scripts/_marche-selections.mts`), comme toute
- * couche nouvelle.
+ * elle est sûre d'elle. Le marché ne devait passer devant qu'après une mesure
+ * en avant sur les matchs joués, comme toute couche nouvelle.
+ *
+ * ── LA MESURE A EU LIEU : LE 28 SEPTEMBRE 2026 ───────────────────────────
+ *
+ * Quatre-vingts rencontres jouées entre le 20 et le 28 septembre, cotes
+ * relevées AVANT le coup d'envoi (`scripts/_marche-selections.mts`) :
+ *
+ *     Ligue des nations (37) ... marché 21 justes, Elo 24 · Brier 0,513 / 0,490
+ *     Qualifications CAN (25) .. marché 17 justes, Elo 17 · Brier 0,474 / 0,418
+ *     CONCACAF (18) ........... marché 13 justes, Elo 14 · Brier 0,478 / 0,438
+ *     ────────────────────────────────────────────────────────────────────
+ *     Ensemble (80) ........... marché 51 justes, Elo 55
+ *
+ * L'Elo gagne sur les trois compétitions, en vainqueurs justes comme en
+ * Brier — et sur les dix rencontres où les deux se contredisent, le marché
+ * n'a eu raison qu'UNE fois.
+ *
+ * Le marché reste donc en observation pour ces trois compétitions : le
+ * classement des sélections, bâti sur 9 935 matchs internationaux, y voit
+ * mieux que les bookmakers. La mesure se refait quand l'échantillon aura
+ * doublé ; d'ici là, rien ne change.
  */
 export const MARCHE_EN_OBSERVATION: ReadonlySet<number> = new Set([36, 5, 536]);
 

@@ -81,7 +81,7 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
       }
     }
   }
-  const rencontres = [...parId.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const rencontres: any[] = [...parId.values()].sort((a, b) => a.date.localeCompare(b.date));
 
   // ── UNE COLLECTE RATÉE NE DOIT JAMAIS DÉTRUIRE LA PRÉCÉDENTE ────────────
   //
@@ -118,6 +118,34 @@ export async function rafraichirDonnees(): Promise<{ rencontres: number; tirs: n
         `Les données précédentes sont CONSERVÉES — le rejeu portera sur elles. ` +
         `Cause probable : coupure réseau pendant la collecte.`
     );
+
+    // ── ET LA SUITE DU SCRIPT REPREND CELLES QU'ON VIENT DE GARDER ────────
+    //
+    // Le fichier était sauvé, mais la liste EN MÉMOIRE restait celle de la
+    // collecte ratée — vide. Tout ce qui suit s'en sert : les fiches de tirs à
+    // compléter, puis leur export, qui retrouve chaque rencontre par son
+    // identifiant. Avec une liste vide, aucune fiche ne correspond à rien, et
+    // l'export rendait zéro.
+    //
+    // Le 28 septembre 2026, c'est ainsi que 7 317 rencontres de tirs ont été
+    // effacées : le garde-fou d'à côté protégeait le fichier des rencontres,
+    // pendant que le même incident vidait celui des tirs par un autre chemin.
+    //
+    // On repart donc des rencontres CONSERVÉES. Le rapport promet que « le
+    // rejeu porte sur les fichiers de la dernière fois » : encore faut-il que
+    // la nuit entière les utilise.
+    try {
+      const gardees: any[] = JSON.parse(fs.readFileSync(FICHIER_RENCONTRES, 'utf8'));
+      if (Array.isArray(gardees) && gardees.length) {
+        rencontres.length = 0;
+        rencontres.push(...gardees);
+        parId.clear();
+        for (const m of gardees) parId.set(Number(m.id), m);
+        journal(`  la nuit repart sur les ${gardees.length} rencontres conservées.`);
+      }
+    } catch (e: any) {
+      journal(`  rencontres conservées ILLISIBLES : ${e?.message}. La nuit continue à vide.`);
+    }
   } else {
     fs.writeFileSync(FICHIER_RENCONTRES, JSON.stringify(rencontres));
     journal(`${rencontres.length} rencontres terminées rangées`);
