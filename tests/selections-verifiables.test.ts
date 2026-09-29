@@ -149,3 +149,26 @@ test('★ ACQUIS — les sélections écartées du carrousel existent bel et bie
     assert.ok(numeroDeSelection(id), `« ${id} » n’a pas de numéro chez le fournisseur : elle serait refusée au clic.`);
   }
 });
+
+/**
+ * ── CE QUE LA PART DE L'ELO PRODUIT, ET POURQUOI ELLE NE BOUGE PAS ────────
+ *
+ * Mesuré le 29 septembre 2026 sur 212 rencontres de sélections réellement
+ * analysées puis confrontées à leur résultat — pas un rejeu, les prédictions
+ * qu'ont lues les abonnés : 57,1 % de vainqueurs justes, contre 52,8 % sur
+ * 3 090 rencontres de clubs. C'est ce que ce moteur fait de mieux.
+ *
+ * Deux pistes fermées le même jour : un avantage du terrain propre aux
+ * sélections (le moteur annonce déjà le pays qui reçoit 65,1 % du temps pour
+ * 49,1 % de victoires à domicile — le renforcer aggraverait le biais), et le
+ * classement FIFA comme signal distinct (le fournisseur n'en expose aucun).
+ */
+test('★ ACQUIS — la mesure des sélections reste écrite à côté de la part qu’elle justifie', () => {
+  const src = fs.readFileSync('src/lib/forces-selections.ts', 'utf8');
+  const i = src.indexOf('export const PART_ELO_SELECTIONS');
+  assert.ok(i > 0, 'La part de l’Elo des sélections a disparu.');
+  const avant = src.slice(Math.max(0, i - 2600), i);
+  assert.match(avant, /121 sur 212, soit 57,1 %/, 'La mesure du 29 septembre 2026 a été détachée du réglage.');
+  assert.match(avant, /Le fournisseur n'en expose\s*\n?\s*\*\s*aucun/, 'Le constat sur le classement FIFA a disparu : il sera redemandé.');
+  assert.match(src, /export const PART_ELO_SELECTIONS = 0\.75;/, 'La part a changé sans mesure nouvelle.');
+});

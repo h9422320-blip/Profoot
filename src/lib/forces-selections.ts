@@ -57,6 +57,40 @@ import { lireReservePatiemment } from './api-football';
 export const CLE_ELO_SELECTIONS = 'selections:elo:v1';
 
 /** La part de l'avis Elo, mesurée ci-dessus. */
+/**
+ * ── CE QUE CETTE PART PRODUIT, MESURÉ EN PRODUCTION ──────────────────────
+ *
+ * Le 29 septembre 2026, sur les 212 rencontres de sélections réellement
+ * analysées puis confrontées à leur résultat — pas un rejeu, les prédictions
+ * qu'ont lues les abonnés :
+ *
+ *     vainqueurs justes ................ 121 sur 212, soit 57,1 %
+ *     quand il annonce le pays qui reçoit  61,6 % sur 138
+ *     quand il annonce celui qui se déplace 51,6 % sur  64
+ *
+ * À comparer aux 52,8 % que le même moteur obtient sur 3 090 rencontres de
+ * clubs. Les rencontres entre pays sont ce que ce moteur fait de mieux, et
+ * cette part de 0,75 en est la raison : la note Elo, bâtie sur 9 935 matchs
+ * internationaux, y voit mieux que la forme du moment — laquelle ne veut pas
+ * dire grand-chose pour une sélection qui joue six fois par an.
+ *
+ * ── DEUX PISTES MESURÉES ET FERMÉES LE MÊME JOUR ─────────────────────────
+ *
+ * • Un avantage du terrain propre aux sélections. L'écart de buts entre qui
+ *   reçoit et qui se déplace y est pourtant plus fort qu'en club (+0,44 contre
+ *   +0,28 sur 10 795 rencontres internationales), ce qui laissait croire que
+ *   le moteur le sous-applique. Le résultat dit l'inverse : il annonce déjà le
+ *   pays qui reçoit 65,1 % du temps pour 49,1 % de victoires à domicile. Le
+ *   renforcer aggraverait ce biais.
+ *
+ * • Le classement FIFA comme signal distinct. Le fournisseur n'en expose
+ *   aucun — ni point d'entrée, ni champ sur la fiche d'équipe — et l'écrire de
+ *   mémoire reviendrait à inventer des chiffres. La note ci-dessous en tient
+ *   lieu, et elle est solide : 187 des 231 sélections reposent sur plus de
+ *   quarante matchs, une seule sélection du catalogue est sous seize. Mesurée
+ *   contre les bookmakers sur 80 rencontres jouées : 55 vainqueurs justes
+ *   contre 51 (voir `couche-marche.ts`).
+ */
 export const PART_ELO_SELECTIONS = 0.75;
 
 /** Sous ce nombre de matchs connus, la note d'une sélection n'est pas encore fiable. */
