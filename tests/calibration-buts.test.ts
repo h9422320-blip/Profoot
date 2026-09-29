@@ -81,3 +81,57 @@ test('★ ACQUIS — après correction, les seuils restent dans l’ordre', () =
     }
   }
 });
+
+/**
+ * ── LE RÉAJUSTEMENT DU 29 SEPTEMBRE 2026 ──────────────────────────────────
+ *
+ * Les coefficients d'origine avaient été ajustés sur 711 rencontres. Le banc
+ * en rejoue 3 090 : de quoi les remesurer. Chaque marché a été ajusté sur une
+ * moitié et jugé sur l'autre, DANS LES DEUX SENS. Deux ont gagné des deux
+ * côtés, deux ont gagné d'un côté et perdu de l'autre — ceux-là gardent leurs
+ * coefficients d'origine.
+ *
+ * Sur la moitié jamais utilisée pour l'ajustement :
+ *     plus de 1,5 but  ... 0,1651 → 0,1635  (brut 0,1656)
+ *     plus de 3,5 buts ... 0,2220 → 0,2190  (brut 0,2214)
+ *
+ * « Plus de 3,5 buts » faisait MOINS BIEN que ne rien faire : son ancien
+ * calibrage était pire que le brut.
+ */
+test('★ ACQUIS — les deux marchés réajustés le sont dans le bon sens', () => {
+  // Un `b` bas resserre : c'est ce que la mesure demande, puisque les
+  // pourcentages annoncés sont trop étalés dans les deux marchés retenus.
+  assert.ok(COEFFICIENTS.plus15.b < 0.6, `plus15 ne resserre plus (b = ${COEFFICIENTS.plus15.b}).`);
+  assert.ok(COEFFICIENTS.plus35.b < 0.6, `plus35 ne resserre plus (b = ${COEFFICIENTS.plus35.b}).`);
+
+  // Les deux marchés REFUSÉS gardent leurs coefficients d'origine : ils
+  // gagnaient dans un sens et perdaient dans l'autre.
+  assert.deepEqual(COEFFICIENTS.plus25, { a: 0.2, b: 0.75 }, 'plus25 a été réajusté alors que l’épreuve l’a refusé.');
+  assert.deepEqual(COEFFICIENTS.lesDeuxMarquent, { a: 0, b: 0.75 }, 'lesDeuxMarquent a été réajusté alors que l’épreuve l’a refusé.');
+});
+
+test('★ ACQUIS — le resserrage rapproche du taux réellement observé', () => {
+  // Mesuré par tranche sur 3 090 rencontres : « plus de 1,5 but » annoncé
+  // 40-50 % arrive 70,4 % ; annoncé 80-100 % arrive 82,9 %. La vraie plage est
+  // bien plus étroite que celle annoncée.
+  const bas = calibrerMarcheDeButs('plus15', 45);
+  const haut = calibrerMarcheDeButs('plus15', 90);
+  assert.ok(bas >= 60 && bas <= 75, `45 % brut devrait ressortir vers 70 %, il ressort ${bas} %.`);
+  assert.ok(haut >= 78 && haut <= 88, `90 % brut devrait ressortir vers 83 %, il ressort ${haut} %.`);
+  assert.ok(haut - bas < 45 - 90 + 90, 'La plage annoncée ne s’est pas resserrée.');
+
+  // « Plus de 3,5 buts » annoncé 60-70 % arrive 45,6 %.
+  const t = calibrerMarcheDeButs('plus35', 65);
+  assert.ok(t >= 40 && t <= 52, `65 % brut devrait ressortir vers 46 %, il ressort ${t} %.`);
+});
+
+test('★ ACQUIS — la mesure reste écrite à côté des coefficients', () => {
+  const src = fs.readFileSync('src/lib/calibration-buts.ts', 'utf8');
+  assert.match(src, /DANS LES DEUX SENS/, 'La discipline des deux sens a disparu du fichier.');
+  // Les commentaires sont coupés à 80 colonnes : l'épreuve tolère le retour
+  // à la ligne, sinon elle casse au premier reformatage.
+  assert.match(src, /moins bien que ne\s+\*?\s*rien faire/, 'Le constat sur « plus de 3,5 buts » a disparu.');
+  // Et la raison pour laquelle « plus de 3,5 buts » n'a PAS son optimum :
+  // l'ajustement libre cassait l'ordre des seuils.
+  assert.match(src, /CASSAIT L'ORDRE DES/, 'La raison du coefficient sous contrainte a disparu.');
+});
