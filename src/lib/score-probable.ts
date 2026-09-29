@@ -2063,6 +2063,36 @@ export function calculerScoreProbable(
    * Ce réglage ne touche QUE le score affiché. Les trois probabilités restent
    * celles du calcul, et c'est sur elles que la justesse de l'issue est jugée.
    */
+  // ── POURQUOI LE MOTEUR N'ANNONCE PRESQUE JAMAIS LE NUL ──────────────────
+  //
+  // Le constat saute aux yeux et ressemble à un défaut. Mesuré le 29 septembre
+  // 2026 sur 3 090 rencontres rejouées :
+  //
+  //     le nul ARRIVE ................ 751 fois, soit 24,3 %
+  //     le moteur l'ANNONCE ............ 27 fois, soit  0,9 %
+  //     sur les 751 nuls réels, il en attrape 11 — 1,5 %
+  //
+  // Un quart des rencontres perdues d'avance : la tentation est forte d'ouvrir
+  // la marge. Elle a été mesurée, seuil par seuil, sur les deux moitiés —
+  // « annoncer le nul dès que sa probabilité dépasse S » :
+  //
+  //     S = 24 % → 2 111 nuls annoncés ...... -237 et -224 vainqueurs justes
+  //     S = 26 % → 1 627 ................... -192 et -157
+  //     S = 28 % → 1 073 ................... -125 et  -93
+  //     S = 30 % →   207 ................... - 32 et  - 6
+  //     S = 32 % →    12 ................... -  5 et  -  2
+  //
+  // Et en n'annonçant le nul que sur les affiches SERRÉES — les deux camps à
+  // moins de trois points d'écart, là où il devrait le mieux payer : -7 et -8.
+  //
+  // Aucun seuil ne gagne. Aucune restriction ne sauve. La raison tient en une
+  // ligne : le nul n'est JAMAIS l'issue la plus probable (0 fois sur 3 090), et
+  // chaque nul annoncé coûte une victoire qu'on aurait eue. Le moteur a donc
+  // raison de ne presque jamais l'annoncer, et ces 24 % sont le plafond
+  // structurel de cette famille de modèles, pas une faute à corriger.
+  //
+  // Ce que ces 24 % coûtent vraiment : sur les rencontres NON nulles, le moteur
+  // trouve 69,8 % des vainqueurs. C'est là qu'il faut le juger.
   const MARGE_DU_NUL = Number(process.env.BANC_MARGE_NUL) || 3;
   const meilleureVictoire = Math.max(pv1, pv2);
   const nulDomine = pn >= meilleureVictoire + MARGE_DU_NUL;
