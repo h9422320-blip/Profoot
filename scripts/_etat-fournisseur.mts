@@ -1,0 +1,10 @@
+import { chargerEnv } from './challenger/commun.mjs';
+chargerEnv();
+const cle = process.env.API_FOOTBALL_KEY;
+const r = await fetch('https://v3.football.api-sports.io/status', { headers: { 'x-apisports-key': String(cle) } });
+const d: any = await r.json();
+const a = d?.response ?? {};
+console.log('compte      :', a?.account?.firstname, a?.account?.lastname, '|', a?.account?.email);
+console.log('abonnement  :', a?.subscription?.plan, '| actif :', a?.subscription?.active, '| fin :', a?.subscription?.end);
+console.log('requêtes    :', a?.requests?.current, '/', a?.requests?.limit_day, 'aujourd’hui');
+if (d?.errors && Object.keys(d.errors).length) console.log('erreurs :', JSON.stringify(d.errors));
