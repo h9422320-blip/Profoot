@@ -1,18 +1,43 @@
 /**
  * QUI A PAYÉ SANS JAMAIS VOIR SON ACCÈS ?
  *
- * Signature du défaut : un abonnement ACTIF sur un compte qui ne s'est pas
- * connecté depuis l'achat. Soit la personne est partie, soit — et c'est le cas
- * grave — elle se connecte sur une AUTRE adresse et tombe sur le mur de
- * paiement en ayant payé.
+ * ── LE CAS À TROUVER ──────────────────────────────────────────────────────
  *
- * Le second cas se reconnaît : une autre adresse, proche, qui elle est
- * vivante. C'est exactement ce qui a produit la plainte du 9 octobre 2026.
+ * L'accès est attaché à l'ADRESSE saisie à la boutique. Quand l'acheteur se
+ * connecte avec une AUTRE adresse — seconde boîte, faute de frappe — il paie,
+ * l'accès s'ouvre, et il tombe quand même sur le mur de paiement. Du dehors,
+ * c'est indiscernable d'une escroquerie : le 9 octobre 2026, un abonné VIP a
+ * porté plainte à la boutique pour cette raison.
+ *
+ * ── LE SIGNAL QUI MARCHE, ET CELUI QUI TROMPE ─────────────────────────────
+ *
+ * Première version de ce script : « compte qui ne s'est pas reconnecté depuis
+ * l'achat ». Elle a rendu huit cas, dont SEPT faux. La raison : une session
+ * reste ouverte des semaines, et `last_sign_in_at` ne bouge alors jamais. Deux
+ * de ces « abandonnés » avaient 40 et 42 analyses — ils utilisaient
+ * parfaitement le compte qui avait payé.
+ *
+ * Le seul signal qui dise où quelqu'un vit, c'est ce qu'il FAIT. On cherche
+ * donc : un accès encore valable sur un compte qui n'analyse presque pas,
+ * pendant qu'une adresse voisine analyse beaucoup sans aucun accès.
+ *
+ * ── CE QUE CE SCRIPT NE TRANCHE PAS ───────────────────────────────────────
+ *
+ * Deux comptes « konejoseph740 » et « konejoseph40 » peuvent être la même
+ * personne… ou deux homonymes. Le script sépare donc ce qui est SÛR — même
+ * identifiant, domaine mal tapé, personne ne tape « @gm » volontairement — de
+ * ce qui demande une question à l'intéressé. Déplacer l'accès d'un client vers
+ * le compte d'un autre serait pire que le défaut qu'on corrige.
  */
 import { chargerEnv } from './challenger/commun.mjs';
 chargerEnv();
 const { createAdminClient } = await import('../src/lib/supabase-admin.js');
 const sb = createAdminClient();
+
+/** En dessous, le compte ne sert manifestement pas. */
+const ANALYSES_DORMANT = 3;
+/** Au-dessus, le compte voisin sert manifestement. */
+const ANALYSES_VIVANT = 5;
 
 const comptes: any[] = [];
 for (let page = 1; page <= 80; page++) {
@@ -30,38 +55,50 @@ for (let de = 0; ; de += 1000) {
   abos.push(...(data ?? []));
   if (!data || data.length < 1000) break;
 }
-console.log(`${abos.length} abonnement(s) actif(s).`);
+// Un accès expiré ne se déplace pas : il n'y a plus rien à donner.
+const valables = abos.filter((a) => !a.expires_at || Date.parse(a.expires_at) > Date.now());
+console.log(`${abos.length} abonnement(s) marqués actifs, dont ${valables.length} encore valables.`);
 
-// Le noyau d'une adresse : ce qui reste une fois les chiffres de fin retirés.
+const analyses = async (id: string) =>
+  (await sb.from('analysis_history').select('id', { count: 'exact', head: true }).eq('user_id', id)).count ?? 0;
+
+/** Le nom devant l'arobase, sans les chiffres de fin. */
 const noyau = (adr: string) => String(adr ?? '').toLowerCase().split('@')[0].replace(/[0-9._-]+$/g, '');
-const vivants = new Map<string, any[]>();
+const voisins = new Map<string, any[]>();
 for (const u of comptes) {
-  if (!u.last_sign_in_at) continue;
   const n = noyau(u.email);
   if (n.length < 5) continue;
-  vivants.set(n, [...(vivants.get(n) ?? []), u]);
+  voisins.set(n, [...(voisins.get(n) ?? []), u]);
+}
+const avecAcces = new Set(valables.map((a) => a.user_id));
+
+const surs: any[] = [];
+const aDemander: any[] = [];
+for (const a of valables) {
+  const paye: any = parId.get(a.user_id);
+  if (!paye) continue;
+  const nPaye = await analyses(paye.id);
+  if (nPaye > ANALYSES_DORMANT) continue; // ce compte sert : rien à voir
+
+  for (const v of (voisins.get(noyau(paye.email)) ?? []).filter((x: any) => x.id !== paye.id)) {
+    if (avecAcces.has(v.id)) continue;
+    const nV = await analyses(v.id);
+    if (nV < ANALYSES_VIVANT || nV <= nPaye) continue;
+    // Même identifiant, domaine mal tapé : aucun doute possible.
+    const memeIdentifiant = String(paye.email).split('@')[0] === String(v.email).split('@')[0];
+    (memeIdentifiant ? surs : aDemander).push({ a, paye, v, nPaye, nV });
+  }
 }
 
-const suspects: any[] = [];
-for (const a of abos) {
-  const u: any = parId.get(a.user_id);
-  if (!u) continue;
-  const vu = u.last_sign_in_at ? Date.parse(u.last_sign_in_at) : 0;
-  // Pas revenu depuis l'achat : l'accès n'a jamais servi.
-  if (vu >= Date.parse(a.created_at)) continue;
-  const freres = (vivants.get(noyau(u.email)) ?? []).filter((x: any) => x.id !== u.id);
-  if (!freres.length) continue;
-  const actif = freres.find((f: any) => Date.parse(f.last_sign_in_at) > Date.parse(a.created_at));
-  if (!actif) continue;
-  const { count } = await sb.from('subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', actif.id).eq('status', 'active');
-  if (count) continue; // l'autre compte a déjà un accès : rien à faire
-  suspects.push({ a, paye: u, utilise: actif });
-}
-
-console.log(`\n${suspects.length} cas où l'accès dort sur un compte abandonné pendant qu'un compte voisin est vivant :\n`);
-for (const s of suspects) {
-  console.log(`  ${s.a.plan} ${s.a.amount} F du ${String(s.a.created_at).slice(0, 10)}`);
-  console.log(`     a payé  : ${String(s.paye.email).padEnd(34)} vu ${String(s.paye.last_sign_in_at ?? 'JAMAIS').slice(0, 16)}`);
-  console.log(`     utilise : ${String(s.utilise.email).padEnd(34)} vu ${String(s.utilise.last_sign_in_at).slice(0, 16)}`);
-}
-if (!suspects.length) console.log('  (aucun — le cas du 9 octobre était isolé)');
+const montrer = (titre: string, liste: any[]) => {
+  console.log(`\n${titre} : ${liste.length}`);
+  for (const s of liste) {
+    console.log(`  ${s.a.plan} ${s.a.amount} F · jusqu'au ${String(s.a.expires_at).slice(0, 10)}`);
+    console.log(`     a payé  ${String(s.paye.email).padEnd(34)} ${String(s.nPaye).padStart(3)} analyses`);
+    console.log(`     utilise ${String(s.v.email).padEnd(34)} ${String(s.nV).padStart(3)} analyses`);
+    console.log(`     → npx tsx scripts/_transferer-acces.mts ${s.paye.email} ${s.v.email} --ecrire`);
+  }
+};
+montrer('À DÉPLACER — même identifiant, domaine mal tapé', surs);
+montrer('À DEMANDER À L’INTÉRESSÉ — identifiants différents, ce peut être deux personnes', aDemander);
+if (!surs.length && !aDemander.length) console.log('\nAucun accès valable ne dort sur un compte inutilisé.');
