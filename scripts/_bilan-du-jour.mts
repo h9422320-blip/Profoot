@@ -1,90 +1,66 @@
 /**
- * LE BILAN D'UNE JOURNÉE DE MATCHS : combien analysés, combien justes.
+ * LE BILAN D'UNE JOURNÉE : ce que l'application a analysé, et ce qu'on en sait.
  *
- *   npx tsx scripts/_bilan-du-jour.mts 2026-09-13
- *
- * ── UNE PRÉCISION QUI CHANGE TOUT ─────────────────────────────────────────
- *
- * On compte les RENCONTRES JOUÉES ce jour-là, pas les analyses écrites ce
- * jour-là. Une analyse du 12 peut porter sur un match du 13, et l'inverse
- * arrive aussi. `analysis_history` ne porte pas la date du match : seule la
- * table `preuves` la connaît, parce qu'elle est construite à partir de la
- * fiche de la rencontre chez le fournisseur.
- *
- * Lecture seule.
+ *   npx tsx scripts/_bilan-du-jour.mts 2026-10-10
  */
 import { chargerEnv } from './challenger/commun.mjs';
 chargerEnv();
 const { createAdminClient } = await import('../src/lib/supabase-admin.js');
 const sb = createAdminClient();
+const jour = process.argv[2] ?? new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+const lendemain = new Date(Date.parse(jour) + 86_400_000).toISOString().slice(0, 10);
 
-const jour = process.argv[2] ?? new Date().toISOString().slice(0, 10);
-const lendemain = new Date(Date.parse(`${jour}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
-
-console.log('════════════════════════════════════════════════════════════════');
-console.log(`  BILAN DES MATCHS DU ${jour}`);
-console.log('════════════════════════════════════════════════════════════════\n');
-
-const { data: preuves, error } = await sb
-  .from('preuves')
-  .select('date_match, team1_name, team2_name, prono_score, score_reel, issue_correcte, score_exact, publiee, competition')
-  .gte('date_match', `${jour}T00:00:00Z`)
-  .lt('date_match', `${lendemain}T00:00:00Z`)
-  .order('date_match', { ascending: true });
-if (error) throw new Error(error.message);
-
-const P = (preuves ?? []) as any[];
-const justes = P.filter((p) => p.issue_correcte);
-const rates = P.filter((p) => !p.issue_correcte);
-const exacts = P.filter((p) => p.score_exact);
-
-console.log(`── ${P.length} RENCONTRES ANALYSÉES ET CONFRONTÉES AU RÉSULTAT\n`);
-
-console.log(`── LES ${justes.length} RÉUSSITES (bon vainqueur annoncé)`);
-for (const p of justes)
-  console.log(
-    `   ${p.team1_name} — ${p.team2_name}`.padEnd(48) +
-      `annoncé ${String(p.prono_score).padEnd(8)} réel ${String(p.score_reel).padEnd(8)}` +
-      (p.score_exact ? '  ★ SCORE EXACT' : '')
-  );
-
-console.log(`\n── LES ${rates.length} RATÉS`);
-for (const p of rates)
-  console.log(
-    `   ${p.team1_name} — ${p.team2_name}`.padEnd(48) +
-      `annoncé ${String(p.prono_score).padEnd(8)} réel ${String(p.score_reel).padEnd(8)}`
-  );
-
-const part = P.length ? (justes.length / P.length) * 100 : 0;
-console.log('\n════════════════════════════════════════════════════════════════');
-console.log(`  ${P.length} matchs analysés   ·   ${justes.length} réussites   ·   ${rates.length} ratés`);
-console.log(`  ${part.toFixed(1)} % de vainqueurs justes   ·   ${exacts.length} score(s) exact(s)`);
-console.log('════════════════════════════════════════════════════════════════');
-
-// ── Ce que les abonnés ont réellement analysé ce jour-là ──────────────────
 const lignes: any[] = [];
-for (let de = 0; de < 8000; de += 1000) {
-  const { data } = await sb
-    .from('analysis_history')
-    .select('user_id, team1_name, team2_name')
-    .gte('created_at', `${jour}T00:00:00Z`)
-    .lt('created_at', `${lendemain}T00:00:00Z`)
-    .range(de, de + 999);
-  if (!data?.length) break;
-  lignes.push(...data);
-  if (data.length < 1000) break;
+for (let de = 0; ; de += 1000) {
+  const { data, error } = await sb.from('analysis_history')
+    .select('id, user_id, fixture_id, team1_name, team2_name, competition, score, predicted_winner, real_score, winner_correct, score_correct, verified_at, created_at')
+    .gte('created_at', jour).lt('created_at', lendemain)
+    .order('id', { ascending: true }).range(de, de + 999);
+  if (error) throw new Error(error.message);
+  lignes.push(...(data ?? []));
+  if (!data || data.length < 1000) break;
 }
-const rencontres = new Set(lignes.map((l) => [l.team1_name, l.team2_name].sort().join(' · ')));
-console.log(
-  `\n  Ce jour-là, les abonnés ont lancé ${lignes.length} analyses sur ${rencontres.size} rencontres ` +
-    `distinctes, par ${new Set(lignes.map((l) => l.user_id)).size} personnes.`
-);
 
-// ── Reste-t-il des matchs du jour non confrontés ? ───────────────────────
-const { count } = await sb
-  .from('analysis_history')
-  .select('id', { count: 'exact', head: true })
-  .is('verified_at', null)
-  .gte('created_at', `${jour}T00:00:00Z`)
-  .lt('created_at', `${lendemain}T00:00:00Z`);
-console.log(`  Analyses de ce jour encore en attente de résultat : ${count ?? 0}`);
+const parMatch = new Map<string, any>();
+for (const a of lignes) {
+  const c = a.fixture_id ? `f${a.fixture_id}` : `${a.team1_name}|${a.team2_name}`;
+  const m = parMatch.get(c) ?? { ...a, n: 0, v: 0, justes: 0, exacts: 0, clients: new Set<string>() };
+  m.n++;
+  m.clients.add(String(a.user_id));
+  if (a.verified_at) { m.v++; m.real_score = a.real_score; if (a.winner_correct) m.justes++; if (a.score_correct) m.exacts++; }
+  parMatch.set(c, m);
+}
+const matchs = [...parMatch.values()];
+const juges = matchs.filter((m) => m.v > 0);
+const justes = juges.filter((m) => m.justes > 0);
+const exacts = juges.filter((m) => m.exacts > 0);
+const clients = new Set(lignes.map((l) => String(l.user_id)));
+
+console.log(`\n═══ BILAN DU ${jour} ═══\n`);
+console.log(`  analyses lancées        : ${lignes.length}`);
+console.log(`  rencontres distinctes   : ${matchs.length}`);
+console.log(`  abonnés qui ont analysé : ${clients.size}`);
+console.log(`\n  rencontres confrontées à leur résultat : ${juges.length} sur ${matchs.length}`);
+if (juges.length) {
+  console.log(`     vainqueur trouvé : ${justes.length}  (${((100 * justes.length) / juges.length).toFixed(1)} %)`);
+  console.log(`     score exact      : ${exacts.length}`);
+}
+if (juges.length < matchs.length)
+  console.log(`  ⚠️ ${matchs.length - juges.length} rencontre(s) SANS RÉSULTAT : le fournisseur de données est inaccessible.`);
+
+const parComp = new Map<string, { n: number; m: number }>();
+for (const m of matchs) {
+  const c = String(m.competition ?? 'inconnue');
+  const d = parComp.get(c) ?? { n: 0, m: 0 };
+  d.n += m.n; d.m++;
+  parComp.set(c, d);
+}
+console.log(`\n  PAR COMPÉTITION :`);
+for (const [c, d] of [...parComp.entries()].sort((a, b) => b[1].n - a[1].n))
+  console.log(`     ${String(c).slice(0, 34).padEnd(36)} ${String(d.m).padStart(3)} rencontre(s) · ${String(d.n).padStart(4)} analyses`);
+
+console.log(`\n  LES PLUS ANALYSÉES :`);
+for (const m of matchs.sort((a, b) => b.n - a.n).slice(0, 15)) {
+  const verdict = m.v === 0 ? 'en attente du résultat' : m.justes > 0 ? `JUSTE (réel ${m.real_score})${m.exacts > 0 ? ' · SCORE EXACT' : ''}` : `raté (réel ${m.real_score})`;
+  console.log(`     ${String(m.n).padStart(3)} × ${(m.team1_name + ' — ' + m.team2_name).slice(0, 42).padEnd(44)} annoncé ${String(m.score).padEnd(7)} ${verdict}`);
+}
