@@ -1014,6 +1014,14 @@
 }
 .hero-video { position: absolute; inset: 0; }
 .hero-video-media { display: block; width: 100%; height: 100%; object-fit: cover; background: #050b0e; }
+/* Jamais de bouton « lecture » : celui que l'iPhone et certains navigateurs
+   posent sur une vidéo qu'ils refusent de lancer est masqué. La bascule vers
+   l'image animée prend le relais en une seconde. */
+.hero-video-media::-webkit-media-controls,
+.hero-video-media::-webkit-media-controls-panel,
+.hero-video-media::-webkit-media-controls-start-playback-button,
+.hero-video-media::-webkit-media-controls-overlay-play-button,
+.hero-video-media::-webkit-media-controls-play-button { display: none !important; -webkit-appearance: none; opacity: 0; }
 
 @media (max-width: 1023px) {
   .hero-content > .hero-subtitle { margin-bottom: 0; }

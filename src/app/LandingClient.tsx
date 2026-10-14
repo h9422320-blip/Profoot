@@ -815,11 +815,14 @@ function AnalysisContent() {
  * public des publicités. Les règles de lecture automatique ne visent que les
  * VIDÉOS, pas les IMAGES animées. Si la vidéo n'est pas partie, on la remplace
  * donc par la même animation sous forme d'image :
- * - iPhone, iPad, Safari (et tout navigateur sur iPhone) : le même MP4, posé
- *   dans une balise image — WebKit le joue en boucle comme un GIF ;
- * - les autres : une version AVIF animée de 1 Mo.
+ * - sur iPhone et iPad (tous navigateurs, y compris ceux des applis) : un WebP
+ *   animé, que tout iPhone anime depuis iOS 14, même en économie d'énergie ;
+ * - ailleurs : un AVIF animé de 1,2 Mo, et le WebP si l'AVIF n'est pas lu.
+ * Première tentative, le même jour : sur iPhone, le MP4 posé dans une balise
+ * image. Le propriétaire voyait encore le bouton : abandonnée.
  * L'image d'attente (la première image du film) reste affichée pendant ce
- * temps : jamais un cadre noir, jamais de bouton.
+ * temps, et le bouton « lecture » natif est masqué par la feuille de style :
+ * jamais un cadre noir, jamais de bouton.
  */
 const BALISE_VIDEO =
   '<video class="hero-video-media" autoplay muted loop playsinline webkit-playsinline preload="auto"' +
@@ -827,8 +830,8 @@ const BALISE_VIDEO =
   ' aria-label="Présentation de ProFoot AI : de vrais matchs annoncés avant le coup d\'envoi et vérifiés après">' +
   '<source src="/video/presentation.mp4" type="video/mp4"></video>';
 
-const VIDEO_MP4 = '/video/presentation.mp4';
-const VIDEO_ANIMEE = '/video/presentation-anim.avif';
+const ANIMATION_AVIF = '/video/presentation-anim.avif';
+const ANIMATION_WEBP = '/video/presentation-anim.webp';
 
 function VideoPresentation() {
   const conteneur = useRef<HTMLDivElement>(null);
@@ -847,15 +850,14 @@ function VideoPresentation() {
       image.className = 'hero-video-media';
       image.alt = video.getAttribute('aria-label') ?? '';
       image.decoding = 'async';
-      const poser = (src: string) => {
-        image.onload = () => video.replaceWith(image);
-        image.src = src;
-      };
-      // WebKit sait jouer un MP4 dans une image ; Chrome, non (erreur aussitôt).
-      const essai = document.createElement('img');
-      essai.onload = () => poser(VIDEO_MP4);
-      essai.onerror = () => poser(VIDEO_ANIMEE);
-      essai.src = VIDEO_MP4;
+      // Tout iPhone et iPad : WebKit, quel que soit le navigateur affiché.
+      const estIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const sources = estIOS ? [ANIMATION_WEBP] : [ANIMATION_AVIF, ANIMATION_WEBP];
+      let rang = 0;
+      image.onload = () => video.replaceWith(image);
+      image.onerror = () => { rang += 1; if (rang < sources.length) image.src = sources[rang]; };
+      image.src = sources[0];
     };
 
     const jouer = () => {
@@ -870,7 +872,7 @@ function VideoPresentation() {
     // une vidéo encore à l'arrêt ne partira pas toute seule.
     const minuteur = setTimeout(() => {
       if (video.paused && document.visibilityState === 'visible') basculerEnImage();
-    }, 1800);
+    }, 1200);
 
     const observateur = new IntersectionObserver(
       (entrees) => { if (entrees.some((e) => e.isIntersecting)) jouer(); },

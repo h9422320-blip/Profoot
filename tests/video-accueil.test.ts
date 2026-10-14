@@ -30,7 +30,7 @@ test('★ ACQUIS — la balise vidéo porte tout ce qu’il faut pour partir san
 });
 
 test('★ ACQUIS — les fichiers de la vidéo sont bien servis par le site', () => {
-  for (const f of ['public/video/presentation.mp4', 'public/video/presentation-affiche.jpg']) {
+  for (const f of ['public/video/presentation.mp4', 'public/video/presentation-affiche.jpg', 'public/video/presentation-anim.webp', 'public/video/presentation-anim.avif']) {
     assert.ok(fs.existsSync(path.join(process.cwd(), f)), `${f} est introuvable.`);
   }
   const taille = fs.statSync(path.join(process.cwd(), 'public/video/presentation.mp4')).size;
@@ -51,4 +51,16 @@ test('★ ACQUIS — plus de téléphone autour de la vidéo de l’accueil', ()
   const heros = s.slice(s.indexOf('<section className="hero-section">'), s.indexOf('</section>', s.indexOf('<section className="hero-section">')));
   assert.match(heros, /<VideoPresentation \/>/, 'La vidéo a disparu de l’en-tête.');
   assert.doesNotMatch(heros, /hero-app-mockup|mockup-screen|BoutonsLateraux|mockup-notch/, 'Le téléphone est revenu autour de la vidéo.');
+});
+
+test('★ ACQUIS — une vidéo refusée devient une image animée, jamais un bouton « lecture »', () => {
+  // Le 14 octobre 2026, le propriétaire devait toucher « lecture » sur son
+  // téléphone. Les règles de lecture automatique ne visent que les vidéos.
+  const s = lire(ACCUEIL);
+  assert.match(s, /NotAllowedError[\s\S]{0,80}basculerEnImage\(\)/, 'Le refus du téléphone ne déclenche plus la bascule.');
+  assert.match(s, /setTimeout\(\(\) => \{\s*if \(video\.paused[\s\S]{0,80}basculerEnImage\(\)/, 'Une vidéo restée à l’arrêt ne bascule plus.');
+  // Sur iPhone, le WebP animé : tout iPhone l'anime, même en économie d'énergie.
+  assert.match(s, /estIOS \? \[ANIMATION_WEBP\]/, 'Sur iPhone, la bascule ne passe plus par le WebP animé.');
+  const css = lire('src/app/landing.css');
+  assert.match(css, /-webkit-media-controls-start-playback-button/, 'Le bouton « lecture » de l’iPhone n’est plus masqué.');
 });
