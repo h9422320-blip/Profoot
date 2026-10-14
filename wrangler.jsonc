@@ -1,0 +1,50 @@
+/**
+ * L'APPLICATION CHEZ CLOUDFLARE.
+ *
+ * ── POURQUOI ON A DÉMÉNAGÉ ────────────────────────────────────────────────
+ *
+ * Le 14 octobre 2026, Vercel a mis le compte en pause et réclamé 93 dollars :
+ * le site entier répondait « 402 Payment Required », un jour de Ligue des
+ * champions. La cause n'était pas le trafic mais le MODE DE FACTURATION :
+ * Vercel compte le temps d'exécution, attente comprise. Or une analyse attend
+ * l'IA pendant 30 à 60 secondes, et `/api/analyze` autorise jusqu'à 300
+ * secondes. Cinq cents analyses par jour, et la note monte toute seule.
+ *
+ * Cloudflare, lui, compte le temps de CALCUL. Attendre une réponse d'API n'y
+ * coûte rien. C'est exactement la forme de cette application.
+ *
+ * ── LES TÂCHES PLANIFIÉES TIENNENT EN UNE SEULE LIGNE ─────────────────────
+ *
+ * Vercel acceptait treize tâches ; Cloudflare en autorise cinq par compte sur
+ * le plan gratuit. Une seule déclaration les remplace donc toutes : elle se
+ * réveille aux minutes utiles (0, 10, 15, 20, 35, 37, 40 et 59), et
+ * `worker-cloudflare.mjs` décide, selon l'heure, quelle route appeler. Les
+ * horaires restent identiques à ceux de `vercel.json`, à la minute près.
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "profoot",
+  "main": "worker-cloudflare.mjs",
+  "compatibility_date": "2026-01-01",
+  // `nodejs_compat` : Next.js tourne en mode Node.
+  // `global_fetch_strictly_public` : un `fetch` vers notre propre domaine
+  // ressort vraiment sur Internet au lieu de boucler dans le worker.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Le domaine passe déjà par Cloudflare, qui renvoyait vers Vercel. On
+  // intercepte AVANT : la requête n'atteint plus jamais Vercel, et aucun
+  // enregistrement DNS n'est touché — rien à défaire si on veut revenir.
+  "routes": [
+    { "pattern": "profootai.com/*", "zone_name": "profootai.com" },
+    { "pattern": "www.profootai.com/*", "zone_name": "profootai.com" }
+  ],
+  "triggers": {
+    "crons": ["0,10,15,20,35,37,40,59 * * * *"]
+  }
+}

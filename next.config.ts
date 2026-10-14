@@ -1,4 +1,17 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
+/**
+ * Les réglages de Cloudflare pendant le développement.
+ *
+ * Sans cet appel, `next dev` ignore tout ce que déclare `wrangler.jsonc` : on
+ * développerait à l'aveugle sur un environnement qui n'a rien à voir avec
+ * celui qui sert les clients. Il ne s'exécute qu'en développement.
+ */
+// Uniquement en développement : pendant une compilation, cet appel lance un
+// processus wrangler qui écrit sur une sortie déjà fermée, et Next.js s'arrête
+// sur « write EOF » avant même d'avoir compilé la première page.
+if (process.env.NODE_ENV === "development") void initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
   /**

@@ -56,3 +56,10 @@ scripts/_*.mjs
 
 # Le dernier bilan Clarity : un relevé local, pas du code.
 bilan-clarity.json
+
+# Construction pour Cloudflare
+/.open-next/
+.wrangler/
+.dev.vars
+cloudflare-env.d.ts
+package-lock.json.sauvegarde

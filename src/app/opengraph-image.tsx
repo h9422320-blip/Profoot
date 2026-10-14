@@ -19,7 +19,7 @@ import { ImageResponse } from 'next/og';
  * compilation — elle renvoie une erreur 500 en production, et le lien partagé
  * perd son aperçu sans que rien ne le signale.
  */
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const alt = "ProFoot AI — l'analyse de matchs par intelligence artificielle";
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';

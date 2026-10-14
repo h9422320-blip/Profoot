@@ -1,0 +1,4 @@
+# Les fichiers de Next.js portent une empreinte dans leur nom : ils ne changent
+# jamais sans changer d'adresse. Les garder un an évite de les retélécharger.
+/_next/static/*
+  Cache-Control: public,max-age=31536000,immutable

@@ -5,5 +5,5 @@
  * `runtime` doit être écrit ici littéralement : Next.js lit ce champ dans le
  * fichier lui-même et ne suit pas les réexportations.
  */
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export { default, alt, size, contentType } from './opengraph-image';
