@@ -327,7 +327,7 @@ export default function LandingPage({
                 pose au DÉBUT de l'axe — c'est-à-dire à gauche. Le bouton
                 paraissait donc décalé, sur téléphone comme sur ordinateur.
                 Il est désormais centré à toutes les tailles d'écran. */}
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-8 w-full md:w-auto px-4 md:px-0">
+            <div className="hero-zone-cta flex flex-col md:flex-row items-center justify-center gap-4 mb-8 w-full md:w-auto px-4 md:px-0">
               <Link href={user ? "/analyze" : "/signup"} className="hero-cta-primary w-full md:w-auto justify-center">
                 Démarrer l'analyse <ArrowRight className="w-4 h-4" />
               </Link>
@@ -354,12 +354,13 @@ export default function LandingPage({
               <div className="hero-app-mockup-inner">
                 <BoutonsLateraux />
 
-                {/* App Content */}
-                <div className="mockup-screen">
+                {/* L'écran du téléphone joue la vidéo de présentation : de vrais
+                    matchs, annoncés avant le coup d'envoi et vérifiés après.
+                    Elle remplace l'écran dessiné, qui ne montrait rien de réel. */}
+                <div className="mockup-screen hero-video-ecran">
                   {/* Encoche découpée dans l'écran, pas posée sur le cadre */}
                   <div className="mockup-notch" />
-                  <BarreEtat />
-                  <AppMockupContent />
+                  <VideoPresentation />
                 </div>
               </div>
               
@@ -818,6 +819,69 @@ function AnalysisContent() {
  * calculée à l'affichage ferait diverger le rendu du serveur et celui du
  * navigateur.
  */
+/**
+ * LA VIDÉO DE PRÉSENTATION DE L'ACCUEIL.
+ *
+ * ── ELLE DOIT JOUER TOUTE SEULE, SANS UN CLIC ───────────────────────────
+ *
+ * Un navigateur n'accepte de lancer une vidéo sans geste du visiteur que si
+ * elle est muette (`muted`). Sur iPhone, elle doit en plus jouer dans la page
+ * (`playsinline`), sinon Safari exige le plein écran et donc un toucher. Elle
+ * tourne en boucle (`loop`) : dès qu'elle finit, elle repart — sa dernière
+ * image est d'ailleurs identique à la première, la reprise ne se voit pas.
+ *
+ * ── POURQUOI LE HTML EST ÉCRIT À LA MAIN ───────────────────────────────
+ *
+ * React pose `muted` comme une PROPRIÉTÉ du lecteur, pas comme un attribut
+ * du HTML envoyé par le serveur. Or Safari décide de l'autorisation dès la
+ * lecture du HTML, avant que React ne prenne la main : la vidéo restait figée
+ * sur iPhone. Écrite telle quelle, la balise porte ses attributs dès le
+ * premier octet.
+ *
+ * ── LES FILETS DE SÉCURITÉ ──────────────────────────────────────────────
+ *
+ * Le mode économie d'énergie de l'iPhone, ou certains navigateurs Android,
+ * peuvent quand même refuser le départ. On relance alors la lecture dès que
+ * la vidéo entre à l'écran, quand l'onglet redevient visible, et au premier
+ * toucher n'importe où sur la page. En attendant, l'image d'attente (la
+ * première image du film) est affichée : jamais un cadre noir.
+ */
+const BALISE_VIDEO =
+  '<video class="hero-video-media" autoplay muted loop playsinline webkit-playsinline preload="auto"' +
+  ' poster="/video/presentation-affiche.jpg" disablepictureinpicture disableremoteplayback' +
+  ' aria-label="Présentation de ProFoot AI : de vrais matchs annoncés avant le coup d\'envoi et vérifiés après">' +
+  '<source src="/video/presentation.mp4" type="video/mp4"></video>';
+
+function VideoPresentation() {
+  const conteneur = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const video = conteneur.current?.querySelector('video');
+    if (!video) return;
+    video.muted = true;
+    video.defaultMuted = true;
+    const jouer = () => {
+      if (video.paused) video.play().catch(() => {});
+    };
+    jouer();
+    const observateur = new IntersectionObserver(
+      (entrees) => { if (entrees.some((e) => e.isIntersecting)) jouer(); },
+      { threshold: 0.15 }
+    );
+    observateur.observe(video);
+    const auRetour = () => { if (document.visibilityState === 'visible') jouer(); };
+    document.addEventListener('visibilitychange', auRetour);
+    window.addEventListener('touchstart', jouer, { passive: true });
+    window.addEventListener('pointerdown', jouer);
+    return () => {
+      observateur.disconnect();
+      document.removeEventListener('visibilitychange', auRetour);
+      window.removeEventListener('touchstart', jouer);
+      window.removeEventListener('pointerdown', jouer);
+    };
+  }, []);
+  return <div ref={conteneur} className="hero-video" dangerouslySetInnerHTML={{ __html: BALISE_VIDEO }} />;
+}
+
 function BarreEtat() {
   return (
     <div className="mockup-statusbar">

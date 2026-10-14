@@ -980,3 +980,57 @@
   .mockup-notch,
   .phone-notch { width: 112px; height: 26px; border-radius: 0 0 16px 16px; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   LA VIDÉO DE PRÉSENTATION, VISIBLE DÈS L'ARRIVÉE
+   ────────────────────────────────────────────────────────────────────────
+   Le téléphone de l'en-tête joue la vidéo. Il était placé sous le bouton :
+   sur un téléphone, il commençait hors de l'écran, et personne ne le voyait
+   sans faire défiler. Il remonte donc :
+   - sur téléphone et tablette, juste sous le titre, avant le bouton ;
+   - sur ordinateur, à droite du texte, dans la première vue.
+   ════════════════════════════════════════════════════════════════════════ */
+.hero-content > .live-badge-wrapper { order: 1; }
+.hero-content > .hero-title { order: 2; }
+.hero-content > .hero-app-mockup { order: 3; }
+.hero-content > .hero-zone-cta { order: 4; }
+.hero-content > .hero-subtitle { order: 5; }
+
+/* L'écran prend le format exact de la vidéo (9:16) : rien n'est rogné. */
+.mockup-screen.hero-video-ecran { height: auto; aspect-ratio: 9 / 16; background: #050b0e; }
+.mockup-screen.hero-video-ecran::after { display: none; }
+.hero-video { position: absolute; inset: 0; z-index: 1; }
+.hero-video-media { display: block; width: 100%; height: 100%; object-fit: cover; background: #050b0e; }
+
+@media (max-width: 1023px) {
+  .hero-content > .hero-app-mockup { margin-top: 6px; margin-bottom: 30px; max-width: min(300px, 78vw); }
+  .hero-content > .hero-subtitle { margin-bottom: 0; }
+}
+
+@media (min-width: 1024px) {
+  .hero-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "badge video" "titre video" "sous video" "cta video";
+    column-gap: 72px;
+    max-width: 1180px;
+    align-items: center;
+  }
+  .hero-content > .live-badge-wrapper { grid-area: badge; justify-self: center; align-self: end; }
+  .hero-content > .hero-title { grid-area: titre; font-size: clamp(48px, 4.4vw, 66px); }
+  .hero-content > .hero-subtitle { grid-area: sous; justify-self: center; }
+  .hero-content > .hero-zone-cta { grid-area: cta; justify-self: center; align-self: start; }
+  .hero-content > .hero-app-mockup {
+    grid-area: video;
+    margin-top: 0;
+    /* La hauteur de l'écran décide : la vidéo entière tient dans la première vue. */
+    width: min(360px, calc((100svh - 200px) * 0.5625 + 24px));
+    max-width: none;
+  }
+}
+
+/* Les logos flottants et les pastilles décoraient l'écran dessiné : posés sur
+   la vidéo, ils en cachaient les bords (les scores, les écussons). Ils sont
+   retirés du téléphone de l'en-tête — la vidéo montre désormais le réel. */
+.hero-content > .hero-app-mockup > .floating-logo,
+.hero-content > .hero-app-mockup > .absolute { display: none; }
