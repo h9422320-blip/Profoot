@@ -982,28 +982,40 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   LA VIDÉO DE PRÉSENTATION, VISIBLE DÈS L'ARRIVÉE
+   LA VIDÉO DE PRÉSENTATION, SEULE, VISIBLE DÈS L'ARRIVÉE
    ────────────────────────────────────────────────────────────────────────
-   Le téléphone de l'en-tête joue la vidéo. Il était placé sous le bouton :
-   sur un téléphone, il commençait hors de l'écran, et personne ne le voyait
-   sans faire défiler. Il remonte donc :
-   - sur téléphone et tablette, juste sous le titre, avant le bouton ;
+   Juste la vidéo : pas de téléphone autour. Un cadre aux coins arrondis, un
+   liseré lumineux émeraude et or, un halo derrière. Elle passe avant le
+   bouton pour être vue sans faire défiler :
+   - sur téléphone et tablette, juste sous le titre ;
    - sur ordinateur, à droite du texte, dans la première vue.
    ════════════════════════════════════════════════════════════════════════ */
 .hero-content > .live-badge-wrapper { order: 1; }
 .hero-content > .hero-title { order: 2; }
-.hero-content > .hero-app-mockup { order: 3; }
+.hero-content > .hero-video-bloc { order: 3; }
 .hero-content > .hero-zone-cta { order: 4; }
 .hero-content > .hero-subtitle { order: 5; }
 
-/* L'écran prend le format exact de la vidéo (9:16) : rien n'est rogné. */
-.mockup-screen.hero-video-ecran { height: auto; aspect-ratio: 9 / 16; background: #050b0e; }
-.mockup-screen.hero-video-ecran::after { display: none; }
-.hero-video { position: absolute; inset: 0; z-index: 1; }
+.hero-video-bloc { position: relative; width: min(330px, 84vw); margin: 4px auto 30px; }
+.hero-video-halo {
+  position: absolute; inset: 8% -10%; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(16,185,129,.42) 0%, rgba(16,185,129,.12) 45%, transparent 72%);
+  filter: blur(36px);
+}
+.hero-video-cadre {
+  position: relative; z-index: 1; aspect-ratio: 9 / 16; border-radius: 28px; overflow: hidden;
+  background: #050b0e;
+  /* Liseré en dégradé : un fond limité à l'intérieur, un autre qui déborde sur la bordure. */
+  border: 1.5px solid transparent;
+  background-image: linear-gradient(#050b0e, #050b0e),
+                    linear-gradient(150deg, rgba(52,211,153,.9) 0%, rgba(255,255,255,.12) 40%, rgba(255,255,255,.06) 60%, rgba(250,204,21,.75) 100%);
+  background-origin: border-box; background-clip: padding-box, border-box;
+  box-shadow: 0 40px 100px rgba(0,0,0,.65), 0 0 60px rgba(16,185,129,.18);
+}
+.hero-video { position: absolute; inset: 0; }
 .hero-video-media { display: block; width: 100%; height: 100%; object-fit: cover; background: #050b0e; }
 
 @media (max-width: 1023px) {
-  .hero-content > .hero-app-mockup { margin-top: 6px; margin-bottom: 30px; max-width: min(300px, 78vw); }
   .hero-content > .hero-subtitle { margin-bottom: 0; }
 }
 
@@ -1020,17 +1032,11 @@
   .hero-content > .hero-title { grid-area: titre; font-size: clamp(48px, 4.4vw, 66px); }
   .hero-content > .hero-subtitle { grid-area: sous; justify-self: center; }
   .hero-content > .hero-zone-cta { grid-area: cta; justify-self: center; align-self: start; }
-  .hero-content > .hero-app-mockup {
+  .hero-content > .hero-video-bloc {
     grid-area: video;
-    margin-top: 0;
+    margin: 0;
     /* La hauteur de l'écran décide : la vidéo entière tient dans la première vue. */
-    width: min(360px, calc((100svh - 200px) * 0.5625 + 24px));
-    max-width: none;
+    width: min(380px, calc((100svh - 190px) * 0.5625));
   }
+  .hero-video-cadre { border-radius: 32px; }
 }
-
-/* Les logos flottants et les pastilles décoraient l'écran dessiné : posés sur
-   la vidéo, ils en cachaient les bords (les scores, les écussons). Ils sont
-   retirés du téléphone de l'en-tête — la vidéo montre désormais le réel. */
-.hero-content > .hero-app-mockup > .floating-logo,
-.hero-content > .hero-app-mockup > .absolute { display: none; }

@@ -38,9 +38,17 @@ test('★ ACQUIS — les fichiers de la vidéo sont bien servis par le site', ()
   assert.ok(taille < 8 * 1024 * 1024, `La vidéo pèse ${(taille / 1048576).toFixed(1)} Mo : trop lourde pour l’accueil.`);
 });
 
-test('★ ACQUIS — le téléphone de la vidéo passe avant le bouton, dans la première vue', () => {
+test('★ ACQUIS — la vidéo, seule, passe avant le bouton, dans la première vue', () => {
   const css = lire('src/app/landing.css');
-  assert.match(css, /\.hero-content > \.hero-app-mockup \{ order: 3; \}/, 'La vidéo n’est plus remontée sous le titre sur téléphone.');
+  assert.match(css, /\.hero-content > \.hero-video-bloc \{ order: 3; \}/, 'La vidéo n’est plus remontée sous le titre sur téléphone.');
   assert.match(css, /\.hero-content > \.hero-zone-cta \{ order: 4; \}/);
   assert.match(css, /grid-template-areas: "badge video" "titre video" "sous video" "cta video"/, 'La vidéo n’est plus à côté du texte sur ordinateur.');
+});
+
+test('★ ACQUIS — plus de téléphone autour de la vidéo de l’accueil', () => {
+  // Le propriétaire l'a demandé le 14 octobre 2026 : la vidéo seule.
+  const s = lire(ACCUEIL);
+  const heros = s.slice(s.indexOf('<section className="hero-section">'), s.indexOf('</section>', s.indexOf('<section className="hero-section">')));
+  assert.match(heros, /<VideoPresentation \/>/, 'La vidéo a disparu de l’en-tête.');
+  assert.doesNotMatch(heros, /hero-app-mockup|mockup-screen|BoutonsLateraux|mockup-notch/, 'Le téléphone est revenu autour de la vidéo.');
 });

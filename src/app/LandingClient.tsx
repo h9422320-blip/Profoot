@@ -20,7 +20,6 @@ import {
   Users,
   Cpu,
   Eye,
-  Database,
   Quote,
   MessageCircle,
   Wifi,
@@ -333,45 +332,14 @@ export default function LandingPage({
               </Link>
             </div>
 
-            {/* Hero App Mockup (ULTRA PREMIUM) */}
-            <div className="hero-app-mockup">
-              <div className="hero-app-mockup-glow" />
-              
-              {/* Floating Logos (from screenshot) */}
-              <div className="floating-logo psg-logo">
-                <img src="https://media.api-sports.io/football/teams/85.png" alt="PSG" fetchPriority="high" decoding="async" width={48} height={48} />
-              </div>
-              <div className="floating-logo real-logo">
-                <img src="https://media.api-sports.io/football/teams/541.png" alt="Real Madrid" fetchPriority="high" decoding="async" width={48} height={48} />
-              </div>
-              <div className="floating-logo barca-logo">
-                <img src="https://media.api-sports.io/football/teams/529.png" alt="Barcelona" fetchPriority="high" decoding="async" width={48} height={48} />
-              </div>
-              <div className="floating-logo chelsea-logo">
-                <img src="https://media.api-sports.io/football/teams/49.png" alt="Chelsea" fetchPriority="high" decoding="async" width={48} height={48} />
-              </div>
-
-              <div className="hero-app-mockup-inner">
-                <BoutonsLateraux />
-
-                {/* L'écran du téléphone joue la vidéo de présentation : de vrais
-                    matchs, annoncés avant le coup d'envoi et vérifiés après.
-                    Elle remplace l'écran dessiné, qui ne montrait rien de réel. */}
-                <div className="mockup-screen hero-video-ecran">
-                  {/* Encoche découpée dans l'écran, pas posée sur le cadre */}
-                  <div className="mockup-notch" />
-                  <VideoPresentation />
-                </div>
-              </div>
-              
-              {/* Floating elements */}
-              <div className="absolute top-20 -left-12 bg-[#111c24] border border-[#10b981]/30 px-4 py-2 rounded-full shadow-[0_10px_30px_rgba(16,185,129,0.2)] flex items-center gap-2 animate-[float_4s_ease-in-out_infinite] hover:scale-110 transition-transform cursor-default z-30">
-                <Database className="w-4 h-4 text-[#10b981] animate-pulse" />
-                <span className="text-white/90 text-xs font-bold">+200 Ligues</span>
-              </div>
-              <div className="absolute bottom-32 -right-14 bg-[#111c24] border border-[#06b6d4]/30 px-4 py-2 rounded-full shadow-[0_10px_30px_rgba(6,182,212,0.2)] flex items-center gap-2 animate-[float_5s_ease-in-out_infinite_reverse] hover:scale-110 transition-transform cursor-default z-30">
-                <Cpu className="w-4 h-4 text-[#06b6d4] animate-pulse" />
-                <span className="text-white/90 text-xs font-bold">Temps Réel</span>
+            {/* LA VIDÉO DE PRÉSENTATION, SEULE.
+                Elle jouait d'abord dans un téléphone dessiné ; le propriétaire
+                veut la vidéo, et rien autour : un cadre net, un liseré
+                lumineux, un halo. Elle part seule et tourne en boucle. */}
+            <div className="hero-video-bloc">
+              <div className="hero-video-halo" />
+              <div className="hero-video-cadre">
+                <VideoPresentation />
               </div>
             </div>
           </div>
@@ -838,19 +806,29 @@ function AnalysisContent() {
  * sur iPhone. Écrite telle quelle, la balise porte ses attributs dès le
  * premier octet.
  *
- * ── LES FILETS DE SÉCURITÉ ──────────────────────────────────────────────
+ * ── QUAND LE TÉLÉPHONE REFUSE QUAND MÊME : JAMAIS DE BOUTON « LECTURE » ──
  *
- * Le mode économie d'énergie de l'iPhone, ou certains navigateurs Android,
- * peuvent quand même refuser le départ. On relance alors la lecture dès que
- * la vidéo entre à l'écran, quand l'onglet redevient visible, et au premier
- * toucher n'importe où sur la page. En attendant, l'image d'attente (la
- * première image du film) est affichée : jamais un cadre noir.
+ * Le 14 octobre 2026, le propriétaire, arrivé en nouveau visiteur, a dû
+ * toucher un bouton « lecture » : son téléphone avait refusé le départ. C'est
+ * ce que font l'iPhone en mode économie d'énergie et les navigateurs intégrés
+ * à certaines applis (Facebook, Instagram, TikTok) — précisément d'où vient le
+ * public des publicités. Les règles de lecture automatique ne visent que les
+ * VIDÉOS, pas les IMAGES animées. Si la vidéo n'est pas partie, on la remplace
+ * donc par la même animation sous forme d'image :
+ * - iPhone, iPad, Safari (et tout navigateur sur iPhone) : le même MP4, posé
+ *   dans une balise image — WebKit le joue en boucle comme un GIF ;
+ * - les autres : une version AVIF animée de 1 Mo.
+ * L'image d'attente (la première image du film) reste affichée pendant ce
+ * temps : jamais un cadre noir, jamais de bouton.
  */
 const BALISE_VIDEO =
   '<video class="hero-video-media" autoplay muted loop playsinline webkit-playsinline preload="auto"' +
   ' poster="/video/presentation-affiche.jpg" disablepictureinpicture disableremoteplayback' +
   ' aria-label="Présentation de ProFoot AI : de vrais matchs annoncés avant le coup d\'envoi et vérifiés après">' +
   '<source src="/video/presentation.mp4" type="video/mp4"></video>';
+
+const VIDEO_MP4 = '/video/presentation.mp4';
+const VIDEO_ANIMEE = '/video/presentation-anim.avif';
 
 function VideoPresentation() {
   const conteneur = useRef<HTMLDivElement>(null);
@@ -859,10 +837,41 @@ function VideoPresentation() {
     if (!video) return;
     video.muted = true;
     video.defaultMuted = true;
+    let remplacee = false;
+
+    // La vidéo est refusée : on pose la même animation, en image.
+    const basculerEnImage = () => {
+      if (remplacee || !video.paused) return;
+      remplacee = true;
+      const image = document.createElement('img');
+      image.className = 'hero-video-media';
+      image.alt = video.getAttribute('aria-label') ?? '';
+      image.decoding = 'async';
+      const poser = (src: string) => {
+        image.onload = () => video.replaceWith(image);
+        image.src = src;
+      };
+      // WebKit sait jouer un MP4 dans une image ; Chrome, non (erreur aussitôt).
+      const essai = document.createElement('img');
+      essai.onload = () => poser(VIDEO_MP4);
+      essai.onerror = () => poser(VIDEO_ANIMEE);
+      essai.src = VIDEO_MP4;
+    };
+
     const jouer = () => {
-      if (video.paused) video.play().catch(() => {});
+      if (remplacee || !video.paused) return;
+      video.play().catch((e: unknown) => {
+        // « Pas autorisé » : inutile d'insister, le téléphone ne lâchera pas.
+        if (e instanceof DOMException && e.name === 'NotAllowedError') basculerEnImage();
+      });
     };
     jouer();
+    // Certains navigateurs intégrés ne répondent jamais : passé ce délai,
+    // une vidéo encore à l'arrêt ne partira pas toute seule.
+    const minuteur = setTimeout(() => {
+      if (video.paused && document.visibilityState === 'visible') basculerEnImage();
+    }, 1800);
+
     const observateur = new IntersectionObserver(
       (entrees) => { if (entrees.some((e) => e.isIntersecting)) jouer(); },
       { threshold: 0.15 }
@@ -870,13 +879,10 @@ function VideoPresentation() {
     observateur.observe(video);
     const auRetour = () => { if (document.visibilityState === 'visible') jouer(); };
     document.addEventListener('visibilitychange', auRetour);
-    window.addEventListener('touchstart', jouer, { passive: true });
-    window.addEventListener('pointerdown', jouer);
     return () => {
+      clearTimeout(minuteur);
       observateur.disconnect();
       document.removeEventListener('visibilitychange', auRetour);
-      window.removeEventListener('touchstart', jouer);
-      window.removeEventListener('pointerdown', jouer);
     };
   }, []);
   return <div ref={conteneur} className="hero-video" dangerouslySetInnerHTML={{ __html: BALISE_VIDEO }} />;
