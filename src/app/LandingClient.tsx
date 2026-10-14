@@ -855,9 +855,13 @@ function VideoPresentation() {
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const sources = estIOS ? [ANIMATION_WEBP] : [ANIMATION_AVIF, ANIMATION_WEBP];
       let rang = 0;
-      image.onload = () => video.replaceWith(image);
+      // Posée tout de suite par-dessus la vidéo arrêtée : le navigateur montre
+      // ses premières images pendant le téléchargement, sans attendre la fin.
+      image.style.cssText = 'position:absolute;inset:0;';
+      image.onload = () => video.remove();
       image.onerror = () => { rang += 1; if (rang < sources.length) image.src = sources[rang]; };
       image.src = sources[0];
+      video.after(image);
     };
 
     const jouer = () => {
